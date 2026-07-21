@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------------------
+# Documentos reais e dados pessoais — NUNCA versionar
+# ---------------------------------------------------------------------------
+Cotacaoes-templates/
+Planilha-Siscor-Renovacao/
+Formulario-cotacao-newbusiness/
+Apresentacao-Template/
+.private/
+
+# Temporários de revisão / extração
+.tmp*/
+
+# ---------------------------------------------------------------------------
+# Duplicatas históricas na raiz (canônicos estão em docs/)
+# ---------------------------------------------------------------------------
+/CADERNO-DECISOES-PROVISORIAS-v0.2.md
+/ESPECIFICACAO-IMPLEMENTACAO-SEGURA-v0.2.md
+/PATCH-v0.2.1.md
+/ESPECIFICACAO-TECNICA-Sistema-Estudos-Newport.md
+
+# ---------------------------------------------------------------------------
+# Ambientes e caches Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+ENV/
+env/
+.env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+*.cover
+*.py,cover
+
+# ---------------------------------------------------------------------------
+# Variáveis de ambiente e segredos
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Configurações locais de IDE / editor
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.cursor/
+
+# Metadados locais de agentes (Cowork / Cursor)
+.agents/
