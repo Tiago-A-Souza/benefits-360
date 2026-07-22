@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 
 from newport_app.models.draft import ParentescoRascunho
 from newport_app.siscor_importer.constants import PARENTESCO_MAP, STATUS_ATIVO
 
+_RE_ESPACOS_CABECALHO = re.compile(
+    r"[\t\r\n\v\f\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000 ]+"
+)
+
 
 def normalizar_cabecalho(valor: object) -> str:
     if valor is None:
         return ""
-    return str(valor).strip().upper()
+    texto = _RE_ESPACOS_CABECALHO.sub(" ", str(valor))
+    return texto.strip().upper()
 
 
 def normalizar_status(valor: object) -> tuple[str | None, str | None]:

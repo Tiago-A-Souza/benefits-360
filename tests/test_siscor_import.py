@@ -19,12 +19,14 @@ from newport_app.services.importacao_siscor import (
 )
 from newport_app.siscor_importer.constants import COLUNAS_OBRIGATORIAS
 from newport_app.siscor_importer.money import valor_para_centavos
+from newport_app.siscor_importer.normalize import normalizar_cabecalho
 from newport_app.siscor_importer.parser import parse_planilha_siscor
 from tests.fixtures.siscor.xlsx_builder import (
     gerar_planilha_siscor,
     linha_ficticia,
     planilha_12_vidas,
     planilha_41_vidas_2_planos,
+    planilha_41_vidas_cabecalho_nbsp,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "siscor"
@@ -57,6 +59,28 @@ def test_parse_12_vidas_todas_nao_confirmadas():
     assert resultado.candidata.estatisticas.planos_detectados == 1
     assert all(not linha.registro_confirmado for linha in resultado.candidata.linhas)
     assert resultado.candidata.documento_hash_sha256 == hashlib.sha256(conteudo).hexdigest()
+
+
+def test_normalizar_cabecalho_converte_nbsp_e_colapsa_espacos():
+    assert normalizar_cabecalho("DATA\u00A0DE\u00A0NASCIMENTO") == "DATA DE NASCIMENTO"
+    assert normalizar_cabecalho("STATUS\u00A0SEGURADO") == "STATUS SEGURADO"
+    assert normalizar_cabecalho("  CLIENTE\t\n  ") == "CLIENTE"
+    assert normalizar_cabecalho("PLANO  \u2003  DEMO") == "PLANO DEMO"
+
+
+def test_parse_41_vidas_cabecalho_nbsp_50_colunas():
+    conteudo = planilha_41_vidas_cabecalho_nbsp()
+    resultado = parse_planilha_siscor(
+        conteudo,
+        estudo_id="test-nbsp",
+        documento_id="doc-nbsp",
+    )
+    assert resultado.sucesso
+    assert not any(e.codigo == "APP-SIS-F05" for e in resultado.erros_arquivo)
+    candidata = resultado.candidata
+    assert candidata is not None
+    assert len(candidata.linhas) == 41
+    assert candidata.estatisticas.planos_detectados == 2
 
 
 def test_parse_41_vidas_dois_planos():

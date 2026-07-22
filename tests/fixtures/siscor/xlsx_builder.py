@@ -55,6 +55,36 @@ def planilha_41_vidas_2_planos() -> bytes:
     return gerar_planilha_siscor(linhas)
 
 
+def planilha_41_vidas_cabecalho_nbsp() -> bytes:
+    """Simula layout real: 50 colunas e cabeçalhos com U+00A0 (Excel/SISCOR)."""
+    cabecalhos: list[str] = []
+    for col in COLUNAS_OBRIGATORIAS:
+        if col == "DATA DE NASCIMENTO":
+            cabecalhos.append("DATA\u00A0DE\u00A0NASCIMENTO")
+        elif col == "STATUS SEGURADO":
+            cabecalhos.append("STATUS\u00A0SEGURADO")
+        else:
+            cabecalhos.append(col)
+    cabecalhos.extend(f"CAMPO EXTRA {i}" for i in range(1, 43))
+
+    linhas_dados = []
+    for i in range(36):
+        linhas_dados.append(linha_ficticia(i, plano="Plano Fictício A"))
+    for i in range(36, 41):
+        linhas_dados.append(linha_ficticia(i, plano="Plano Fictício B"))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(cabecalhos)
+    for linha in linhas_dados:
+        row = [linha.get(col) for col in COLUNAS_OBRIGATORIAS]
+        row.extend([None] * 42)
+        ws.append(row)
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
 def planilha_com_formula_no_valor() -> bytes:
     wb = Workbook()
     ws = wb.active
