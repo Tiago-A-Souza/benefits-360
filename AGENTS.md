@@ -2,7 +2,7 @@
 
 Sistema de Estudos Newport — comparativo financeiro de planos de saúde.
 **Faixa inicial homologada:** 1–29 vidas (configurável; **sem teto técnico** no motor).
-Estágio atual: **ETAPA 1.2.2 concluída** — motor puro + testes; próximo passo **ETAPA 2.1** (walking skeleton).
+Estágio atual: **ETAPA 2.1 concluída** — walking skeleton web; próximo passo **ETAPA 2.2** (compilador único).
 
 ## Antes de qualquer coisa, leia (nesta ordem)
 1. `docs/04-HANDOFF-IMPLEMENTACAO.md`
@@ -13,16 +13,15 @@ Estágio atual: **ETAPA 1.2.2 concluída** — motor puro + testes; próximo pas
 6. `docs/05-PLANO-ETAPA-2-VALIDACAO-OPERACIONAL.md` — direção da fatia vertical.
 
 ## Entregas concluídas
-- **ETAPA 1 → 1.2.1:** motor financeiro puro (`calcular`) + suítes A–H + fixtures.
+- **ETAPA 1 → 1.2.2:** motor financeiro puro + suítes A–H + fixtures.
 - **ETAPA 2.0:** caracterização corpus privado (`docs/06-CARACTERIZACAO-ETAPA-2.0.md`).
-- **ETAPA 1.2.2:** `max_vidas_homologadas` na policy; B-08 = zero vidas; H-01 = acima da faixa homologada (alerta).
+- **ETAPA 2.1:** walking skeleton (`newport_app` + `web/` + `RELATORIO-ETAPA-2.1.md`).
 
 ## Faça agora (quando autorizado)
-- **ETAPA 2.1:** walking skeleton web (React + FastAPI + SQLite via `StudyRepository`) — ver `docs/05`.
-- Não truncar vidas automaticamente; planilha SISCOR real (41 vidas) serve para importação/escala/layout, **não** como caso dourado financeiro.
+- **ETAPA 2.2:** compilador/mapper único rascunho → motor — ver `docs/05`.
 
 ## NÃO faça sem autorização
-- ETAPA 2.1+ completa antes de aprovação explícita.
+- ETAPA 2.2+ antes de aprovação explícita.
 - Alterar regras financeiras (IOF, arredondamento, reconciliação, proveniência) sem entrega versionada separada.
 - **Não mova, renomeie ou exclua** os documentos canônicos `docs/01–04`.
 
