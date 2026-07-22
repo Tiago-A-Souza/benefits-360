@@ -74,7 +74,7 @@ def validar_estrutura(rascunho: RascunhoEstudo) -> list[ErroCompilacao]:
             )
 
     for idx, sg in enumerate(rascunho.subgrupos_atuais):
-        if sg.regime_copart_id not in regime_ids:
+        if sg.regime_copart_id is not None and sg.regime_copart_id not in regime_ids:
             erros.append(
                 _erro(
                     "APP-STR-002",

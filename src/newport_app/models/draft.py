@@ -43,6 +43,8 @@ class ProvenienciaRascunho(BaseModel):
     origem: OrigemValorRascunho = OrigemValorRascunho.MANUAL
     documento_id: str | None = None
     extrator_versao: str = "manual"
+    linha_origem: int | None = None
+    celula_origem: str | None = None
     confirmado: bool = False
 
 
@@ -157,8 +159,8 @@ class SubgrupoAtualRascunho(BaseModel):
     id: str
     operadora: str
     plano_nome: str
-    regime_copart_id: str
-    tipo_fiscal: Literal["seguradora", "operadora"]
+    regime_copart_id: str | None = None
+    tipo_fiscal: Literal["seguradora", "operadora"] | None = None
     acomodacao: str | None = None
     modalidade: ModalidadeRascunho | None = None
     reajuste_bps: int | None = None
