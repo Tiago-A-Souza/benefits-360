@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from newport_app.api.middleware import ModoRealLocalMiddleware
 from newport_app.api.validation_handlers import resposta_validacao_sanitizada
 from newport_app.config.paths import (
     caminho_banco_estudos,
@@ -20,12 +21,13 @@ from newport_app.config.paths import (
 from newport_app.config.runtime import (
     LIMITE_UPLOAD_BYTES,
     ModoExecucao,
+    ModoExecucaoInvalidoError,
     exigir_host_local_modo_real,
     modo_execucao,
 )
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import RascunhoEstudo
-from newport_app.models.responses import ComparativoResponse, EstudoResumo
+from newport_app.models.responses import ComparativoResponse, EstudoResumo, PendenciaItem
 from newport_app.models.responses_siscor import (
     ConfirmacaoLoteResponse,
     ConferenciaSiscorResponse,
@@ -39,6 +41,7 @@ from newport_app.services.calculo import (
     EstudoNaoEncontradoError,
     RascunhoNaoCompilavelError,
 )
+from newport_app.services.pendencias import pendencias_compilacao
 from newport_app.services.importacao_siscor import (
     ExclusaoSemMotivoError,
     ImportacaoRequerDecisaoError,
@@ -110,7 +113,7 @@ def create_app(
     if seed_demos:
         _seed_inicial(service)
 
-    app = FastAPI(title="Newport Estudos", version="2.3.6")
+    app = FastAPI(title="Newport Estudos", version="2.5.0")
     app.state.calculo_service = service
     app.state.siscor_service = siscor
     app.state.repository = repository
@@ -126,12 +129,13 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(ModoRealLocalMiddleware)
 
     @app.get("/api/config")
     def obter_config() -> dict[str, str | int]:
         return {
             "modo": modo_execucao().value,
-            "versao": "2.3.6",
+            "versao": "2.5.0",
             "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
         }
 
@@ -153,6 +157,20 @@ def create_app(
             return service.obter_resumo(estudo_id)
         except EstudoNaoEncontradoError:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+
+    @app.get("/api/estudos/{estudo_id}/rascunho", response_model=RascunhoEstudo)
+    def obter_rascunho(estudo_id: str) -> RascunhoEstudo:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return rascunho
+
+    @app.get("/api/estudos/{estudo_id}/pendencias", response_model=list[PendenciaItem])
+    def listar_pendencias_estudo(estudo_id: str) -> list[PendenciaItem]:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return pendencias_compilacao(rascunho)
 
     @app.put("/api/estudos/{estudo_id}", response_model=EstudoResumo)
     def salvar_estudo(estudo_id: str, rascunho: RascunhoEstudo) -> EstudoResumo:

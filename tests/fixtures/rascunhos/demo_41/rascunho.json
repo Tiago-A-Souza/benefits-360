@@ -814,7 +814,9 @@
       "total_primeira_parcela": null,
       "subtotal_impresso": null,
       "custos_unicos": [],
-      "documento_cotacao_id": null
+      "documento_cotacao_id": null,
+      "validade_oficial": null,
+      "observacoes": null
     }
   ],
   "regimes_copart": [
