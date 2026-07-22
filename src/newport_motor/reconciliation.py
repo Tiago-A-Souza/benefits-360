@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from newport_motor.finance import componente_para_recorrente, somar_componentes_recorrentes
+from newport_motor.finance import (
+    componente_para_recorrente,
+    primeira_parcela_normalizada,
+    recorrente_de_premio_e_iof,
+    recorrente_para_primeira_parcela,
+)
 from newport_motor.models import OpcaoPlano, Vida
 from newport_motor.money import abs_diff
 from newport_motor.policy import EffectivePolicy
@@ -149,36 +154,33 @@ def reconciliar_opcao_cenario(
         and opcao.total_recorrente.centavos is not None
     ):
         premio_basis = opcao.premio_saude.price_basis
-        iof_basis = opcao.iof.price_basis if opcao.iof else PriceBasis.EXCLUI_IOF
         iof_val = opcao.iof.centavos if opcao.iof else None
-        soma_premio_iof = somar_componentes_recorrentes(
+        soma_premio_iof = recorrente_de_premio_e_iof(
             opcao.premio_saude.centavos,
             premio_basis,
             iof_val,
-            iof_basis,
             tf,
             iof_bps,
         )
-        if soma_premio_iof is not None:
-            total_imp = _normalizar_impresso(
-                opcao.total_recorrente.centavos,
-                opcao.total_recorrente.price_basis,
-                tf,
-                int(iof_bps),
-            )
-            diff = abs(soma_premio_iof - total_imp)
-            if diff > tol.subtotal_centavos:
-                validacoes.append(
-                    Validacao(
-                        codigo="B-02",
-                        severidade=SeveridadeValidacao.BLOQUEANTE,
-                        mensagem=(
-                            f"Prêmio+IOF ({soma_premio_iof}c) diverge do total recorrente "
-                            f"impresso ({total_imp}c, diff {diff}c)."
-                        ),
-                        alvo_ref=f"opcao:{opcao.id}:premio_iof_vs_recorrente",
-                    )
+        total_imp = _normalizar_impresso(
+            opcao.total_recorrente.centavos,
+            opcao.total_recorrente.price_basis,
+            tf,
+            int(iof_bps),
+        )
+        diff = abs(soma_premio_iof - total_imp)
+        if diff > tol.subtotal_centavos:
+            validacoes.append(
+                Validacao(
+                    codigo="B-02",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Prêmio+IOF ({soma_premio_iof}c) diverge do total recorrente "
+                        f"impresso ({total_imp}c, diff {diff}c)."
+                    ),
+                    alvo_ref=f"opcao:{opcao.id}:premio_iof_vs_recorrente",
                 )
+            )
 
     # 4. Total calculado vs total recorrente impresso (população agregada da opção)
     if opcao.total_recorrente and opcao.total_recorrente.centavos is not None:
@@ -202,7 +204,7 @@ def reconciliar_opcao_cenario(
                 )
             )
 
-    # 5. Primeira parcela = total recorrente impresso + custos únicos
+    # 5. Primeira parcela = total recorrente + custos únicos (bases respeitados)
     if (
         opcao.total_primeira_parcela
         and opcao.total_primeira_parcela.centavos is not None
@@ -210,45 +212,65 @@ def reconciliar_opcao_cenario(
         and opcao.total_recorrente.centavos is not None
     ):
         custos = sum(c.valor_centavos for c in opcao.custos_unicos)
-        rec_imp = _normalizar_impresso(
-            opcao.total_recorrente.centavos,
-            opcao.total_recorrente.price_basis,
-            tf,
-            int(iof_bps),
-        )
-        esperado = rec_imp + custos
-        diff = abs(opcao.total_primeira_parcela.centavos - esperado)
-        if diff == 0:
-            pass
-        elif custos > 0 and diff <= tol.subtotal_centavos:
+        if opcao.total_primeira_parcela.price_basis == PriceBasis.DESCONHECIDO:
             validacoes.append(
                 Validacao(
                     codigo="B-02",
-                    severidade=SeveridadeValidacao.ALERTA,
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
                     mensagem=(
-                        f"Primeira parcela com diferença explicável por custos únicos "
-                        f"(opção {opcao.id}, diff {diff}c)."
+                        f"total_primeira_parcela com price_basis desconhecido "
+                        f"(opção {opcao.id})."
                     ),
                     alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
                 )
             )
         else:
-            severidade = (
-                SeveridadeValidacao.ALERTA
-                if custos > 0 and diff <= tol.total_centavos
-                else SeveridadeValidacao.BLOQUEANTE
+            esperado = recorrente_para_primeira_parcela(
+                opcao.total_recorrente.centavos,
+                opcao.total_recorrente.price_basis,
+                custos,
+                tf,
+                iof_bps,
             )
-            validacoes.append(
-                Validacao(
-                    codigo="B-02",
-                    severidade=severidade,
-                    mensagem=(
-                        f"Primeira parcela ({opcao.total_primeira_parcela.centavos}c) "
-                        f"≠ recorrente impresso + custos únicos ({esperado}c)."
-                    ),
-                    alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+            primeira_equiv = primeira_parcela_normalizada(
+                opcao.total_primeira_parcela.centavos,
+                opcao.total_primeira_parcela.price_basis,
+                custos,
+                tf,
+                iof_bps,
+            )
+            diff = abs(primeira_equiv - esperado)
+            if diff == 0:
+                pass
+            elif custos > 0 and diff <= tol.subtotal_centavos:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-02",
+                        severidade=SeveridadeValidacao.ALERTA,
+                        mensagem=(
+                            f"Primeira parcela com diferença explicável por custos únicos "
+                            f"(opção {opcao.id}, diff {diff}c)."
+                        ),
+                        alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+                    )
                 )
-            )
+            else:
+                severidade = (
+                    SeveridadeValidacao.ALERTA
+                    if custos > 0 and diff <= tol.total_centavos
+                    else SeveridadeValidacao.BLOQUEANTE
+                )
+                validacoes.append(
+                    Validacao(
+                        codigo="B-02",
+                        severidade=severidade,
+                        mensagem=(
+                            f"Primeira parcela equivalente ({primeira_equiv}c) "
+                            f"≠ recorrente + custos únicos ({esperado}c, diff {diff}c)."
+                        ),
+                        alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+                    )
+                )
 
     return validacoes
 

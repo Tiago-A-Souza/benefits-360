@@ -50,6 +50,11 @@ class PrecedenciaAtualVida(str, Enum):
     VALOR_FATURA = "valor_fatura"
 
 
+class AlvoTipo(str, Enum):
+    VIDA = "vida"
+    SUBGRUPO = "subgrupo"
+
+
 class OrigemValor(str, Enum):
     EXTRAIDO = "extraido"
     CALCULADO = "calculado"

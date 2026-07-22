@@ -13,7 +13,9 @@ from newport_motor.types import (
     OrigemValor,
     PrecedenciaAtualVida,
     PriceBasis,
+    RoundingStrategy,
     SeveridadeValidacao,
+    AlvoTipo,
 )
 
 PILOTO_MAX_VIDAS = 29
@@ -76,7 +78,25 @@ def validar_b07_politica_obrigatoria(
                     )
                 )
         validacoes.extend(_validar_precedencia_atual(estudo, policy))
+    validacoes.extend(_validar_estrategia_piloto(policy))
     return validacoes
+
+
+def _validar_estrategia_piloto(policy: EffectivePolicy) -> list[Validacao]:
+    """Piloto: somente por_vida_entao_soma homologada (Alternativa A)."""
+    if policy.estrategia_arredondamento == RoundingStrategy.POR_VIDA_ENTAO_SOMA:
+        return []
+    return [
+        Validacao(
+            codigo="B-07",
+            severidade=SeveridadeValidacao.BLOQUEANTE,
+            mensagem=(
+                f"Estratégia de arredondamento '{policy.estrategia_arredondamento.value}' "
+                "não homologada no piloto; use 'por_vida_entao_soma' (DP-11)."
+            ),
+            alvo_ref="policy.estrategia_arredondamento",
+        )
+    ]
 
 
 def _validar_precedencia_atual(
@@ -130,7 +150,7 @@ def validar_entrada_estrutural(estudo: EstudoInput) -> list[Validacao]:
                         alvo_ref=f"atribuicao:{atr.id}",
                     )
                 )
-            if atr.alvo_tipo == "subgrupo" and atr.alvo_id not in subgrupos_ids:
+            if atr.alvo_tipo == AlvoTipo.SUBGRUPO and atr.alvo_id not in subgrupos_ids:
                 validacoes.append(
                     Validacao(
                         codigo="B-06",
@@ -139,7 +159,7 @@ def validar_entrada_estrutural(estudo: EstudoInput) -> list[Validacao]:
                         alvo_ref=f"atribuicao:{atr.id}",
                     )
                 )
-            if atr.alvo_tipo == "vida" and atr.alvo_id not in vidas_ids:
+            if atr.alvo_tipo == AlvoTipo.VIDA and atr.alvo_id not in vidas_ids:
                 validacoes.append(
                     Validacao(
                         codigo="B-06",

@@ -33,7 +33,6 @@ def para_base_exclui_iof(
         return valor_centavos
     if price_basis == PriceBasis.EXCLUI_IOF:
         return valor_centavos
-    # inclui_iof: remove IOF embutido
     denominador = 10_000 + int(iof_bps)
     return round_half_up_from_numerator(valor_centavos * 10_000, denominador)
 
@@ -74,8 +73,16 @@ def normalizar_vidas_para_recorrente(
     if not tipo_fiscal_aplica_iof(tipo_fiscal):
         return [MoneyCents(v) for v, _ in valores_basis]
 
+    if strategy == RoundingStrategy.POR_VIDA_ENTAO_SOMA:
+        result: list[MoneyCents] = []
+        for valor, basis in valores_basis:
+            if basis == PriceBasis.INCLUI_IOF:
+                result.append(MoneyCents(valor))
+            else:
+                result.append(MoneyCents(apply_rate_bps(valor, iof_bps)))
+        return result
+
     if strategy == RoundingStrategy.NO_TOTAL:
-        # Por vida: normaliza basis para exclui_iof sem aplicar IOF (IOF só no total)
         return [
             MoneyCents(para_base_exclui_iof(v, b, tipo_fiscal, iof_bps))
             for v, b in valores_basis
@@ -84,9 +91,6 @@ def normalizar_vidas_para_recorrente(
     bases_exclui = [
         para_base_exclui_iof(v, b, tipo_fiscal, iof_bps) for v, b in valores_basis
     ]
-
-    if strategy == RoundingStrategy.POR_VIDA_ENTAO_SOMA:
-        return [MoneyCents(apply_rate_bps(b, iof_bps)) for b in bases_exclui]
 
     if strategy == RoundingStrategy.SOMA_ENTAO_APLICA:
         total_exclui = sum(bases_exclui)
@@ -136,6 +140,36 @@ def componente_para_recorrente(
     return aplicar_iof_se_necessario(centavos, price_basis, tipo_fiscal, iof_bps)
 
 
+def recorrente_de_premio_e_iof(
+    premio_centavos: int,
+    premio_basis: PriceBasis,
+    iof_centavos: int | None,
+    tipo_fiscal: TipoFiscal,
+    iof_bps: RateBasisPoints,
+) -> int:
+    """
+    Calcula recorrente a partir de prêmio e IOF explícito (reconciliação B-02).
+
+    - iof.centavos = valor absoluto da linha de IOF; nunca recebe IOF novamente.
+    - premio inclui_iof = total com IOF; linha IOF é informativa.
+    - premio exclui_iof + IOF explícito = premio + iof (sem apply_rate_bps no IOF).
+    - premio exclui_iof sem IOF explícito = aplica IOF via policy no prêmio.
+    """
+    if premio_basis == PriceBasis.DESCONHECIDO:
+        raise ValueError("price_basis desconhecido no prêmio")
+
+    if not tipo_fiscal_aplica_iof(tipo_fiscal):
+        return premio_centavos
+
+    if premio_basis == PriceBasis.INCLUI_IOF:
+        return premio_centavos
+
+    # premio exclui_iof
+    if iof_centavos is not None:
+        return premio_centavos + iof_centavos
+    return int(aplicar_iof_se_necessario(premio_centavos, premio_basis, tipo_fiscal, iof_bps))
+
+
 def somar_componentes_recorrentes(
     premio_centavos: int | None,
     premio_basis: PriceBasis,
@@ -147,15 +181,55 @@ def somar_componentes_recorrentes(
     """Prêmio + IOF explícito normalizados para base recorrente comparável."""
     if premio_centavos is None:
         return None
-    premio_rec = int(
-        componente_para_recorrente(premio_centavos, premio_basis, tipo_fiscal, iof_bps)
-    )
-    if iof_centavos is None:
-        return premio_rec
-    if iof_basis == PriceBasis.DESCONHECIDO:
+    if premio_basis == PriceBasis.DESCONHECIDO:
         return None
-    if iof_basis == PriceBasis.INCLUI_IOF:
-        iof_add = iof_centavos
-    else:
-        iof_add = int(componente_para_recorrente(iof_centavos, iof_basis, tipo_fiscal, iof_bps))
-    return premio_rec + iof_add
+    if iof_centavos is not None and iof_basis == PriceBasis.DESCONHECIDO:
+        return None
+    return recorrente_de_premio_e_iof(
+        premio_centavos, premio_basis, iof_centavos, tipo_fiscal, iof_bps
+    )
+
+
+def recorrente_para_primeira_parcela(
+    total_recorrente_centavos: int,
+    total_recorrente_basis: PriceBasis,
+    custos_unicos_centavos: int,
+    tipo_fiscal: TipoFiscal,
+    iof_bps: RateBasisPoints,
+) -> int:
+    """
+    Equivalente recorrente + custos únicos (custos nunca recebem IOF).
+
+    primeira_parcela_esperada = recorrente_normalizado + custos_unicos
+    """
+    recorrente = int(
+        componente_para_recorrente(
+            total_recorrente_centavos, total_recorrente_basis, tipo_fiscal, iof_bps
+        )
+    )
+    return recorrente + custos_unicos_centavos
+
+
+def primeira_parcela_normalizada(
+    primeira_parcela_centavos: int,
+    primeira_parcela_basis: PriceBasis,
+    custos_unicos_centavos: int,
+    tipo_fiscal: TipoFiscal,
+    iof_bps: RateBasisPoints,
+) -> int:
+    """
+    Normaliza primeira parcela para comparar com recorrente + custos.
+
+    Se exclui_iof: normaliza apenas a parte recorrente (total - custos) e soma custos.
+    Se inclui_iof: valor já inclui IOF na parcela recorrente; custos somados à parte.
+    """
+    if primeira_parcela_basis == PriceBasis.DESCONHECIDO:
+        raise ValueError("price_basis desconhecido na primeira parcela")
+
+    parte_recorrente_bruta = primeira_parcela_centavos - custos_unicos_centavos
+    recorrente_norm = int(
+        componente_para_recorrente(
+            parte_recorrente_bruta, primeira_parcela_basis, tipo_fiscal, iof_bps
+        )
+    )
+    return recorrente_norm + custos_unicos_centavos

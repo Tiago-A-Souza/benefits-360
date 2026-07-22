@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from newport_motor.calculation import agregar_por_opcao_no_cenario, calcular_cenario
-from newport_motor.finance import para_base_exclui_iof, total_recorrente_de_bases_exclui
 from newport_motor.models import EstudoInput
 from newport_motor.policy import EffectivePolicy
 from newport_motor.reconciliation import (
@@ -12,7 +11,7 @@ from newport_motor.reconciliation import (
     reconciliar_opcao_cenario,
 )
 from newport_motor.result import MotorResult
-from newport_motor.types import RoundingStrategy, SeveridadeValidacao
+from newport_motor.types import SeveridadeValidacao
 from newport_motor.validations import (
     validar_b03_valores_nao_confirmados,
     validar_b04_idade_valor,
@@ -67,30 +66,6 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
                 continue
 
             total_calc = dados["total"]
-            if policy.estrategia_arredondamento == RoundingStrategy.NO_TOTAL:
-                bases: list[int] = []
-                for vida, _ in dados["vidas"]:
-                    from newport_motor.faixa import faixa_em
-
-                    assert policy.data_referencia_idade is not None
-                    _, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
-                    entry = next(t for t in opcao.tabela if t.faixa == faixa)
-                    bases.append(
-                        para_base_exclui_iof(
-                            entry.valor_centavos,
-                            entry.price_basis,
-                            opcao.tipo_fiscal,
-                            policy.iof_bps,
-                        )
-                    )
-                total_calc = int(
-                    total_recorrente_de_bases_exclui(
-                        bases,
-                        opcao.tipo_fiscal,
-                        policy.iof_bps,
-                        policy.estrategia_arredondamento,
-                    )
-                )
 
             subgrupos_rec = [
                 SubgrupoReconciliacao(

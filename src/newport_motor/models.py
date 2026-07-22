@@ -12,6 +12,7 @@ from newport_motor.types import (
     EstadoExtracao,
     FormatoEstudo,
     OrigemValor,
+    AlvoTipo,
     PriceBasis,
     RegimeCopartTipo,
     TipoFiscal,
@@ -141,7 +142,7 @@ class Vida(BaseModel):
 
 class AtribuicaoPlano(BaseModel):
     id: str
-    alvo_tipo: str  # subgrupo | vida
+    alvo_tipo: AlvoTipo
     alvo_id: str
     opcao_plano_id: str
 

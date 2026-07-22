@@ -1,5 +1,6 @@
 {
-  "tem_bloqueio": false,
+  "tem_bloqueio": true,
   "estrategia": "soma_entao_aplica",
-  "bloqueios": []
+  "bloqueios": ["B-07"],
+  "tem_cenarios": false
 }

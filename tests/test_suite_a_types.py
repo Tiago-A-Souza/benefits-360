@@ -49,8 +49,10 @@ def test_inclui_iof_nao_reaplica():
     assert int(com_iof[0]) == 10_238_00
 
 
-def test_no_total_aplica_iof_no_agregado():
-    from newport_motor.finance import para_base_exclui_iof, total_recorrente_de_bases_exclui
+def test_no_total_codigo_reservado_nao_homologado_piloto():
+    """Código reservado em finance.py; motor bloqueia no_total com B-07 no piloto."""
+    from newport_motor.finance import total_recorrente_de_bases_exclui
+    from newport_motor.money import apply_rate_bps
 
     bases = [10_000_00, 10_500_00]
     per_vida = apply_iof_strategy(
