@@ -225,71 +225,91 @@ def reconciliar_opcao_cenario(
                 )
             )
         else:
-            esperado = recorrente_para_primeira_parcela(
-                opcao.total_recorrente.centavos,
-                opcao.total_recorrente.price_basis,
-                custos,
-                tf,
-                iof_bps,
-            )
-            primeira_equiv = primeira_parcela_normalizada(
-                opcao.total_primeira_parcela.centavos,
-                opcao.total_primeira_parcela.price_basis,
-                custos,
-                tf,
-                iof_bps,
-            )
-            diff = abs(primeira_equiv - esperado)
-            if diff == 0:
-                pass
-            elif custos > 0 and diff <= tol.subtotal_centavos:
+            if opcao.total_primeira_parcela.centavos < custos:
                 validacoes.append(
                     Validacao(
                         codigo="B-02",
-                        severidade=SeveridadeValidacao.ALERTA,
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
                         mensagem=(
-                            f"Primeira parcela com diferença explicável por custos únicos "
-                            f"(opção {opcao.id}, diff {diff}c)."
+                            f"Primeira parcela ({opcao.total_primeira_parcela.centavos}c) "
+                            f"menor que a soma dos custos únicos ({custos}c) "
+                            f"(opção {opcao.id})."
                         ),
                         alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
                     )
                 )
             else:
-                severidade = (
-                    SeveridadeValidacao.ALERTA
-                    if custos > 0 and diff <= tol.total_centavos
-                    else SeveridadeValidacao.BLOQUEANTE
+                esperado = recorrente_para_primeira_parcela(
+                    opcao.total_recorrente.centavos,
+                    opcao.total_recorrente.price_basis,
+                    custos,
+                    tf,
+                    iof_bps,
                 )
-                validacoes.append(
-                    Validacao(
-                        codigo="B-02",
-                        severidade=severidade,
-                        mensagem=(
-                            f"Primeira parcela equivalente ({primeira_equiv}c) "
-                            f"≠ recorrente + custos únicos ({esperado}c, diff {diff}c)."
-                        ),
-                        alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+                primeira_equiv = primeira_parcela_normalizada(
+                    opcao.total_primeira_parcela.centavos,
+                    opcao.total_primeira_parcela.price_basis,
+                    custos,
+                    tf,
+                    iof_bps,
+                )
+                diff = abs(primeira_equiv - esperado)
+                if diff == 0:
+                    pass
+                elif custos > 0 and diff <= tol.subtotal_centavos:
+                    validacoes.append(
+                        Validacao(
+                            codigo="B-02",
+                            severidade=SeveridadeValidacao.ALERTA,
+                            mensagem=(
+                                f"Primeira parcela com diferença explicável por custos únicos "
+                                f"(opção {opcao.id}, diff {diff}c)."
+                            ),
+                            alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+                        )
                     )
-                )
+                else:
+                    severidade = (
+                        SeveridadeValidacao.ALERTA
+                        if custos > 0 and diff <= tol.total_centavos
+                        else SeveridadeValidacao.BLOQUEANTE
+                    )
+                    validacoes.append(
+                        Validacao(
+                            codigo="B-02",
+                            severidade=severidade,
+                            mensagem=(
+                                f"Primeira parcela equivalente ({primeira_equiv}c) "
+                                f"≠ recorrente + custos únicos ({esperado}c, diff {diff}c)."
+                            ),
+                            alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+                        )
+                    )
 
     return validacoes
 
 
-def valor_calc(centavos: int) -> ValorCalculado:
-    from newport_motor.provenance import ProvenienciaCampo
+def valor_calc(
+    centavos: int,
+    fontes: list | None = None,
+) -> ValorCalculado:
+    from newport_motor.provenance import LinhagemReferencia, ProvenienciaCampo
     from newport_motor.types import OrigemValor
 
     return ValorCalculado(
         centavos=centavos,
         proveniencia=ProvenienciaCampo(
             origem=OrigemValor.CALCULADO,
-            extrator_versao="motor@0.1.1",
+            extrator_versao="motor@0.1.2",
         ),
+        fontes=fontes or [],
     )
 
 
 def somar_valores(valores: list[ValorCalculado]) -> ValorCalculado:
     from newport_motor.money import add_money
+    from newport_motor.provenance import mesclar_fontes
 
     total = add_money(*[MoneyCents(v.centavos) for v in valores])
-    return valor_calc(int(total))
+    fontes = mesclar_fontes(*[v.fontes for v in valores])
+    return valor_calc(int(total), fontes=fontes)

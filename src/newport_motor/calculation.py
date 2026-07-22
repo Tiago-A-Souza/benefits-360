@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from newport_motor.faixa import faixa_em
-from newport_motor.finance import (
-    normalizar_vidas_para_recorrente,
-    para_base_exclui_iof,
-    total_recorrente_de_bases_exclui,
-    tipo_fiscal_aplica_iof,
-)
+from newport_motor.finance import normalizar_vidas_para_recorrente
 from newport_motor.models import EstudoInput, OpcaoPlano, SubgrupoAtual, Vida
 from newport_motor.money import apply_rate_bps
 from newport_motor.policy import EffectivePolicy
-from newport_motor.reconciliation import valor_calc
+from newport_motor.provenance import LinhagemReferencia, linhagem_de_proveniencia, mesclar_fontes
+from newport_motor.reconciliation import somar_valores, valor_calc
 from newport_motor.result import ResultadoSubgrupo, ResultadoVida, ScenarioResult, ScenarioSectionResult
 from newport_motor.types import (
     BaselineEscolhido,
@@ -23,9 +19,13 @@ from newport_motor.types import (
 )
 
 
-def _valor_faixa_tabela(opcao: OpcaoPlano, faixa: int) -> tuple[int, PriceBasis]:
+def _valor_faixa_tabela(opcao: OpcaoPlano, faixa: int) -> tuple[int, PriceBasis, LinhagemReferencia]:
     entry = next(t for t in opcao.tabela if t.faixa == faixa)
-    return entry.valor_centavos, entry.price_basis
+    fonte = linhagem_de_proveniencia(
+        f"opcao:{opcao.id}:tabela:faixa:{faixa}",
+        entry.proveniencia,
+    )
+    return entry.valor_centavos, entry.price_basis, fonte
 
 
 def _base_atual_vida(
@@ -33,7 +33,7 @@ def _base_atual_vida(
     subgrupo: SubgrupoAtual,
     faixa: int,
     policy: EffectivePolicy,
-) -> tuple[int, PriceBasis] | None:
+) -> tuple[int, PriceBasis, LinhagemReferencia] | None:
     tem_tabela = bool(subgrupo.tabela_atual) and any(
         t.faixa == faixa for t in subgrupo.tabela_atual
     )
@@ -42,23 +42,49 @@ def _base_atual_vida(
     if tem_tabela and tem_fatura:
         if policy.precedencia_atual_vida == PrecedenciaAtualVida.TABELA_ATUAL:
             entry = next(t for t in subgrupo.tabela_atual if t.faixa == faixa)
-            return entry.valor_centavos, entry.price_basis
+            return (
+                entry.valor_centavos,
+                entry.price_basis,
+                linhagem_de_proveniencia(
+                    f"subgrupo:{subgrupo.id}:tabela_atual:faixa:{faixa}",
+                    entry.proveniencia,
+                ),
+            )
         if policy.precedencia_atual_vida == PrecedenciaAtualVida.VALOR_FATURA:
             basis = vida.fatura_price_basis or subgrupo.fatura_price_basis
             if basis == PriceBasis.DESCONHECIDO:
                 return None
-            return vida.valor_fatura_centavos, basis
+            prov = vida.proveniencia_fatura_efetiva()
+            assert prov is not None
+            return (
+                vida.valor_fatura_centavos,
+                basis,
+                linhagem_de_proveniencia(f"vida:{vida.id}:fatura", prov),
+            )
         return None
 
     if tem_tabela:
         entry = next(t for t in subgrupo.tabela_atual if t.faixa == faixa)
-        return entry.valor_centavos, entry.price_basis
+        return (
+            entry.valor_centavos,
+            entry.price_basis,
+            linhagem_de_proveniencia(
+                f"subgrupo:{subgrupo.id}:tabela_atual:faixa:{faixa}",
+                entry.proveniencia,
+            ),
+        )
 
     if tem_fatura:
         basis = vida.fatura_price_basis or subgrupo.fatura_price_basis
         if basis == PriceBasis.DESCONHECIDO:
             return None
-        return vida.valor_fatura_centavos, basis
+        prov = vida.proveniencia_fatura_efetiva()
+        assert prov is not None
+        return (
+            vida.valor_fatura_centavos,
+            basis,
+            linhagem_de_proveniencia(f"vida:{vida.id}:fatura", prov),
+        )
 
     return None
 
@@ -68,14 +94,15 @@ def _recorrente_vida(
     basis: PriceBasis,
     tipo_fiscal,
     policy: EffectivePolicy,
-) -> int:
+    fonte: LinhagemReferencia,
+) -> tuple[int, list[LinhagemReferencia]]:
     vals = normalizar_vidas_para_recorrente(
         [(valor, basis)],
         tipo_fiscal,
         policy.iof_bps,
         policy.estrategia_arredondamento,
     )
-    return int(vals[0])
+    return int(vals[0]), [fonte]
 
 
 def _calcular_atual_vida(
@@ -83,25 +110,27 @@ def _calcular_atual_vida(
     subgrupo: SubgrupoAtual,
     faixa: int,
     policy: EffectivePolicy,
-) -> tuple[int, int]:
+) -> tuple[int, int, list[LinhagemReferencia]]:
     base_info = _base_atual_vida(vida, subgrupo, faixa, policy)
     if base_info is None:
-        return 0, 0
-    valor, basis = base_info
-    vigente = _recorrente_vida(valor, basis, subgrupo.tipo_fiscal, policy)
+        raise RuntimeError(
+            f"baseline atual ausente para vida {vida.id}; validação pré-cálculo deveria bloquear"
+        )
+    valor, basis, fonte = base_info
+    vigente, fontes = _recorrente_vida(valor, basis, subgrupo.tipo_fiscal, policy, fonte)
     if subgrupo.reajuste_bps is None:
-        return vigente, vigente
+        return vigente, vigente, fontes
     reajustado = apply_rate_bps(vigente, subgrupo.reajuste_bps)
-    return vigente, reajustado
+    return vigente, reajustado, fontes
 
 
 def _calcular_proposta_vida(
     opcao: OpcaoPlano,
     faixa: int,
     policy: EffectivePolicy,
-) -> int:
-    valor, basis = _valor_faixa_tabela(opcao, faixa)
-    return _recorrente_vida(valor, basis, opcao.tipo_fiscal, policy)
+) -> tuple[int, list[LinhagemReferencia]]:
+    valor, basis, fonte = _valor_faixa_tabela(opcao, faixa)
+    return _recorrente_vida(valor, basis, opcao.tipo_fiscal, policy, fonte)
 
 
 def _rotulo_regime(tipo: RegimeCopartTipo) -> str:
@@ -203,8 +232,8 @@ def _calcular_subgrupo_renovacao(
 
     for vida in vidas_sg:
         idade, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
-        vigente, reajustado = _calcular_atual_vida(vida, subgrupo, faixa, policy)
-        proposta = _calcular_proposta_vida(opcao, faixa, policy)
+        vigente, reajustado, fontes_atual = _calcular_atual_vida(vida, subgrupo, faixa, policy)
+        proposta, fontes_proposta = _calcular_proposta_vida(opcao, faixa, policy)
         atual_baseline = reajustado if baseline == BaselineEscolhido.REAJUSTADO else vigente
         diff_mes = proposta - atual_baseline
         resultados_vidas.append(
@@ -212,11 +241,15 @@ def _calcular_subgrupo_renovacao(
                 vida_id=vida.id,
                 idade=idade,
                 faixa=faixa,
-                atual_vigente_centavos=valor_calc(vigente),
-                atual_reajustado_centavos=valor_calc(reajustado),
-                proposta_centavos=valor_calc(proposta),
-                diff_mes_centavos=valor_calc(diff_mes),
-                diff_ano_centavos=valor_calc(diff_mes * 12),
+                atual_vigente_centavos=valor_calc(vigente, fontes=fontes_atual),
+                atual_reajustado_centavos=valor_calc(reajustado, fontes=fontes_atual),
+                proposta_centavos=valor_calc(proposta, fontes=fontes_proposta),
+                diff_mes_centavos=valor_calc(
+                    diff_mes, fontes=mesclar_fontes(fontes_proposta, fontes_atual)
+                ),
+                diff_ano_centavos=valor_calc(
+                    diff_mes * 12, fontes=mesclar_fontes(fontes_proposta, fontes_atual)
+                ),
             )
         )
 
@@ -232,13 +265,13 @@ def _calcular_subgrupo_novo(
     resultados_vidas: list[ResultadoVida] = []
     for vida in vidas:
         idade, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
-        proposta = _calcular_proposta_vida(opcao, faixa, policy)
+        proposta, fontes_proposta = _calcular_proposta_vida(opcao, faixa, policy)
         resultados_vidas.append(
             ResultadoVida(
                 vida_id=vida.id,
                 idade=idade,
                 faixa=faixa,
-                proposta_centavos=valor_calc(proposta),
+                proposta_centavos=valor_calc(proposta, fontes=fontes_proposta),
             )
         )
     return _montar_resultado_subgrupo(f"novo-{opcao.id}", opcao.id, resultados_vidas)
@@ -249,19 +282,15 @@ def _montar_resultado_subgrupo(
     opcao_id: str,
     vidas: list[ResultadoVida],
 ) -> ResultadoSubgrupo:
-    sub_prop = sum(v.proposta_centavos.centavos for v in vidas if v.proposta_centavos)
-    sub_vig = sum(
-        v.atual_vigente_centavos.centavos for v in vidas if v.atual_vigente_centavos
-    )
-    sub_reaj = sum(
-        v.atual_reajustado_centavos.centavos for v in vidas if v.atual_reajustado_centavos
-    )
+    props = [v.proposta_centavos for v in vidas if v.proposta_centavos]
+    vigs = [v.atual_vigente_centavos for v in vidas if v.atual_vigente_centavos]
+    reajs = [v.atual_reajustado_centavos for v in vidas if v.atual_reajustado_centavos]
     return ResultadoSubgrupo(
         subgrupo_id=subgrupo_id,
         opcao_plano_id=opcao_id,
-        subtotal_proposta_centavos=valor_calc(sub_prop),
-        subtotal_atual_vigente_centavos=valor_calc(sub_vig),
-        subtotal_atual_reajustado_centavos=valor_calc(sub_reaj),
+        subtotal_proposta_centavos=somar_valores(props) if props else None,
+        subtotal_atual_vigente_centavos=somar_valores(vigs) if vigs else None,
+        subtotal_atual_reajustado_centavos=somar_valores(reajs) if reajs else None,
         vidas=vidas,
     )
 
@@ -293,8 +322,12 @@ def _consolidar_secao(secao: ScenarioSectionResult, baseline: str) -> None:
             secao.total_proposta_centavos.centavos
             - secao.total_atual_baseline_centavos.centavos
         )
-        secao.diff_mes_centavos = valor_calc(diff)
-        secao.diff_ano_centavos = valor_calc(diff * 12)
+        fontes = mesclar_fontes(
+            secao.total_proposta_centavos.fontes,
+            secao.total_atual_baseline_centavos.fontes,
+        )
+        secao.diff_mes_centavos = valor_calc(diff, fontes=fontes)
+        secao.diff_ano_centavos = valor_calc(diff * 12, fontes=fontes)
 
 
 def _consolidar_cenario(cenario: ScenarioResult) -> None:
@@ -313,8 +346,12 @@ def _consolidar_cenario(cenario: ScenarioResult) -> None:
             cenario.total_proposta_centavos.centavos
             - cenario.total_atual_baseline_centavos.centavos
         )
-        cenario.diff_mes_centavos = valor_calc(diff)
-        cenario.diff_ano_centavos = valor_calc(diff * 12)
+        fontes = mesclar_fontes(
+            cenario.total_proposta_centavos.fontes,
+            cenario.total_atual_baseline_centavos.fontes,
+        )
+        cenario.diff_mes_centavos = valor_calc(diff, fontes=fontes)
+        cenario.diff_ano_centavos = valor_calc(diff * 12, fontes=fontes)
 
 
 def agregar_por_opcao_no_cenario(

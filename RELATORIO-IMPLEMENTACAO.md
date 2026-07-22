@@ -1,6 +1,6 @@
-# Relatório de Implementação — ETAPA 1 + ETAPA 1.1 + ETAPA 1.1.1
+# Relatório de Implementação — ETAPA 1 + ETAPA 1.1 + ETAPA 1.1.1 + ETAPA 1.2
 
-> Motor financeiro puro + auditoria/correção 1.1 + correções piloto 1.1.1 · UTF-8 · 2026-07-22
+> Motor financeiro puro · UTF-8 · 2026-07-22
 
 ---
 
@@ -8,15 +8,14 @@
 
 | Módulo | Responsabilidade |
 |--------|------------------|
-| `finance.py` | Normalização por `price_basis`, IOF, estratégias; **1.1.1** — semântica prêmio+IOF, 1ª parcela |
-| `types.py` | Tipos + `PrecedenciaAtualVida` + **`AlvoTipo`** (`vida` \| `subgrupo`) |
-| `money.py` | Aritmética inteiros, `round_half_up` simétrico (+/−) |
-| `rounding.py` | Delegação a `finance` |
-| `models.py` | Entrada tipada; `AtribuicaoPlano.alvo_tipo` tipado como `AlvoTipo` |
-| `policy.py` | `EffectivePolicy` + `precedencia_atual_vida` |
-| `reconciliation.py` | B-02 em 5 níveis; **1.1.1** — prêmio+IOF e 1ª parcela com bases distintas |
-| `calculation.py` | Cálculo + agregação por opção no cenário |
-| `validations.py` | B-03…B-08; **1.1.1** — B-07 para estratégias não homologadas no piloto |
+| `finance.py` | Normalização por `price_basis`, IOF, estratégias; guarda 1ª parcela ≥ custos |
+| `provenance.py` | `ProvenienciaCampo`, `LinhagemReferencia`, helpers de mesclagem |
+| `types.py` | Tipos + `PrecedenciaAtualVida` + `AlvoTipo` |
+| `models.py` | Entrada tipada; IDs únicos; `fatura_proveniencia` por vida |
+| `policy.py` | `EffectivePolicy`; tolerâncias e `iof_bps` ≥ 0 |
+| `reconciliation.py` | B-02 em 5 níveis; `valor_calc` com linhagem |
+| `calculation.py` | Cálculo com linhagem fatura/tabela/proposta na saída |
+| `validations.py` | B-02…B-08 endurecidos (baseline, cenários, nascimento, B-03 atual) |
 | `engine.py` | `calcular(estudo, policy) -> MotorResult` |
 
 ```python
@@ -31,27 +30,23 @@ from newport_motor import calcular, EstudoInput, EffectivePolicy, MotorResult
 | `soma_entao_aplica` | `RoundingStrategy.SOMA_ENTAO_APLICA` | Reservada — **B-07 bloqueante** |
 | `no_total` | `RoundingStrategy.NO_TOTAL` | Reservada — **B-07 bloqueante** |
 
-Código das estratégias reservadas permanece em `finance.py` para uso futuro; o motor não as executa no piloto.
+### 1.2. Endurecimento 1.2 (entrada e saída)
 
-### 1.2. Semântica prêmio + IOF (1.1.1)
-
-- `iof.centavos` = valor absoluto da linha extraída; **nunca** recebe IOF novamente.
-- `premio_saude` em `exclui_iof` + IOF explícito → recorrente = prêmio + IOF.
-- `premio_saude` em `inclui_iof` → recorrente = prêmio (linha IOF informativa).
-- `premio_saude` em `exclui_iof` sem IOF explícito → IOF calculado pela policy.
-
-### 1.3. Primeira parcela (1.1.1)
-
-Identidade: **primeira parcela = total recorrente + custos únicos**.
-
-Custos únicos nunca recebem IOF. Se a 1ª parcela está em `exclui_iof`, normaliza-se apenas a parte recorrente (`parcela − custos`) antes de comparar com o recorrente impresso.
+- **Baseline renovação:** fatura **ou** faixa na tabela atual por vida; ausência → **B-05** (zero explícito ≠ ausência).
+- **Cenários:** `cenarios=[]` com vidas → **B-06**; sem opções utilizáveis → **B-05**; cenário vazio → **B-06**.
+- **Nascimento futuro:** **B-05** por vida, sem `ValueError`.
+- **IDs únicos** em vidas, subgrupos, opções, cenários, regimes, documentos (rejeição Pydantic).
+- **Negativos:** rejeitados em componentes financeiros, conferência, tolerâncias, `iof_bps`.
+- **Reajuste negativo:** **B-07** (não homologado no piloto); suporte futuro exige política explícita.
+- **1ª parcela < custos:** **B-02** com mensagem clara; sem IOF sobre base recorrente negativa.
+- **Proveniência atual:** `Vida.fatura_proveniencia`; B-03 estendido a fatura/tabela/subtotal atual; saída com `fontes[]` apontando fatura/tabela/proposta (origem permanece `calculado`).
 
 ---
 
 ## 2. Resultado dos testes
 
 ```
-59 passed in 0.16s
+78 passed
 ```
 
 | Suíte | Testes | Resultado |
@@ -64,104 +59,90 @@ Custos únicos nunca recebem IOF. Se a 1ª parcela está em `exclui_iof`, normal
 | F — Cenários/seções | 2 | PASSOU |
 | G — Pureza/policy | 3 | PASSOU |
 | H — Escala/proveniência | 6 | PASSOU |
-| **1.1.1 — Correções piloto** | 10 | PASSOU |
-| **Fixtures JSON** | 15 | PASSOU |
+| **1.1.1 — Correções piloto** | 9 | PASSOU |
+| **1.2 — Endurecimento** | 19 | PASSOU |
+| **Fixtures JSON** | 16 execuções | PASSOU |
+
+Fixtures JSON: **15 casos parametrizados** + `test_fixtures_minimo_exigido` (presença mínima).
 
 ---
 
-## 3. Fixtures determinísticas (expected via oráculo independente)
+## 3. Novos casos de teste (ETAPA 1.2)
 
-Oráculo: `tests/oracle_independente.py` (não importa o motor).  
-Gerador (authoring): `tests/generate_fixtures.py`.
-
-| Fixture | Cobertura principal |
-|---------|---------------------|
-| `novo_1vida_sem_copart` | Seguro novo, 1 vida, operadora sem IOF, sem copart |
-| `renovacao_1plano_12vidas` | Renovação 1 plano, 12 vidas |
-| `renovacao_2planos_20vidas` | 2 planos atuais, 20 vidas, regimes distintos |
-| `renovacao_29vidas` | 29 vidas (limite piloto) |
-| `copart_parcial_1vida` | Copart parcial |
-| `copart_percentual_1vida` | Copart percentual |
-| `seguradora_tabela_inclui_iof` | Tabela `inclui_iof` — IOF não reaplicado |
-| `total_recorrente_ausente` | Total impresso ausente |
-| `primeira_parcela_custos_unicos` | 1ª parcela = recorrente + custos únicos |
-| `mesma_opcao_dois_subgrupos` | Reconciliação agregada (1 opção → 2 subgrupos) |
-| `divergencia_por_vida` | B-02 por vida |
-| `divergencia_subtotal` | B-02 subtotal |
-| `divergencia_total` | B-02 total agregado |
-| `price_basis_desconhecido` | Bloqueio pré-cálculo |
-| `arredondamento_soma_entao_aplica` | `soma_entao_aplica` bloqueada com B-07 no piloto |
-
-Cada diretório contém: `input.json`, `effective_policy.json`, `expected.json`, `README.md`.
+| Caso | Bloqueio / comportamento |
+|------|---------------------------|
+| Renovação sem fatura e sem faixa atual | B-05 |
+| Fatura explicitamente zero | Calcula vigente = 0 (≠ ausência) |
+| Estudo sem cenários | B-06 |
+| Estudo sem opções | B-05 |
+| Cenário vazio | B-06 |
+| Nascimento posterior à referência | B-05, sem exceção |
+| IDs duplicados (5 coleções) | Rejeição Pydantic |
+| Componente/policy negativos | Rejeição Pydantic |
+| Reajuste negativo | B-07 |
+| 1ª parcela < custos únicos | B-02 mensagem clara |
+| Fatura IA não confirmada | B-03 |
+| Tabela atual IA não confirmada | B-03 |
+| Linhagem na saída | `fontes[]` com refs fatura/tabela/proposta |
 
 ---
 
-## 4. Matriz requisito → teste
+## 4. Fixtures determinísticas
 
-| Requisito ETAPA 1.1 / 1.1.1 | Teste(s) |
-|-----------------------------|----------|
-| `price_basis` em todos os cálculos | A (`inclui_iof`/`exclui_iof`), C, fixtures `seguradora_tabela_inclui_iof`, `price_basis_desconhecido` |
-| `desconhecido` bloqueia antes do cálculo | `price_basis_desconhecido`, C, B |
-| B-02 por vida | `divergencia_por_vida`, B |
-| B-02 subtotal | `divergencia_subtotal`, B |
-| B-02 prêmio+IOF vs recorrente | 1.1.1 `test_premio_*`, B |
-| B-02 total agregado por opção | `mesma_opcao_dois_subgrupos`, `divergencia_total`, B |
-| B-02 primeira parcela (bases distintas) | 1.1.1 `test_primeira_parcela_*`, `primeira_parcela_custos_unicos` |
-| `por_vida_entao_soma` operacional | 1.1.1 `test_por_vida_entao_soma_operacional`, A |
-| `soma_entao_aplica` / `no_total` → B-07 | 1.1.1, fixture `arredondamento_soma_entao_aplica` |
-| `inclui_iof` preservado exatamente | A, 1.1.1 |
-| `AlvoTipo` enum | 1.1.1 `test_alvo_tipo_invalido_rejeitado`, models |
-| `no_total` código reservado (finance) | A `test_no_total_codigo_reservado_*` |
-| `round_half_up` negativo | A `test_round_half_up_negativo` |
-| `PriceBasis` enum em modelos | modelos Pydantic + fixtures JSON |
-| Faixas duplicadas/fora 0–9/negativos | validadores em `models.py` |
-| Subtotal zero ≠ None | B `test_subtotal_zero_nao_vira_none` |
-| Precedência tabela vs fatura | E `test_precedencia_*`, policy `precedencia_atual_vida` |
-| Escalas 1/12/20/29 vidas | H, fixtures `renovacao_*` |
-| Copart sem/parcial/percentual | H, fixtures `copart_*` |
-| Seguradora IOF / operadora sem | C, `novo_1vida_sem_copart` |
+Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
+
+15 diretórios de fixture (lista inalterada desde 1.1.1); expected.json continua fonte commitada.
 
 ---
 
-## 5. Bloqueios B-01…B-08
+## 5. Matriz requisito → teste (1.2)
 
-| Bloqueio | Camada | Cobertura 1.1 |
-|----------|--------|---------------|
-| B-01 | Aplicação (adiado) | — |
-| B-02 | Motor | Reconciliação 5 níveis + fixtures divergência |
-| B-03 | Motor (parcial) | H |
-| B-04 | Motor | E (+ precedência não altera auditoria B-04) |
-| B-05 | Motor | Validadores + entrada estrutural |
-| B-06 | Motor | F |
-| B-07 | Motor | E (+ `precedencia_atual_vida`); **1.1.1** — estratégias não homologadas no piloto |
-| B-08 | Motor | H, `renovacao_29vidas` |
-
----
-
-## 6. Decisões ainda não homologadas (sem regra global inventada)
-
-| Tema | Comportamento atual | Escolha bloqueante |
-|------|---------------------|-------------------|
-| DP-01 | Data referência obrigatória | B-07 |
-| DP-02 | `price_basis` por componente; `desconhecido` bloqueia | B-02 pré-cálculo |
-| DP-02 precedência atual | `precedencia_atual_vida` na policy | B-07 se tabela+fatura coexistem |
-| DP-03/04 | Baseline + reajuste obrigatórios em renovação | B-07 |
-| DP-06 | Regime tipado (não registry) | B-05 |
-| DP-07 | Alerta copart >2% | **Não implementado** — faltam dados de referência na entrada |
-| DP-11 | Tolerâncias via `EffectivePolicy`; piloto só `por_vida_entao_soma` | B-02 / B-07 |
-| Faixas etárias | Mapeamento ANS padrão (10 faixas) | Homologação pendente |
+| Requisito | Teste(s) |
+|-----------|----------|
+| Baseline atual obrigatório | 1.2 `test_renovacao_sem_fatura_*`, `test_fatura_zero_*` |
+| Cenários/opções obrigatórios | 1.2 `test_estudo_sem_cenarios_*`, `test_estudo_sem_opcoes_*`, `test_cenario_vazio_*` |
+| Nascimento futuro | 1.2 `test_nascimento_futuro_*` |
+| IDs únicos | 1.2 `test_ids_duplicados_*` |
+| Valores/policy negativos | 1.2 `test_componente_*`, `test_policy_*`, `test_tolerancia_*` |
+| Reajuste negativo | 1.2 `test_reajuste_negativo_*` |
+| 1ª parcela < custos | 1.2 `test_primeira_parcela_menor_*`, 1.1.1 |
+| Proveniência atual + linhagem | 1.2 `test_fatura_ia_*`, `test_tabela_atual_*`, `test_saida_preserva_linhagem_*` |
 
 ---
 
-## 7. Limitações conhecidas (honestas)
+## 6. Bloqueios B-01…B-08
 
-- Motor **não aprovado** como confiável para produção — checkpoint técnico pós-correções 1.1.1.
-- **Piloto:** somente `por_vida_entao_soma` homologada; `soma_entao_aplica` e `no_total` bloqueiam com B-07 (código reservado em `finance.py`).
-- DP-07 (alerta copart) adiada por falta de campos de referência de copart na entrada tipada.
-- Oráculo de fixtures é independente do motor, mas duplica fórmulas — risco de drift; expected.json é a fonte commitada.
+| Bloqueio | Cobertura 1.2 |
+|----------|---------------|
+| B-02 | Reconciliação + 1ª parcela < custos |
+| B-03 | Proposta + **fatura/tabela/subtotal atual** |
+| B-04 | E (inalterado) |
+| B-05 | Baseline, nascimento, opções, estrutura |
+| B-06 | Cenários obrigatórios e atribuições |
+| B-07 | Policy + reajuste negativo + estratégias piloto |
+| B-08 | H, fixtures escala |
 
 ---
 
-## 8. Componentes proibidos
+## 7. Decisões provisórias
 
-Confirmado: nenhum FastAPI, React, Postgres, worker, PPTX, parser ou IA.
+| Tema | Comportamento |
+|------|---------------|
+| Reajuste negativo | B-07 no piloto; suporte futuro = política explícita por estudo |
+| Linhagem saída | `ValorCalculado.fontes[]` — refs não recursivas, sem PII |
+| Valor zero explícito | Aceito como baseline válido |
+
+---
+
+## 8. Limitações conhecidas
+
+- Motor **não aprovado** para produção — checkpoint pós-endurecimento 1.2.
+- Piloto: somente `por_vida_entao_soma` homologada.
+- DP-07 (alerta copart) adiada.
+- Integração SISCOR/PDF/parser **fora de escopo** desta entrega.
+
+---
+
+## 9. Componentes proibidos
+
+Confirmado: nenhum FastAPI, React, Postgres, worker, PPTX, parser de PDF ou IA integrada.

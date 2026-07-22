@@ -126,6 +126,7 @@ class Vida(BaseModel):
     subgrupo_atual_id: str | None = None
     valor_fatura_centavos: int | None = None
     fatura_price_basis: PriceBasis | None = None
+    fatura_proveniencia: ProvenienciaCampo | None = None
     valor_conferencia_centavos: int | None = None
     conferencia_price_basis: PriceBasis | None = None
     faixa_override: int | None = None
@@ -138,6 +139,18 @@ class Vida(BaseModel):
         if v is not None and v < 0:
             raise ValueError("valor_fatura_centavos não pode ser negativo")
         return v
+
+    @field_validator("valor_conferencia_centavos")
+    @classmethod
+    def conferencia_nao_negativa(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("valor_conferencia_centavos não pode ser negativo")
+        return v
+
+    def proveniencia_fatura_efetiva(self) -> ProvenienciaCampo | None:
+        if self.valor_fatura_centavos is None:
+            return None
+        return self.fatura_proveniencia or ProvenienciaCampo(origem=OrigemValor.MANUAL)
 
 
 class AtribuicaoPlano(BaseModel):
@@ -185,3 +198,21 @@ class EstudoInput(BaseModel):
 
     def documento_por_id(self, doc_id: str) -> DocumentoCotacao | None:
         return next((d for d in self.documentos if d.id == doc_id), None)
+
+    @model_validator(mode="after")
+    def validar_ids_unicos(self) -> EstudoInput:
+        _exigir_ids_unicos(self.vidas, "vidas")
+        _exigir_ids_unicos(self.subgrupos_atuais, "subgrupos_atuais")
+        _exigir_ids_unicos(self.opcoes_plano, "opcoes_plano")
+        _exigir_ids_unicos(self.cenarios, "cenarios")
+        _exigir_ids_unicos(self.regimes_copart, "regimes_copart")
+        _exigir_ids_unicos(self.documentos, "documentos")
+        return self
+
+
+def _exigir_ids_unicos(itens: list, colecao: str) -> None:
+    vistos: set[str] = set()
+    for item in itens:
+        if item.id in vistos:
+            raise ValueError(f"ID duplicado em {colecao}: {item.id}")
+        vistos.add(item.id)

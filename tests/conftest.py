@@ -110,6 +110,7 @@ def vida_ficticia(
     subgrupo_id: str | None = None,
     valor_fatura: int | None = None,
     fatura_basis: PriceBasis | None = None,
+    fatura_proveniencia: ProvenienciaCampo | None = None,
     incluida: bool = True,
     conferencia: int | None = None,
     conferencia_basis: PriceBasis | None = None,
@@ -122,6 +123,7 @@ def vida_ficticia(
         subgrupo_atual_id=subgrupo_id,
         valor_fatura_centavos=valor_fatura,
         fatura_price_basis=fatura_basis,
+        fatura_proveniencia=fatura_proveniencia,
         valor_conferencia_centavos=conferencia,
         conferencia_price_basis=conferencia_basis,
     )

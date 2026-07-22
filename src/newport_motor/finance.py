@@ -226,6 +226,11 @@ def primeira_parcela_normalizada(
     if primeira_parcela_basis == PriceBasis.DESCONHECIDO:
         raise ValueError("price_basis desconhecido na primeira parcela")
 
+    if primeira_parcela_centavos < custos_unicos_centavos:
+        raise ValueError(
+            "primeira parcela menor que custos únicos; validação estrutural obrigatória"
+        )
+
     parte_recorrente_bruta = primeira_parcela_centavos - custos_unicos_centavos
     recorrente_norm = int(
         componente_para_recorrente(

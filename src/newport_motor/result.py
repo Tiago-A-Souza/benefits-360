@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from newport_motor.provenance import ProvenienciaCampo
+from newport_motor.provenance import LinhagemReferencia, ProvenienciaCampo
 from newport_motor.types import RegimeCopartTipo, SeveridadeValidacao
 
 
@@ -18,6 +18,7 @@ class Validacao(BaseModel):
 class ValorCalculado(BaseModel):
     centavos: int
     proveniencia: ProvenienciaCampo
+    fontes: list[LinhagemReferencia] = Field(default_factory=list)
 
 
 class ResultadoVida(BaseModel):

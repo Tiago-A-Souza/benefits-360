@@ -10,12 +10,15 @@ from newport_motor.reconciliation import (
     SubgrupoReconciliacao,
     reconciliar_opcao_cenario,
 )
-from newport_motor.result import MotorResult
+from newport_motor.result import MotorResult, Validacao
 from newport_motor.types import SeveridadeValidacao
 from newport_motor.validations import (
     validar_b03_valores_nao_confirmados,
     validar_b04_idade_valor,
+    validar_b05_baseline_atual_renovacao,
     validar_b05_dados_obrigatorios,
+    validar_b05_nascimento_referencia,
+    validar_b05_opcoes_obrigatorias,
     validar_b06_atribuicoes,
     validar_b07_politica_obrigatoria,
     validar_b08_escopo_piloto,
@@ -35,6 +38,9 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
     validacoes.extend(validar_entrada_estrutural(estudo))
     validacoes.extend(validar_b03_valores_nao_confirmados(estudo))
     validacoes.extend(validar_b06_atribuicoes(estudo))
+    validacoes.extend(validar_b05_opcoes_obrigatorias(estudo))
+    validacoes.extend(validar_b05_nascimento_referencia(estudo, policy))
+    validacoes.extend(validar_b05_baseline_atual_renovacao(estudo, policy))
 
     if any(v.severidade == SeveridadeValidacao.BLOQUEANTE for v in validacoes):
         return _resultado_parcial(estudo, policy, validacoes)
@@ -88,6 +94,20 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
                     policy,
                 )
             )
+
+    if (
+        estudo.vidas_incluidas()
+        and not cenarios_result
+        and not any(v.severidade == SeveridadeValidacao.BLOQUEANTE for v in validacoes)
+    ):
+        validacoes.append(
+            Validacao(
+                codigo="B-06",
+                severidade=SeveridadeValidacao.BLOQUEANTE,
+                mensagem="Estudo concluído sem cenários calculados.",
+                alvo_ref="estudo:cenarios",
+            )
+        )
 
     bloqueios = sorted({v.codigo for v in validacoes if v.severidade == SeveridadeValidacao.BLOQUEANTE})
     return MotorResult(

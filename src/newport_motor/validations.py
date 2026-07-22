@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from newport_motor.finance import componente_para_recorrente, tipo_fiscal_aplica_iof
-from newport_motor.models import EstudoInput, OpcaoPlano, SubgrupoAtual, TabelaPrecoFaixa
+from newport_motor.models import EstudoInput, OpcaoPlano, SubgrupoAtual, TabelaPrecoFaixa, Vida
 from newport_motor.policy import EffectivePolicy
-from newport_motor.provenance import ComponenteFinanceiro
+from newport_motor.provenance import ComponenteFinanceiro, ProvenienciaCampo
 from newport_motor.result import Validacao
 from newport_motor.types import (
     EstadoExtracao,
@@ -77,6 +77,19 @@ def validar_b07_politica_obrigatoria(
                         alvo_ref=f"subgrupo:{sg.id}",
                     )
                 )
+            elif sg.reajuste_bps < 0:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-07",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=(
+                            f"Reajuste negativo ({sg.reajuste_bps} bps) no subgrupo {sg.id} "
+                            "não homologado no piloto; suporte futuro dependerá de política "
+                            "explícita por estudo (DP-04)."
+                        ),
+                        alvo_ref=f"subgrupo:{sg.id}:reajuste_bps",
+                    )
+                )
         validacoes.extend(_validar_precedencia_atual(estudo, policy))
     validacoes.extend(_validar_estrategia_piloto(policy))
     return validacoes
@@ -104,7 +117,7 @@ def _validar_precedencia_atual(
 ) -> list[Validacao]:
     if policy.data_referencia_idade is None:
         return []
-    from newport_motor.faixa import faixa_em
+    from newport_motor.faixa import faixa_de_idade, idade_completa_em
 
     validacoes: list[Validacao] = []
     for vida in estudo.vidas_incluidas():
@@ -113,7 +126,10 @@ def _validar_precedencia_atual(
         subgrupo = estudo.subgrupo_por_id(vida.subgrupo_atual_id)
         if subgrupo is None or not subgrupo.tabela_atual:
             continue
-        _, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
+        if vida.nascimento > policy.data_referencia_idade:
+            continue
+        idade = idade_completa_em(vida.nascimento, policy.data_referencia_idade)
+        faixa = faixa_de_idade(idade)
         if not any(t.faixa == faixa for t in subgrupo.tabela_atual):
             continue
         if policy.precedencia_atual_vida is None:
@@ -129,6 +145,125 @@ def _validar_precedencia_atual(
                 )
             )
             break
+    return validacoes
+
+
+def validar_b05_nascimento_referencia(
+    estudo: EstudoInput, policy: EffectivePolicy
+) -> list[Validacao]:
+    if policy.data_referencia_idade is None:
+        return []
+    validacoes: list[Validacao] = []
+    for vida in estudo.vidas_incluidas():
+        if vida.nascimento > policy.data_referencia_idade:
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Vida {vida.id}: nascimento ({vida.nascimento.isoformat()}) "
+                        f"posterior à data de referência "
+                        f"({policy.data_referencia_idade.isoformat()})."
+                    ),
+                    alvo_ref=f"vida:{vida.id}:nascimento",
+                )
+            )
+    return validacoes
+
+
+def validar_b05_baseline_atual_renovacao(
+    estudo: EstudoInput, policy: EffectivePolicy
+) -> list[Validacao]:
+    if estudo.formato != FormatoEstudo.RENOVACAO or policy.data_referencia_idade is None:
+        return []
+    from newport_motor.faixa import faixa_de_idade, idade_completa_em
+
+    validacoes: list[Validacao] = []
+    for vida in estudo.vidas_incluidas():
+        if vida.nascimento > policy.data_referencia_idade:
+            continue
+        if not vida.subgrupo_atual_id:
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Vida {vida.id} em renovação sem subgrupo_atual_id; "
+                        "baseline atual obrigatório."
+                    ),
+                    alvo_ref=f"vida:{vida.id}:subgrupo_atual_id",
+                )
+            )
+            continue
+        subgrupo = estudo.subgrupo_por_id(vida.subgrupo_atual_id)
+        if subgrupo is None:
+            continue
+        idade = idade_completa_em(vida.nascimento, policy.data_referencia_idade)
+        faixa = faixa_de_idade(idade)
+        if not _vida_tem_fonte_atual(vida, subgrupo, faixa):
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Vida {vida.id}: sem fonte válida para baseline atual "
+                        f"(fatura ou tabela atual faixa {faixa})."
+                    ),
+                    alvo_ref=f"vida:{vida.id}:baseline_atual",
+                )
+            )
+    return validacoes
+
+
+def _vida_tem_fonte_atual(vida: Vida, subgrupo: SubgrupoAtual, faixa: int) -> bool:
+    tem_fatura = vida.valor_fatura_centavos is not None
+    tem_tabela = any(t.faixa == faixa for t in subgrupo.tabela_atual)
+    if tem_fatura:
+        basis = vida.fatura_price_basis or subgrupo.fatura_price_basis
+        if basis != PriceBasis.DESCONHECIDO:
+            return True
+    if tem_tabela:
+        return True
+    return False
+
+
+def validar_b05_opcoes_obrigatorias(estudo: EstudoInput) -> list[Validacao]:
+    if not estudo.vidas_incluidas() or not estudo.cenarios:
+        return []
+    if not estudo.opcoes_plano:
+        return [
+            Validacao(
+                codigo="B-05",
+                severidade=SeveridadeValidacao.BLOQUEANTE,
+                mensagem="Estudo sem opção de proposta utilizável.",
+                alvo_ref="estudo:opcoes_plano",
+            )
+        ]
+    return []
+
+
+def validar_b05_primeira_parcela_custos(estudo: EstudoInput) -> list[Validacao]:
+    validacoes: list[Validacao] = []
+    for opcao in estudo.opcoes_plano:
+        if (
+            opcao.total_primeira_parcela is None
+            or opcao.total_primeira_parcela.centavos is None
+        ):
+            continue
+        custos = sum(c.valor_centavos for c in opcao.custos_unicos)
+        if opcao.total_primeira_parcela.centavos < custos:
+            validacoes.append(
+                Validacao(
+                    codigo="B-02",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Primeira parcela ({opcao.total_primeira_parcela.centavos}c) "
+                        f"menor que a soma dos custos únicos ({custos}c) "
+                        f"(opção {opcao.id})."
+                    ),
+                    alvo_ref=f"opcao:{opcao.id}:total_primeira_parcela",
+                )
+            )
     return validacoes
 
 
@@ -172,6 +307,8 @@ def validar_entrada_estrutural(estudo: EstudoInput) -> list[Validacao]:
     for opcao in estudo.opcoes_plano:
         validacoes.extend(_validar_price_basis_componentes(opcao))
         validacoes.extend(_validar_tabela(opcao.tabela, f"opcao:{opcao.id}"))
+
+    validacoes.extend(validar_b05_primeira_parcela_custos(estudo))
 
     for sg in estudo.subgrupos_atuais:
         validacoes.extend(_validar_tabela(sg.tabela_atual, f"subgrupo:{sg.id}"))
@@ -267,17 +404,87 @@ def _componente_precisa_confirmacao(comp: ComponenteFinanceiro | None) -> bool:
     return comp.proveniencia.origem == OrigemValor.IA and not comp.proveniencia.confirmado
 
 
+def _proveniencia_precisa_confirmacao(prov: ProvenienciaCampo) -> bool:
+    return prov.origem == OrigemValor.IA and not prov.confirmado
+
+
+def _documento_em_alerta(estudo: EstudoInput, doc_id: str | None) -> bool:
+    if not doc_id:
+        return False
+    doc = estudo.documento_por_id(doc_id)
+    if doc is None:
+        return False
+    return doc.estado_extracao in (
+        EstadoExtracao.EXTRAIDO_COM_ALERTA,
+        EstadoExtracao.FALHA_EXTRACAO,
+    )
+
+
 def validar_b03_valores_nao_confirmados(estudo: EstudoInput) -> list[Validacao]:
     validacoes: list[Validacao] = []
-    docs_alerta = {
-        d.id
-        for d in estudo.documentos
-        if d.estado_extracao
-        in (EstadoExtracao.EXTRAIDO_COM_ALERTA, EstadoExtracao.FALHA_EXTRACAO)
-    }
+
+    for vida in estudo.vidas_incluidas():
+        if vida.valor_fatura_centavos is None:
+            continue
+        prov = vida.proveniencia_fatura_efetiva()
+        assert prov is not None
+        if _proveniencia_precisa_confirmacao(prov):
+            validacoes.append(
+                Validacao(
+                    codigo="B-03",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Fatura atual da vida {vida.id} com origem IA não confirmada."
+                    ),
+                    alvo_ref=f"vida:{vida.id}:fatura",
+                )
+            )
+        elif not prov.confirmado and _documento_em_alerta(estudo, prov.documento_id):
+            validacoes.append(
+                Validacao(
+                    codigo="B-03",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Fatura atual da vida {vida.id} não confirmada "
+                        "com documento em estado de alerta/falha."
+                    ),
+                    alvo_ref=f"vida:{vida.id}:fatura",
+                )
+            )
+
+    for sg in estudo.subgrupos_atuais:
+        if sg.subtotal_impresso and _componente_precisa_confirmacao(sg.subtotal_impresso):
+            validacoes.append(
+                Validacao(
+                    codigo="B-03",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Subtotal atual do subgrupo {sg.id} com origem IA não confirmado."
+                    ),
+                    alvo_ref=f"subgrupo:{sg.id}:subtotal_impresso",
+                )
+            )
+        for faixa in sg.tabela_atual:
+            if faixa.proveniencia.origem == OrigemValor.IA and not faixa.proveniencia.confirmado:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-03",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=(
+                            f"Faixa {faixa.faixa} da tabela atual com origem IA não confirmada "
+                            f"(subgrupo {sg.id})."
+                        ),
+                        alvo_ref=f"subgrupo:{sg.id}:tabela_atual:faixa:{faixa.faixa}",
+                    )
+                )
 
     for opcao in estudo.opcoes_plano:
-        if opcao.documento_id and opcao.documento_id in docs_alerta:
+        if opcao.documento_id and opcao.documento_id in {
+            d.id
+            for d in estudo.documentos
+            if d.estado_extracao
+            in (EstadoExtracao.EXTRAIDO_COM_ALERTA, EstadoExtracao.FALHA_EXTRACAO)
+        }:
             for comp_name, comp in [
                 ("premio_saude", opcao.premio_saude),
                 ("iof", opcao.iof),
@@ -363,6 +570,17 @@ def validar_b06_atribuicoes(estudo: EstudoInput) -> list[Validacao]:
     validacoes: list[Validacao] = []
     vidas_incl = {v.id for v in estudo.vidas_incluidas()}
 
+    if estudo.vidas_incluidas() and not estudo.cenarios:
+        validacoes.append(
+            Validacao(
+                codigo="B-06",
+                severidade=SeveridadeValidacao.BLOQUEANTE,
+                mensagem="Estudo com vidas incluídas sem cenários definidos.",
+                alvo_ref="estudo:cenarios",
+            )
+        )
+        return validacoes
+
     for cenario in estudo.cenarios:
         atrib_por_alvo: dict[str, str] = {}
         for atr in cenario.atribuicoes:
@@ -396,7 +614,7 @@ def validar_b04_idade_valor(
     tolerancia_vida: int,
 ) -> list[Validacao]:
     """P8: só roda com tabela atual comparável; usa precedência explícita."""
-    from newport_motor.faixa import faixa_em
+    from newport_motor.faixa import faixa_de_idade, idade_completa_em
 
     if policy.data_referencia_idade is None:
         return []
@@ -404,6 +622,8 @@ def validar_b04_idade_valor(
     validacoes: list[Validacao] = []
     for vida in estudo.vidas_incluidas():
         if vida.idade_valor_resolvido or vida.idade_valor_override_justificado:
+            continue
+        if vida.nascimento > policy.data_referencia_idade:
             continue
         if not vida.subgrupo_atual_id:
             continue
@@ -413,7 +633,8 @@ def validar_b04_idade_valor(
         if vida.valor_fatura_centavos is None:
             continue
 
-        _, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
+        idade = idade_completa_em(vida.nascimento, policy.data_referencia_idade)
+        faixa = faixa_de_idade(idade)
         tabela_faixa = next((t for t in subgrupo.tabela_atual if t.faixa == faixa), None)
         if tabela_faixa is None:
             validacoes.append(

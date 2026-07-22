@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from newport_motor.types import (
     BaselineEscolhido,
@@ -19,6 +19,13 @@ class TolerancePolicy(BaseModel):
     subtotal_centavos: int = 2
     total_centavos: int = 5
 
+    @field_validator("por_vida_centavos", "subtotal_centavos", "total_centavos")
+    @classmethod
+    def tolerancia_nao_negativa(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("tolerância não pode ser negativa")
+        return v
+
 
 class EffectivePolicy(BaseModel):
     """Política efetiva recebida pelo motor; nunca resolvida internamente."""
@@ -31,6 +38,13 @@ class EffectivePolicy(BaseModel):
     tolerancias: TolerancePolicy = Field(default_factory=TolerancePolicy)
     estrategia_arredondamento: RoundingStrategy = RoundingStrategy.POR_VIDA_ENTAO_SOMA
     politicas_resolvidas: dict[str, object] = Field(default_factory=dict)
+
+    @field_validator("iof_bps")
+    @classmethod
+    def iof_bps_nao_negativo(cls, v: RateBasisPoints) -> RateBasisPoints:
+        if int(v) < 0:
+            raise ValueError("iof_bps não pode ser negativo")
+        return v
 
     def as_snapshot_dict(self) -> dict[str, object]:
         return {
