@@ -2,7 +2,8 @@
 
 > Resultado da inspeção **somente leitura** de documentos reais no corpus privado local.  
 > Nenhum dado pessoal, valor monetário real ou identificador de cliente neste arquivo.  
-> Inventário detalhado e caso dourado operacional: `.private/etapa-2.0/` (fora do Git).  
+> Inventário detalhado do corpus: `.private/etapa-2.0/` (fora do Git).  
+> **Caso dourado financeiro:** ainda **pendente** (sem estudo completo com proposta alinhada à população).
 > UTF-8 · 2026-07-22.
 
 ---
@@ -293,7 +294,7 @@ Referência visual: template PPTX slide “Comparativo financeiro” (estrutura:
 | ID | Pergunta | Homologação provisória (responsável projeto) |
 |----|----------|-----------------------------------------------|
 | W-01 | Subconjunto 29 vidas **ou** importação integral? | **Integral** (1.2.2); H-01 + revisão |
-| W-02 | Homologação com **1 plano** only, ignorando 5 vidas do plano secundário? | Sim, para caso simples |
+| W-02 | Homologação com **1 plano** only, ignorando vidas de plano secundário? | Permitido **somente em demonstração técnica** (walking skeleton, testes); **nunca** como estudo completo ou homologação financeira da empresa |
 | W-03 | Proposta homologada: mesma operadora (renovação pura) **ou** troca de operadora? | Mesma operadora na 2.0 |
 | W-04 | Dental nas cotações: ignorar totalmente na ETAPA 2? | Ignorar |
 | W-05 | IOF implícito cotação B: calcular 2,38% ou exigir digitação explícita? | Digitação explícita + pergunta UI |
