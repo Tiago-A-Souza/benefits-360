@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from newport_app.adapters.motor_out import motor_result_para_comparativo, rascunho_para_resumo
-from newport_app.models.draft import EscolhasEstudo, RascunhoEstudo, VidaRascunho
+from newport_app.draft_compiler import compile
 from newport_app.presentation.textos import (
     descricao_estudo,
     mensagem_faixa_homologada,
@@ -19,7 +19,6 @@ from newport_app.seed.ficticio import rascunho_demo_12_vidas, rascunho_demo_41_v
 from newport_app.services.calculo import CalculoService
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_motor.engine import calcular
-from newport_app.adapters.motor_in import rascunho_para_estudo_input, rascunho_para_policy
 
 
 def test_plural_singular():
@@ -76,24 +75,12 @@ def test_resumo_demo_12_linguagem():
 
 def test_resumo_uma_vida():
     base = rascunho_demo_12_vidas()
-    r = RascunhoEstudo(
-        id="demo-1",
-        titulo="Teste 1 vida",
-        formato="renovacao",
-        vidas=[
-            VidaRascunho(
-                id="v0",
-                nome="Beneficiário fictício 1",
-                nascimento=date(1980, 1, 1),
-                incluida=True,
-                subgrupo_atual_id="sg-1",
-            )
-        ],
-        subgrupos_atuais=base.subgrupos_atuais,
-        opcoes_proposta=base.opcoes_proposta,
-        regimes_copart=base.regimes_copart,
-        cenarios=base.cenarios,
-        escolhas=base.escolhas,
+    r = base.model_copy(
+        update={
+            "id": "demo-1",
+            "titulo": "Teste 1 vida",
+            "vidas": base.vidas[:1],
+        }
     )
     resumo = rascunho_para_resumo(r)
     assert resumo.beneficiarios_rotulo == "1 beneficiário"
@@ -102,7 +89,12 @@ def test_resumo_uma_vida():
 
 def test_comparativo_demo_12_rotulo_aumento():
     rascunho = rascunho_demo_12_vidas()
-    resultado = calcular(rascunho_para_estudo_input(rascunho), rascunho_para_policy(rascunho))
+    compilado = compile(rascunho)
+    assert compilado.compilavel
+    resultado = calcular(
+        compilado.compilado.estudo_input,
+        compilado.compilado.effective_policy,
+    )
     resp = motor_result_para_comparativo(rascunho, resultado)
     assert resp.totais is not None
     assert resp.totais.diferenca_semantica == "aumento"
@@ -116,7 +108,12 @@ def test_comparativo_economia_rascunho_temporario():
     rascunho.id = "test-economia"
     for faixa in rascunho.opcoes_proposta[0].tabela:
         faixa.valor_centavos = 10_000
-    resultado = calcular(rascunho_para_estudo_input(rascunho), rascunho_para_policy(rascunho))
+    compilado = compile(rascunho)
+    assert compilado.compilavel
+    resultado = calcular(
+        compilado.compilado.estudo_input,
+        compilado.compilado.effective_policy,
+    )
     resp = motor_result_para_comparativo(rascunho, resultado)
     assert resp.totais is not None
     assert resp.totais.diferenca_semantica == "economia"
