@@ -2,7 +2,7 @@
 
 Sistema de Estudos Newport — comparativo financeiro de planos de saúde.
 **Faixa inicial homologada:** 1–29 vidas (configurável; **sem teto técnico** no motor).
-Estágio atual: **ETAPA 2.3.6 concluída** — importação SISCOR com conferência no navegador; **próximo passo ETAPA 2.4** (entrada manual da proposta).
+Estágio atual: **ETAPA 2.5 concluída** — fluxo guiado no navegador (SISCOR → configuração → proposta → associação → comparativo); **próximo passo ETAPA 2.6**.
 
 ## Antes de qualquer coisa, leia (nesta ordem)
 1. `docs/04-HANDOFF-IMPLEMENTACAO.md`

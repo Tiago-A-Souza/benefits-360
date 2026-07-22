@@ -108,8 +108,39 @@ Checklist operacional com planilha real (fora do Git) — **ainda não executada
 
 ---
 
-## 9. Próximo passo
+## 9. ETAPAS 2.4 + 2.5 (2026-07-22)
 
-**ETAPA 2.4 — entrada manual da proposta** (conforme `docs/05-PLANO-ETAPA-2-VALIDACAO-OPERACIONAL.md`). Não iniciada.
+Fluxo guiado no navegador: vidas/planos atuais → configuração → propostas manuais → associação → comparativo financeiro.
 
-Fora de escopo desta etapa: PDF, PPTX, snapshot, autenticação, merge automático na reimportação, confirmação de IOF separada do valor extraído.
+### Segurança
+
+| Correção | Implementação |
+|----------|---------------|
+| `NEWPORT_MODO` inválido | `ModoExecucaoInvalidoError` — nunca cai em demo |
+| Modo real | `ModoRealLocalMiddleware` rejeita host não local (além de `NEWPORT_BIND_HOST`) |
+| Valores na UI | `web/src/money.js` — centavos inteiros sem float/`Math.round` |
+
+### API (versão 2.5.0)
+
+| Método | Rota |
+|--------|------|
+| GET | `/api/estudos/{id}/rascunho` |
+| GET | `/api/estudos/{id}/pendencias` |
+| PUT | `/api/estudos/{id}` |
+| POST | `/api/estudos/{id}/calcular` |
+
+Resposta de cálculo inclui `secoes[]` (blocos por regime de coparticipação) e `validade_proposta`.
+
+### Frontend
+
+Wizard em 5 passos (`web/src/App.jsx`): SISCOR, configuração, propostas, associação, comparativo.
+
+**Resultado:** **201 testes passando**; build Vite OK.
+
+---
+
+## 10. Próximo passo
+
+**ETAPA 2.6** (conforme plano operacional). Não iniciada.
+
+Fora de escopo das etapas 2.4–2.5: PDF, PPTX, snapshot, autenticação, cloud.
