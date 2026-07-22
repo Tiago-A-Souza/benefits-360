@@ -84,5 +84,7 @@ htmlcov/
 *.sublime-workspace
 .cursor/
 
-# Metadados locais de agentes (Cowork / Cursor)
-.agents/
+# ETAPA 2.1 — walking skeleton (SQLite local, build frontend)
+.data/
+web/node_modules/
+web/dist/
