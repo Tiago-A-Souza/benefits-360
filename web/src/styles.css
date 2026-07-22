@@ -16,6 +16,10 @@ body {
   padding: 1.5rem 1rem 3rem;
 }
 
+.pagina--larga {
+  max-width: 1100px;
+}
+
 header h1 {
   margin: 0 0 0.25rem;
   font-size: 1.5rem;
@@ -47,7 +51,8 @@ label {
 }
 
 select,
-button {
+button,
+input {
   font: inherit;
 }
 
@@ -171,4 +176,139 @@ button.link {
 
 .cartao--auditoria {
   border-style: dashed;
+}
+
+.abas {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.aba {
+  background: #e8eef5;
+  color: #0b5cab;
+  border: 1px solid #c5d4e8;
+}
+
+.aba.ativa {
+  background: #0b5cab;
+  color: #fff;
+}
+
+button.secundario {
+  background: #fff;
+  color: #0b5cab;
+  border: 1px solid #0b5cab;
+  margin-right: 0.5rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+input[type="text"],
+input[type="file"],
+input:not([type]) {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+  border: 1px solid #ccd3db;
+  border-radius: 6px;
+}
+
+.form-linha,
+.importacao {
+  margin: 1rem 0;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+
+.stats span {
+  background: #eef3f8;
+  padding: 0.35rem 0.65rem;
+  border-radius: 4px;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+}
+
+.conferencia {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.conferencia th,
+.conferencia td {
+  border: 1px solid #e0e0e0;
+  padding: 0.4rem 0.5rem;
+  vertical-align: top;
+}
+
+.linha-excecao {
+  background: #fff8e6;
+}
+
+.linha-confirmada {
+  background: #f1f8f2;
+}
+
+.linha-excluida {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.alertas-inline {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.acoes-celula .link + .link {
+  margin-left: 0.5rem;
+}
+
+.reimportacao {
+  background: #fff8e6;
+  border: 1px solid #f0d48a;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+.cartao--edit {
+  margin-top: 1rem;
+  border-color: #0b5cab;
+}
+
+.acoes-edit {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.checkbox input {
+  width: auto;
 }

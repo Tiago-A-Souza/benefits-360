@@ -94,6 +94,16 @@ class DocumentoCotacaoRascunho(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class DocumentoSiscorRascunho(BaseModel):
+    """Planilha SISCOR importada — fonte dos valores extraídos."""
+
+    id: str
+    hash_sha256: str
+    importador_versao: str
+    operadora: str
+    versao_importacao: int = 1
+
+
 class CustoUnicoRascunho(BaseModel):
     id: str
     descricao: str
@@ -218,6 +228,7 @@ class RascunhoEstudo(BaseModel):
     regimes_copart: list[RegimeCopartRascunho] = Field(default_factory=list)
     cenarios: list[CenarioRascunho] = Field(default_factory=list)
     documentos_cotacao: list[DocumentoCotacaoRascunho] = Field(default_factory=list)
+    documentos_siscor: list[DocumentoSiscorRascunho] = Field(default_factory=list)
     escolhas: EscolhasEstudo = Field(default_factory=EscolhasEstudo)
     observacoes: ObservacoesRascunho | None = None
     metadados_pptx: MetadadosPptxRascunho | None = None

@@ -50,6 +50,11 @@ def validar_estrutura(rascunho: RascunhoEstudo) -> list[ErroCompilacao]:
         "/documentos_cotacao",
         erros,
     )
+    _verificar_duplicados(
+        [d.id for d in rascunho.documentos_siscor],
+        "/documentos_siscor",
+        erros,
+    )
 
     for cenario in rascunho.cenarios:
         _verificar_duplicados(

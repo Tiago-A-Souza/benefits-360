@@ -11,7 +11,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from newport_app.api.validation_handlers import resposta_validacao_sanitizada
-from newport_app.config.paths import diretorio_runtime_privado, garantir_diretorios
+from newport_app.config.paths import (
+    caminho_banco_estudos,
+    caminho_banco_importacoes,
+    diretorio_uploads,
+    garantir_diretorios,
+)
+from newport_app.config.runtime import (
+    LIMITE_UPLOAD_BYTES,
+    ModoExecucao,
+    exigir_host_local_modo_real,
+    modo_execucao,
+)
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import ComparativoResponse, EstudoResumo
@@ -29,25 +40,27 @@ from newport_app.services.calculo import (
     RascunhoNaoCompilavelError,
 )
 from newport_app.services.importacao_siscor import (
+    ExclusaoSemMotivoError,
     ImportacaoRequerDecisaoError,
     ImportacaoSiscorService,
+    LinhaIncompletaConfirmacaoError,
     LinhaNaoEncontradaError,
+    ModoImportacaoInvalidoError,
 )
 from newport_app.siscor_mapper.apply import rascunho_vazio
 
 ROOT = Path(__file__).resolve().parents[3]
-DB_PATH = ROOT / ".data" / "newport_app.db"
 WEB_DIST = ROOT / "web" / "dist"
 
 
 def _criar_repo() -> SQLiteStudyRepository:
     garantir_diretorios()
-    return SQLiteStudyRepository(DB_PATH)
+    exigir_host_local_modo_real()
+    return SQLiteStudyRepository(caminho_banco_estudos())
 
 
-def _criar_import_repo(db_path: Path | None = None) -> ImportacaoSiscorRepository:
-    path = db_path or (diretorio_runtime_privado() / "importacoes.db")
-    return ImportacaoSiscorRepository(path)
+def _criar_import_repo() -> ImportacaoSiscorRepository:
+    return ImportacaoSiscorRepository(caminho_banco_importacoes())
 
 
 def _seed_inicial(service: CalculoService) -> None:
@@ -65,6 +78,8 @@ class AtualizarLinhaSiscorRequest(BaseModel):
     nascimento: str | None = None
     parentesco_texto: str | None = None
     plano: str | None = None
+    operadora: str | None = None
+    status_texto: str | None = None
     valor_centavos: int | None = None
     incluida: bool | None = None
     excluida: bool | None = None
@@ -77,31 +92,29 @@ def create_app(
     import_repo: ImportacaoSiscorRepository | None = None,
     uploads_dir: Path | None = None,
     *,
-    seed_demos: bool = True,
+    seed_demos: bool | None = None,
 ) -> FastAPI:
+    if seed_demos is None:
+        seed_demos = modo_execucao() == ModoExecucao.DEMO
+
     repository = repo or _criar_repo()
-    if import_repo is not None:
-        importacoes = import_repo
-    elif repo is not None:
-        importacoes = ImportacaoSiscorRepository(
-            repository._db_path.parent / "importacoes.db"
-        )
-    else:
-        importacoes = _criar_import_repo()
+    importacoes = import_repo or _criar_import_repo()
+    uploads = uploads_dir or diretorio_uploads()
 
     service = CalculoService(repository)
     siscor = ImportacaoSiscorService(
         repository,
         importacoes,
-        uploads_dir=uploads_dir,
+        uploads_dir=uploads,
     )
     if seed_demos:
         _seed_inicial(service)
 
-    app = FastAPI(title="Newport Estudos", version="2.3.0")
+    app = FastAPI(title="Newport Estudos", version="2.3.6")
     app.state.calculo_service = service
     app.state.siscor_service = siscor
     app.state.repository = repository
+    app.state.modo = modo_execucao().value
 
     @app.exception_handler(RequestValidationError)
     async def validacao_sanitizada(_request, exc: RequestValidationError):
@@ -113,6 +126,14 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.get("/api/config")
+    def obter_config() -> dict[str, str | int]:
+        return {
+            "modo": modo_execucao().value,
+            "versao": "2.3.6",
+            "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
+        }
 
     @app.get("/api/estudos", response_model=list[str])
     def listar_estudos() -> list[str]:
@@ -160,6 +181,11 @@ def create_app(
         titulo: str | None = Query(default=None),
     ) -> ResultadoImportacaoSiscorResponse:
         conteudo = await arquivo.read()
+        if len(conteudo) > LIMITE_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Arquivo excede o limite permitido para upload.",
+            )
         try:
             return siscor.importar_planilha(
                 estudo_id,
@@ -174,6 +200,11 @@ def create_app(
                     "mensagem": "Escolha como tratar a reimportação.",
                     "opcoes": exc.opcoes,
                 },
+            ) from None
+        except ModoImportacaoInvalidoError:
+            raise HTTPException(
+                status_code=400,
+                detail="Modo de reimportação inválido. Use substituir ou nova_versao.",
             ) from None
 
     @app.get(
@@ -210,6 +241,8 @@ def create_app(
                 nascimento=body.nascimento,
                 parentesco_texto=body.parentesco_texto,
                 plano=body.plano,
+                operadora=body.operadora,
+                status_texto=body.status_texto,
                 valor_centavos=body.valor_centavos,
                 incluida=body.incluida,
                 excluida=body.excluida,
@@ -221,6 +254,16 @@ def create_app(
             raise HTTPException(status_code=404, detail="Importação não encontrada") from None
         except LinhaNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Linha não encontrada") from None
+        except ExclusaoSemMotivoError:
+            raise HTTPException(
+                status_code=400,
+                detail="Informe o motivo ao excluir uma vida.",
+            ) from None
+        except LinhaIncompletaConfirmacaoError:
+            raise HTTPException(
+                status_code=422,
+                detail="Linha incompleta ou com exceções — não pode ser confirmada.",
+            ) from None
 
     @app.post("/api/estudos/{estudo_id}/calcular", response_model=ComparativoResponse)
     def calcular_estudo(estudo_id: str) -> ComparativoResponse:

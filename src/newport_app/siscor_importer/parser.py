@@ -28,6 +28,7 @@ from newport_app.models.siscor_import import (
     SubgrupoSiscorSugerido,
 )
 from newport_app.siscor_importer.constants import COLUNAS_OBRIGATORIAS
+from newport_app.siscor_importer.duplicidades import recalcular_duplicidades
 from newport_app.siscor_importer.money import valor_para_centavos
 from newport_app.siscor_importer.normalize import (
     normalizar_cabecalho,
@@ -35,6 +36,7 @@ from newport_app.siscor_importer.normalize import (
     normalizar_status,
     parse_data_nascimento,
 )
+from newport_app.siscor_importer.subgrupos import montar_subgrupos
 
 
 def _erro_arquivo(codigo: str, mensagem: str) -> ErroArquivoSiscor:
@@ -46,7 +48,11 @@ def _alerta(codigo: str, caminho: str, mensagem: str) -> AlertaLinhaSiscor:
 
 
 def _celula_tem_formula(cell: Cell) -> bool:
-    return cell.data_type == "f"
+    if cell.data_type == "f":
+        return True
+    if isinstance(cell.value, str) and cell.value.startswith("="):
+        return True
+    return False
 
 
 def _valor_celula(cell: Cell) -> Any:
@@ -61,44 +67,6 @@ def _hash_arquivo(conteudo: bytes) -> str:
 
 def _linha_vazia(valores: dict[str, Any]) -> bool:
     return all(v is None or str(v).strip() == "" for v in valores.values())
-
-
-def _montar_subgrupos(linhas: list[LinhaSiscorCandidata]) -> list[SubgrupoSiscorSugerido]:
-    agrupados: dict[tuple[str, str], SubgrupoSiscorSugerido] = {}
-    for linha in linhas:
-        if not linha.plano or not linha.operadora:
-            continue
-        chave = (linha.plano, linha.operadora)
-        if chave not in agrupados:
-            agrupados[chave] = SubgrupoSiscorSugerido(
-                id=str(uuid.uuid4()),
-                plano_nome=linha.plano,
-                operadora=linha.operadora,
-            )
-        sg = agrupados[chave]
-        sg.quantidade_linhas += 1
-        linha.subgrupo_sugerido_id = sg.id
-    return list(agrupados.values())
-
-
-def _detectar_duplicidades(linhas: list[LinhaSiscorCandidata]) -> None:
-    vistos: dict[tuple[str | None, str | None, str | None], str] = {}
-    for linha in linhas:
-        if linha.excluida:
-            continue
-        chave = (linha.segurado, linha.nascimento, linha.plano)
-        if None in chave:
-            continue
-        if chave in vistos:
-            linha.alertas.append(
-                _alerta(
-                    "APP-SIS-006",
-                    f"/linhas/{linha.id}",
-                    "Possível registro duplicado — revise.",
-                )
-            )
-        else:
-            vistos[chave] = linha.id
 
 
 def _estatisticas(linhas: list[LinhaSiscorCandidata]) -> EstatisticasImportacaoSiscor:
@@ -144,8 +112,12 @@ def parse_planilha_siscor(
 
     doc_hash = _hash_arquivo(conteudo)
 
+    workbook_formulas = None
     try:
         workbook = load_workbook(filename=BytesIO(conteudo), read_only=True, data_only=True)
+        workbook_formulas = load_workbook(
+            filename=BytesIO(conteudo), read_only=True, data_only=False
+        )
     except Exception:
         return ResultadoParseSiscor(
             sucesso=False,
@@ -157,8 +129,11 @@ def parse_planilha_siscor(
 
     try:
         sheet = workbook.active
+        sheet_formulas = workbook_formulas.active
         rows = sheet.iter_rows(min_row=1)
+        rows_formulas = sheet_formulas.iter_rows(min_row=1)
         header_row = next(rows, None)
+        next(rows_formulas, None)
         if header_row is None:
             return ResultadoParseSiscor(
                 sucesso=False,
@@ -203,7 +178,7 @@ def parse_planilha_siscor(
 
         linhas: list[LinhaSiscorCandidata] = []
         numero_linha = 1
-        for row in rows:
+        for row, row_f in zip(rows, rows_formulas, strict=False):
             numero_linha += 1
             valores: dict[str, Any] = {}
             formulas: dict[str, bool] = {}
@@ -212,8 +187,9 @@ def parse_planilha_siscor(
                     valores[coluna] = None
                     continue
                 cell = row[col_idx]
-                formulas[coluna] = _celula_tem_formula(cell)
-                valores[coluna] = _valor_celula(cell)
+                cell_f = row_f[col_idx] if col_idx < len(row_f) else cell
+                formulas[coluna] = _celula_tem_formula(cell_f)
+                valores[coluna] = _valor_celula(cell_f) if formulas[coluna] else cell.value
 
             if _linha_vazia(valores):
                 continue
@@ -246,7 +222,15 @@ def parse_planilha_siscor(
                 )
 
             parentesco_texto, parentesco = normalizar_parentesco(valores.get("PARENTESCO"))
-            if parentesco_texto and parentesco is None:
+            if not parentesco_texto:
+                alertas.append(
+                    _alerta(
+                        "APP-SIS-008",
+                        f"{caminho}/parentesco",
+                        "Parentesco ausente — informe antes de confirmar.",
+                    )
+                )
+            elif parentesco is None:
                 alertas.append(
                     _alerta(
                         "APP-SIS-008",
@@ -258,7 +242,18 @@ def parse_planilha_siscor(
             nascimento_texto, nascimento, data_invalida = parse_data_nascimento(
                 valores.get("DATA DE NASCIMENTO")
             )
-            if data_invalida:
+            if valores.get("DATA DE NASCIMENTO") in (None, "") or (
+                isinstance(valores.get("DATA DE NASCIMENTO"), str)
+                and not str(valores.get("DATA DE NASCIMENTO")).strip()
+            ):
+                alertas.append(
+                    _alerta(
+                        "APP-SIS-001",
+                        f"{caminho}/nascimento",
+                        "Data de nascimento ausente.",
+                    )
+                )
+            elif data_invalida:
                 alertas.append(
                     _alerta(
                         "APP-SIS-001",
@@ -288,14 +283,35 @@ def parse_planilha_siscor(
             operadora = (
                 str(valores["SEGURADORA"]).strip() if valores.get("SEGURADORA") else None
             )
+            if not operadora:
+                alertas.append(
+                    _alerta(
+                        "APP-SIS-010",
+                        f"{caminho}/operadora",
+                        "Operadora ausente na linha importada.",
+                    )
+                )
 
-            valor_centavos = valor_para_centavos(valores.get("VALOR"))
-            if valores.get("VALOR") is not None and valor_centavos is None:
+            valor_bruto = valores.get("VALOR")
+            valor_centavos = valor_para_centavos(valor_bruto)
+            if valor_bruto is None or (
+                isinstance(valor_bruto, str) and not str(valor_bruto).strip()
+            ):
                 alertas.append(
                     _alerta(
                         "APP-SIS-009",
                         f"{caminho}/valor",
-                        "Valor mensal ilegível — revise.",
+                        "Valor mensal ausente — informe.",
+                    )
+                )
+            elif valor_centavos is None:
+                alertas.append(
+                    _alerta(
+                        "APP-SIS-012" if str(valor_bruto).strip().startswith("-") else "APP-SIS-009",
+                        f"{caminho}/valor",
+                        "Valor mensal negativo — revise."
+                        if str(valor_bruto).strip().startswith("-")
+                        else "Valor mensal ilegível — revise.",
                     )
                 )
             elif valor_centavos == 0:
@@ -308,7 +324,15 @@ def parse_planilha_siscor(
                 )
 
             status_texto, status_norm = normalizar_status(valores.get("STATUS SEGURADO"))
-            if status_texto and status_norm is None:
+            if not status_texto:
+                alertas.append(
+                    _alerta(
+                        "APP-SIS-005",
+                        f"{caminho}/status",
+                        "Status do beneficiário ausente — revise.",
+                    )
+                )
+            elif status_norm is None:
                 alertas.append(
                     _alerta(
                         "APP-SIS-005",
@@ -319,7 +343,7 @@ def parse_planilha_siscor(
             incluida = status_norm == "ATIVO"
 
             valor_fatura = None
-            if valor_centavos is not None:
+            if valor_centavos is not None and valor_centavos > 0:
                 valor_fatura = ComponenteFinanceiroRascunho(
                     centavos=valor_centavos,
                     price_basis=PriceBasisRascunho.DESCONHECIDO,
@@ -366,8 +390,8 @@ def parse_planilha_siscor(
                 documento_hash_sha256=doc_hash,
             )
 
-        _detectar_duplicidades(linhas)
-        subgrupos = _montar_subgrupos(linhas)
+        recalcular_duplicidades(linhas)
+        subgrupos = montar_subgrupos(linhas)
         empresa = next((linha.cliente for linha in linhas if linha.cliente), None)
 
         candidata = ImportacaoSiscorCandidata(
@@ -390,3 +414,5 @@ def parse_planilha_siscor(
         )
     finally:
         workbook.close()
+        if workbook_formulas is not None:
+            workbook_formulas.close()

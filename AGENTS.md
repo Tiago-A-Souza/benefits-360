@@ -2,7 +2,7 @@
 
 Sistema de Estudos Newport — comparativo financeiro de planos de saúde.
 **Faixa inicial homologada:** 1–29 vidas (configurável; **sem teto técnico** no motor).
-Estágio atual: **ETAPA 2.1 concluída** — walking skeleton web; próximo passo **ETAPA 2.2** (compilador único).
+Estágio atual: **ETAPA 2.3.6 concluída** — importação SISCOR com conferência no navegador; **próximo passo ETAPA 2.4** (entrada manual da proposta).
 
 ## Antes de qualquer coisa, leia (nesta ordem)
 1. `docs/04-HANDOFF-IMPLEMENTACAO.md`
@@ -16,12 +16,14 @@ Estágio atual: **ETAPA 2.1 concluída** — walking skeleton web; próximo pass
 - **ETAPA 1 → 1.2.2:** motor financeiro puro + suítes A–H + fixtures.
 - **ETAPA 2.0:** caracterização corpus privado (`docs/06-CARACTERIZACAO-ETAPA-2.0.md`).
 - **ETAPA 2.1:** walking skeleton (`newport_app` + `web/` + `RELATORIO-ETAPA-2.1.md`).
+- **ETAPA 2.2 → 2.2.6:** compilador/mapper único + endurecimento financeiro (`RELATORIO-ETAPA-2.2.md`).
+- **ETAPA 2.3 → 2.3.6:** importação SISCOR candidata, API, UI de conferência, separação `.data` / `.private/runtime` (`RELATORIO-ETAPA-2.3.md`).
 
 ## Faça agora (quando autorizado)
-- **ETAPA 2.2:** compilador/mapper único rascunho → motor — ver `docs/05`.
+- **ETAPA 2.4:** entrada manual da proposta — ver `docs/05`.
 
 ## NÃO faça sem autorização
-- ETAPA 2.2+ antes de aprovação explícita.
+- ETAPA 2.4+ antes de aprovação explícita.
 - Alterar regras financeiras (IOF, arredondamento, reconciliação, proveniência) sem entrega versionada separada.
 - **Não mova, renomeie ou exclua** os documentos canônicos `docs/01–04`.
 
@@ -39,3 +41,9 @@ Estágio atual: **ETAPA 2.1 concluída** — walking skeleton web; próximo pass
 ## Dados e fixtures
 - Somente dados **fictícios ou anonimizados** entram no Git.
 - **Proibido** versionar CPF, endereço, telefone e qualquer PII. Documentos reais ficam **fora** do repositório.
+- **Modo demo** (`NEWPORT_MODO=demo`, default): banco e demos em `.data/`.
+- **Modo real** (`NEWPORT_MODO=real`): estudos, importações e uploads em `.private/runtime/`; bind somente em `127.0.0.1`.
+
+## Ambiente de testes
+- Usar o venv do projeto: `.venv\Scripts\python.exe -m pytest`
+- Dependências: `pip install -e ".[app,dev]"` dentro do `.venv`.

@@ -1,140 +1,103 @@
 # RELATÓRIO — ETAPA 2.3 (importação SISCOR)
 
-> Conclusão: **2026-07-22** · Motor intocável · Demos `demo-12` / `demo-41` preservados  
-> Base: ETAPA 2.2.6 (`19899c0`)
+> Atualizado: **2026-07-22** · Subentrega **2.3.6** · Motor intocável  
+> **Status:** implementação técnica concluída; **homologação privada ainda pendente**
 
 ---
 
-## 1. Objetivo entregue
+## 1. Objetivo
 
-Importar planilha SISCOR (layout piloto `.xlsx`) para uma camada **candidata** (`ImportacaoSiscorCandidata`), com conferência humana antes de aplicar vidas ao `RascunhoEstudo`. Sem cálculo automático pós-importação; sem proposta, PDF, PPTX, snapshot ou autenticação.
-
----
-
-## 2. Decisões Newport aplicadas
-
-| Decisão | Implementação |
-|---------|---------------|
-| Empresa = coluna **CLIENTE** (sem CNPJ) | `empresa_sugerida` na candidata; `EmpresaCliente(nome=…)` no rascunho |
-| Status **ATIVO** (trim + case-insensitive) sugere inclusão | `normalizar_status`; demais → alerta `APP-SIS-005`, `incluida_sugerida=false` |
-| Reimportação sempre exige decisão do usuário | `ImportacaoRequerDecisaoError` → HTTP 409; opções `substituir` ou `nova_versao` |
-| Mesmo importador para estudo novo e vazio | `importar_planilha` cria rascunho vazio se ausente |
-| Estudo com importação/vidas não sobrescreve silenciosamente | Bloqueio sem `modo`; fluxo explícito de reimportação |
-| Camada `ImportacaoSiscorCandidata` | Linhas, alertas, confirmações, proveniência, estatísticas, correspondências sugeridas |
-| `tipo_fiscal` e `regime_copart_id` opcionais pós-SISCOR | Subgrupos sugeridos sem valores fictícios; compilador `APP-IMP-001` / `APP-IMP-002` |
-| Erros de arquivo vs alertas de linha | `APP-SIS-F01…F07` bloqueiam; `APP-SIS-001…009` não bloqueiam candidata |
-| IDs opacos (UUID) | Sem hash de PII; SHA-256 **somente do arquivo completo** |
-| Valores com `Decimal` | `siscor_importer/money.py` — nunca `float` na conversão |
-| Proveniência extraída | `origem=extraido`, `confirmado=false`, `price_basis=desconhecido` |
-| Confirmação em lote | Apenas linhas sem exceção; registra `confirmado_em` / `confirmado_por`; edição manual reseta confirmação |
-| Dados reais separados | `.private/runtime` (uploads + `importacoes.db`); demos em `.data` |
-| Sem PII em logs | Parser/serviço não registram nomes, nascimentos ou valores |
-| Whitelist de colunas | CLIENTE, SEGURADO, PARENTESCO, DATA DE NASCIMENTO, PLANO, SEGURADORA, VALOR, STATUS SEGURADO |
-| Fórmulas rejeitadas | Alerta `APP-SIS-F07` por célula; valor não confiado |
-| Localhost para dados reais | CORS restrito a `127.0.0.1` / `localhost` (sem `--host 0.0.0.0` documentado) |
+Importar planilha SISCOR (layout piloto `.xlsx`) para camada **candidata** (`ImportacaoSiscorCandidata`), conferir no navegador e aplicar vidas confirmadas ao `RascunhoEstudo` — sem proposta manual, PDF, PPTX, snapshot ou autenticação.
 
 ---
 
-## 3. Arquitetura
+## 2. Subentregas
 
-```text
-Upload .xlsx
-    │
-    ▼
-parse_planilha_siscor()  ── erros APP-SIS-F* → aborta
-    │
-    ▼
-ImportacaoSiscorCandidata  (SQLite .private/runtime/importacoes.db)
-    │
-    ├─ GET conferencia-siscor
-    ├─ PATCH linha (revalidação + reset confirmação)
-    └─ POST confirmar-lote
-            │
-            ▼
-    aplicar_candidata_ao_rascunho()  → RascunhoEstudo (vidas confirmadas, sem exceção)
-            │
-            ▼
-    compile()  → APP-IMP-001/002 até tipo fiscal e regime preenchidos
-```
+| Subentrega | Entrega | Status |
+|------------|---------|--------|
+| 2.3.1 | Modelos candidata + campos opcionais pós-SISCOR | Concluída |
+| 2.3.2 | Parser XLSX, Decimal, alertas por linha | Concluída |
+| 2.3.3 | Repositório, serviço, apply ao rascunho | Concluída |
+| 2.3.4 | Rotas API importação/conferência | Concluída |
+| 2.3.5 | Fixtures XLSX sintéticas + testes iniciais | Concluída |
+| **2.3.6** | UI SISCOR, separação de dados, endurecimento, reimportação segura | Concluída |
 
 ---
 
-## 4. Módulos novos
+## 3. UI no navegador (2.3.6)
 
-| Módulo | Responsabilidade |
-|--------|------------------|
-| `models/siscor_import.py` | `ImportacaoSiscorCandidata`, `LinhaSiscorCandidata`, alertas, estatísticas |
-| `models/responses_siscor.py` | Respostas API de importação e conferência |
-| `siscor_importer/` | Parser XLSX, normalização, `Decimal`, revalidação por linha |
-| `siscor_mapper/apply.py` | Aplica linhas confirmadas ao rascunho |
-| `repository/importacao_siscor.py` | Persistência candidatas (versões, ativa) |
-| `services/importacao_siscor.py` | Orquestração import / conferência / lote / reimportação |
-| `config/paths.py` | `.data` vs `.private/runtime` |
+Abas em `web/src/App.jsx`:
+
+- **Importação SISCOR** (`SiscorPanel.jsx`): criar/selecionar estudo, upload XLSX, estatísticas (vidas/planos/exceções), tabela de conferência, edição por linha, exclusão com motivo, confirmação individual ou em lote, diálogo de reimportação (`substituir` / `nova_versao`).
+- **Comparativo**: fluxo demo existente (sem formulário de proposta).
+
+Dev: `npm run dev` em `web/` + API em `127.0.0.1:8000`. Integrado: `npm run build` + FastAPI serve `web/dist/`.
 
 ---
 
-## 5. API (versão 2.3.0)
+## 4. Separação de dados (2.3.6)
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| POST | `/api/estudos` | Cria estudo vazio |
-| POST | `/api/estudos/{id}/importar-siscor` | Upload multipart; query `modo`, `titulo` |
-| GET | `/api/estudos/{id}/conferencia-siscor` | Conferência da candidata ativa |
-| POST | `/api/estudos/{id}/conferencia-siscor/confirmar-lote` | Confirma linhas válidas e aplica rascunho |
-| PATCH | `/api/estudos/{id}/conferencia-siscor/linhas/{linha_id}` | Edição / confirmação unitária |
+| Modo | Variável | Banco estudos | Importações | Uploads |
+|------|----------|---------------|-------------|---------|
+| Demo (default) | `NEWPORT_MODO=demo` | `.data/newport_app.db` | `.data/importacoes_demo.db` | `.data/uploads_demo/` |
+| Real | `NEWPORT_MODO=real` | `.private/runtime/estudos.db` | `.private/runtime/importacoes.db` | `.private/runtime/uploads/` |
 
-Reimportação sem `modo` → **409** com `opcoes`: `substituir` (sem confirmações prévias) ou `nova_versao` (com confirmações).
+Modo real exige bind local (`NEWPORT_BIND_HOST=127.0.0.1`). Demos seedados apenas em modo demo.
+
+Testes: `tests/test_siscor_236.py` (`test_modo_demo_usa_data_dir`, `test_modo_real_usa_private_runtime`, `test_estudo_real_nao_grava_em_data`).
 
 ---
 
-## 6. Códigos de erro
+## 5. Endurecimentos 2.3.6
 
-### Arquivo (bloqueiam candidata)
+| Correção | Implementação |
+|----------|---------------|
+| Exceções por linha | Nascimento, parentesco, plano, operadora (`APP-SIS-010`), valor, status ausentes/inválidos; negativo (`APP-SIS-012`) |
+| Linha incompleta | Não confirmável (`LinhaIncompletaConfirmacaoError` → HTTP 422) |
+| Edição manual | Histórico `EdicaoManualSiscor`; reseta confirmação; valor ausente pode ser informado; plano remonta subgrupos; duplicidades recalculadas |
+| Exclusão | Exige motivo (`ExclusaoSemMotivoError`) |
+| Fórmulas | Leitura dual `data_only` + detecção `data_type=f`; teste com célula `=850+1` |
+| Duplicidades | Todas as ocorrências marcadas (`APP-SIS-006`) |
+| Reimportação segura | Parse antes de persistir; inválida não desativa anterior; `modo` só `substituir`/`nova_versao`; sem arquivo órfão |
+| Documento SISCOR | `documentos_siscor[]` no rascunho; mapeado para `EstudoInput.documentos` (evita B-05) |
+| Upload | Limite 10 MiB (`NEWPORT_UPLOAD_MAX_BYTES`); HTTP 413 sem PII |
 
-| Código | Situação |
-|--------|----------|
-| APP-SIS-F01 | Arquivo vazio ou ilegível |
-| APP-SIS-F02 | Não é `.xlsx` |
-| APP-SIS-F03 | Sem cabeçalho |
-| APP-SIS-F04 | Cabeçalhos duplicados |
-| APP-SIS-F05 | Colunas obrigatórias ausentes |
-| APP-SIS-F06 | Sem linhas utilizáveis |
+---
 
-### Linha (candidata criada; linha com exceção não entra no rascunho)
+## 6. API (versão 2.3.6)
 
-| Código | Situação |
-|--------|----------|
-| APP-SIS-001 | Data inválida |
-| APP-SIS-002 | Nascimento futuro |
-| APP-SIS-003 | Valor zerado |
-| APP-SIS-004 | Plano ausente |
-| APP-SIS-005 | Status desconhecido |
-| APP-SIS-006 | Possível duplicidade |
-| APP-SIS-007 | Nome ausente |
-| APP-SIS-008 | Parentesco desconhecido |
-| APP-SIS-009 | Valor ilegível |
-| APP-SIS-F07 | Fórmula na célula |
-
-### Compilador pós-importação
-
-| Código | Situação |
-|--------|----------|
-| APP-IMP-001 | `tipo_fiscal` ausente no subgrupo atual |
-| APP-IMP-002 | `regime_copart_id` ausente no subgrupo atual |
+| Método | Rota |
+|--------|------|
+| GET | `/api/config` |
+| POST | `/api/estudos` |
+| POST | `/api/estudos/{id}/importar-siscor` |
+| GET | `/api/estudos/{id}/conferencia-siscor` |
+| POST | `/api/estudos/{id}/conferencia-siscor/confirmar-lote` |
+| PATCH | `/api/estudos/{id}/conferencia-siscor/linhas/{linha_id}` |
 
 ---
 
 ## 7. Testes
 
-| Suíte | Casos |
-|-------|-------|
-| `tests/test_siscor_import.py` | Parser 12/41 vidas, 2 planos, alertas, erros de arquivo, IDs opacos, proveniência, serviço |
-| `tests/test_siscor_api.py` | CRUD importação, 409 reimportação, conferência, lote, 422 pós-SISCOR, sanitização |
-| Fixtures XLSX versionadas | `tests/fixtures/siscor/demo_12_vidas.xlsx`, `demo_41_vidas_2_planos.xlsx` |
+| Suíte | Foco |
+|-------|------|
+| `tests/test_siscor_import.py` | Parser e serviço base |
+| `tests/test_siscor_api.py` | Contrato HTTP |
+| `tests/test_siscor_236.py` | Correções 2.3.6 |
 
-**Total após 2.3:** 170 testes passando (`python -m pytest`).
+**Comando (venv do projeto):**
 
-Homologação privada (checklist operacional — planilha real fora do Git):
+```powershell
+.venv\Scripts\python.exe -m pytest
+```
+
+**Resultado:** **186 testes passando** (2026-07-22).
+
+---
+
+## 8. Homologação privada
+
+Checklist operacional com planilha real (fora do Git) — **ainda não executada nesta entrega**:
 
 - [ ] 41 vidas encontradas
 - [ ] 2 planos detectados
@@ -145,16 +108,8 @@ Homologação privada (checklist operacional — planilha real fora do Git):
 
 ---
 
-## 8. Fora de escopo (ETAPA 2.4+)
-
-- Proposta manual, PDF, PPTX, `quantidade_cotada`, snapshot
-- Autenticação e multiusuário
-- Merge automático na reimportação
-- Confirmação de `price_basis` / IOF (decisão separada da confirmação do valor extraído)
-- Coluna SEXO
-
----
-
 ## 9. Próximo passo
 
-**ETAPA 2.4** — conferência UI / fluxos de revisão (quando especificada). Esta entrega para antes da 2.4.
+**ETAPA 2.4 — entrada manual da proposta** (conforme `docs/05-PLANO-ETAPA-2-VALIDACAO-OPERACIONAL.md`). Não iniciada.
+
+Fora de escopo desta etapa: PDF, PPTX, snapshot, autenticação, merge automático na reimportação, confirmação de IOF separada do valor extraído.

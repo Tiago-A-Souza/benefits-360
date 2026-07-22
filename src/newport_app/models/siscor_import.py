@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from newport_app.models.draft import ComponenteFinanceiroRascunho, ParentescoRascunho
 
-IMPORTADOR_SISCOR_VERSAO = "siscor@2.3.0"
+IMPORTADOR_SISCOR_VERSAO = "siscor@2.3.6"
 
 
 class ErroArquivoSiscor(BaseModel):
@@ -22,6 +22,14 @@ class AlertaLinhaSiscor(BaseModel):
     caminho: str
     mensagem: str
     severidade: str = "alerta"
+
+
+class EdicaoManualSiscor(BaseModel):
+    campo: str
+    valor_anterior: str | None = None
+    valor_novo: str | None = None
+    editado_em: datetime
+    editado_por: str
 
 
 class CorrespondenciaSugeridaSiscor(BaseModel):
@@ -58,10 +66,15 @@ class LinhaSiscorCandidata(BaseModel):
     excluida: bool = False
     motivo_exclusao: str | None = None
     editado_manualmente: bool = False
+    historico_edicoes: list[EdicaoManualSiscor] = Field(default_factory=list)
 
     @property
     def tem_excecao(self) -> bool:
         return bool(self.alertas)
+
+    @property
+    def confirmavel(self) -> bool:
+        return not self.excluida and not self.tem_excecao
 
 
 class SubgrupoSiscorSugerido(BaseModel):

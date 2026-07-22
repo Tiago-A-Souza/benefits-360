@@ -838,6 +838,7 @@
     }
   ],
   "documentos_cotacao": [],
+  "documentos_siscor": [],
   "escolhas": {
     "data_referencia_idade": "2026-06-30",
     "baseline_escolhido": {

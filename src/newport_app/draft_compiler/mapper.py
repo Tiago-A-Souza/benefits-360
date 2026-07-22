@@ -163,7 +163,7 @@ def _validar_documentos_vinculados(
 
 
 def _mapear_documentos(rascunho: RascunhoEstudo) -> list[DocumentoCotacao]:
-    return [
+    docs = [
         DocumentoCotacao(
             id=doc.id,
             operadora=doc.operadora,
@@ -172,6 +172,16 @@ def _mapear_documentos(rascunho: RascunhoEstudo) -> list[DocumentoCotacao]:
         )
         for doc in rascunho.documentos_cotacao
     ]
+    for siscor in rascunho.documentos_siscor:
+        docs.append(
+            DocumentoCotacao(
+                id=siscor.id,
+                operadora=siscor.operadora,
+                estado_extracao=EstadoExtracao.EXTRAIDO_OK,
+                parser_versao=siscor.importador_versao,
+            )
+        )
+    return docs
 
 
 def mapear_estudo_input(

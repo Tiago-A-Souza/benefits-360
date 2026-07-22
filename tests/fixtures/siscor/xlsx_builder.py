@@ -53,3 +53,19 @@ def planilha_41_vidas_2_planos() -> bytes:
     for i in range(36, 41):
         linhas.append(linha_ficticia(i, plano="Plano Fictício B"))
     return gerar_planilha_siscor(linhas)
+
+
+def planilha_com_formula_no_valor() -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.append(list(COLUNAS_OBRIGATORIAS))
+    linha = linha_ficticia(0)
+    ws.append([linha.get(col) for col in COLUNAS_OBRIGATORIAS])
+    linha2 = linha_ficticia(1)
+    row = [linha2.get(col) for col in COLUNAS_OBRIGATORIAS]
+    ws.append(row)
+    col_valor = list(COLUNAS_OBRIGATORIAS).index("VALOR") + 1
+    ws.cell(row=3, column=col_valor, value="=850+1")
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()

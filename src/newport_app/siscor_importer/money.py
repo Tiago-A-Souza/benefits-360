@@ -25,6 +25,8 @@ def valor_para_centavos(valor: object) -> int | None:
         else:
             dec = Decimal(str(valor))
         centavos = int((dec * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+        if centavos < 0:
+            return None
         return centavos
     except (InvalidOperation, ValueError, ArithmeticError):
         return None

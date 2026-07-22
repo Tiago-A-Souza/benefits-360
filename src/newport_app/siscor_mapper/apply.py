@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from newport_app.models.draft import (
+    DocumentoSiscorRascunho,
     EmpresaCliente,
     PriceBasisRascunho,
     RASCUNHO_VERSAO_ATUAL,
@@ -41,12 +42,37 @@ def _linha_aplicavel(linha: LinhaSiscorCandidata) -> bool:
     return True
 
 
+def _registrar_documento_siscor(
+    rascunho: RascunhoEstudo,
+    candidata: ImportacaoSiscorCandidata,
+) -> None:
+    operadora = "SISCOR"
+    if candidata.subgrupos_sugeridos:
+        operadora = candidata.subgrupos_sugeridos[0].operadora
+    existente = next(
+        (d for d in rascunho.documentos_siscor if d.id == candidata.documento_id),
+        None,
+    )
+    if existente is None:
+        rascunho.documentos_siscor.append(
+            DocumentoSiscorRascunho(
+                id=candidata.documento_id,
+                hash_sha256=candidata.documento_hash_sha256,
+                importador_versao=candidata.importador_versao,
+                operadora=operadora,
+                versao_importacao=candidata.versao,
+            )
+        )
+
+
 def aplicar_candidata_ao_rascunho(
     rascunho: RascunhoEstudo,
     candidata: ImportacaoSiscorCandidata,
 ) -> RascunhoEstudo:
     if candidata.empresa_sugerida:
         rascunho.empresa_cliente = EmpresaCliente(nome=candidata.empresa_sugerida)
+
+    _registrar_documento_siscor(rascunho, candidata)
 
     subgrupos_por_id = {sg.id: sg for sg in candidata.subgrupos_sugeridos}
     subgrupos_rascunho: dict[str, SubgrupoAtualRascunho] = {}
@@ -58,13 +84,19 @@ def aplicar_candidata_ao_rascunho(
         sg_id = linha.subgrupo_sugerido_id
         if sg_id and sg_id not in subgrupos_rascunho and sg_id in subgrupos_por_id:
             sugerido = subgrupos_por_id[sg_id]
+            existente = next(
+                (s for s in rascunho.subgrupos_atuais if s.id == sg_id),
+                None,
+            )
             subgrupos_rascunho[sg_id] = SubgrupoAtualRascunho(
                 id=sg_id,
                 operadora=sugerido.operadora,
                 plano_nome=sugerido.plano_nome,
-                regime_copart_id=None,
-                tipo_fiscal=None,
-                fatura_price_basis=PriceBasisRascunho.DESCONHECIDO,
+                regime_copart_id=existente.regime_copart_id if existente else None,
+                tipo_fiscal=existente.tipo_fiscal if existente else None,
+                fatura_price_basis=(
+                    existente.fatura_price_basis if existente else PriceBasisRascunho.DESCONHECIDO
+                ),
             )
         valor = None
         if linha.valor_fatura and linha.valor_confirmado:
