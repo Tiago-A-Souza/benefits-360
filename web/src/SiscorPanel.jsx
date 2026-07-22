@@ -7,20 +7,10 @@ import {
   obterConferenciaSiscor,
   atualizarLinhaSiscor,
 } from "./api";
+import { centavosParaReaisExibicao, reaisTextoParaCentavos } from "./money";
 
 function centavosParaReais(centavos) {
-  if (centavos == null) return "—";
-  return (centavos / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
-
-function reaisParaCentavos(texto) {
-  if (!texto || !String(texto).trim()) return null;
-  const n = Number(String(texto).replace(/\./g, "").replace(",", "."));
-  if (Number.isNaN(n)) return null;
-  return Math.round(n * 100);
+  return centavosParaReaisExibicao(centavos);
 }
 
 export default function SiscorPanel({ estudoId, onEstudoId, onEstudosChange }) {
@@ -150,8 +140,8 @@ export default function SiscorPanel({ estudoId, onEstudoId, onEstudosChange }) {
       excluida: editando.excluida,
       motivo_exclusao: editando.motivo_exclusao || null,
     };
-    const centavos = reaisParaCentavos(editando.valor_reais);
-    if (centavos != null) patch.valor_centavos = centavos;
+    const centavos = reaisTextoParaCentavos(editando.valor_reais);
+    if (centavos.ok) patch.valor_centavos = centavos.centavos;
     try {
       await atualizarLinhaSiscor(estudoId, editando.id, patch);
       setEditando(null);
@@ -303,7 +293,10 @@ export default function SiscorPanel({ estudoId, onEstudoId, onEstudosChange }) {
                             ...linha,
                             valor_reais:
                               linha.valor_centavos != null
-                                ? (linha.valor_centavos / 100).toFixed(2).replace(".", ",")
+                                ? centavosParaReaisExibicao(linha.valor_centavos).replace(
+                                    /^R\$ /,
+                                    ""
+                                  )
                                 : "",
                           })
                         }

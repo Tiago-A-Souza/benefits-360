@@ -296,6 +296,52 @@ input:not([type]) {
   border-color: #0b5cab;
 }
 
+.cartao--interno {
+  margin-top: 1rem;
+  background: #fafbfc;
+}
+
+.cartao--toolbar {
+  margin-top: 1rem;
+}
+
+.wizard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.wizard-passo {
+  background: #e8eef5;
+  color: #0b5cab;
+  border: 1px solid #c5d4e8;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.wizard-passo.ativo {
+  background: #0b5cab;
+  color: #fff;
+}
+
+.wizard-num {
+  font-weight: 700;
+}
+
+.wizard-nav {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.pendencias-box {
+  margin: 1rem 0;
+}
+
 .acoes-edit {
   display: flex;
   gap: 0.5rem;

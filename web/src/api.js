@@ -30,9 +30,37 @@ export async function obterEstudo(estudoId) {
   return tratarResposta(res, "Não foi possível carregar o estudo.");
 }
 
+export async function obterRascunho(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/rascunho`);
+  return tratarResposta(res, "Não foi possível carregar o rascunho.");
+}
+
+export async function salvarRascunho(estudoId, rascunho) {
+  const res = await fetch(`${API}/estudos/${estudoId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rascunho),
+  });
+  return tratarResposta(res, "Não foi possível salvar o estudo.");
+}
+
+export async function obterPendencias(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/pendencias`);
+  return tratarResposta(res, "Não foi possível verificar pendências.");
+}
+
 export async function calcularEstudo(estudoId) {
   const res = await fetch(`${API}/estudos/${estudoId}/calcular`, { method: "POST" });
-  return tratarResposta(res, "Não foi possível calcular o comparativo.");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    if (body.detail?.erros) {
+      const err = new Error("O cálculo não pôde ser concluído.");
+      err.pendenciasCompilador = body.detail.erros;
+      throw err;
+    }
+    throw new Error("Não foi possível calcular o comparativo.");
+  }
+  return res.json();
 }
 
 export async function listarEstudos() {
