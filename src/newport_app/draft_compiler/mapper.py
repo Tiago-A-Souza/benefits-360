@@ -191,6 +191,15 @@ def mapear_estudo_input(
                     None,
                 )
                 if sg is not None:
+                    if sg.tipo_fiscal is None:
+                        erros.append(
+                            _erro(
+                                "APP-IMP-001",
+                                f"/subgrupos_atuais/{sg.id}/tipo_fiscal",
+                                "Informe o tipo fiscal do plano atual antes de calcular.",
+                            )
+                        )
+                        continue
                     sg_tipo = sg.tipo_fiscal
             caminho = f"/vidas/{idx}/valor_fatura"
             if not validar_componente_financeiro(v.valor_fatura, sg_tipo, caminho, erros):
@@ -225,18 +234,37 @@ def mapear_estudo_input(
 
     subgrupos: list[SubgrupoAtual] = []
     for idx, sg in enumerate(rascunho.subgrupos_atuais):
+        if sg.tipo_fiscal is None:
+            erros.append(
+                _erro(
+                    "APP-IMP-001",
+                    f"/subgrupos_atuais/{idx}/tipo_fiscal",
+                    "Informe o tipo fiscal do plano atual antes de calcular.",
+                )
+            )
+            continue
+        if sg.regime_copart_id is None:
+            erros.append(
+                _erro(
+                    "APP-IMP-002",
+                    f"/subgrupos_atuais/{idx}/regime_copart_id",
+                    "Informe o regime de coparticipação do plano atual antes de calcular.",
+                )
+            )
+            continue
+        sg_tipo = sg.tipo_fiscal
         basis = PriceBasis.DESCONHECIDO
         if sg.fatura_price_basis != PriceBasisRascunho.DESCONHECIDO:
             if not validar_price_basis_usavel(
                 sg.fatura_price_basis,
-                sg.tipo_fiscal,
+                sg_tipo,
                 f"/subgrupos_atuais/{idx}/fatura_price_basis",
                 erros,
             ):
                 continue
             mapped = mapear_price_basis(
                 sg.fatura_price_basis,
-                sg.tipo_fiscal,
+                sg_tipo,
                 f"/subgrupos_atuais/{idx}/fatura_price_basis",
             )
             if isinstance(mapped, ErroCompilacao):
@@ -247,7 +275,7 @@ def mapear_estudo_input(
         for f_idx, faixa in enumerate(sg.tabela_atual):
             item = _tabela_faixa_motor(
                 faixa,
-                sg.tipo_fiscal,
+                sg_tipo,
                 f"/subgrupos_atuais/{idx}/tabela_atual/{f_idx}",
                 erros,
                 exigir_quantidade=False,
@@ -258,7 +286,7 @@ def mapear_estudo_input(
         if sg.subtotal_atual_impresso is not None:
             subtotal = _componente_motor(
                 sg.subtotal_atual_impresso,
-                sg.tipo_fiscal,
+                sg_tipo,
                 f"/subgrupos_atuais/{idx}/subtotal_atual_impresso",
                 erros,
             )
@@ -266,7 +294,7 @@ def mapear_estudo_input(
             SubgrupoAtual(
                 id=sg.id,
                 operadora=sg.operadora,
-                tipo_fiscal=TipoFiscal(sg.tipo_fiscal),
+                tipo_fiscal=TipoFiscal(sg_tipo),
                 plano_nome=sg.plano_nome,
                 regime_copart_id=sg.regime_copart_id,
                 reajuste_bps=sg.reajuste_bps,
