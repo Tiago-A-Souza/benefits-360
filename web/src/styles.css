@@ -1,0 +1,150 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f4f6f8;
+  color: #1a1a1a;
+  line-height: 1.5;
+}
+
+.pagina {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+
+.sub,
+.muted {
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.cartao {
+  background: #fff;
+  border: 1px solid #dde2e8;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.cartao h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+select,
+button {
+  font: inherit;
+}
+
+select {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  background: #0b5cab;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.65rem 1.2rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+button.link {
+  background: none;
+  color: #0b5cab;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.comparativo {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+.comparativo th,
+.comparativo td {
+  text-align: left;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid #eee;
+}
+
+.comparativo .destaque td {
+  font-weight: 600;
+}
+
+.pendencias {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pendencia {
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.pendencia--bloqueio {
+  background: #fdecea;
+  border: 1px solid #f5c2c0;
+}
+
+.pendencia--alerta {
+  background: #fff8e6;
+  border: 1px solid #f0d48a;
+}
+
+.pendencia .acao {
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.erro {
+  color: #b00020;
+  font-weight: 600;
+}
+
+.ok {
+  color: #1b5e20;
+}
+
+.auditoria {
+  width: 100%;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+.auditoria th,
+.auditoria td {
+  border: 1px solid #e0e0e0;
+  padding: 0.35rem 0.5rem;
+  vertical-align: top;
+}
+
+.cartao--auditoria {
+  border-style: dashed;
+}
