@@ -1,4 +1,4 @@
-"""Dados fictícios para demonstração — equivalente à fixture renovacao_1plano_12vidas."""
+"""Dados fictícios para demonstração — RascunhoEstudo v1."""
 
 from __future__ import annotations
 
@@ -6,35 +6,56 @@ from datetime import date
 
 from newport_app.models.draft import (
     AtribuicaoRascunho,
+    CampoConfirmavelBaseline,
+    CampoConfirmavelPrecedencia,
     CenarioRascunho,
+    EmpresaCliente,
     EscolhasEstudo,
     OpcaoPropostaRascunho,
+    PriceBasisRascunho,
+    RASCUNHO_VERSAO_ATUAL,
     RascunhoEstudo,
     RegimeCopartRascunho,
-    SubgrupoRascunho,
+    SubgrupoAtualRascunho,
     TabelaFaixaRascunho,
     VidaRascunho,
 )
+from newport_app.policy.registry import POLICY_SET_VERSAO_PADRAO
 
 
 def _tabela_atual() -> list[TabelaFaixaRascunho]:
     return [
-        TabelaFaixaRascunho(faixa=f, valor_centavos=80_000 + f * 8_000) for f in range(10)
+        TabelaFaixaRascunho(
+            faixa=f,
+            valor_centavos=80_000 + f * 8_000,
+            price_basis=PriceBasisRascunho.EXCLUI_IOF,
+        )
+        for f in range(10)
     ]
 
 
 def _tabela_proposta() -> list[TabelaFaixaRascunho]:
     return [
-        TabelaFaixaRascunho(faixa=f, valor_centavos=100_000 + f * 10_000) for f in range(10)
+        TabelaFaixaRascunho(
+            faixa=f,
+            valor_centavos=100_000 + f * 10_000,
+            price_basis=PriceBasisRascunho.EXCLUI_IOF,
+        )
+        for f in range(10)
     ]
 
 
-def _escolhas_padrao() -> EscolhasEstudo:
+def _escolhas_confirmadas() -> EscolhasEstudo:
     return EscolhasEstudo(
         data_referencia_idade=date(2026, 6, 30),
-        valor_atual_referencia="reajustado",
-        prioridade_fatura_ou_tabela="tabela_atual",
-        max_beneficiarios_homologados=29,
+        baseline_escolhido=CampoConfirmavelBaseline(
+            valor="reajustado",
+            confirmado=True,
+        ),
+        precedencia_atual_vida=CampoConfirmavelPrecedencia(
+            valor="tabela_atual",
+            confirmado=True,
+        ),
     )
 
 
@@ -54,19 +75,22 @@ def _corpo_renovacao(
         for i in range(n_vidas)
     ]
     return RascunhoEstudo(
+        rascunho_versao=RASCUNHO_VERSAO_ATUAL,
+        policy_set_versao=POLICY_SET_VERSAO_PADRAO,
         id=estudo_id,
         titulo=titulo,
         formato="renovacao",
+        empresa_cliente=EmpresaCliente(nome="Empresa Demonstração Ltda."),
         vidas=vidas,
         subgrupos_atuais=[
-            SubgrupoRascunho(
+            SubgrupoAtualRascunho(
                 id="sg-1",
                 operadora="Operadora Demo",
                 plano_nome="Plano atual fictício",
                 regime_copart_id="regime-sem",
                 tipo_fiscal="seguradora",
                 reajuste_bps=1198,
-                fatura_inclui_iof=False,
+                fatura_price_basis=PriceBasisRascunho.EXCLUI_IOF,
                 tabela_atual=_tabela_atual(),
             )
         ],
@@ -77,7 +101,6 @@ def _corpo_renovacao(
                 plano_nome="Proposta fictícia",
                 regime_copart_id="regime-sem",
                 tipo_fiscal="seguradora",
-                valores_incluem_iof=False,
                 tabela=_tabela_proposta(),
             )
         ],
@@ -96,7 +119,7 @@ def _corpo_renovacao(
                 ],
             )
         ],
-        escolhas=_escolhas_padrao(),
+        escolhas=_escolhas_confirmadas(),
     )
 
 

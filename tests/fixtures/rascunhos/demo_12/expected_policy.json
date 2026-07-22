@@ -1,0 +1,15 @@
+{
+  "policy_set_versao": "v2026.07-provisoria",
+  "data_referencia_idade": "2026-06-30",
+  "baseline_escolhido": "reajustado",
+  "precedencia_atual_vida": "tabela_atual",
+  "iof_bps": 238,
+  "tolerancias": {
+    "por_vida_centavos": 1,
+    "subtotal_centavos": 2,
+    "total_centavos": 5
+  },
+  "estrategia_arredondamento": "por_vida_entao_soma",
+  "max_vidas_homologadas": 29,
+  "politicas_resolvidas": {}
+}
