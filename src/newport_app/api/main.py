@@ -5,8 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+from newport_app.api.validation_handlers import resposta_validacao_sanitizada
 
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import RascunhoEstudo
@@ -38,8 +41,12 @@ def create_app(repo: SQLiteStudyRepository | None = None) -> FastAPI:
     service = CalculoService(repository)
     _seed_inicial(service)
 
-    app = FastAPI(title="Newport Estudos — Walking Skeleton", version="2.2.0")
+    app = FastAPI(title="Newport Estudos — Walking Skeleton", version="2.2.6")
     app.state.calculo_service = service
+
+    @app.exception_handler(RequestValidationError)
+    async def validacao_sanitizada(_request, exc: RequestValidationError):
+        return resposta_validacao_sanitizada(exc)
 
     app.add_middleware(
         CORSMiddleware,

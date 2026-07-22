@@ -1,0 +1,2126 @@
+{
+  "estudo_id": "demo-12",
+  "cenarios": [
+    {
+      "cenario_id": "c1",
+      "baseline_apresentado": "reajustado",
+      "secoes": [
+        {
+          "regime_tipo": "sem",
+          "rotulo_derivado": "sem_copart",
+          "subgrupos": [
+            {
+              "subgrupo_id": "sg-1",
+              "opcao_plano_id": "op-1",
+              "subtotal_proposta_centavos": {
+                "centavos": 2078314,
+                "proveniencia": {
+                  "origem": "calculado",
+                  "documento_id": null,
+                  "extrator_versao": "motor@0.1.2",
+                  "evidencia_pagina": null,
+                  "evidencia_trecho": null,
+                  "confirmado": true,
+                  "valor_anterior_centavos": null
+                },
+                "fontes": [
+                  {
+                    "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  },
+                  {
+                    "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  },
+                  {
+                    "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  }
+                ]
+              },
+              "subtotal_atual_vigente_centavos": {
+                "centavos": 1662650,
+                "proveniencia": {
+                  "origem": "calculado",
+                  "documento_id": null,
+                  "extrator_versao": "motor@0.1.2",
+                  "evidencia_pagina": null,
+                  "evidencia_trecho": null,
+                  "confirmado": true,
+                  "valor_anterior_centavos": null
+                },
+                "fontes": [
+                  {
+                    "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  },
+                  {
+                    "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  },
+                  {
+                    "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  }
+                ]
+              },
+              "subtotal_atual_reajustado_centavos": {
+                "centavos": 1861837,
+                "proveniencia": {
+                  "origem": "calculado",
+                  "documento_id": null,
+                  "extrator_versao": "motor@0.1.2",
+                  "evidencia_pagina": null,
+                  "evidencia_trecho": null,
+                  "confirmado": true,
+                  "valor_anterior_centavos": null
+                },
+                "fontes": [
+                  {
+                    "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  },
+                  {
+                    "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  },
+                  {
+                    "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                    "origem": "manual",
+                    "documento_id": null,
+                    "extrator_versao": "manual",
+                    "evidencia_pagina": null,
+                    "evidencia_trecho": null
+                  }
+                ]
+              },
+              "vidas": [
+                {
+                  "vida_id": "v0",
+                  "idade": 56,
+                  "faixa": 8,
+                  "atual_vigente_centavos": {
+                    "centavos": 147427,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 165089,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 184284,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 19195,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 230340,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v1",
+                  "idade": 55,
+                  "faixa": 8,
+                  "atual_vigente_centavos": {
+                    "centavos": 147427,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 165089,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 184284,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 19195,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 230340,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v2",
+                  "idade": 54,
+                  "faixa": 8,
+                  "atual_vigente_centavos": {
+                    "centavos": 147427,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 165089,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 184284,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 19195,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 230340,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v3",
+                  "idade": 53,
+                  "faixa": 7,
+                  "atual_vigente_centavos": {
+                    "centavos": 139237,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 155918,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 174046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 18128,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 217536,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v4",
+                  "idade": 52,
+                  "faixa": 7,
+                  "atual_vigente_centavos": {
+                    "centavos": 139237,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 155918,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 174046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 18128,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 217536,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v5",
+                  "idade": 51,
+                  "faixa": 7,
+                  "atual_vigente_centavos": {
+                    "centavos": 139237,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 155918,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 174046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 18128,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 217536,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v6",
+                  "idade": 50,
+                  "faixa": 7,
+                  "atual_vigente_centavos": {
+                    "centavos": 139237,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 155918,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 174046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 18128,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 217536,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v7",
+                  "idade": 49,
+                  "faixa": 7,
+                  "atual_vigente_centavos": {
+                    "centavos": 139237,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 155918,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 174046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 18128,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 217536,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v8",
+                  "idade": 48,
+                  "faixa": 6,
+                  "atual_vigente_centavos": {
+                    "centavos": 131046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 146745,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 163808,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 17063,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 204756,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v9",
+                  "idade": 47,
+                  "faixa": 6,
+                  "atual_vigente_centavos": {
+                    "centavos": 131046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 146745,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 163808,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 17063,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 204756,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v10",
+                  "idade": 46,
+                  "faixa": 6,
+                  "atual_vigente_centavos": {
+                    "centavos": 131046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 146745,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 163808,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 17063,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 204756,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                },
+                {
+                  "vida_id": "v11",
+                  "idade": 45,
+                  "faixa": 6,
+                  "atual_vigente_centavos": {
+                    "centavos": 131046,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "atual_reajustado_centavos": {
+                    "centavos": 146745,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "proposta_centavos": {
+                    "centavos": 163808,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_mes_centavos": {
+                    "centavos": 17063,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  },
+                  "diff_ano_centavos": {
+                    "centavos": 204756,
+                    "proveniencia": {
+                      "origem": "calculado",
+                      "documento_id": null,
+                      "extrator_versao": "motor@0.1.2",
+                      "evidencia_pagina": null,
+                      "evidencia_trecho": null,
+                      "confirmado": true,
+                      "valor_anterior_centavos": null
+                    },
+                    "fontes": [
+                      {
+                        "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      },
+                      {
+                        "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                        "origem": "manual",
+                        "documento_id": null,
+                        "extrator_versao": "manual",
+                        "evidencia_pagina": null,
+                        "evidencia_trecho": null
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "total_proposta_centavos": {
+            "centavos": 2078314,
+            "proveniencia": {
+              "origem": "calculado",
+              "documento_id": null,
+              "extrator_versao": "motor@0.1.2",
+              "evidencia_pagina": null,
+              "evidencia_trecho": null,
+              "confirmado": true,
+              "valor_anterior_centavos": null
+            },
+            "fontes": [
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              }
+            ]
+          },
+          "total_atual_baseline_centavos": {
+            "centavos": 1861837,
+            "proveniencia": {
+              "origem": "calculado",
+              "documento_id": null,
+              "extrator_versao": "motor@0.1.2",
+              "evidencia_pagina": null,
+              "evidencia_trecho": null,
+              "confirmado": true,
+              "valor_anterior_centavos": null
+            },
+            "fontes": [
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              }
+            ]
+          },
+          "diff_mes_centavos": {
+            "centavos": 216477,
+            "proveniencia": {
+              "origem": "calculado",
+              "documento_id": null,
+              "extrator_versao": "motor@0.1.2",
+              "evidencia_pagina": null,
+              "evidencia_trecho": null,
+              "confirmado": true,
+              "valor_anterior_centavos": null
+            },
+            "fontes": [
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              }
+            ]
+          },
+          "diff_ano_centavos": {
+            "centavos": 2597724,
+            "proveniencia": {
+              "origem": "calculado",
+              "documento_id": null,
+              "extrator_versao": "motor@0.1.2",
+              "evidencia_pagina": null,
+              "evidencia_trecho": null,
+              "confirmado": true,
+              "valor_anterior_centavos": null
+            },
+            "fontes": [
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:8",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:7",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "opcao:op-1:tabela:faixa:6",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              },
+              {
+                "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+                "origem": "manual",
+                "documento_id": null,
+                "extrator_versao": "manual",
+                "evidencia_pagina": null,
+                "evidencia_trecho": null
+              }
+            ]
+          }
+        }
+      ],
+      "total_proposta_centavos": {
+        "centavos": 2078314,
+        "proveniencia": {
+          "origem": "calculado",
+          "documento_id": null,
+          "extrator_versao": "motor@0.1.2",
+          "evidencia_pagina": null,
+          "evidencia_trecho": null,
+          "confirmado": true,
+          "valor_anterior_centavos": null
+        },
+        "fontes": [
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:8",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:7",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:6",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          }
+        ]
+      },
+      "total_atual_baseline_centavos": {
+        "centavos": 1861837,
+        "proveniencia": {
+          "origem": "calculado",
+          "documento_id": null,
+          "extrator_versao": "motor@0.1.2",
+          "evidencia_pagina": null,
+          "evidencia_trecho": null,
+          "confirmado": true,
+          "valor_anterior_centavos": null
+        },
+        "fontes": [
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          }
+        ]
+      },
+      "diff_mes_centavos": {
+        "centavos": 216477,
+        "proveniencia": {
+          "origem": "calculado",
+          "documento_id": null,
+          "extrator_versao": "motor@0.1.2",
+          "evidencia_pagina": null,
+          "evidencia_trecho": null,
+          "confirmado": true,
+          "valor_anterior_centavos": null
+        },
+        "fontes": [
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:8",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:7",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:6",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          }
+        ]
+      },
+      "diff_ano_centavos": {
+        "centavos": 2597724,
+        "proveniencia": {
+          "origem": "calculado",
+          "documento_id": null,
+          "extrator_versao": "motor@0.1.2",
+          "evidencia_pagina": null,
+          "evidencia_trecho": null,
+          "confirmado": true,
+          "valor_anterior_centavos": null
+        },
+        "fontes": [
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:8",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:7",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "opcao:op-1:tabela:faixa:6",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:8",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:7",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          },
+          {
+            "alvo_ref": "subgrupo:sg-1:tabela_atual:faixa:6",
+            "origem": "manual",
+            "documento_id": null,
+            "extrator_versao": "manual",
+            "evidencia_pagina": null,
+            "evidencia_trecho": null
+          }
+        ]
+      }
+    }
+  ],
+  "validacoes": [],
+  "politicas_efetivas": {
+    "policy_set_versao": "v2026.07-provisoria",
+    "data_referencia_idade": "2026-06-30",
+    "baseline_escolhido": "reajustado",
+    "precedencia_atual_vida": "tabela_atual",
+    "iof_bps": 238,
+    "tolerancias": {
+      "por_vida_centavos": 1,
+      "subtotal_centavos": 2,
+      "total_centavos": 5
+    },
+    "estrategia_arredondamento": "por_vida_entao_soma",
+    "max_vidas_homologadas": 29,
+    "politicas_resolvidas": {}
+  },
+  "bloqueios_abertos": []
+}

@@ -134,14 +134,9 @@ class VidaRascunho(BaseModel):
 class TabelaFaixaRascunho(BaseModel):
     faixa: int
     valor_centavos: int
-    quantidade_cotada: int = 0
-    price_basis: PriceBasisRascunho = PriceBasisRascunho.EXCLUI_IOF
-    proveniencia: ProvenienciaRascunho = Field(
-        default_factory=lambda: ProvenienciaRascunho(
-            origem=OrigemValorRascunho.MANUAL,
-            confirmado=True,
-        )
-    )
+    quantidade_cotada: int | None = None
+    price_basis: PriceBasisRascunho
+    proveniencia: ProvenienciaRascunho
 
     @field_validator("valor_centavos")
     @classmethod
@@ -163,7 +158,7 @@ class SubgrupoAtualRascunho(BaseModel):
     operadora: str
     plano_nome: str
     regime_copart_id: str
-    tipo_fiscal: Literal["seguradora", "operadora"] = "seguradora"
+    tipo_fiscal: Literal["seguradora", "operadora"]
     acomodacao: str | None = None
     modalidade: ModalidadeRascunho | None = None
     reajuste_bps: int | None = None
@@ -177,7 +172,7 @@ class OpcaoPropostaRascunho(BaseModel):
     operadora: str
     plano_nome: str
     regime_copart_id: str
-    tipo_fiscal: Literal["seguradora", "operadora"] = "seguradora"
+    tipo_fiscal: Literal["seguradora", "operadora"]
     acomodacao: str | None = None
     modalidade: ModalidadeRascunho | None = None
     tabela: list[TabelaFaixaRascunho] = Field(default_factory=list)
@@ -209,7 +204,7 @@ class RegimeCopartRascunho(BaseModel):
 
 
 class RascunhoEstudo(BaseModel):
-    rascunho_versao: str = RASCUNHO_VERSAO_ATUAL
+    rascunho_versao: str
     policy_set_versao: str
     id: str
     titulo: str

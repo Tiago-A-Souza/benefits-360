@@ -12,7 +12,9 @@ from newport_app.models.draft import (
     EmpresaCliente,
     EscolhasEstudo,
     OpcaoPropostaRascunho,
+    OrigemValorRascunho,
     PriceBasisRascunho,
+    ProvenienciaRascunho,
     RASCUNHO_VERSAO_ATUAL,
     RascunhoEstudo,
     RegimeCopartRascunho,
@@ -23,26 +25,40 @@ from newport_app.models.draft import (
 from newport_app.policy.registry import POLICY_SET_VERSAO_PADRAO
 
 
+def _prov_manual_confirmada() -> ProvenienciaRascunho:
+    return ProvenienciaRascunho(
+        origem=OrigemValorRascunho.MANUAL,
+        extrator_versao="manual",
+        confirmado=True,
+    )
+
+
+def _faixa_atual(f: int) -> TabelaFaixaRascunho:
+    return TabelaFaixaRascunho(
+        faixa=f,
+        valor_centavos=80_000 + f * 8_000,
+        quantidade_cotada=None,
+        price_basis=PriceBasisRascunho.EXCLUI_IOF,
+        proveniencia=_prov_manual_confirmada(),
+    )
+
+
+def _faixa_proposta(f: int) -> TabelaFaixaRascunho:
+    return TabelaFaixaRascunho(
+        faixa=f,
+        valor_centavos=100_000 + f * 10_000,
+        quantidade_cotada=0,
+        price_basis=PriceBasisRascunho.EXCLUI_IOF,
+        proveniencia=_prov_manual_confirmada(),
+    )
+
+
 def _tabela_atual() -> list[TabelaFaixaRascunho]:
-    return [
-        TabelaFaixaRascunho(
-            faixa=f,
-            valor_centavos=80_000 + f * 8_000,
-            price_basis=PriceBasisRascunho.EXCLUI_IOF,
-        )
-        for f in range(10)
-    ]
+    return [_faixa_atual(f) for f in range(10)]
 
 
 def _tabela_proposta() -> list[TabelaFaixaRascunho]:
-    return [
-        TabelaFaixaRascunho(
-            faixa=f,
-            valor_centavos=100_000 + f * 10_000,
-            price_basis=PriceBasisRascunho.EXCLUI_IOF,
-        )
-        for f in range(10)
-    ]
+    return [_faixa_proposta(f) for f in range(10)]
 
 
 def _escolhas_confirmadas() -> EscolhasEstudo:

@@ -24,7 +24,8 @@ Centralizar a tradução **RascunhoEstudo v1 → EstudoInput + EffectivePolicy**
 | **2.2.2** | `draft_compiler` (estrutural + mapper + `compile`) | Concluída |
 | **2.2.3** | Seeds migrados + fixtures `tests/fixtures/rascunhos/` + testes paridade | Concluída |
 | **2.2.4** | `CalculoService`, API (PUT salvar, 422 calcular), SQLite migrado | Concluída |
-| **2.2.5** | `motor_in.py` delegando ao compilador; este relatório | Concluída |
+| **2.2.5** | Testes de paridade + este relatório | Concluída |
+| **2.2.6** | Endurecimento contrato financeiro, fixtures integrais, sanitização API | Concluída |
 
 ---
 
@@ -66,6 +67,26 @@ RascunhoEstudo v1 (SQLite JSON provisório)
 
 **Price basis no rascunho:** `inclui_iof` | `exclui_iof` | `desconhecido` | `nao_aplica` (somente `tipo_fiscal=operadora` → mapeia para `exclui_iof` no motor).
 
+**Sem defaults silenciosos (2.2.6):** `rascunho_versao`, `tipo_fiscal`, `price_basis` de faixa e `proveniencia.confirmado` são explícitos nos seeds e exigidos pelo compilador para valores utilizados no cálculo.
+
+---
+
+## 5.1 Subentrega 2.2.6 — endurecimento
+
+| Correção | Implementação |
+|----------|---------------|
+| Contrato sem defaults silenciosos | `rascunho_versao` obrigatória; `tipo_fiscal` explícito; `price_basis` de faixa obrigatório; proveniência nasce `confirmado=false` |
+| Validação financeira estrita | `finance_validation.py`: centavos, basis conhecido, proveniência confirmada |
+| Custos únicos | Zero explícito permitido; `centavos=None` → `APP-FIN-003` |
+| `quantidade_cotada` | `int \| None`; zero explícito vs ausente; proposta com `None` → `APP-QTD-001` |
+| Documentos de cotação | Mapeados para `EstudoInput.documentos`; `pendente` → `APP-DOC-001` na proposta vinculada |
+| Fixtures integrais | `rascunho.json`, `expected_estudo_input.json`, `expected_policy.json`, `expected_motor_result.json` |
+| H-01 na UI | `motor_out` usa `MotorResult.politicas_efetivas`, não reconsulta registry |
+| Erros Pydantic | Handler sanitizado (`APP-REQ-001`); sem `input` bruto, nomes ou valores |
+| `motor_in.py` | Removido — compilador é o único caminho |
+
+`compiler_versao`: **2.2.6**
+
 ---
 
 ## 5. Decisões Newport aplicadas
@@ -86,13 +107,14 @@ RascunhoEstudo v1 (SQLite JSON provisório)
 
 ## 6. Migrações realizadas
 
-### 6.1 Seeds `demo-12` / `demo-41`
+### 6.1 Seeds `demo-12` / `demo-41` (atualizado 2.2.6)
 
-- Adicionados `rascunho_versao: "1.0"` e `policy_set_versao: "v2026.07-provisoria"`.
-- `escolhas` migradas para `CampoConfirmavel*` com `confirmado: true`.
-- Removido `max_beneficiarios_homologados` das escolhas (agora no PolicySet).
-- Substituídos booleans IOF por `price_basis` por faixa e `fatura_price_basis` no subgrupo.
-- Adicionada `empresa_cliente`.
+- `rascunho_versao: "1.0"` e `policy_set_versao: "v2026.07-provisoria"` explícitos.
+- `escolhas` com `CampoConfirmavel*` e `confirmado: true`.
+- `tipo_fiscal: "seguradora"` explícito em subgrupo e proposta.
+- Faixas com `price_basis`, `proveniencia.confirmado: true` e `quantidade_cotada` explícita na proposta (`0`).
+- Tabela atual com `quantidade_cotada: null` (não exigida para compilação).
+- `empresa_cliente`: `Empresa Demonstração Ltda.`
 
 ### 6.2 SQLite (provisório — endurecimento na ETAPA 2.6)
 

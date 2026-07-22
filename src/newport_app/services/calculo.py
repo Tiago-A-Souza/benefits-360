@@ -53,7 +53,6 @@ class CalculoService:
         return motor_result_para_comparativo(
             rascunho,
             motor_result,
-            self._policy_registry,
         )
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:

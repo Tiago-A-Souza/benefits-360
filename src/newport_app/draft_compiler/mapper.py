@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from newport_app.draft_compiler.finance_validation import (
+    validar_componente_financeiro,
+    validar_faixa_tabela,
+    validar_price_basis_usavel,
+    validar_proveniencia_confirmada,
+)
 from newport_app.models.compilation import ErroCompilacao
 from newport_app.models.draft import (
     ComponenteFinanceiroRascunho,
@@ -15,6 +21,7 @@ from newport_motor.models import (
     AtribuicaoPlano,
     Cenario,
     CustoUnico,
+    DocumentoCotacao,
     EstudoInput,
     OpcaoPlano,
     RegimeCopart,
@@ -27,6 +34,7 @@ from newport_motor.provenance import ComponenteFinanceiro, ProvenienciaCampo
 from newport_motor.types import (
     AlvoTipo,
     BaselineEscolhido,
+    EstadoExtracao,
     FormatoEstudo,
     OrigemValor,
     PrecedenciaAtualVida,
@@ -34,6 +42,12 @@ from newport_motor.types import (
     RegimeCopartTipo,
     TipoFiscal,
 )
+
+_ESTADO_EXTRACAO: dict[str, EstadoExtracao] = {
+    "manual": EstadoExtracao.MANUAL,
+    "pendente": EstadoExtracao.FALHA_EXTRACAO,
+    "extraido": EstadoExtracao.EXTRAIDO_OK,
+}
 
 
 def _erro(codigo: str, caminho: str, mensagem: str) -> ErroCompilacao:
@@ -75,14 +89,14 @@ def _proveniencia_motor(prov: ProvenienciaRascunho) -> ProvenienciaCampo:
 
 
 def _componente_motor(
-    comp: ComponenteFinanceiroRascunho | None,
+    comp: ComponenteFinanceiroRascunho,
     tipo_fiscal: str,
     caminho: str,
     erros: list[ErroCompilacao],
 ) -> ComponenteFinanceiro | None:
-    if comp is None:
+    if not validar_componente_financeiro(comp, tipo_fiscal, caminho, erros):
         return None
-    basis = mapear_price_basis(comp.price_basis, tipo_fiscal, caminho)
+    basis = mapear_price_basis(comp.price_basis, tipo_fiscal, f"{caminho}/price_basis")
     if isinstance(basis, ErroCompilacao):
         erros.append(basis)
         return None
@@ -93,29 +107,78 @@ def _componente_motor(
     )
 
 
+def _quantidade_motor(faixa: TabelaFaixaRascunho) -> int:
+    return faixa.quantidade_cotada if faixa.quantidade_cotada is not None else 0
+
+
 def _tabela_faixa_motor(
     faixa: TabelaFaixaRascunho,
     tipo_fiscal: str,
     caminho: str,
     erros: list[ErroCompilacao],
+    *,
+    exigir_quantidade: bool,
 ) -> TabelaPrecoFaixa | None:
-    basis = mapear_price_basis(faixa.price_basis, tipo_fiscal, caminho)
+    if not validar_faixa_tabela(
+        faixa,
+        tipo_fiscal,
+        caminho,
+        erros,
+        exigir_quantidade=exigir_quantidade,
+    ):
+        return None
+    basis = mapear_price_basis(faixa.price_basis, tipo_fiscal, f"{caminho}/price_basis")
     if isinstance(basis, ErroCompilacao):
         erros.append(basis)
         return None
     return TabelaPrecoFaixa(
         faixa=faixa.faixa,
         valor_centavos=faixa.valor_centavos,
-        quantidade_cotada=faixa.quantidade_cotada,
+        quantidade_cotada=_quantidade_motor(faixa),
         price_basis=basis,
         proveniencia=_proveniencia_motor(faixa.proveniencia),
     )
+
+
+def _validar_documentos_vinculados(
+    rascunho: RascunhoEstudo,
+    erros: list[ErroCompilacao],
+) -> None:
+    documentos = {d.id: d for d in rascunho.documentos_cotacao}
+    for idx, op in enumerate(rascunho.opcoes_proposta):
+        if op.documento_cotacao_id is None:
+            continue
+        doc = documentos.get(op.documento_cotacao_id)
+        if doc is None:
+            continue
+        if doc.estado_extracao == "pendente":
+            erros.append(
+                _erro(
+                    "APP-DOC-001",
+                    f"/opcoes_proposta/{idx}/documento_cotacao_id",
+                    "A proposta está vinculada a um documento ainda pendente de extração. "
+                    "Conclua ou confirme o documento antes de calcular.",
+                )
+            )
+
+
+def _mapear_documentos(rascunho: RascunhoEstudo) -> list[DocumentoCotacao]:
+    return [
+        DocumentoCotacao(
+            id=doc.id,
+            operadora=doc.operadora,
+            estado_extracao=_ESTADO_EXTRACAO[doc.estado_extracao],
+            parser_versao=doc.parser_versao,
+        )
+        for doc in rascunho.documentos_cotacao
+    ]
 
 
 def mapear_estudo_input(
     rascunho: RascunhoEstudo,
 ) -> tuple[EstudoInput | None, list[ErroCompilacao]]:
     erros: list[ErroCompilacao] = []
+    _validar_documentos_vinculados(rascunho, erros)
 
     vidas: list[Vida] = []
     for idx, v in enumerate(rascunho.vidas):
@@ -129,10 +192,13 @@ def mapear_estudo_input(
                 )
                 if sg is not None:
                     sg_tipo = sg.tipo_fiscal
+            caminho = f"/vidas/{idx}/valor_fatura"
+            if not validar_componente_financeiro(v.valor_fatura, sg_tipo, caminho, erros):
+                continue
             mapped = mapear_price_basis(
                 v.valor_fatura.price_basis,
                 sg_tipo,
-                f"/vidas/{idx}/valor_fatura/price_basis",
+                f"{caminho}/price_basis",
             )
             if isinstance(mapped, ErroCompilacao):
                 erros.append(mapped)
@@ -159,24 +225,43 @@ def mapear_estudo_input(
 
     subgrupos: list[SubgrupoAtual] = []
     for idx, sg in enumerate(rascunho.subgrupos_atuais):
-        basis = mapear_price_basis(
-            sg.fatura_price_basis,
-            sg.tipo_fiscal,
-            f"/subgrupos_atuais/{idx}/fatura_price_basis",
-        )
-        if isinstance(basis, ErroCompilacao):
-            erros.append(basis)
-            continue
+        basis = PriceBasis.DESCONHECIDO
+        if sg.fatura_price_basis != PriceBasisRascunho.DESCONHECIDO:
+            if not validar_price_basis_usavel(
+                sg.fatura_price_basis,
+                sg.tipo_fiscal,
+                f"/subgrupos_atuais/{idx}/fatura_price_basis",
+                erros,
+            ):
+                continue
+            mapped = mapear_price_basis(
+                sg.fatura_price_basis,
+                sg.tipo_fiscal,
+                f"/subgrupos_atuais/{idx}/fatura_price_basis",
+            )
+            if isinstance(mapped, ErroCompilacao):
+                erros.append(mapped)
+                continue
+            basis = mapped
         tabela: list[TabelaPrecoFaixa] = []
         for f_idx, faixa in enumerate(sg.tabela_atual):
             item = _tabela_faixa_motor(
                 faixa,
                 sg.tipo_fiscal,
-                f"/subgrupos_atuais/{idx}/tabela_atual/{f_idx}/price_basis",
+                f"/subgrupos_atuais/{idx}/tabela_atual/{f_idx}",
                 erros,
+                exigir_quantidade=False,
             )
             if item is not None:
                 tabela.append(item)
+        subtotal = None
+        if sg.subtotal_atual_impresso is not None:
+            subtotal = _componente_motor(
+                sg.subtotal_atual_impresso,
+                sg.tipo_fiscal,
+                f"/subgrupos_atuais/{idx}/subtotal_atual_impresso",
+                erros,
+            )
         subgrupos.append(
             SubgrupoAtual(
                 id=sg.id,
@@ -186,12 +271,7 @@ def mapear_estudo_input(
                 regime_copart_id=sg.regime_copart_id,
                 reajuste_bps=sg.reajuste_bps,
                 fatura_price_basis=basis,
-                subtotal_impresso=_componente_motor(
-                    sg.subtotal_atual_impresso,
-                    sg.tipo_fiscal,
-                    f"/subgrupos_atuais/{idx}/subtotal_atual_impresso/price_basis",
-                    erros,
-                ),
+                subtotal_impresso=subtotal,
                 tabela_atual=tabela,
             )
         )
@@ -203,11 +283,25 @@ def mapear_estudo_input(
             item = _tabela_faixa_motor(
                 faixa,
                 op.tipo_fiscal,
-                f"/opcoes_proposta/{idx}/tabela/{f_idx}/price_basis",
+                f"/opcoes_proposta/{idx}/tabela/{f_idx}",
                 erros,
+                exigir_quantidade=True,
             )
             if item is not None:
                 tabela.append(item)
+        custos: list[CustoUnico] = []
+        for cu_idx, cu in enumerate(op.custos_unicos):
+            caminho = f"/opcoes_proposta/{idx}/custos_unicos/{cu_idx}/valor"
+            if not validar_componente_financeiro(cu.valor, op.tipo_fiscal, caminho, erros):
+                continue
+            custos.append(
+                CustoUnico(
+                    id=cu.id,
+                    descricao=cu.descricao,
+                    valor_centavos=cu.valor.centavos,  # type: ignore[arg-type]
+                    proveniencia=_proveniencia_motor(cu.valor.proveniencia),
+                )
+            )
         opcoes.append(
             OpcaoPlano(
                 id=op.id,
@@ -216,45 +310,57 @@ def mapear_estudo_input(
                 regime_copart_id=op.regime_copart_id,
                 tipo_fiscal=TipoFiscal(op.tipo_fiscal),
                 tabela=tabela,
-                premio_saude=_componente_motor(
-                    op.premio_saude,
-                    op.tipo_fiscal,
-                    f"/opcoes_proposta/{idx}/premio_saude/price_basis",
-                    erros,
-                ),
-                iof=_componente_motor(
-                    op.iof,
-                    op.tipo_fiscal,
-                    f"/opcoes_proposta/{idx}/iof/price_basis",
-                    erros,
-                ),
-                total_recorrente=_componente_motor(
-                    op.total_recorrente,
-                    op.tipo_fiscal,
-                    f"/opcoes_proposta/{idx}/total_recorrente/price_basis",
-                    erros,
-                ),
-                total_primeira_parcela=_componente_motor(
-                    op.total_primeira_parcela,
-                    op.tipo_fiscal,
-                    f"/opcoes_proposta/{idx}/total_primeira_parcela/price_basis",
-                    erros,
-                ),
-                subtotal_impresso=_componente_motor(
-                    op.subtotal_impresso,
-                    op.tipo_fiscal,
-                    f"/opcoes_proposta/{idx}/subtotal_impresso/price_basis",
-                    erros,
-                ),
-                custos_unicos=[
-                    CustoUnico(
-                        id=cu.id,
-                        descricao=cu.descricao,
-                        valor_centavos=cu.valor.centavos or 0,
-                        proveniencia=_proveniencia_motor(cu.valor.proveniencia),
+                premio_saude=(
+                    _componente_motor(
+                        op.premio_saude,
+                        op.tipo_fiscal,
+                        f"/opcoes_proposta/{idx}/premio_saude",
+                        erros,
                     )
-                    for cu in op.custos_unicos
-                ],
+                    if op.premio_saude
+                    else None
+                ),
+                iof=(
+                    _componente_motor(
+                        op.iof,
+                        op.tipo_fiscal,
+                        f"/opcoes_proposta/{idx}/iof",
+                        erros,
+                    )
+                    if op.iof
+                    else None
+                ),
+                total_recorrente=(
+                    _componente_motor(
+                        op.total_recorrente,
+                        op.tipo_fiscal,
+                        f"/opcoes_proposta/{idx}/total_recorrente",
+                        erros,
+                    )
+                    if op.total_recorrente
+                    else None
+                ),
+                total_primeira_parcela=(
+                    _componente_motor(
+                        op.total_primeira_parcela,
+                        op.tipo_fiscal,
+                        f"/opcoes_proposta/{idx}/total_primeira_parcela",
+                        erros,
+                    )
+                    if op.total_primeira_parcela
+                    else None
+                ),
+                subtotal_impresso=(
+                    _componente_motor(
+                        op.subtotal_impresso,
+                        op.tipo_fiscal,
+                        f"/opcoes_proposta/{idx}/subtotal_impresso",
+                        erros,
+                    )
+                    if op.subtotal_impresso
+                    else None
+                ),
+                custos_unicos=custos,
                 documento_id=op.documento_cotacao_id,
             )
         )
@@ -279,6 +385,7 @@ def mapear_estudo_input(
         )
         for c in rascunho.cenarios
     ]
+    documentos = _mapear_documentos(rascunho)
 
     if erros:
         return None, erros
@@ -292,6 +399,7 @@ def mapear_estudo_input(
             opcoes_plano=opcoes,
             regimes_copart=regimes,
             cenarios=cenarios,
+            documentos=documentos,
         ),
         [],
     )

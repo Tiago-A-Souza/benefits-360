@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 from newport_motor.models import EstudoInput
 from newport_motor.policy import EffectivePolicy
 
-COMPILER_VERSAO = "2.2.0"
+COMPILER_VERSAO = "2.2.6"
 
 
 class ErroCompilacao(BaseModel):

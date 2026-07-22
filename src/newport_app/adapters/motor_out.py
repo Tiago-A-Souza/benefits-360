@@ -17,7 +17,6 @@ from newport_app.presentation.textos import (
     plural_beneficiarios,
     rotulos_diferenca,
 )
-from newport_app.policy.registry import PolicySetRegistry, default_registry
 from newport_motor.result import MotorResult
 from newport_motor.types import SeveridadeValidacao
 
@@ -79,16 +78,15 @@ def _traduzir_validacao(
     codigo: str,
     mensagem_motor: str,
     rascunho: RascunhoEstudo,
-    policy_registry: PolicySetRegistry,
+    resultado: MotorResult,
 ) -> PendenciaItem:
     if codigo == "H-01":
         n = len(rascunho.vidas_incluidas())
-        policy_set = policy_registry.resolve(rascunho.policy_set_versao)
-        max_h = policy_set.max_vidas_homologadas if policy_set else 29
+        max_h = resultado.politicas_efetivas.get("max_vidas_homologadas", 29)
         return PendenciaItem(
             tipo="alerta",
             titulo="Quantidade acima da faixa homologada",
-            descricao=mensagem_faixa_homologada(n, max_h or 29),
+            descricao=mensagem_faixa_homologada(n, int(max_h) if max_h is not None else 29),
             acao_sugerida="Confirme com o revisor que a quantidade foi conferida.",
         )
     if codigo in _TRADUCOES:
@@ -118,9 +116,7 @@ def rascunho_para_resumo(rascunho: RascunhoEstudo) -> EstudoResumo:
 def motor_result_para_comparativo(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
-    policy_registry: PolicySetRegistry | None = None,
 ) -> ComparativoResponse:
-    registry = policy_registry or default_registry
     pendencias: list[PendenciaItem] = []
     vistos: set[str] = set()
     for val in resultado.validacoes:
@@ -132,7 +128,7 @@ def motor_result_para_comparativo(
             SeveridadeValidacao.ALERTA,
         ):
             pendencias.append(
-                _traduzir_validacao(val.codigo, val.mensagem, rascunho, registry)
+                _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
             )
 
     auditoria = [
