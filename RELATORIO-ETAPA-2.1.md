@@ -35,24 +35,28 @@ Interface web mínima que carrega um estudo fictício de renovação (12 benefic
 
 ---
 
-## 4. Como executar
+## 4. Como executar (Windows PowerShell)
 
-```bash
-# Backend (raiz do repositório)
+**Terminal 1 — backend** (raiz do repositório):
+
+```powershell
 pip install -e ".[app,dev]"
 uvicorn newport_app.api.main:app --reload --port 8000
+```
 
-# Frontend (outro terminal)
-cd web
-npm install
-npm run dev
+**Terminal 2 — frontend** (`web/`):
+
+```powershell
+Set-Location web
+npm.cmd install
+npm.cmd run dev
 ```
 
 Abrir `http://localhost:5173` → selecionar estudo → **Calcular comparativo**.
 
-Produção local (UI servida pelo FastAPI): `npm run build` em `web/` e acessar `http://127.0.0.1:8000`.
+**Modo integrado** (UI servida pelo FastAPI após build): `npm.cmd run build` em `web/` e acessar `http://127.0.0.1:8000`.
 
-Banco SQLite: `.data/newport_app.db` (gitignored).
+Banco SQLite: `.data/newport_app.db` (gitignored). Build frontend: `web/dist/` (gitignored).
 
 ---
 
@@ -84,6 +88,13 @@ SISCOR, documentos reais, entrada manual de propostas, PDF, snapshot/aprovação
 | **`quantidade_cotada` vs vidas do plano** | Antes da ETAPA 2.4/2.5 e antes de homologação financeira real |
 | Caso dourado financeiro | Ainda pendente (proposta alinhada à população) |
 | Confirmação revisor acima da faixa homologada | ETAPA 2.7 (camada app) |
+| **Vulnerabilidades npm (Vite / esbuild)** | Atualização controlada de dependências **antes** de expor o piloto em rede; **não** usar `npm audit fix --force` |
+
+### Build frontend (concluído manualmente)
+
+- `web/package-lock.json` versionado (63 pacotes).
+- `web/node_modules/` e `web/dist/` **fora do Git** (`.gitignore`).
+- `npm.cmd run build` concluído com sucesso (Vite ~848 ms).
 
 ---
 
