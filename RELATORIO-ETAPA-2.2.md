@@ -132,16 +132,33 @@ RascunhoEstudo v1 (SQLite JSON provisório)
 
 ## 7. Testes
 
-| Suíte | Casos | Resultado |
-|-------|-------|-----------|
-| Motor + fixtures JSON | 93 | Pass |
-| API walking skeleton + apresentação | 18 | Pass |
-| **Paridade compilador** (`test_draft_compiler_paridade.py`) | 20 | Pass |
-| **Total** | **131** | **Pass** |
+| Suíte | Escopo | Casos | Resultado |
+|-------|--------|-------|-----------|
+| Motor + fixtures JSON | Motor puro (`tests/fixtures/renovacao_*`) | 93 | Pass |
+| API walking skeleton + apresentação | Rotas HTTP, linguagem UI, integração demos | 18 | Pass |
+| **Paridade integral compilador** | `rascunho.json` → compilação → `MotorResult` completo | 33 | Pass |
+| **Total** | | **144** | **Pass** |
 
-Casos de paridade principais: P-01/P-02 (demo-12/41), escolhas não confirmadas, policy inexistente, `nao_aplica`, salvar incompleto vs IDs duplicados, invariante `ResultadoCompilacao`, API 422/200, mensagens sem PII.
+### 7.1 Paridade integral (não resumo)
 
-Fixtures: `tests/fixtures/rascunhos/demo_12/` e `demo_41/` com `expected_policy.json` e `expected_motor.json`.
+Fixtures em `tests/fixtures/rascunhos/demo_12/` e `demo_41/`:
+
+- comparação **integral** de `EstudoInput`, `EffectivePolicy` e `MotorResult`;
+- teste anti-deriva: seeds Python ≡ `rascunho.json`.
+
+### 7.2 Testes de endurecimento 2.2.6 (amostra)
+
+- `price_basis` / proveniência ausentes ou não confirmados
+- custo zero explícito vs custo sem valor
+- `quantidade_cotada` zero vs `null` na proposta
+- documento vinculado no `EstudoInput`; documento `pendente` bloqueia
+- erro Pydantic sanitizado sem PII
+- H-01 usa `politicas_efetivas` do motor
+- `rascunho_versao` ausente rejeitada
+
+### 7.3 Testes de API
+
+Walking skeleton (`test_api_walking_skeleton.py`) e apresentação (`test_apresentacao_linguagem.py`) validam contrato HTTP e experiência dos demos — **não** substituem a paridade integral do compilador.
 
 ---
 
@@ -150,7 +167,7 @@ Fixtures: `tests/fixtures/rascunhos/demo_12/` e `demo_41/` com `expected_policy.
 - Importação SISCOR (2.3)
 - Entrada manual de proposta real (2.4)
 - UI de novos campos
-- Resolução de `quantidade_cotada`
+- Resolução de correspondência `quantidade_cotada` vs população (decisão 2.4/2.5)
 - Snapshot / PPTX (2.7–2.8)
 - Persistência relacional definitiva (2.6)
 - Alteração do motor financeiro
