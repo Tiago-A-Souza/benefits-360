@@ -1,0 +1,1 @@
+Tabela proposta inclui_iof — IOF não reaplicado.

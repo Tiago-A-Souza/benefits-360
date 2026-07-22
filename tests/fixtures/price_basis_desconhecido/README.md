@@ -1,0 +1,1 @@
+price_basis desconhecido bloqueia antes do cálculo.

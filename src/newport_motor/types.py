@@ -43,6 +43,13 @@ class RoundingStrategy(str, Enum):
     NO_TOTAL = "no_total"
 
 
+class PrecedenciaAtualVida(str, Enum):
+    """Escolha bloqueante quando tabela atual e fatura coexistem (DP-02)."""
+
+    TABELA_ATUAL = "tabela_atual"
+    VALOR_FATURA = "valor_fatura"
+
+
 class OrigemValor(str, Enum):
     EXTRAIDO = "extraido"
     CALCULADO = "calculado"

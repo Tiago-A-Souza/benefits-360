@@ -1,0 +1,5 @@
+{
+  "tem_bloqueio": false,
+  "estrategia": "soma_entao_aplica",
+  "bloqueios": []
+}

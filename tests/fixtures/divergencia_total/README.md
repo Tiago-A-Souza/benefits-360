@@ -1,0 +1,1 @@
+Total impresso diverge do calculado agregado.

@@ -5,7 +5,8 @@ from datetime import date
 from newport_motor.engine import calcular
 from newport_motor.models import AtribuicaoPlano, Cenario, EstudoInput
 from newport_motor.policy import EffectivePolicy, TolerancePolicy
-from newport_motor.types import FormatoEstudo, RegimeCopartTipo, SeveridadeValidacao
+from newport_motor.provenance import ComponenteFinanceiro, ProvenienciaCampo
+from newport_motor.types import FormatoEstudo, OrigemValor, PriceBasis, RegimeCopartTipo, SeveridadeValidacao
 from tests.conftest import (
     opcao_plano,
     policy_completa,
@@ -49,9 +50,6 @@ def test_reconciliacao_ok():
     estudo = _estudo_renovacao_2_vidas(total_recorrente=None)
     policy = policy_completa()
     subtotal = _subtotal_calculado(estudo, policy)
-    from newport_motor.provenance import ComponenteFinanceiro, ProvenienciaCampo
-    from newport_motor.types import OrigemValor, PriceBasis
-
     estudo.opcoes_plano[0].total_recorrente = ComponenteFinanceiro(
         centavos=subtotal,
         price_basis=PriceBasis.INCLUI_IOF,
@@ -77,9 +75,6 @@ def test_reconciliacao_total_ausente_nao_quebra():
 
 def test_reconciliacao_bloqueante_fora_tolerancia():
     estudo = _estudo_renovacao_2_vidas(total_recorrente=99_999_99)
-    from newport_motor.provenance import ComponenteFinanceiro, ProvenienciaCampo
-    from newport_motor.types import OrigemValor, PriceBasis
-
     estudo.opcoes_plano[0].total_recorrente = ComponenteFinanceiro(
         centavos=99_999_99,
         price_basis=PriceBasis.INCLUI_IOF,
@@ -94,9 +89,6 @@ def test_reconciliacao_bloqueante_fora_tolerancia():
 
 def test_tolerancias_vindas_da_policy():
     estudo = _estudo_renovacao_2_vidas(total_recorrente=99_999_99)
-    from newport_motor.provenance import ComponenteFinanceiro, ProvenienciaCampo
-    from newport_motor.types import OrigemValor, PriceBasis
-
     estudo.opcoes_plano[0].total_recorrente = ComponenteFinanceiro(
         centavos=99_999_99,
         price_basis=PriceBasis.INCLUI_IOF,
@@ -109,3 +101,17 @@ def test_tolerancias_vindas_da_policy():
         v for v in result.validacoes if v.codigo == "B-02" and v.severidade == SeveridadeValidacao.BLOQUEANTE
     ]
     assert not bloqueios
+
+
+def test_subtotal_zero_nao_vira_none():
+    estudo = _estudo_renovacao_2_vidas(total_recorrente=None)
+    # Força tabela zerada na faixa das vidas — usar faixa com valor 0
+    from tests.conftest import tabela_padrao
+
+    estudo.opcoes_plano[0].tabela = [
+        t.model_copy(update={"valor_centavos": 0}) for t in tabela_padrao(0, 0)
+    ]
+    result = calcular(estudo, policy_completa())
+    sg = result.cenarios[0].secoes[0].subgrupos[0]
+    assert sg.subtotal_proposta_centavos is not None
+    assert sg.subtotal_proposta_centavos.centavos == 0

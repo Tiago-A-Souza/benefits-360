@@ -1,0 +1,1 @@
+Mesma opção atribuída a dois subgrupos — reconciliação agregada.

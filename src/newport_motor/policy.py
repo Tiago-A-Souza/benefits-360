@@ -6,7 +6,12 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from newport_motor.types import BaselineEscolhido, RateBasisPoints, RoundingStrategy
+from newport_motor.types import (
+    BaselineEscolhido,
+    PrecedenciaAtualVida,
+    RateBasisPoints,
+    RoundingStrategy,
+)
 
 
 class TolerancePolicy(BaseModel):
@@ -21,6 +26,7 @@ class EffectivePolicy(BaseModel):
     policy_set_versao: str = "v2026.07-provisoria"
     data_referencia_idade: date | None = None
     baseline_escolhido: BaselineEscolhido | None = None
+    precedencia_atual_vida: PrecedenciaAtualVida | None = None
     iof_bps: RateBasisPoints = RateBasisPoints(238)
     tolerancias: TolerancePolicy = Field(default_factory=TolerancePolicy)
     estrategia_arredondamento: RoundingStrategy = RoundingStrategy.POR_VIDA_ENTAO_SOMA
@@ -34,6 +40,9 @@ class EffectivePolicy(BaseModel):
             ),
             "baseline_escolhido": (
                 self.baseline_escolhido.value if self.baseline_escolhido else None
+            ),
+            "precedencia_atual_vida": (
+                self.precedencia_atual_vida.value if self.precedencia_atual_vida else None
             ),
             "iof_bps": int(self.iof_bps),
             "tolerancias": self.tolerancias.model_dump(),

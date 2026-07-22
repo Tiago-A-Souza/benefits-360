@@ -1,0 +1,1 @@
+Coparticipação percentual, 1 vida.

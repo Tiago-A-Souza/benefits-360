@@ -1,0 +1,1 @@
+Estratégia soma_entao_aplica.

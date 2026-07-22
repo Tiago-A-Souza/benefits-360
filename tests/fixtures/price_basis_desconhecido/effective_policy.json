@@ -1,0 +1,8 @@
+{
+  "policy_set_versao": "fixture-v1",
+  "data_referencia_idade": "2026-06-30",
+  "baseline_escolhido": null,
+  "precedencia_atual_vida": null,
+  "iof_bps": 238,
+  "estrategia_arredondamento": "por_vida_entao_soma"
+}

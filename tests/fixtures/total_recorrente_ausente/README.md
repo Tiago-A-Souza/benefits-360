@@ -1,0 +1,1 @@
+Total recorrente ausente — cálculo ok, sem B-02 de total.

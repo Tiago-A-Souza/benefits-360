@@ -1,0 +1,1 @@
+Divergência de subtotal além da tolerância.

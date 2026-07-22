@@ -1,0 +1,1 @@
+Coparticipação parcial, 1 vida.

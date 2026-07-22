@@ -96,7 +96,7 @@ def test_proveniencia_nos_valores_calculados():
     result = calcular(_estudo_n_vidas(1), policy_completa())
     valor = result.cenarios[0].secoes[0].subgrupos[0].vidas[0].proposta_centavos
     assert valor.proveniencia.origem == OrigemValor.CALCULADO
-    assert valor.proveniencia.extrator_versao == "motor@0.1.0"
+    assert valor.proveniencia.extrator_versao == "motor@0.1.1"
 
 
 def test_b03_origem_ia_nao_confirmada():

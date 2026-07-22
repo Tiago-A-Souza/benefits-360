@@ -1,0 +1,1 @@
+Primeira parcela = recorrente + custos únicos.

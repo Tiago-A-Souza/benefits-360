@@ -1,0 +1,110 @@
+{
+  "id": "div-total",
+  "formato": "novo",
+  "vidas": [
+    {
+      "id": "v1",
+      "nome": "F",
+      "nascimento": "1990-01-01",
+      "incluida": true
+    }
+  ],
+  "opcoes_plano": [
+    {
+      "id": "op-1",
+      "operadora": "Bradesco",
+      "plano_nome": "P",
+      "regime_copart_id": "regime-sem",
+      "tipo_fiscal": "seguradora",
+      "tabela": [
+        {
+          "faixa": 0,
+          "valor_centavos": 100000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 1,
+          "valor_centavos": 110000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 2,
+          "valor_centavos": 120000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 3,
+          "valor_centavos": 130000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 4,
+          "valor_centavos": 140000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 5,
+          "valor_centavos": 150000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 6,
+          "valor_centavos": 160000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 7,
+          "valor_centavos": 170000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 8,
+          "valor_centavos": 180000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 9,
+          "valor_centavos": 190000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        }
+      ],
+      "total_recorrente": {
+        "centavos": 99999999,
+        "price_basis": "inclui_iof",
+        "proveniencia": {
+          "origem": "manual",
+          "confirmado": true
+        }
+      }
+    }
+  ],
+  "regimes_copart": [
+    {
+      "id": "regime-sem",
+      "tipo": "sem"
+    }
+  ],
+  "cenarios": [
+    {
+      "id": "c1",
+      "atribuicoes": [
+        {
+          "id": "a1",
+          "alvo_tipo": "vida",
+          "alvo_id": "v1",
+          "opcao_plano_id": "op-1"
+        }
+      ]
+    }
+  ]
+}

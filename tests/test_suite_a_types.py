@@ -2,7 +2,7 @@
 
 from newport_motor.money import apply_rate_bps, round_half_up_from_numerator
 from newport_motor.rounding import apply_iof_strategy
-from newport_motor.types import MoneyCents, RateBasisPoints, RoundingStrategy
+from newport_motor.types import MoneyCents, PriceBasis, RateBasisPoints, RoundingStrategy, TipoFiscal
 
 
 def test_money_cents_is_int():
@@ -12,33 +12,55 @@ def test_money_cents_is_int():
 
 
 def test_rate_bps_iof_238():
-    # 10000 centavos * 2.38% = 10238 centavos (R$102,38)
     result = apply_rate_bps(10_000_00, RateBasisPoints(238))
     assert result == 10_238_00
 
 
-def test_round_half_up_from_numerator():
+def test_round_half_up_positivo():
     assert round_half_up_from_numerator(1005, 10) == 101
     assert round_half_up_from_numerator(1004, 10) == 100
+    assert round_half_up_from_numerator(5, 10) == 1
+    assert round_half_up_from_numerator(4, 10) == 0
+
+
+def test_round_half_up_negativo():
+    assert round_half_up_from_numerator(-1005, 10) == -101
+    assert round_half_up_from_numerator(-1004, 10) == -100
+    assert round_half_up_from_numerator(-5, 10) == -1
+    assert round_half_up_from_numerator(-4, 10) == 0
 
 
 def test_ordem_por_vida_entao_soma():
-    """Aplica IOF por vida, arredonda, depois soma."""
-    valores = [10_000_00, 10_500_00]
-    com_iof = apply_iof_strategy(valores, RateBasisPoints(238), RoundingStrategy.POR_VIDA_ENTAO_SOMA)
-    assert len(com_iof) == 2
-    total = sum(int(v) for v in com_iof)
-    # Cada vida arredondada individualmente
+    valores = [(10_000_00, PriceBasis.EXCLUI_IOF), (10_500_00, PriceBasis.EXCLUI_IOF)]
+    com_iof = apply_iof_strategy(
+        valores, TipoFiscal.SEGURADORA, RateBasisPoints(238), RoundingStrategy.POR_VIDA_ENTAO_SOMA
+    )
     v1 = apply_rate_bps(10_000_00, RateBasisPoints(238))
     v2 = apply_rate_bps(10_500_00, RateBasisPoints(238))
     assert int(com_iof[0]) == v1
     assert int(com_iof[1]) == v2
-    assert total == v1 + v2
 
 
-def test_borda_arredondamento_half_up():
-    # Caso onde numerador fica exatamente no meio
-    bps = RateBasisPoints(238)
-    # valor que gera fração de centavo
-    result = apply_rate_bps(333_33, bps)
-    assert isinstance(result, int)
+def test_inclui_iof_nao_reaplica():
+    valores = [(10_238_00, PriceBasis.INCLUI_IOF)]
+    com_iof = apply_iof_strategy(
+        valores, TipoFiscal.SEGURADORA, RateBasisPoints(238), RoundingStrategy.POR_VIDA_ENTAO_SOMA
+    )
+    assert int(com_iof[0]) == 10_238_00
+
+
+def test_no_total_aplica_iof_no_agregado():
+    from newport_motor.finance import para_base_exclui_iof, total_recorrente_de_bases_exclui
+
+    bases = [10_000_00, 10_500_00]
+    per_vida = apply_iof_strategy(
+        [(b, PriceBasis.EXCLUI_IOF) for b in bases],
+        TipoFiscal.SEGURADORA,
+        RateBasisPoints(238),
+        RoundingStrategy.NO_TOTAL,
+    )
+    assert int(per_vida[0]) == 10_000_00
+    total = total_recorrente_de_bases_exclui(
+        bases, TipoFiscal.SEGURADORA, RateBasisPoints(238), RoundingStrategy.NO_TOTAL
+    )
+    assert int(total) == apply_rate_bps(20_500_00, RateBasisPoints(238))

@@ -1,0 +1,1 @@
+Divergência por vida além da tolerância.

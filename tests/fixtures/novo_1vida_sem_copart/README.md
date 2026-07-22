@@ -1,0 +1,1 @@
+Seguro novo, 1 vida, operadora sem IOF, copart sem.

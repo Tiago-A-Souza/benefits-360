@@ -25,21 +25,27 @@ from newport_motor.types import (
     EstadoExtracao,
     FormatoEstudo,
     OrigemValor,
+    PrecedenciaAtualVida,
     PriceBasis,
     RegimeCopartTipo,
+    RoundingStrategy,
     TipoFiscal,
 )
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
-def tabela_padrao(base_centavos: int = 10_000_00, incremento: int = 500_00) -> list[TabelaPrecoFaixa]:
+def tabela_padrao(
+    base_centavos: int = 100_000,
+    incremento: int = 10_000,
+    basis: PriceBasis = PriceBasis.EXCLUI_IOF,
+) -> list[TabelaPrecoFaixa]:
     return [
         TabelaPrecoFaixa(
             faixa=f,
             valor_centavos=base_centavos + f * incremento,
             quantidade_cotada=0,
-            price_basis=PriceBasis.EXCLUI_IOF,
+            price_basis=basis,
         )
         for f in range(10)
     ]
@@ -54,14 +60,19 @@ def opcao_plano(
     operadora: str = "Bradesco",
     regime_id: str = "regime-sem-1",
     tipo_fiscal: TipoFiscal = TipoFiscal.SEGURADORA,
-    base: int = 10_000_00,
+    base: int = 100_000,
+    incremento: int = 10_000,
+    tabela_basis: PriceBasis = PriceBasis.EXCLUI_IOF,
     total_recorrente: int | None = None,
+    total_recorrente_basis: PriceBasis | None = None,
     total_primeira: int | None = None,
     custos_unicos: list[CustoUnico] | None = None,
-    premio_basis: PriceBasis = PriceBasis.EXCLUI_IOF,
     doc_id: str | None = None,
 ) -> OpcaoPlano:
-    tabela = tabela_padrao(base)
+    tabela = tabela_padrao(base, incremento, tabela_basis)
+    tr_basis = total_recorrente_basis or (
+        PriceBasis.INCLUI_IOF if tipo_fiscal == TipoFiscal.SEGURADORA else PriceBasis.EXCLUI_IOF
+    )
     return OpcaoPlano(
         id=opcao_id,
         operadora=operadora,
@@ -69,11 +80,11 @@ def opcao_plano(
         regime_copart_id=regime_id,
         tipo_fiscal=tipo_fiscal,
         tabela=tabela,
-        premio_saude=ComponenteFinanceiro(centavos=None, price_basis=premio_basis),
+        premio_saude=ComponenteFinanceiro(centavos=None, price_basis=tabela_basis),
         total_recorrente=(
             ComponenteFinanceiro(
                 centavos=total_recorrente,
-                price_basis=PriceBasis.INCLUI_IOF if tipo_fiscal == TipoFiscal.SEGURADORA else PriceBasis.EXCLUI_IOF,
+                price_basis=tr_basis,
                 proveniencia=ProvenienciaCampo(origem=OrigemValor.MANUAL),
             )
             if total_recorrente is not None
@@ -98,7 +109,10 @@ def vida_ficticia(
     nascimento: date,
     subgrupo_id: str | None = None,
     valor_fatura: int | None = None,
+    fatura_basis: PriceBasis | None = None,
     incluida: bool = True,
+    conferencia: int | None = None,
+    conferencia_basis: PriceBasis | None = None,
 ) -> Vida:
     return Vida(
         id=vida_id,
@@ -107,16 +121,23 @@ def vida_ficticia(
         incluida=incluida,
         subgrupo_atual_id=subgrupo_id,
         valor_fatura_centavos=valor_fatura,
+        fatura_price_basis=fatura_basis,
+        valor_conferencia_centavos=conferencia,
+        conferencia_price_basis=conferencia_basis,
     )
 
 
 def policy_completa(
     data_ref: date | None = date(2026, 6, 30),
     baseline: BaselineEscolhido | None = BaselineEscolhido.REAJUSTADO,
+    precedencia: PrecedenciaAtualVida | None = PrecedenciaAtualVida.TABELA_ATUAL,
+    estrategia: RoundingStrategy = RoundingStrategy.POR_VIDA_ENTAO_SOMA,
 ) -> EffectivePolicy:
     return EffectivePolicy(
         data_referencia_idade=data_ref,
         baseline_escolhido=baseline,
+        precedencia_atual_vida=precedencia,
+        estrategia_arredondamento=estrategia,
     )
 
 
@@ -124,11 +145,11 @@ def subgrupo_atual(
     sg_id: str = "sg-1",
     operadora: str = "Bradesco",
     reajuste_bps: int = 1198,
-    base_tabela: int = 8_000_00,
+    base_tabela: int = 80_000,
+    incremento: int = 8_000,
+    tabela_basis: PriceBasis = PriceBasis.EXCLUI_IOF,
     **kwargs,
 ) -> SubgrupoAtual:
-    from newport_motor.types import PriceBasis, TipoFiscal
-
     defaults = dict(
         id=sg_id,
         operadora=operadora,
@@ -137,7 +158,7 @@ def subgrupo_atual(
         regime_copart_id="regime-sem-1",
         reajuste_bps=reajuste_bps,
         fatura_price_basis=PriceBasis.EXCLUI_IOF,
-        tabela_atual=tabela_padrao(base_tabela),
+        tabela_atual=tabela_padrao(base_tabela, incremento, tabela_basis),
     )
     defaults.update(kwargs)
     return SubgrupoAtual(**defaults)

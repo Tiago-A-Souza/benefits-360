@@ -1,0 +1,1 @@
+Renovação 2 planos atuais, 20 vidas, regimes distintos.

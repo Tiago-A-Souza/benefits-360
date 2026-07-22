@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from newport_motor.models import EstudoInput, OpcaoPlano
+from newport_motor.finance import componente_para_recorrente, tipo_fiscal_aplica_iof
+from newport_motor.models import EstudoInput, OpcaoPlano, SubgrupoAtual, TabelaPrecoFaixa
 from newport_motor.policy import EffectivePolicy
 from newport_motor.provenance import ComponenteFinanceiro
 from newport_motor.result import Validacao
@@ -10,6 +11,7 @@ from newport_motor.types import (
     EstadoExtracao,
     FormatoEstudo,
     OrigemValor,
+    PrecedenciaAtualVida,
     PriceBasis,
     SeveridadeValidacao,
 )
@@ -54,8 +56,7 @@ def validar_b07_politica_obrigatoria(
             )
         )
     if estudo.formato == FormatoEstudo.RENOVACAO:
-        baseline = policy.baseline_escolhido
-        if baseline is None:
+        if policy.baseline_escolhido is None:
             validacoes.append(
                 Validacao(
                     codigo="B-07",
@@ -74,16 +75,176 @@ def validar_b07_politica_obrigatoria(
                         alvo_ref=f"subgrupo:{sg.id}",
                     )
                 )
+        validacoes.extend(_validar_precedencia_atual(estudo, policy))
+    return validacoes
+
+
+def _validar_precedencia_atual(
+    estudo: EstudoInput, policy: EffectivePolicy
+) -> list[Validacao]:
+    if policy.data_referencia_idade is None:
+        return []
+    from newport_motor.faixa import faixa_em
+
+    validacoes: list[Validacao] = []
+    for vida in estudo.vidas_incluidas():
+        if not vida.subgrupo_atual_id or vida.valor_fatura_centavos is None:
+            continue
+        subgrupo = estudo.subgrupo_por_id(vida.subgrupo_atual_id)
+        if subgrupo is None or not subgrupo.tabela_atual:
+            continue
+        _, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
+        if not any(t.faixa == faixa for t in subgrupo.tabela_atual):
+            continue
+        if policy.precedencia_atual_vida is None:
+            validacoes.append(
+                Validacao(
+                    codigo="B-07",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"Vida {vida.id}: tabela atual e fatura coexistem; "
+                        "precedencia_atual_vida obrigatória (DP-02)."
+                    ),
+                    alvo_ref=f"vida:{vida.id}:precedencia",
+                )
+            )
+            break
+    return validacoes
+
+
+def validar_entrada_estrutural(estudo: EstudoInput) -> list[Validacao]:
+    """Atribuições inválidas, faixas e valores — antes do cálculo."""
+    validacoes: list[Validacao] = []
+    vidas_ids = {v.id for v in estudo.vidas}
+    subgrupos_ids = {s.id for s in estudo.subgrupos_atuais}
+    opcoes_ids = {o.id for o in estudo.opcoes_plano}
+
+    for cenario in estudo.cenarios:
+        for atr in cenario.atribuicoes:
+            if atr.opcao_plano_id not in opcoes_ids:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-05",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=f"Opção {atr.opcao_plano_id} inexistente (atribuição {atr.id}).",
+                        alvo_ref=f"atribuicao:{atr.id}",
+                    )
+                )
+            if atr.alvo_tipo == "subgrupo" and atr.alvo_id not in subgrupos_ids:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-06",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=f"Subgrupo {atr.alvo_id} inexistente (atribuição {atr.id}).",
+                        alvo_ref=f"atribuicao:{atr.id}",
+                    )
+                )
+            if atr.alvo_tipo == "vida" and atr.alvo_id not in vidas_ids:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-06",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=f"Vida {atr.alvo_id} inexistente (atribuição {atr.id}).",
+                        alvo_ref=f"atribuicao:{atr.id}",
+                    )
+                )
+
+    for opcao in estudo.opcoes_plano:
+        validacoes.extend(_validar_price_basis_componentes(opcao))
+        validacoes.extend(_validar_tabela(opcao.tabela, f"opcao:{opcao.id}"))
+
+    for sg in estudo.subgrupos_atuais:
+        validacoes.extend(_validar_tabela(sg.tabela_atual, f"subgrupo:{sg.id}"))
+        if sg.fatura_price_basis == PriceBasis.DESCONHECIDO:
+            for v in estudo.vidas_incluidas():
+                if v.subgrupo_atual_id == sg.id and v.valor_fatura_centavos is not None:
+                    if v.fatura_price_basis is None or v.fatura_price_basis == PriceBasis.DESCONHECIDO:
+                        validacoes.append(
+                            Validacao(
+                                codigo="B-02",
+                                severidade=SeveridadeValidacao.BLOQUEANTE,
+                                mensagem=(
+                                    f"fatura_price_basis desconhecido (vida {v.id}, subgrupo {sg.id})."
+                                ),
+                                alvo_ref=f"vida:{v.id}:fatura_price_basis",
+                            )
+                        )
+
+    return validacoes
+
+
+def _validar_tabela(tabela: list[TabelaPrecoFaixa], alvo: str) -> list[Validacao]:
+    validacoes: list[Validacao] = []
+    faixas_vistas: set[int] = set()
+    for t in tabela:
+        if t.faixa < 0 or t.faixa > 9:
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=f"Faixa {t.faixa} fora do intervalo 0–9 ({alvo}).",
+                    alvo_ref=f"{alvo}:faixa:{t.faixa}",
+                )
+            )
+        if t.faixa in faixas_vistas:
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=f"Faixa {t.faixa} duplicada ({alvo}).",
+                    alvo_ref=f"{alvo}:faixa:{t.faixa}",
+                )
+            )
+        faixas_vistas.add(t.faixa)
+        if t.valor_centavos < 0:
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=f"valor_centavos negativo na faixa {t.faixa} ({alvo}).",
+                    alvo_ref=f"{alvo}:faixa:{t.faixa}",
+                )
+            )
+        if t.price_basis == PriceBasis.DESCONHECIDO:
+            validacoes.append(
+                Validacao(
+                    codigo="B-02",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=f"price_basis desconhecido na faixa {t.faixa} ({alvo}).",
+                    alvo_ref=f"{alvo}:faixa:{t.faixa}:price_basis",
+                )
+            )
+    return validacoes
+
+
+def _validar_price_basis_componentes(opcao: OpcaoPlano) -> list[Validacao]:
+    validacoes: list[Validacao] = []
+    for comp_name, comp in [
+        ("premio_saude", opcao.premio_saude),
+        ("iof", opcao.iof),
+        ("total_recorrente", opcao.total_recorrente),
+        ("total_primeira_parcela", opcao.total_primeira_parcela),
+        ("subtotal_impresso", opcao.subtotal_impresso),
+    ]:
+        if comp and comp.centavos is not None and comp.price_basis == PriceBasis.DESCONHECIDO:
+            validacoes.append(
+                Validacao(
+                    codigo="B-02",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"price_basis desconhecido em {comp_name} (opção {opcao.id}); "
+                        "declaração obrigatória antes do cálculo (DP-02)."
+                    ),
+                    alvo_ref=f"opcao:{opcao.id}:{comp_name}",
+                )
+            )
     return validacoes
 
 
 def _componente_precisa_confirmacao(comp: ComponenteFinanceiro | None) -> bool:
     if comp is None:
         return False
-    prov = comp.proveniencia
-    if prov.origem == OrigemValor.IA and not prov.confirmado:
-        return True
-    return False
+    return comp.proveniencia.origem == OrigemValor.IA and not comp.proveniencia.confirmado
 
 
 def validar_b03_valores_nao_confirmados(estudo: EstudoInput) -> list[Validacao]:
@@ -153,14 +314,6 @@ def validar_b05_dados_obrigatorios(
     for opcao_id in opcoes_usadas:
         opcao = estudo.opcao_por_id(opcao_id)
         if opcao is None:
-            validacoes.append(
-                Validacao(
-                    codigo="B-05",
-                    severidade=SeveridadeValidacao.BLOQUEANTE,
-                    mensagem=f"Opção de plano {opcao_id} referenciada mas ausente.",
-                    alvo_ref=f"opcao:{opcao_id}",
-                )
-            )
             continue
         regime = estudo.regime_por_id(opcao.regime_copart_id)
         if regime is None:
@@ -189,18 +342,18 @@ def validar_b05_dados_obrigatorios(
 def validar_b06_atribuicoes(estudo: EstudoInput) -> list[Validacao]:
     validacoes: list[Validacao] = []
     vidas_incl = {v.id for v in estudo.vidas_incluidas()}
-    subgrupos = {s.id for s in estudo.subgrupos_atuais}
 
     for cenario in estudo.cenarios:
         atrib_por_alvo: dict[str, str] = {}
         for atr in cenario.atribuicoes:
             atrib_por_alvo[atr.alvo_id] = atr.opcao_plano_id
 
-        alvos_esperados: set[str] = set()
         if estudo.formato == FormatoEstudo.RENOVACAO:
-            for v in estudo.vidas_incluidas():
-                if v.subgrupo_atual_id:
-                    alvos_esperados.add(v.subgrupo_atual_id)
+            alvos_esperados = {
+                v.subgrupo_atual_id
+                for v in estudo.vidas_incluidas()
+                if v.subgrupo_atual_id
+            }
         else:
             alvos_esperados = vidas_incl
 
@@ -214,17 +367,6 @@ def validar_b06_atribuicoes(estudo: EstudoInput) -> list[Validacao]:
                         alvo_ref=f"cenario:{cenario.id}:alvo:{alvo_id}",
                     )
                 )
-
-        # Regimes mistos sob mesmo rótulo de seção são bloqueados em engine (P6)
-        regimes_por_subgrupo: dict[str, str] = {}
-        for atr in cenario.atribuicoes:
-            if atr.alvo_tipo == "subgrupo" and atr.alvo_id in subgrupos:
-                opcao = estudo.opcao_por_id(atr.opcao_plano_id)
-                if opcao:
-                    regime = estudo.regime_por_id(opcao.regime_copart_id)
-                    if regime:
-                        regimes_por_subgrupo[atr.alvo_id] = regime.tipo.value
-
     return validacoes
 
 
@@ -233,9 +375,8 @@ def validar_b04_idade_valor(
     policy: EffectivePolicy,
     tolerancia_vida: int,
 ) -> list[Validacao]:
-    """P8: só roda com tabela atual comparável identificada."""
+    """P8: só roda com tabela atual comparável; usa precedência explícita."""
     from newport_motor.faixa import faixa_em
-    from newport_motor.iof import tipo_fiscal_aplica_iof, valor_com_iof
 
     if policy.data_referencia_idade is None:
         return []
@@ -244,10 +385,12 @@ def validar_b04_idade_valor(
     for vida in estudo.vidas_incluidas():
         if vida.idade_valor_resolvido or vida.idade_valor_override_justificado:
             continue
-        if vida.valor_fatura_centavos is None or not vida.subgrupo_atual_id:
+        if not vida.subgrupo_atual_id:
             continue
         subgrupo = estudo.subgrupo_por_id(vida.subgrupo_atual_id)
         if subgrupo is None or not subgrupo.tabela_atual:
+            continue
+        if vida.valor_fatura_centavos is None:
             continue
 
         _, faixa = faixa_em(vida.nascimento, policy.data_referencia_idade)
@@ -257,51 +400,44 @@ def validar_b04_idade_valor(
                 Validacao(
                     codigo="B-04",
                     severidade=SeveridadeValidacao.ALERTA,
-                    mensagem=(
-                        f"Vida {vida.id}: sem faixa {faixa} na tabela atual comparável."
-                    ),
+                    mensagem=f"Vida {vida.id}: sem faixa {faixa} na tabela atual comparável.",
                     alvo_ref=f"vida:{vida.id}",
                 )
             )
             continue
 
+        # B-04 compara fatura vs tabela (independente da precedência de cálculo)
         aplica_iof = tipo_fiscal_aplica_iof(subgrupo.tipo_fiscal)
-        esperado = valor_com_iof(
-            tabela_faixa.valor_centavos, aplica_iof, policy.iof_bps
+        esperado_tabela = int(
+            componente_para_recorrente(
+                tabela_faixa.valor_centavos,
+                tabela_faixa.price_basis,
+                subgrupo.tipo_fiscal,
+                policy.iof_bps,
+            )
         )
-        diff = abs(int(esperado) - vida.valor_fatura_centavos)
+        basis_fatura = vida.fatura_price_basis or subgrupo.fatura_price_basis
+        if basis_fatura == PriceBasis.DESCONHECIDO:
+            continue
+        fatura_rec = int(
+            componente_para_recorrente(
+                vida.valor_fatura_centavos,
+                basis_fatura,
+                subgrupo.tipo_fiscal,
+                policy.iof_bps,
+            )
+        )
+        diff = abs(esperado_tabela - fatura_rec)
         if diff > tolerancia_vida:
             validacoes.append(
                 Validacao(
                     codigo="B-04",
                     severidade=SeveridadeValidacao.BLOQUEANTE,
                     mensagem=(
-                        f"Vida {vida.id}: valor fatura ({vida.valor_fatura_centavos}c) "
-                        f"diverge da tabela atual na faixa {faixa} "
-                        f"(esperado {int(esperado)}c, diff {diff}c)."
+                        f"Vida {vida.id}: fatura ({fatura_rec}c recorrente) diverge da "
+                        f"tabela atual faixa {faixa} ({esperado_tabela}c, diff {diff}c)."
                     ),
                     alvo_ref=f"vida:{vida.id}",
-                )
-            )
-    return validacoes
-
-
-def validar_price_basis_desconhecido(opcao: OpcaoPlano) -> list[Validacao]:
-    validacoes: list[Validacao] = []
-    for comp_name, comp in [
-        ("premio_saude", opcao.premio_saude),
-        ("total_recorrente", opcao.total_recorrente),
-    ]:
-        if comp and comp.price_basis == PriceBasis.DESCONHECIDO and comp.centavos is not None:
-            validacoes.append(
-                Validacao(
-                    codigo="B-02",
-                    severidade=SeveridadeValidacao.BLOQUEANTE,
-                    mensagem=(
-                        f"price_basis desconhecido em {comp_name} (opção {opcao.id}); "
-                        "declaração obrigatória (DP-02)."
-                    ),
-                    alvo_ref=f"opcao:{opcao.id}:{comp_name}",
                 )
             )
     return validacoes

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from newport_motor.types import OrigemValor
+from newport_motor.types import OrigemValor, PriceBasis
 
 
 class ProvenienciaCampo(BaseModel):
@@ -19,7 +19,7 @@ class ProvenienciaCampo(BaseModel):
 
 class ValorMonetario(BaseModel):
     centavos: int
-    price_basis: str
+    price_basis: PriceBasis
     proveniencia: ProvenienciaCampo
 
 
@@ -27,7 +27,7 @@ class ComponenteFinanceiro(BaseModel):
     """Componente financeiro com basis e proveniência próprios."""
 
     centavos: int | None = None
-    price_basis: str
+    price_basis: PriceBasis
     proveniencia: ProvenienciaCampo = Field(
         default_factory=lambda: ProvenienciaCampo(origem=OrigemValor.CALCULADO)
     )

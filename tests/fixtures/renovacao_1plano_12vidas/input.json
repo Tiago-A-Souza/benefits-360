@@ -1,0 +1,253 @@
+{
+  "id": "ren-12",
+  "formato": "renovacao",
+  "vidas": [
+    {
+      "id": "v0",
+      "nome": "Fictício 0",
+      "nascimento": "1970-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v1",
+      "nome": "Fictício 1",
+      "nascimento": "1971-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v2",
+      "nome": "Fictício 2",
+      "nascimento": "1972-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v3",
+      "nome": "Fictício 3",
+      "nascimento": "1973-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v4",
+      "nome": "Fictício 4",
+      "nascimento": "1974-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v5",
+      "nome": "Fictício 5",
+      "nascimento": "1975-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v6",
+      "nome": "Fictício 6",
+      "nascimento": "1976-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v7",
+      "nome": "Fictício 7",
+      "nascimento": "1977-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v8",
+      "nome": "Fictício 8",
+      "nascimento": "1978-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v9",
+      "nome": "Fictício 9",
+      "nascimento": "1979-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v10",
+      "nome": "Fictício 10",
+      "nascimento": "1980-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    },
+    {
+      "id": "v11",
+      "nome": "Fictício 11",
+      "nascimento": "1981-01-01",
+      "incluida": true,
+      "subgrupo_atual_id": "sg-1"
+    }
+  ],
+  "subgrupos_atuais": [
+    {
+      "id": "sg-1",
+      "operadora": "Bradesco",
+      "tipo_fiscal": "seguradora",
+      "plano_nome": "Atual",
+      "regime_copart_id": "regime-sem",
+      "reajuste_bps": 1198,
+      "fatura_price_basis": "exclui_iof",
+      "tabela_atual": [
+        {
+          "faixa": 0,
+          "valor_centavos": 80000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 1,
+          "valor_centavos": 88000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 2,
+          "valor_centavos": 96000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 3,
+          "valor_centavos": 104000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 4,
+          "valor_centavos": 112000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 5,
+          "valor_centavos": 120000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 6,
+          "valor_centavos": 128000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 7,
+          "valor_centavos": 136000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 8,
+          "valor_centavos": 144000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 9,
+          "valor_centavos": 152000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        }
+      ]
+    }
+  ],
+  "opcoes_plano": [
+    {
+      "id": "op-1",
+      "operadora": "Bradesco",
+      "plano_nome": "Proposta",
+      "regime_copart_id": "regime-sem",
+      "tipo_fiscal": "seguradora",
+      "tabela": [
+        {
+          "faixa": 0,
+          "valor_centavos": 100000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 1,
+          "valor_centavos": 110000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 2,
+          "valor_centavos": 120000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 3,
+          "valor_centavos": 130000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 4,
+          "valor_centavos": 140000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 5,
+          "valor_centavos": 150000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 6,
+          "valor_centavos": 160000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 7,
+          "valor_centavos": 170000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 8,
+          "valor_centavos": 180000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        },
+        {
+          "faixa": 9,
+          "valor_centavos": 190000,
+          "quantidade_cotada": 0,
+          "price_basis": "exclui_iof"
+        }
+      ]
+    }
+  ],
+  "regimes_copart": [
+    {
+      "id": "regime-sem",
+      "tipo": "sem"
+    }
+  ],
+  "cenarios": [
+    {
+      "id": "c1",
+      "atribuicoes": [
+        {
+          "id": "a1",
+          "alvo_tipo": "subgrupo",
+          "alvo_id": "sg-1",
+          "opcao_plano_id": "op-1"
+        }
+      ]
+    }
+  ]
+}
