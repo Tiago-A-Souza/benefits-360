@@ -1,3 +1,4 @@
+from newport_app.models.compilation import ResultadoCompilacao
 from newport_app.models.draft import EscolhasEstudo, RascunhoEstudo
 from newport_app.models.responses import (
     AuditoriaItem,
@@ -14,5 +15,6 @@ __all__ = [
     "EstudoResumo",
     "PendenciaItem",
     "RascunhoEstudo",
+    "ResultadoCompilacao",
     "TotaisComparativo",
 ]

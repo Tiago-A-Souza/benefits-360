@@ -17,6 +17,7 @@ from newport_app.presentation.textos import (
     plural_beneficiarios,
     rotulos_diferenca,
 )
+from newport_app.policy.registry import PolicySetRegistry, default_registry
 from newport_motor.result import MotorResult
 from newport_motor.types import SeveridadeValidacao
 
@@ -78,14 +79,16 @@ def _traduzir_validacao(
     codigo: str,
     mensagem_motor: str,
     rascunho: RascunhoEstudo,
+    policy_registry: PolicySetRegistry,
 ) -> PendenciaItem:
     if codigo == "H-01":
         n = len(rascunho.vidas_incluidas())
-        max_h = rascunho.escolhas.max_beneficiarios_homologados or 29
+        policy_set = policy_registry.resolve(rascunho.policy_set_versao)
+        max_h = policy_set.max_vidas_homologadas if policy_set else 29
         return PendenciaItem(
             tipo="alerta",
             titulo="Quantidade acima da faixa homologada",
-            descricao=mensagem_faixa_homologada(n, max_h),
+            descricao=mensagem_faixa_homologada(n, max_h or 29),
             acao_sugerida="Confirme com o revisor que a quantidade foi conferida.",
         )
     if codigo in _TRADUCOES:
@@ -115,7 +118,9 @@ def rascunho_para_resumo(rascunho: RascunhoEstudo) -> EstudoResumo:
 def motor_result_para_comparativo(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
+    policy_registry: PolicySetRegistry | None = None,
 ) -> ComparativoResponse:
+    registry = policy_registry or default_registry
     pendencias: list[PendenciaItem] = []
     vistos: set[str] = set()
     for val in resultado.validacoes:
@@ -126,7 +131,9 @@ def motor_result_para_comparativo(
             SeveridadeValidacao.BLOQUEANTE,
             SeveridadeValidacao.ALERTA,
         ):
-            pendencias.append(_traduzir_validacao(val.codigo, val.mensagem, rascunho))
+            pendencias.append(
+                _traduzir_validacao(val.codigo, val.mensagem, rascunho, registry)
+            )
 
     auditoria = [
         AuditoriaItem(
@@ -152,7 +159,7 @@ def motor_result_para_comparativo(
             if atual and proposta and diff_m and diff_a:
                 baseline = (
                     "Contrato reajustado"
-                    if rascunho.escolhas.valor_atual_referencia == "reajustado"
+                    if rascunho.escolhas.baseline_escolhido.valor == "reajustado"
                     else "Contrato vigente"
                 )
                 semantica, rotulo_mes, rotulo_ano = rotulos_diferenca(
