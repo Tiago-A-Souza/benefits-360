@@ -37,7 +37,15 @@ class EffectivePolicy(BaseModel):
     iof_bps: RateBasisPoints = RateBasisPoints(238)
     tolerancias: TolerancePolicy = Field(default_factory=TolerancePolicy)
     estrategia_arredondamento: RoundingStrategy = RoundingStrategy.POR_VIDA_ENTAO_SOMA
+    max_vidas_homologadas: int | None = 29
     politicas_resolvidas: dict[str, object] = Field(default_factory=dict)
+
+    @field_validator("max_vidas_homologadas")
+    @classmethod
+    def max_vidas_homologadas_nao_negativo(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("max_vidas_homologadas não pode ser negativo")
+        return v
 
     @field_validator("iof_bps")
     @classmethod
@@ -61,5 +69,6 @@ class EffectivePolicy(BaseModel):
             "iof_bps": int(self.iof_bps),
             "tolerancias": self.tolerancias.model_dump(),
             "estrategia_arredondamento": self.estrategia_arredondamento.value,
+            "max_vidas_homologadas": self.max_vidas_homologadas,
             "politicas_resolvidas": self.politicas_resolvidas,
         }

@@ -52,9 +52,11 @@ def test_escala_1_12_20_29_vidas():
 
 
 def test_b08_mais_de_29_vidas():
-    result = calcular(_estudo_n_vidas(30), policy_completa())
-    assert "B-08" in result.codigos_bloqueio()
-    assert not result.cenarios
+    result = calcular(_estudo_n_vidas(30), policy_completa(max_vidas_homologadas=29))
+    assert "H-01" in [v.codigo for v in result.validacoes]
+    assert "B-08" not in result.codigos_bloqueio()
+    assert result.cenarios
+    assert len(result.cenarios[0].secoes[0].subgrupos[0].vidas) == 30
 
 
 def test_copart_sem_parcial_percentual():

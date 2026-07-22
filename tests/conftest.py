@@ -134,12 +134,14 @@ def policy_completa(
     baseline: BaselineEscolhido | None = BaselineEscolhido.REAJUSTADO,
     precedencia: PrecedenciaAtualVida | None = PrecedenciaAtualVida.TABELA_ATUAL,
     estrategia: RoundingStrategy = RoundingStrategy.POR_VIDA_ENTAO_SOMA,
+    max_vidas_homologadas: int | None = 29,
 ) -> EffectivePolicy:
     return EffectivePolicy(
         data_referencia_idade=data_ref,
         baseline_escolhido=baseline,
         precedencia_atual_vida=precedencia,
         estrategia_arredondamento=estrategia,
+        max_vidas_homologadas=max_vidas_homologadas,
     )
 
 

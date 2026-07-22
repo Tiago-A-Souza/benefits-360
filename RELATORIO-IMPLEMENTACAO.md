@@ -1,4 +1,4 @@
-# Relatório de Implementação — ETAPA 1 + ETAPA 1.1 + ETAPA 1.1.1 + ETAPA 1.2 + ETAPA 1.2.1
+# Relatório de Implementação — ETAPA 1 + ETAPA 1.1 + ETAPA 1.1.1 + ETAPA 1.2 + ETAPA 1.2.1 + ETAPA 1.2.2
 
 > Motor financeiro puro · UTF-8 · 2026-07-22
 
@@ -12,10 +12,10 @@
 | `provenance.py` | `ProvenienciaCampo`, `LinhagemReferencia`, helpers de mesclagem |
 | `types.py` | Tipos + `PrecedenciaAtualVida` + `AlvoTipo` |
 | `models.py` | Entrada tipada; IDs únicos; `fatura_proveniencia` por vida |
-| `policy.py` | `EffectivePolicy`; tolerâncias e `iof_bps` ≥ 0 |
+| `policy.py` | `EffectivePolicy`; tolerâncias; `max_vidas_homologadas` (default 29) |
 | `reconciliation.py` | B-02: subtotal **atual** vs vigente; subtotal **proposta** vs total agregado |
 | `calculation.py` | Cálculo com linhagem fatura/tabela/proposta na saída |
-| `validations.py` | B-02…B-08 endurecidos (baseline, cenários, nascimento, B-03 atual) |
+| `validations.py` | B-02…B-08; **H-01** escopo de vidas |
 | `engine.py` | `calcular(estudo, policy) -> MotorResult` |
 
 ```python
@@ -53,10 +53,23 @@ from newport_motor import calcular, EstudoInput, EffectivePolicy, MotorResult
 
 ---
 
+### 1.4. Escopo de vidas (1.2.2)
+
+- **`max_vidas_homologadas`** na `EffectivePolicy` (default provisório **29**; `None` = sem advertência).
+- **B-08** redefinido: **somente** estudo sem vidas incluídas (bloqueante).
+- **H-01**: vidas acima da faixa homologada → **alerta**; **cálculo permitido**; sem truncamento.
+- **Sem teto técnico** de vidas no motor; limites de infraestrutura ficam para a API (medições futuras).
+- Valor embutido em `politicas_efetivas` / snapshot.
+- Addendum: `docs/07-ADDENDUM-FAIXA-HOMOLOGACAO-v0.2.2.md`.
+
+**Análise separada (fora desta entrega):** o motor não verifica se `quantidade_cotada` por faixa na cotação corresponde às vidas atribuídas ao plano.
+
+---
+
 ## 2. Resultado dos testes
 
 ```
-86 passed
+93 passed
 ```
 
 | Suíte | Testes | Resultado |
@@ -72,13 +85,27 @@ from newport_motor import calcular, EstudoInput, EffectivePolicy, MotorResult
 | **1.1.1 — Correções piloto** | 9 | PASSOU |
 | **1.2 — Endurecimento** | 19 | PASSOU |
 | **1.2.1 — Subtotais/B-03** | 8 | PASSOU |
+| **1.2.2 — Escopo de vidas** | 7 | PASSOU |
 | **Fixtures JSON** | 16 execuções | PASSOU |
 
 Fixtures JSON: **15 casos parametrizados** + `test_fixtures_minimo_exigido` (presença mínima).
 
 ---
 
-## 3. Casos de teste ETAPA 1.2.1
+## 3. Casos de teste ETAPA 1.2.2
+
+| Caso | Resultado |
+|------|-----------|
+| 0 vidas incluídas | B-08 bloqueante; sem cálculo |
+| 1 e 29 vidas; faixa 29 | Calcula; sem H-01 |
+| 30, 41, 100 vidas; faixa 29 | Calcula; H-01 alerta; todas as vidas no resultado |
+| 100 vidas; `max_vidas_homologadas=None` | Calcula; sem H-01 |
+| Determinismo (41 vidas) | Mesmo input → mesmo output |
+| Policy no snapshot | `max_vidas_homologadas` presente |
+
+---
+
+## 4. Casos de teste ETAPA 1.2.1
 
 | Caso | Resultado |
 |------|-----------|
@@ -92,7 +119,7 @@ Fixtures JSON: **15 casos parametrizados** + `test_fixtures_minimo_exigido` (pre
 
 ---
 
-## 4. Casos de teste ETAPA 1.2
+## 5. Casos de teste ETAPA 1.2
 
 | Caso | Bloqueio / comportamento |
 |------|---------------------------|
@@ -112,7 +139,7 @@ Fixtures JSON: **15 casos parametrizados** + `test_fixtures_minimo_exigido` (pre
 
 ---
 
-## 5. Fixtures determinísticas
+## 6. Fixtures determinísticas
 
 Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
@@ -120,7 +147,7 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
 ---
 
-## 6. Matriz requisito → teste (1.2 / 1.2.1)
+## 7. Matriz requisito → teste (1.2 / 1.2.1 / 1.2.2)
 
 | Requisito | Teste(s) |
 |-----------|----------|
@@ -136,34 +163,38 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 | B-03 documento alerta (qualquer origem) | 1.2.1 `test_b03_extraido_*` |
 | alvo_tipo por formato | 1.2.1 `test_alvo_tipo_incompativel_*` |
 | documento_id inexistente | 1.2.1 `test_documento_inexistente_b05` |
+| Escopo vidas / H-01 | 1.2.2 `test_suite_122_*`, H `test_b08_mais_de_29_vidas` |
 
 ---
 
-## 7. Bloqueios B-01…B-08
+## 8. Bloqueios B-01…B-08 e alerta H-01
 
-| Bloqueio | Cobertura 1.2 |
-|----------|---------------|
+| Código | Cobertura |
+|--------|-----------|
 | B-02 | Reconciliação + 1ª parcela < custos |
 | B-03 | Proposta + **fatura/tabela/subtotal atual** |
 | B-04 | E (inalterado) |
 | B-05 | Baseline, nascimento, opções, estrutura |
 | B-06 | Cenários obrigatórios e atribuições |
 | B-07 | Policy + reajuste negativo + estratégias piloto |
-| B-08 | H, fixtures escala |
+| B-08 | **Zero vidas** — 1.2.2, H, 122 |
+| H-01 | Acima `max_vidas_homologadas` — 1.2.2, H |
 
 ---
 
-## 8. Decisões provisórias
+## 9. Decisões provisórias
 
 | Tema | Comportamento |
 |------|---------------|
 | Reajuste negativo | B-07 no piloto; suporte futuro = política explícita por estudo |
 | Linhagem saída | `ValorCalculado.fontes[]` — refs não recursivas, sem PII |
 | Valor zero explícito | Aceito como baseline válido |
+| Faixa homologada 1–29 | Default `max_vidas_homologadas=29`; não é teto técnico |
+| `quantidade_cotada` vs vidas | **Não verificado** — análise separada |
 
 ---
 
-## 9. Limitações conhecidas
+## 10. Limitações conhecidas
 
 - Motor **não aprovado** para produção — checkpoint pós-endurecimento 1.2.
 - Piloto: somente `por_vida_entao_soma` homologada.
@@ -172,6 +203,6 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
 ---
 
-## 10. Componentes proibidos
+## 11. Componentes proibidos
 
 Confirmado: nenhum FastAPI, React, Postgres, worker, PPTX, parser de PDF ou IA integrada.

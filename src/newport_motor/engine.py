@@ -21,7 +21,7 @@ from newport_motor.validations import (
     validar_b05_opcoes_obrigatorias,
     validar_b06_atribuicoes,
     validar_b07_politica_obrigatoria,
-    validar_b08_escopo_piloto,
+    validar_escopo_vidas,
     validar_entrada_estrutural,
 )
 
@@ -33,7 +33,7 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
     """
     validacoes: list = []
 
-    validacoes.extend(validar_b08_escopo_piloto(estudo))
+    validacoes.extend(validar_escopo_vidas(estudo, policy))
     validacoes.extend(validar_b07_politica_obrigatoria(estudo, policy))
     validacoes.extend(validar_entrada_estrutural(estudo))
     validacoes.extend(validar_b03_valores_nao_confirmados(estudo))

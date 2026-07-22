@@ -176,35 +176,37 @@ Formulário proposta
 
 | # | Incompatibilidade | Impacto | Mitigação ETAPA 2 |
 |---|-------------------|---------|-------------------|
-| I-01 | Planilha inspecionada: **41 vidas** > limite piloto **29** (B-08) | Bloqueio motor | Caso dourado: subconjunto ≤29 confirmado manualmente |
-| I-02 | Planilha: **2 planos** distintos (36 + 5 vidas) | Caso simples exige 1 plano | Homologação filtra **1 plano** ou aceita caso complexo como 2.5 |
+| I-01 | Planilha inspecionada: **41 vidas** > faixa homologada **29** | Alerta **H-01**; cálculo permitido (ETAPA 1.2.2) | Importar **41 vidas**; banner revisão; **sem truncamento** |
+| I-02 | Planilha: **2 planos** distintos (36 + 5 vidas) | Caso simples exige 1 plano | Homologação filtra **1 plano** na UI ou aceita caso complexo como 2.5 |
 | I-03 | SISCOR: só valor por vida; **sem tabela por faixa** | B-04 limitado; reconciliação parcial | Entrada manual tabela atual ou precedência fatura |
 | I-04 | SISCOR: sem `price_basis` | B-07 / pergunta UI | “Este valor já inclui IOF?” por subgrupo |
-| I-05 | Cotação A: **5 vidas** vs SISCOR **41** | Proposta ≠ universo SISCOR | Homologação: proposta manual **independente** ou subconjunto alinhado |
+| I-05 | Cotação A: **5 vidas** vs SISCOR **41** | Proposta ≠ universo SISCOR | **Não** usar como caso dourado financeiro; cotação serve só como referência de layout/entrada manual |
 | I-06 | Cotação B: **2 perfis** + dental | Não é 1 proposta simples | Usar só perfil saúde ou marcar como caso complexo futuro |
 | I-07 | Cotação B: **IOF não explícito** no PDF | Componente IOF ambíguo | Pergunta UI; conferência manual |
 | I-08 | Faixas PDF usam rótulos “0–18”, “19–23”… | Mapear para índices 0–9 | Tabela de conversão no compilador |
 | I-09 | Operadora A: **tipo_fiscal = operadora** | Sem IOF no motor | Válido — não excluir operadora |
 | I-10 | Dental / odonto nas cotações | Fora escopo comparativo saúde | Ignorar na ETAPA 2 ou linha informativa |
-| I-11 | Motor congelado: `soma_entao_aplica` / `no_total` → B-07 | Não configurável | Policy default `por_vida_entao_soma` |
+| I-11 | Motor: `soma_entao_aplica` / `no_total` → B-07 | Não configurável | Policy default `por_vida_entao_soma` |
+| I-12 | `quantidade_cotada` na cotação vs vidas do estudo | Motor **não verifica** correspondência | Análise separada — ver addendum §5 e ETAPA futura |
 
 ---
 
-## 6. Caso dourado privado (referência)
+## 6. Casos de referência privados
 
-Definição operacional em `.private/etapa-2.0/caso-dourado-privado.md`.
-
-**Resumo anonimizado:**
+### 6.1 Corpus SISCOR (41 vidas) — importação, escala e layout
 
 | Atributo | Valor |
 |----------|-------|
-| Tipo | Renovação |
-| Fonte cadastral | Planilha SISCOR inspecionada |
-| Operadora posição atual | Operadora sem IOF (mesma do SISCOR) |
-| Planos no SISCOR | 2 (homologação usa **1 plano**, subconjunto ≤29 vidas) |
-| Proposta | Entrada manual baseada em cotação operadora A (mesma família operadora) |
-| Regime copart | Sem coparticipação (conforme título da cotação A) |
-| Escopo excluído | Dental, seguro vida, rede |
+| Uso | Testar importação integral, conferência em lote, comparativo paginado, **H-01** |
+| Operadora posição | Operadora sem IOF |
+| Planos | 2 (36 + 5 vidas) |
+| Truncamento | **Proibido** |
+
+**Não** classificar como caso dourado financeiro: a cotação disponível possui apenas **5 vidas agregadas** e não representa a mesma população.
+
+### 6.2 Caso dourado financeiro
+
+Aguardando estudo completo com proposta manual alinhada à população (SISCOR + cotação coerente). Detalhes operacionais em `.private/etapa-2.0/caso-dourado-privado.md` (revisar — **obsoleto** para aceite financeiro até nova definição).
 
 ---
 
@@ -215,9 +217,9 @@ Referência visual: template PPTX slide “Comparativo financeiro” (estrutura:
 ### Tela 1 — Novo estudo
 ```
 ┌─ Novo estudo de renovação ─────────────────────────────┐
-│ Quantidade de vidas: até 29                            │
+│ Faixa homologada inicial: 1–29 (estudos maiores: revisão adicional) │
 │ [ Enviar planilha de beneficiários ]                   │
-│ Pré-visualização: 41 registros encontrados → 29 usados │
+│ Pré-visualização: N registros encontrados (sem truncar) │
 │ Planos detectados: 2  (selecione 1 para este estudo)   │
 └────────────────────────────────────────────────────────┘
 ```
@@ -290,7 +292,7 @@ Referência visual: template PPTX slide “Comparativo financeiro” (estrutura:
 
 | ID | Pergunta | Homologação provisória (responsável projeto) |
 |----|----------|-----------------------------------------------|
-| W-01 | Caso dourado: subconjunto 29 vidas **ou** aguardar planilha menor? | Subconjunto do plano majoritário |
+| W-01 | Subconjunto 29 vidas **ou** importação integral? | **Integral** (1.2.2); H-01 + revisão |
 | W-02 | Homologação com **1 plano** only, ignorando 5 vidas do plano secundário? | Sim, para caso simples |
 | W-03 | Proposta homologada: mesma operadora (renovação pura) **ou** troca de operadora? | Mesma operadora na 2.0 |
 | W-04 | Dental nas cotações: ignorar totalmente na ETAPA 2? | Ignorar |
@@ -299,7 +301,7 @@ Referência visual: template PPTX slide “Comparativo financeiro” (estrutura:
 | W-07 | Autoaprovação no piloto (DP-14)? | Não — revisor distinto |
 | W-08 | Template PPTX: master M3CASE **ou** provisório mínimo? | Provisório mínimo financeiro |
 | W-09 | Retenção dados vidas pós-entrega (P9)? | 90 dias (default patch) |
-| W-10 | Operadora primeira homologação — validar scorecard §9? | Ver recomendação §9 |
+| W-11 | `max_vidas_homologadas=29` permanece default até homologação 30+? | Sim — H-01 alerta (implementado 1.2.2) |
 
 ---
 

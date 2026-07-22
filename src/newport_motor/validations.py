@@ -18,10 +18,8 @@ from newport_motor.types import (
     AlvoTipo,
 )
 
-PILOTO_MAX_VIDAS = 29
-
-
-def validar_b08_escopo_piloto(estudo: EstudoInput) -> list[Validacao]:
+def validar_escopo_vidas(estudo: EstudoInput, policy: EffectivePolicy) -> list[Validacao]:
+    """B-08 (zero vidas) e H-01 (acima da faixa homologada configurável na policy)."""
     count = len(estudo.vidas_incluidas())
     if count == 0:
         return [
@@ -32,16 +30,21 @@ def validar_b08_escopo_piloto(estudo: EstudoInput) -> list[Validacao]:
                 alvo_ref="estudo",
             )
         ]
-    if count > PILOTO_MAX_VIDAS:
-        return [
+    validacoes: list[Validacao] = []
+    max_homologadas = policy.max_vidas_homologadas
+    if max_homologadas is not None and count > max_homologadas:
+        validacoes.append(
             Validacao(
-                codigo="B-08",
-                severidade=SeveridadeValidacao.BLOQUEANTE,
-                mensagem=f"Vidas incluídas ({count}) excedem o piloto (máx. {PILOTO_MAX_VIDAS}).",
+                codigo="H-01",
+                severidade=SeveridadeValidacao.ALERTA,
+                mensagem=(
+                    f"Vidas incluídas ({count}) excedem a faixa homologada "
+                    f"({max_homologadas}); revisão adicional necessária antes da aprovação."
+                ),
                 alvo_ref="estudo",
             )
-        ]
-    return []
+        )
+    return validacoes
 
 
 def validar_b07_politica_obrigatoria(

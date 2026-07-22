@@ -1,1 +1,1 @@
-Renovação com 29 vidas (limite piloto).
+Renovação com 29 vidas (limite superior da faixa homologada inicial).

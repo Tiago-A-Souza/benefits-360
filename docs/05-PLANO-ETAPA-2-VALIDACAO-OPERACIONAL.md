@@ -1,16 +1,16 @@
 # Plano ETAPA 2 — Validação operacional (fatia vertical do piloto)
 
 > Documento aprovado como **direção de implementação**.  
-> Motor financeiro puro **congelado** no commit `453ebb7`.  
-> UTF-8 · Versão 1.0 · 2026-07-22.
+> Motor financeiro: commit base `453ebb7` + **ETAPA 1.2.2** (escopo de vidas).  
+> UTF-8 · Versão 1.1 · 2026-07-22.
 
 ---
 
 ## 1. Objetivo
 
-Permitir que um analista Newport conduza, de ponta a ponta, um **estudo real de renovação simples** (≤29 vidas, 1 plano atual, 1 proposta, 1 regime de copart), com:
+Permitir que um analista Newport conduza, de ponta a ponta, um **estudo real de renovação simples** (faixa homologada inicial **1–29 vidas**, 1 plano atual, 1 proposta, 1 regime de copart), com:
 
-- importação SISCOR com **minimização de dados pessoais**;
+- importação SISCOR com **minimização de dados pessoais** — **todas as vidas importadas**, sem truncamento automático;
 - revisão e confirmação humana dos campos;
 - proposta por **entrada manual estruturada** (sem parser PDF nesta etapa);
 - chamada ao motor **sem alterar suas regras**;
@@ -25,7 +25,7 @@ A sequência é orientada à **validação do fluxo operacional**, não à infra
 
 | Princípio | Regra |
 |-----------|-------|
-| **Motor congelado** | `newport_motor` no commit `453ebb7` não recebe alterações de regra na ETAPA 2. Falha real → registro + correção **separada**, versionada e retestada. |
+| **Motor — escopo de vidas (1.2.2)** | `max_vidas_homologadas` na `EffectivePolicy` (default 29); **B-08** = zero vidas; **H-01** = acima da faixa (alerta, calcula); sem teto técnico; ver `docs/07-ADDENDUM-FAIXA-HOMOLOGACAO-v0.2.2.md`. |
 | **Minimização de dados pessoais** | Persistir somente o estritamente necessário ao estudo. **Proibidos:** CPF, RG, endereço, telefone, e-mail, nome da mãe, PIS e demais campos não necessários. **Permitidos quando necessários:** nome (slide) e data de nascimento (idade/faixa). Nenhum dado pessoal em logs, fixtures versionadas, documentação publicada ou mensagens de erro. |
 | **Corpus real privado** | Documentos reais fora do Git; usados desde a caracterização; exportações com dados pessoais só em storage privado controlado. |
 | **Interface no navegador** | Homologação e uso operacional **obrigatoriamente** via UI web. CLI apenas como ferramenta auxiliar de diagnóstico. |
@@ -183,9 +183,9 @@ Estados: `candidato | aprovado | superado` (Patch P1). PPTX **somente** de snaps
 
 ## 11. Critério de aceite da ETAPA 2
 
-Caso real privado de renovação simples (≤29 vidas):
+Caso real privado de renovação simples (faixa homologada inicial 1–29 vidas; estudos maiores calculam com **H-01**):
 
-1. Importa posição cadastral SISCOR com minimização de dados pessoais.
+1. Importa posição cadastral SISCOR **integralmente** (ex.: 41 vidas — sem truncamento).
 2. Permite corrigir e confirmar informações (SISCOR em lote + exceções).
 3. Recebe 1 proposta por entrada manual.
 4. Resolve escolhas do estudo (equivalentes a B-07) na UI traduzida.
@@ -227,4 +227,5 @@ Caso real privado de renovação simples (≤29 vidas):
 - `docs/04-HANDOFF-IMPLEMENTACAO.md`
 - `docs/03-PATCH-v0.2.1.md` (P1, P9, P10, §D, §E)
 - `docs/06-CARACTERIZACAO-ETAPA-2.0.md` — resultado da caracterização
-- Motor: commit `453ebb7`
+- `docs/07-ADDENDUM-FAIXA-HOMOLOGACAO-v0.2.2.md`
+- Motor: `453ebb7` + ETAPA 1.2.2
