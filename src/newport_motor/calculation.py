@@ -378,8 +378,13 @@ def agregar_por_opcao_no_cenario(
             por_opcao[oid]["subgrupos"].append(
                 {
                     "subgrupo_id": sg.subgrupo_id,
-                    "subtotal": sg.subtotal_proposta_centavos.centavos,
-                    "subtotal_impresso": subgrupo.subtotal_impresso if subgrupo else None,
+                    "subtotal_atual_calculado": (
+                        sg.subtotal_atual_vigente_centavos.centavos
+                        if sg.subtotal_atual_vigente_centavos
+                        else None
+                    ),
+                    "subtotal_atual_impresso": subgrupo.subtotal_impresso if subgrupo else None,
+                    "tipo_fiscal_atual": subgrupo.tipo_fiscal if subgrupo else None,
                 }
             )
             por_opcao[oid]["total"] += sg.subtotal_proposta_centavos.centavos

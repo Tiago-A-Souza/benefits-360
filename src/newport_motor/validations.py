@@ -309,6 +309,7 @@ def validar_entrada_estrutural(estudo: EstudoInput) -> list[Validacao]:
         validacoes.extend(_validar_tabela(opcao.tabela, f"opcao:{opcao.id}"))
 
     validacoes.extend(validar_b05_primeira_parcela_custos(estudo))
+    validacoes.extend(validar_b05_referencias_documentais(estudo))
 
     for sg in estudo.subgrupos_atuais:
         validacoes.extend(_validar_tabela(sg.tabela_atual, f"subgrupo:{sg.id}"))
@@ -398,14 +399,97 @@ def _validar_price_basis_componentes(opcao: OpcaoPlano) -> list[Validacao]:
     return validacoes
 
 
-def _componente_precisa_confirmacao(comp: ComponenteFinanceiro | None) -> bool:
-    if comp is None:
-        return False
-    return comp.proveniencia.origem == OrigemValor.IA and not comp.proveniencia.confirmado
+def validar_b05_referencias_documentais(estudo: EstudoInput) -> list[Validacao]:
+    """documento_id referenciado deve existir em estudo.documentos."""
+    docs_ids = {d.id for d in estudo.documentos}
+    validacoes: list[Validacao] = []
+
+    def _checar(doc_id: str | None, alvo_ref: str) -> None:
+        if doc_id and doc_id not in docs_ids:
+            validacoes.append(
+                Validacao(
+                    codigo="B-05",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=f"Documento '{doc_id}' inexistente ({alvo_ref}).",
+                    alvo_ref=alvo_ref,
+                )
+            )
+
+    for opcao in estudo.opcoes_plano:
+        _checar(opcao.documento_id, f"opcao:{opcao.id}:documento_id")
+        for comp_name, comp in [
+            ("premio_saude", opcao.premio_saude),
+            ("iof", opcao.iof),
+            ("total_recorrente", opcao.total_recorrente),
+            ("total_primeira_parcela", opcao.total_primeira_parcela),
+            ("subtotal_impresso", opcao.subtotal_impresso),
+        ]:
+            if comp:
+                _checar(
+                    comp.proveniencia.documento_id,
+                    f"opcao:{opcao.id}:{comp_name}:documento_id",
+                )
+        for faixa in opcao.tabela:
+            _checar(
+                faixa.proveniencia.documento_id,
+                f"opcao:{opcao.id}:faixa:{faixa.faixa}:documento_id",
+            )
+        for cu in opcao.custos_unicos:
+            _checar(
+                cu.proveniencia.documento_id,
+                f"opcao:{opcao.id}:custo_unico:{cu.id}:documento_id",
+            )
+
+    for vida in estudo.vidas:
+        prov = vida.fatura_proveniencia
+        if prov:
+            _checar(prov.documento_id, f"vida:{vida.id}:fatura:documento_id")
+
+    for sg in estudo.subgrupos_atuais:
+        if sg.subtotal_impresso:
+            _checar(
+                sg.subtotal_impresso.proveniencia.documento_id,
+                f"subgrupo:{sg.id}:subtotal_impresso:documento_id",
+            )
+        for faixa in sg.tabela_atual:
+            _checar(
+                faixa.proveniencia.documento_id,
+                f"subgrupo:{sg.id}:tabela_atual:faixa:{faixa.faixa}:documento_id",
+            )
+
+    return validacoes
 
 
-def _proveniencia_precisa_confirmacao(prov: ProvenienciaCampo) -> bool:
-    return prov.origem == OrigemValor.IA and not prov.confirmado
+def _validar_b03_proveniencia(
+    estudo: EstudoInput,
+    alvo_ref: str,
+    prov: ProvenienciaCampo,
+    rotulo: str,
+    doc_fallback: str | None = None,
+) -> list[Validacao]:
+    validacoes: list[Validacao] = []
+    doc_id = prov.documento_id or doc_fallback
+    if prov.origem == OrigemValor.IA and not prov.confirmado:
+        validacoes.append(
+            Validacao(
+                codigo="B-03",
+                severidade=SeveridadeValidacao.BLOQUEANTE,
+                mensagem=f"{rotulo} com origem IA não confirmada.",
+                alvo_ref=alvo_ref,
+            )
+        )
+    elif not prov.confirmado and doc_id and _documento_em_alerta(estudo, doc_id):
+        validacoes.append(
+            Validacao(
+                codigo="B-03",
+                severidade=SeveridadeValidacao.BLOQUEANTE,
+                mensagem=(
+                    f"{rotulo} não confirmado com documento em estado de alerta/falha."
+                ),
+                alvo_ref=alvo_ref,
+            )
+        )
+    return validacoes
 
 
 def _documento_em_alerta(estudo: EstudoInput, doc_id: str | None) -> bool:
@@ -428,109 +512,74 @@ def validar_b03_valores_nao_confirmados(estudo: EstudoInput) -> list[Validacao]:
             continue
         prov = vida.proveniencia_fatura_efetiva()
         assert prov is not None
-        if _proveniencia_precisa_confirmacao(prov):
-            validacoes.append(
-                Validacao(
-                    codigo="B-03",
-                    severidade=SeveridadeValidacao.BLOQUEANTE,
-                    mensagem=(
-                        f"Fatura atual da vida {vida.id} com origem IA não confirmada."
-                    ),
-                    alvo_ref=f"vida:{vida.id}:fatura",
-                )
+        validacoes.extend(
+            _validar_b03_proveniencia(
+                estudo,
+                f"vida:{vida.id}:fatura",
+                prov,
+                f"Fatura atual da vida {vida.id}",
             )
-        elif not prov.confirmado and _documento_em_alerta(estudo, prov.documento_id):
-            validacoes.append(
-                Validacao(
-                    codigo="B-03",
-                    severidade=SeveridadeValidacao.BLOQUEANTE,
-                    mensagem=(
-                        f"Fatura atual da vida {vida.id} não confirmada "
-                        "com documento em estado de alerta/falha."
-                    ),
-                    alvo_ref=f"vida:{vida.id}:fatura",
-                )
-            )
+        )
 
     for sg in estudo.subgrupos_atuais:
-        if sg.subtotal_impresso and _componente_precisa_confirmacao(sg.subtotal_impresso):
-            validacoes.append(
-                Validacao(
-                    codigo="B-03",
-                    severidade=SeveridadeValidacao.BLOQUEANTE,
-                    mensagem=(
-                        f"Subtotal atual do subgrupo {sg.id} com origem IA não confirmado."
-                    ),
-                    alvo_ref=f"subgrupo:{sg.id}:subtotal_impresso",
+        if sg.subtotal_impresso:
+            validacoes.extend(
+                _validar_b03_proveniencia(
+                    estudo,
+                    f"subgrupo:{sg.id}:subtotal_impresso",
+                    sg.subtotal_impresso.proveniencia,
+                    f"Subtotal atual do subgrupo {sg.id}",
                 )
             )
         for faixa in sg.tabela_atual:
-            if faixa.proveniencia.origem == OrigemValor.IA and not faixa.proveniencia.confirmado:
-                validacoes.append(
-                    Validacao(
-                        codigo="B-03",
-                        severidade=SeveridadeValidacao.BLOQUEANTE,
-                        mensagem=(
-                            f"Faixa {faixa.faixa} da tabela atual com origem IA não confirmada "
-                            f"(subgrupo {sg.id})."
-                        ),
-                        alvo_ref=f"subgrupo:{sg.id}:tabela_atual:faixa:{faixa.faixa}",
-                    )
+            validacoes.extend(
+                _validar_b03_proveniencia(
+                    estudo,
+                    f"subgrupo:{sg.id}:tabela_atual:faixa:{faixa.faixa}",
+                    faixa.proveniencia,
+                    f"Faixa {faixa.faixa} da tabela atual (subgrupo {sg.id})",
                 )
+            )
 
     for opcao in estudo.opcoes_plano:
-        if opcao.documento_id and opcao.documento_id in {
-            d.id
-            for d in estudo.documentos
-            if d.estado_extracao
-            in (EstadoExtracao.EXTRAIDO_COM_ALERTA, EstadoExtracao.FALHA_EXTRACAO)
-        }:
-            for comp_name, comp in [
-                ("premio_saude", opcao.premio_saude),
-                ("iof", opcao.iof),
-                ("total_recorrente", opcao.total_recorrente),
-                ("total_primeira_parcela", opcao.total_primeira_parcela),
-            ]:
-                if comp and not comp.proveniencia.confirmado:
-                    validacoes.append(
-                        Validacao(
-                            codigo="B-03",
-                            severidade=SeveridadeValidacao.BLOQUEANTE,
-                            mensagem=(
-                                f"Campo {comp_name} da opção {opcao.id} não confirmado "
-                                f"com documento em estado de alerta/falha."
-                            ),
-                            alvo_ref=f"opcao:{opcao.id}:{comp_name}",
-                        )
-                    )
+        doc_fb = opcao.documento_id
         for comp_name, comp in [
             ("premio_saude", opcao.premio_saude),
             ("iof", opcao.iof),
             ("total_recorrente", opcao.total_recorrente),
             ("total_primeira_parcela", opcao.total_primeira_parcela),
+            ("subtotal_impresso", opcao.subtotal_impresso),
         ]:
-            if _componente_precisa_confirmacao(comp):
-                validacoes.append(
-                    Validacao(
-                        codigo="B-03",
-                        severidade=SeveridadeValidacao.BLOQUEANTE,
-                        mensagem=f"Valor {comp_name} com origem IA não confirmado (opção {opcao.id}).",
-                        alvo_ref=f"opcao:{opcao.id}:{comp_name}",
+            if comp:
+                validacoes.extend(
+                    _validar_b03_proveniencia(
+                        estudo,
+                        f"opcao:{opcao.id}:{comp_name}",
+                        comp.proveniencia,
+                        f"Campo {comp_name} da opção {opcao.id}",
+                        doc_fallback=doc_fb,
                     )
                 )
         for faixa in opcao.tabela:
-            if faixa.proveniencia.origem == OrigemValor.IA and not faixa.proveniencia.confirmado:
-                validacoes.append(
-                    Validacao(
-                        codigo="B-03",
-                        severidade=SeveridadeValidacao.BLOQUEANTE,
-                        mensagem=(
-                            f"Faixa {faixa.faixa} com origem IA não confirmada "
-                            f"(opção {opcao.id})."
-                        ),
-                        alvo_ref=f"opcao:{opcao.id}:faixa:{faixa.faixa}",
-                    )
+            validacoes.extend(
+                _validar_b03_proveniencia(
+                    estudo,
+                    f"opcao:{opcao.id}:faixa:{faixa.faixa}",
+                    faixa.proveniencia,
+                    f"Faixa {faixa.faixa} da opção {opcao.id}",
+                    doc_fallback=doc_fb,
                 )
+            )
+        for cu in opcao.custos_unicos:
+            validacoes.extend(
+                _validar_b03_proveniencia(
+                    estudo,
+                    f"opcao:{opcao.id}:custo_unico:{cu.id}",
+                    cu.proveniencia,
+                    f"Custo único {cu.id} da opção {opcao.id}",
+                    doc_fallback=doc_fb,
+                )
+            )
     return validacoes
 
 
@@ -584,6 +633,30 @@ def validar_b06_atribuicoes(estudo: EstudoInput) -> list[Validacao]:
     for cenario in estudo.cenarios:
         atrib_por_alvo: dict[str, str] = {}
         for atr in cenario.atribuicoes:
+            if estudo.formato == FormatoEstudo.NOVO and atr.alvo_tipo != AlvoTipo.VIDA:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-06",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=(
+                            f"Atribuição {atr.id}: seguro novo exige alvo_tipo=vida "
+                            f"(recebido '{atr.alvo_tipo.value}')."
+                        ),
+                        alvo_ref=f"atribuicao:{atr.id}:alvo_tipo",
+                    )
+                )
+            if estudo.formato == FormatoEstudo.RENOVACAO and atr.alvo_tipo != AlvoTipo.SUBGRUPO:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-06",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=(
+                            f"Atribuição {atr.id}: renovação exige alvo_tipo=subgrupo "
+                            f"(recebido '{atr.alvo_tipo.value}')."
+                        ),
+                        alvo_ref=f"atribuicao:{atr.id}:alvo_tipo",
+                    )
+                )
             atrib_por_alvo[atr.alvo_id] = atr.opcao_plano_id
 
         if estudo.formato == FormatoEstudo.RENOVACAO:

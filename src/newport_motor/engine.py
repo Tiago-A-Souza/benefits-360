@@ -76,8 +76,9 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
             subgrupos_rec = [
                 SubgrupoReconciliacao(
                     subgrupo_id=sg["subgrupo_id"],
-                    subtotal_calculado_centavos=sg["subtotal"],
-                    subtotal_impresso=sg["subtotal_impresso"],
+                    subtotal_atual_calculado_centavos=sg["subtotal_atual_calculado"],
+                    subtotal_atual_impresso=sg["subtotal_atual_impresso"],
+                    tipo_fiscal_atual=sg["tipo_fiscal_atual"],
                 )
                 for sg in dados["subgrupos"]
             ]

@@ -14,6 +14,8 @@ class LinhagemReferencia(BaseModel):
     origem: OrigemValor
     documento_id: str | None = None
     extrator_versao: str | None = None
+    evidencia_pagina: int | None = None
+    evidencia_trecho: str | None = None
 
 
 class ProvenienciaCampo(BaseModel):
@@ -55,6 +57,8 @@ def linhagem_de_proveniencia(alvo_ref: str, prov: ProvenienciaCampo) -> Linhagem
         origem=prov.origem,
         documento_id=prov.documento_id,
         extrator_versao=prov.extrator_versao,
+        evidencia_pagina=prov.evidencia_pagina,
+        evidencia_trecho=prov.evidencia_trecho,
     )
 
 

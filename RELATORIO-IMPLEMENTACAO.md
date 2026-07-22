@@ -1,4 +1,4 @@
-# Relatório de Implementação — ETAPA 1 + ETAPA 1.1 + ETAPA 1.1.1 + ETAPA 1.2
+# Relatório de Implementação — ETAPA 1 + ETAPA 1.1 + ETAPA 1.1.1 + ETAPA 1.2 + ETAPA 1.2.1
 
 > Motor financeiro puro · UTF-8 · 2026-07-22
 
@@ -13,7 +13,7 @@
 | `types.py` | Tipos + `PrecedenciaAtualVida` + `AlvoTipo` |
 | `models.py` | Entrada tipada; IDs únicos; `fatura_proveniencia` por vida |
 | `policy.py` | `EffectivePolicy`; tolerâncias e `iof_bps` ≥ 0 |
-| `reconciliation.py` | B-02 em 5 níveis; `valor_calc` com linhagem |
+| `reconciliation.py` | B-02: subtotal **atual** vs vigente; subtotal **proposta** vs total agregado |
 | `calculation.py` | Cálculo com linhagem fatura/tabela/proposta na saída |
 | `validations.py` | B-02…B-08 endurecidos (baseline, cenários, nascimento, B-03 atual) |
 | `engine.py` | `calcular(estudo, policy) -> MotorResult` |
@@ -39,14 +39,24 @@ from newport_motor import calcular, EstudoInput, EffectivePolicy, MotorResult
 - **Negativos:** rejeitados em componentes financeiros, conferência, tolerâncias, `iof_bps`.
 - **Reajuste negativo:** **B-07** (não homologado no piloto); suporte futuro exige política explícita.
 - **1ª parcela < custos:** **B-02** com mensagem clara; sem IOF sobre base recorrente negativa.
-- **Proveniência atual:** `Vida.fatura_proveniencia`; B-03 estendido a fatura/tabela/subtotal atual; saída com `fontes[]` apontando fatura/tabela/proposta (origem permanece `calculado`).
+- **Proveniência atual:** `Vida.fatura_proveniencia`; B-03 estendido; saída com `fontes[]` (inclui página/trecho).
+
+### 1.3. Correções 1.2.1 (subtotais e B-03)
+
+- **`SubgrupoAtual.subtotal_impresso`** → reconciliado contra `subtotal_atual_vigente_centavos` (tipo fiscal e basis do subgrupo).
+- **`OpcaoPlano.subtotal_impresso`** → reconciliado contra total calculado da proposta na população atribuída.
+- Diferença legítima entre atual e proposta **não** gera B-02.
+- **B-03:** `confirmado=false` + documento em alerta/falha bloqueia qualquer origem (fatura, tabela, subtotal, componentes, custos únicos); IA não confirmada continua bloqueando.
+- **`alvo_tipo` por formato:** novo → `vida`; renovação → `subgrupo` (B-06).
+- **`documento_id` inexistente** → B-05; manual sem documento continua válido.
+- **`LinhagemReferencia`:** propaga `evidencia_pagina` e `evidencia_trecho`.
 
 ---
 
 ## 2. Resultado dos testes
 
 ```
-78 passed
+86 passed
 ```
 
 | Suíte | Testes | Resultado |
@@ -61,13 +71,28 @@ from newport_motor import calcular, EstudoInput, EffectivePolicy, MotorResult
 | H — Escala/proveniência | 6 | PASSOU |
 | **1.1.1 — Correções piloto** | 9 | PASSOU |
 | **1.2 — Endurecimento** | 19 | PASSOU |
+| **1.2.1 — Subtotais/B-03** | 8 | PASSOU |
 | **Fixtures JSON** | 16 execuções | PASSOU |
 
 Fixtures JSON: **15 casos parametrizados** + `test_fixtures_minimo_exigido` (presença mínima).
 
 ---
 
-## 3. Novos casos de teste (ETAPA 1.2)
+## 3. Casos de teste ETAPA 1.2.1
+
+| Caso | Resultado |
+|------|-----------|
+| Subtotal atual 10.000, proposta 8.000, ambos corretos | Sem B-02 (`test_subtotal_atual_e_proposta_diferentes_sem_b02`) |
+| Subtotal atual divergente | B-02 subtotal atual |
+| Subtotal proposta divergente | B-02 subtotal proposta |
+| Extraído não confirmado + doc alerta | B-03 |
+| `alvo_tipo` incompatível (IDs coincidentes) | B-06 |
+| Documento inexistente | B-05 |
+| Linhagem com página/trecho | Preservados em `fontes[]` |
+
+---
+
+## 4. Casos de teste ETAPA 1.2
 
 | Caso | Bloqueio / comportamento |
 |------|---------------------------|
@@ -87,7 +112,7 @@ Fixtures JSON: **15 casos parametrizados** + `test_fixtures_minimo_exigido` (pre
 
 ---
 
-## 4. Fixtures determinísticas
+## 5. Fixtures determinísticas
 
 Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
@@ -95,7 +120,7 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
 ---
 
-## 5. Matriz requisito → teste (1.2)
+## 6. Matriz requisito → teste (1.2 / 1.2.1)
 
 | Requisito | Teste(s) |
 |-----------|----------|
@@ -106,11 +131,15 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 | Valores/policy negativos | 1.2 `test_componente_*`, `test_policy_*`, `test_tolerancia_*` |
 | Reajuste negativo | 1.2 `test_reajuste_negativo_*` |
 | 1ª parcela < custos | 1.2 `test_primeira_parcela_menor_*`, 1.1.1 |
-| Proveniência atual + linhagem | 1.2 `test_fatura_ia_*`, `test_tabela_atual_*`, `test_saida_preserva_linhagem_*` |
+| Proveniência atual + linhagem | 1.2, 1.2.1 `test_linhagem_*` |
+| Subtotal atual ≠ proposta na reconciliação | 1.2.1 `test_subtotal_atual_e_proposta_diferentes_sem_b02` |
+| B-03 documento alerta (qualquer origem) | 1.2.1 `test_b03_extraido_*` |
+| alvo_tipo por formato | 1.2.1 `test_alvo_tipo_incompativel_*` |
+| documento_id inexistente | 1.2.1 `test_documento_inexistente_b05` |
 
 ---
 
-## 6. Bloqueios B-01…B-08
+## 7. Bloqueios B-01…B-08
 
 | Bloqueio | Cobertura 1.2 |
 |----------|---------------|
@@ -124,7 +153,7 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
 ---
 
-## 7. Decisões provisórias
+## 8. Decisões provisórias
 
 | Tema | Comportamento |
 |------|---------------|
@@ -134,7 +163,7 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
 ---
 
-## 8. Limitações conhecidas
+## 9. Limitações conhecidas
 
 - Motor **não aprovado** para produção — checkpoint pós-endurecimento 1.2.
 - Piloto: somente `por_vida_entao_soma` homologada.
@@ -143,6 +172,6 @@ Oráculo: `tests/oracle_independente.py`. Gerador: `tests/generate_fixtures.py`.
 
 ---
 
-## 9. Componentes proibidos
+## 10. Componentes proibidos
 
 Confirmado: nenhum FastAPI, React, Postgres, worker, PPTX, parser de PDF ou IA integrada.

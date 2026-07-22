@@ -21,8 +21,9 @@ from newport_motor.types import MoneyCents, PriceBasis, SeveridadeValidacao, Tip
 @dataclass
 class SubgrupoReconciliacao:
     subgrupo_id: str
-    subtotal_calculado_centavos: int
-    subtotal_impresso: ComponenteFinanceiro | None = None
+    subtotal_atual_calculado_centavos: int | None = None
+    subtotal_atual_impresso: ComponenteFinanceiro | None = None
+    tipo_fiscal_atual: TipoFiscal | None = None
 
 
 @dataclass
@@ -118,33 +119,83 @@ def reconciliar_opcao_cenario(
                 )
             )
 
-    # 2. Subtotal por subgrupo
+    # 2. Subtotal atual por subgrupo (SubgrupoAtual.subtotal_impresso vs vigente calculado)
     for sg in dados.subgrupos:
-        if sg.subtotal_impresso is None or sg.subtotal_impresso.centavos is None:
+        if (
+            sg.subtotal_atual_impresso is None
+            or sg.subtotal_atual_impresso.centavos is None
+            or sg.subtotal_atual_calculado_centavos is None
+        ):
             continue
-        if sg.subtotal_impresso.price_basis == PriceBasis.DESCONHECIDO:
+        if sg.subtotal_atual_impresso.price_basis == PriceBasis.DESCONHECIDO:
+            validacoes.append(
+                Validacao(
+                    codigo="B-02",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"subtotal_impresso com price_basis desconhecido "
+                        f"(subgrupo {sg.subgrupo_id})."
+                    ),
+                    alvo_ref=f"opcao:{opcao.id}:subgrupo:{sg.subgrupo_id}:subtotal_atual",
+                )
+            )
             continue
+        tf_atual = sg.tipo_fiscal_atual or tf
         esperado = _normalizar_impresso(
-            sg.subtotal_impresso.centavos,
-            sg.subtotal_impresso.price_basis,
-            tf,
+            sg.subtotal_atual_impresso.centavos,
+            sg.subtotal_atual_impresso.price_basis,
+            tf_atual,
             int(iof_bps),
         )
-        diff = abs(sg.subtotal_calculado_centavos - esperado)
+        diff = abs(sg.subtotal_atual_calculado_centavos - esperado)
         if diff > tol.subtotal_centavos:
             validacoes.append(
                 Validacao(
                     codigo="B-02",
                     severidade=SeveridadeValidacao.BLOQUEANTE,
                     mensagem=(
-                        f"Subtotal subgrupo {sg.subgrupo_id} diverge "
-                        f"({sg.subtotal_calculado_centavos}c vs {esperado}c, diff {diff}c)."
+                        f"Subtotal atual subgrupo {sg.subgrupo_id} diverge "
+                        f"({sg.subtotal_atual_calculado_centavos}c vs {esperado}c, diff {diff}c)."
                     ),
-                    alvo_ref=f"opcao:{opcao.id}:subgrupo:{sg.subgrupo_id}:subtotal",
+                    alvo_ref=f"opcao:{opcao.id}:subgrupo:{sg.subgrupo_id}:subtotal_atual",
                 )
             )
 
     total_calc = MoneyCents(dados.total_calculado_centavos)
+
+    # 2b. Subtotal da proposta (OpcaoPlano.subtotal_impresso vs total calculado agregado)
+    if opcao.subtotal_impresso and opcao.subtotal_impresso.centavos is not None:
+        if opcao.subtotal_impresso.price_basis == PriceBasis.DESCONHECIDO:
+            validacoes.append(
+                Validacao(
+                    codigo="B-02",
+                    severidade=SeveridadeValidacao.BLOQUEANTE,
+                    mensagem=(
+                        f"subtotal_impresso da opção {opcao.id} com price_basis desconhecido."
+                    ),
+                    alvo_ref=f"opcao:{opcao.id}:subtotal_impresso",
+                )
+            )
+        else:
+            esperado_prop = _normalizar_impresso(
+                opcao.subtotal_impresso.centavos,
+                opcao.subtotal_impresso.price_basis,
+                tf,
+                int(iof_bps),
+            )
+            diff = abs(int(total_calc) - esperado_prop)
+            if diff > tol.subtotal_centavos:
+                validacoes.append(
+                    Validacao(
+                        codigo="B-02",
+                        severidade=SeveridadeValidacao.BLOQUEANTE,
+                        mensagem=(
+                            f"Subtotal da proposta diverge do calculado agregado "
+                            f"({esperado_prop}c vs {int(total_calc)}c, diff {diff}c)."
+                        ),
+                        alvo_ref=f"opcao:{opcao.id}:subtotal_proposta",
+                    )
+                )
 
     # 3. Prêmio + IOF vs total recorrente (quando componentes existem)
     if (
