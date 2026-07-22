@@ -106,6 +106,9 @@ export default function App() {
           <div className="resumo">
             <h2>{resumo.titulo}</h2>
             <p>{resumo.descricao}</p>
+            <p className="muted">
+              Tipo: {resumo.formato_exibicao} · {resumo.beneficiarios_rotulo}
+            </p>
           </div>
         )}
         <button type="button" onClick={handleCalcular} disabled={carregando}>
@@ -149,12 +152,22 @@ export default function App() {
                       <td>Proposta (mensal)</td>
                       <td>{resultado.totais?.proposta_mensal_reais}</td>
                     </tr>
-                    <tr className="destaque">
-                      <td>Diferença mensal</td>
+                    <tr
+                      className={`destaque destaque--${resultado.totais?.diferenca_semantica ?? "neutro"}`}
+                    >
+                      <td>
+                        {resultado.totais?.rotulo_diferenca_mensal}
+                        {resultado.totais?.diferenca_semantica === "aumento" &&
+                          " — proposta mais cara"}
+                        {resultado.totais?.diferenca_semantica === "economia" &&
+                          " — proposta mais barata"}
+                      </td>
                       <td>{resultado.totais?.diferenca_mensal_reais}</td>
                     </tr>
-                    <tr className="destaque">
-                      <td>Diferença anual</td>
+                    <tr
+                      className={`destaque destaque--${resultado.totais?.diferenca_semantica ?? "neutro"}`}
+                    >
+                      <td>{resultado.totais?.rotulo_diferenca_anual}</td>
                       <td>{resultado.totais?.diferenca_anual_reais}</td>
                     </tr>
                   </tbody>

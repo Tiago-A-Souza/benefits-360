@@ -9,7 +9,9 @@ class EstudoResumo(BaseModel):
     id: str
     titulo: str
     formato: str
+    formato_exibicao: str
     beneficiarios_incluidos: int
+    beneficiarios_rotulo: str
     descricao: str
 
 
@@ -18,6 +20,9 @@ class TotaisComparativo(BaseModel):
     proposta_mensal_reais: str
     diferenca_mensal_reais: str
     diferenca_anual_reais: str
+    diferenca_semantica: str  # aumento | economia | empate
+    rotulo_diferenca_mensal: str
+    rotulo_diferenca_anual: str
     baseline_rotulo: str
 
 

@@ -95,6 +95,30 @@ button.link {
   font-weight: 600;
 }
 
+.comparativo .destaque--aumento td:first-child::before {
+  content: "▲ ";
+}
+
+.comparativo .destaque--economia td:first-child::before {
+  content: "▼ ";
+}
+
+.comparativo .destaque--empate td:first-child::before {
+  content: "= ";
+}
+
+.destaque--aumento td {
+  border-left: 3px solid #c62828;
+}
+
+.destaque--economia td {
+  border-left: 3px solid #2e7d32;
+}
+
+.destaque--empate td {
+  border-left: 3px solid #616161;
+}
+
 .pendencias {
   list-style: none;
   padding: 0;

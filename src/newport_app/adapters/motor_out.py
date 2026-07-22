@@ -10,22 +10,22 @@ from newport_app.models.responses import (
     PendenciaItem,
     TotaisComparativo,
 )
+from newport_app.presentation.textos import (
+    descricao_estudo,
+    formatar_tipo_estudo,
+    mensagem_faixa_homologada,
+    plural_beneficiarios,
+    rotulos_diferenca,
+)
 from newport_motor.result import MotorResult
 from newport_motor.types import SeveridadeValidacao
 
-_TRADUCOES: dict[str, tuple[str, str, str, str | None]] = {
+_TRADUCOES: dict[str, tuple[str, str, str | None]] = {
     "B-08": (
         "bloqueio",
         "Nenhum beneficiário incluído",
         "Inclua ao menos um beneficiário antes de calcular.",
         "Revise a lista de beneficiários do estudo.",
-    ),
-    "H-01": (
-        "alerta",
-        "Quantidade acima da faixa homologada",
-        "Este estudo tem mais beneficiários do que a faixa já homologada pela operação. "
-        "O comparativo pode ser calculado, mas exige revisão adicional antes de qualquer aprovação.",
-        "Confirme com o revisor que a quantidade foi conferida.",
     ),
     "B-07": (
         "bloqueio",
@@ -74,7 +74,20 @@ def _formatar_reais(centavos: int) -> str:
     return f"{sinal}R$ {inteiro},{cents:02d}"
 
 
-def _traduzir_validacao(codigo: str, mensagem_motor: str) -> PendenciaItem:
+def _traduzir_validacao(
+    codigo: str,
+    mensagem_motor: str,
+    rascunho: RascunhoEstudo,
+) -> PendenciaItem:
+    if codigo == "H-01":
+        n = len(rascunho.vidas_incluidas())
+        max_h = rascunho.escolhas.max_beneficiarios_homologados or 29
+        return PendenciaItem(
+            tipo="alerta",
+            titulo="Quantidade acima da faixa homologada",
+            descricao=mensagem_faixa_homologada(n, max_h),
+            acao_sugerida="Confirme com o revisor que a quantidade foi conferida.",
+        )
     if codigo in _TRADUCOES:
         tipo, titulo, descricao, acao = _TRADUCOES[codigo]
         return PendenciaItem(tipo=tipo, titulo=titulo, descricao=descricao, acao_sugerida=acao)
@@ -92,8 +105,10 @@ def rascunho_para_resumo(rascunho: RascunhoEstudo) -> EstudoResumo:
         id=rascunho.id,
         titulo=rascunho.titulo,
         formato=rascunho.formato,
+        formato_exibicao=formatar_tipo_estudo(rascunho.formato),
         beneficiarios_incluidos=n,
-        descricao=f"Estudo de {rascunho.formato} com {n} beneficiário(s) — dados fictícios.",
+        beneficiarios_rotulo=plural_beneficiarios(n),
+        descricao=descricao_estudo(rascunho.formato, n),
     )
 
 
@@ -111,7 +126,7 @@ def motor_result_para_comparativo(
             SeveridadeValidacao.BLOQUEANTE,
             SeveridadeValidacao.ALERTA,
         ):
-            pendencias.append(_traduzir_validacao(val.codigo, val.mensagem))
+            pendencias.append(_traduzir_validacao(val.codigo, val.mensagem, rascunho))
 
     auditoria = [
         AuditoriaItem(
@@ -140,11 +155,27 @@ def motor_result_para_comparativo(
                     if rascunho.escolhas.valor_atual_referencia == "reajustado"
                     else "Contrato vigente"
                 )
+                semantica, rotulo_mes, rotulo_ano = rotulos_diferenca(
+                    diff_m.centavos,
+                    diff_a.centavos,
+                )
+                if semantica == "empate":
+                    diff_mes_exib = 0
+                    diff_ano_exib = 0
+                elif semantica == "economia":
+                    diff_mes_exib = abs(diff_m.centavos)
+                    diff_ano_exib = abs(diff_a.centavos)
+                else:
+                    diff_mes_exib = diff_m.centavos
+                    diff_ano_exib = diff_a.centavos
                 totais = TotaisComparativo(
                     atual_mensal_reais=_formatar_reais(atual.centavos),
                     proposta_mensal_reais=_formatar_reais(proposta.centavos),
-                    diferenca_mensal_reais=_formatar_reais(diff_m.centavos),
-                    diferenca_anual_reais=_formatar_reais(diff_a.centavos),
+                    diferenca_mensal_reais=_formatar_reais(diff_mes_exib),
+                    diferenca_anual_reais=_formatar_reais(diff_ano_exib),
+                    diferenca_semantica=semantica,
+                    rotulo_diferenca_mensal=rotulo_mes,
+                    rotulo_diferenca_anual=rotulo_ano,
                     baseline_rotulo=baseline,
                 )
 

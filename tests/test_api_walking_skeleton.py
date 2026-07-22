@@ -34,7 +34,10 @@ def test_resumo_demo_12(client: TestClient):
     assert res.status_code == 200
     data = res.json()
     assert data["beneficiarios_incluidos"] == 12
-    assert "fictício" in data["descricao"].lower() or "fictíc" in data["descricao"].lower()
+    assert data["beneficiarios_rotulo"] == "12 beneficiários"
+    assert data["formato_exibicao"] == "renovação"
+    assert "renovação" in data["descricao"]
+    assert "beneficiário(s)" not in data["descricao"]
 
 
 def test_calcular_demo_12_integracao_motor(client: TestClient):
@@ -45,8 +48,8 @@ def test_calcular_demo_12_integracao_motor(client: TestClient):
     assert data["beneficiarios_calculados"] == 12
     assert data["totais"] is not None
     assert data["totais"]["proposta_mensal_reais"].startswith("R$")
-    assert "diferenca_mensal_reais" in data["totais"]
-    assert "diferenca_anual_reais" in data["totais"]
+    assert data["totais"]["rotulo_diferenca_mensal"] == "Aumento mensal"
+    assert data["totais"]["diferenca_semantica"] == "aumento"
     bloqueios = [p for p in data["pendencias"] if p["tipo"] == "bloqueio"]
     assert not bloqueios
     h01 = [p for p in data["pendencias"] if "homologada" in p["titulo"].lower()]
@@ -63,7 +66,8 @@ def test_calcular_demo_41_sem_truncar_com_h01(client: TestClient):
     assert data["beneficiarios_calculados"] == 41
     alertas = [p for p in data["pendencias"] if p["tipo"] == "alerta"]
     assert len(alertas) >= 1
-    assert any("homologada" in a["titulo"].lower() for a in alertas)
+    assert "41 vidas" in alertas[0]["descricao"]
+    assert "29 vidas" in alertas[0]["descricao"]
     assert any(a["codigo"] == "H-01" for a in data["auditoria"])
     bloqueios = [p for p in data["pendencias"] if p["tipo"] == "bloqueio"]
     assert not bloqueios
