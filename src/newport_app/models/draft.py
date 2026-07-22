@@ -1,34 +1,174 @@
-"""DTO amigável da aplicação — rascunho de estudo (não é EstudoInput)."""
+"""RascunhoEstudo v1 — DTO canônico da aplicação (não é EstudoInput)."""
 
 from __future__ import annotations
 
 from datetime import date
+from enum import Enum
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+RASCUNHO_VERSAO_ATUAL = "1.0"
+
+
+class PriceBasisRascunho(str, Enum):
+    INCLUI_IOF = "inclui_iof"
+    EXCLUI_IOF = "exclui_iof"
+    DESCONHECIDO = "desconhecido"
+    NAO_APLICA = "nao_aplica"
+
+
+class ModalidadeRascunho(str, Enum):
+    ADESAO = "adesao"
+    COMPULSORIO = "compulsorio"
+    DESCONHECIDO = "desconhecido"
+
+
+class ParentescoRascunho(str, Enum):
+    TITULAR = "titular"
+    CONJUGE = "conjuge"
+    FILHO = "filho"
+    COMPANHEIRO = "companheiro"
+    OUTRO = "outro"
+
+
+class OrigemValorRascunho(str, Enum):
+    MANUAL = "manual"
+    EXTRAIDO = "extraido"
+    CALCULADO = "calculado"
+    IA = "ia"
+
+
+class ProvenienciaRascunho(BaseModel):
+    origem: OrigemValorRascunho = OrigemValorRascunho.MANUAL
+    documento_id: str | None = None
+    extrator_versao: str = "manual"
+    confirmado: bool = False
+
+
+class ComponenteFinanceiroRascunho(BaseModel):
+    centavos: int | None = None
+    price_basis: PriceBasisRascunho = PriceBasisRascunho.DESCONHECIDO
+    proveniencia: ProvenienciaRascunho = Field(default_factory=ProvenienciaRascunho)
+
+    @field_validator("centavos")
+    @classmethod
+    def centavos_nao_negativo(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("centavos não pode ser negativo")
+        return v
+
+
+class EmpresaCliente(BaseModel):
+    nome: str
+
+
+class MetadadosPptxRascunho(BaseModel):
+    """Reservado para ETAPA 2.8 — sem campos editáveis de governança."""
+
+    titulo_slide: str | None = None
+    subtitulo: str | None = None
+    data_apresentacao: date | None = None
+    template_versao: str | None = None
+    operadoras_exibir: list[str] = Field(default_factory=list)
+
+
+class ObservacoesRascunho(BaseModel):
+    notas_analista: str | None = None
+    ressalvas_comerciais: str | None = None
+    decisoes_pendentes: list[str] = Field(default_factory=list)
+
+
+class DocumentoCotacaoRascunho(BaseModel):
+    id: str
+    operadora: str
+    validade_oficial: date | None = None
+    vigencia_pretendida: date | None = None
+    data_emissao: date | None = None
+    hash_documento: str | None = Field(default=None, alias="hash")
+    parser_versao: str = "manual"
+    estado_extracao: Literal["manual", "pendente", "extraido"] = "manual"
+
+    model_config = {"populate_by_name": True}
+
+
+class CustoUnicoRascunho(BaseModel):
+    id: str
+    descricao: str
+    valor: ComponenteFinanceiroRascunho
+
+
+class CampoConfirmavelBaseline(BaseModel):
+    valor: Literal["vigente", "reajustado"] | None = None
+    confirmado: bool = False
+
+
+class CampoConfirmavelPrecedencia(BaseModel):
+    valor: Literal["tabela_atual", "valor_fatura"] | None = None
+    confirmado: bool = False
+
+
+class EscolhasEstudo(BaseModel):
+    data_referencia_idade: date | None = None
+    baseline_escolhido: CampoConfirmavelBaseline = Field(
+        default_factory=CampoConfirmavelBaseline
+    )
+    precedencia_atual_vida: CampoConfirmavelPrecedencia = Field(
+        default_factory=CampoConfirmavelPrecedencia
+    )
 
 
 class VidaRascunho(BaseModel):
     id: str
     nome: str
     nascimento: date
+    parentesco: ParentescoRascunho | None = None
     incluida: bool = True
+    motivo_inclusao: str | None = None
+    motivo_exclusao: str | None = None
     subgrupo_atual_id: str | None = None
+    valor_fatura: ComponenteFinanceiroRascunho | None = None
+    valor_conferencia: ComponenteFinanceiroRascunho | None = None
 
 
 class TabelaFaixaRascunho(BaseModel):
     faixa: int
     valor_centavos: int
     quantidade_cotada: int = 0
+    price_basis: PriceBasisRascunho = PriceBasisRascunho.EXCLUI_IOF
+    proveniencia: ProvenienciaRascunho = Field(
+        default_factory=lambda: ProvenienciaRascunho(
+            origem=OrigemValorRascunho.MANUAL,
+            confirmado=True,
+        )
+    )
+
+    @field_validator("valor_centavos")
+    @classmethod
+    def valor_nao_negativo(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("valor_centavos não pode ser negativo")
+        return v
+
+    @field_validator("faixa")
+    @classmethod
+    def faixa_no_intervalo(cls, v: int) -> int:
+        if v < 0 or v > 9:
+            raise ValueError("faixa deve estar entre 0 e 9")
+        return v
 
 
-class SubgrupoRascunho(BaseModel):
+class SubgrupoAtualRascunho(BaseModel):
     id: str
     operadora: str
     plano_nome: str
     regime_copart_id: str
-    tipo_fiscal: str = "seguradora"
+    tipo_fiscal: Literal["seguradora", "operadora"] = "seguradora"
+    acomodacao: str | None = None
+    modalidade: ModalidadeRascunho | None = None
     reajuste_bps: int | None = None
-    fatura_inclui_iof: bool = False
+    fatura_price_basis: PriceBasisRascunho = PriceBasisRascunho.DESCONHECIDO
+    subtotal_atual_impresso: ComponenteFinanceiroRascunho | None = None
     tabela_atual: list[TabelaFaixaRascunho] = Field(default_factory=list)
 
 
@@ -37,14 +177,22 @@ class OpcaoPropostaRascunho(BaseModel):
     operadora: str
     plano_nome: str
     regime_copart_id: str
-    tipo_fiscal: str = "seguradora"
-    valores_incluem_iof: bool = False
+    tipo_fiscal: Literal["seguradora", "operadora"] = "seguradora"
+    acomodacao: str | None = None
+    modalidade: ModalidadeRascunho | None = None
     tabela: list[TabelaFaixaRascunho] = Field(default_factory=list)
+    premio_saude: ComponenteFinanceiroRascunho | None = None
+    iof: ComponenteFinanceiroRascunho | None = None
+    total_recorrente: ComponenteFinanceiroRascunho | None = None
+    total_primeira_parcela: ComponenteFinanceiroRascunho | None = None
+    subtotal_impresso: ComponenteFinanceiroRascunho | None = None
+    custos_unicos: list[CustoUnicoRascunho] = Field(default_factory=list)
+    documento_cotacao_id: str | None = None
 
 
 class AtribuicaoRascunho(BaseModel):
     id: str
-    alvo_tipo: str
+    alvo_tipo: Literal["subgrupo", "vida"]
     alvo_id: str
     opcao_plano_id: str
 
@@ -57,28 +205,38 @@ class CenarioRascunho(BaseModel):
 
 class RegimeCopartRascunho(BaseModel):
     id: str
-    tipo: str
-
-
-class EscolhasEstudo(BaseModel):
-    """Escolhas do analista — traduzidas para EffectivePolicy no adaptador."""
-
-    data_referencia_idade: date
-    valor_atual_referencia: str = "reajustado"  # vigente | reajustado
-    prioridade_fatura_ou_tabela: str = "tabela_atual"  # tabela_atual | valor_fatura
-    max_beneficiarios_homologados: int | None = 29
+    tipo: Literal["sem", "parcial", "percentual", "customizada"]
 
 
 class RascunhoEstudo(BaseModel):
+    rascunho_versao: str = RASCUNHO_VERSAO_ATUAL
+    policy_set_versao: str
     id: str
     titulo: str
-    formato: str = "renovacao"
+    formato: Literal["renovacao", "novo"] = "renovacao"
+    empresa_cliente: EmpresaCliente | None = None
     vidas: list[VidaRascunho]
-    subgrupos_atuais: list[SubgrupoRascunho] = Field(default_factory=list)
+    subgrupos_atuais: list[SubgrupoAtualRascunho] = Field(default_factory=list)
     opcoes_proposta: list[OpcaoPropostaRascunho] = Field(default_factory=list)
     regimes_copart: list[RegimeCopartRascunho] = Field(default_factory=list)
     cenarios: list[CenarioRascunho] = Field(default_factory=list)
-    escolhas: EscolhasEstudo
+    documentos_cotacao: list[DocumentoCotacaoRascunho] = Field(default_factory=list)
+    escolhas: EscolhasEstudo = Field(default_factory=EscolhasEstudo)
+    observacoes: ObservacoesRascunho | None = None
+    metadados_pptx: MetadadosPptxRascunho | None = None
+
+    @model_validator(mode="after")
+    def versao_rascunho_suportada(self) -> RascunhoEstudo:
+        if self.rascunho_versao != RASCUNHO_VERSAO_ATUAL:
+            raise ValueError(
+                f"rascunho_versao '{self.rascunho_versao}' não suportada; "
+                f"use '{RASCUNHO_VERSAO_ATUAL}'"
+            )
+        return self
 
     def vidas_incluidas(self) -> list[VidaRascunho]:
         return [v for v in self.vidas if v.incluida]
+
+
+# Aliases de compatibilidade interna (ETAPA 2.1)
+SubgrupoRascunho = SubgrupoAtualRascunho
