@@ -86,18 +86,83 @@ export function grupoCopart(op) {
 }
 
 export function situacaoOpcao(op) {
-  if (op.excluida) return { codigo: "excluida", rotulo: "Excluída" };
+  if (op.excluida) return { codigo: "excluida", rotulo: "Excluída", motivos: [] };
   const faixasOk = op.tabela?.filter((fx) => fx.valor?.centavos != null).length || 0;
-  if (faixasOk === 0) return { codigo: "incompleto", rotulo: "Incompleto" };
-  const pend =
-    [op.plano_nome, op.regime_copart, op.tipo_fiscal].some(
-      (c) => c && c.estado === "revisar"
-    ) ||
-    op.tabela.some((fx) => fx.valor?.estado === "revisar") ||
-    (op.reconciliacao && !op.reconciliacao.ok);
-  if (pend) return { codigo: "revisao", rotulo: "Exige revisão" };
-  if (faixasOk < 10) return { codigo: "incompleto", rotulo: "Incompleto" };
-  return { codigo: "pronto", rotulo: "Pronto" };
+  if (faixasOk === 0) {
+    return { codigo: "incompleto", rotulo: "Incompleto", motivos: ["Faixas incompletas"] };
+  }
+  const motivos = [];
+  if (op.plano_nome?.estado === "revisar") {
+    motivos.push("Nome possivelmente fragmentado");
+  }
+  if (op.tabela?.some((fx) => fx.valor?.estado === "revisar")) {
+    motivos.push("Valor de faixa suspeito");
+  }
+  if (op.tipo_fiscal?.estado === "revisar") {
+    motivos.push("Tipo fiscal pendente");
+  }
+  if (op.regime_copart?.estado === "revisar") {
+    motivos.push("Regime de coparticipação pendente");
+  }
+  if (faixasOk < 10) {
+    motivos.push("Faixas incompletas");
+  }
+  if (op.reconciliacao?.divergencias?.length) {
+    motivos.push("Reconciliação com divergências");
+  }
+  if (motivos.length) {
+    return {
+      codigo: "revisao",
+      rotulo: motivos[0],
+      motivos,
+      bloqueiaConfirmacao: motivos.some(
+        (m) =>
+          m === "Nome possivelmente fragmentado" ||
+          m === "Valor de faixa suspeito" ||
+          m === "Faixas incompletas"
+      ),
+    };
+  }
+  if (faixasOk >= 10) {
+    return { codigo: "pronto", rotulo: "Pronto para revisar", motivos: [] };
+  }
+  return { codigo: "incompleto", rotulo: "Incompleto", motivos: ["Faixas incompletas"] };
+}
+
+export function contextoSiscorSimulacao(resumoSiscor, subgrupoSelecionado) {
+  const planos = resumoSiscor?.planos || [];
+  return {
+    totalGrupos: planos.length,
+    grupoSelecionado: Boolean(subgrupoSelecionado),
+    exigeEscolha: planos.length > 1 && !subgrupoSelecionado,
+  };
+}
+
+export function formatarEstimativaSiscor(op, quantidades, ctx) {
+  if (ctx?.exigeEscolha) {
+    return {
+      texto: "Estimativa indisponível até selecionar o grupo",
+      indisponivel: true,
+      destacarGrupo: true,
+    };
+  }
+  const temPop = quantidades && Object.values(quantidades).some((q) => q > 0);
+  if (!temPop) {
+    return { texto: "—", indisponivel: true, destacarGrupo: false };
+  }
+  const est = calcularEstimadoCentavos(op, quantidades);
+  if (est == null || est === 0) {
+    return { texto: "—", indisponivel: true, destacarGrupo: false };
+  }
+  return { texto: centavosParaReaisExibicao(est), indisponivel: false, destacarGrupo: false };
+}
+
+export function rotuloReconciliacao(op) {
+  const rec = op.reconciliacao;
+  if (!rec) return "Reconciliação ainda não realizada — faltam população ou total de referência.";
+  if (rec.mensagem) return rec.mensagem;
+  if (rec.divergencias?.length) return "Reconciliação com divergências";
+  return "Reconciliação ainda não realizada — faltam população ou total de referência.";
 }
 
 export function mapaQuantidadesFaixa(planoSiscor) {
@@ -134,6 +199,9 @@ export function traduzirAlerta(alerta) {
     "PDF-PORTO-005": "Há planos com códigos muito parecidos — confira o nome antes de selecionar.",
     "PDF-SUL-001": "Não localizamos a tabela tarifária esperada neste PDF SulAmérica.",
     "PDF-SUL-003": "O regime de coparticipação de uma tabela ficou ambíguo.",
+    "PDF-SUL-004": "Valor de faixa possivelmente fragmentado — confira a célula no PDF.",
+    "PDF-SUL-005": "A opção não possui exatamente 10 faixas tarifárias.",
+    "PDF-SUL-006": "Nome do plano possivelmente fragmentado ou genérico.",
     "PDF-TPL-001": "Reconhecemos a operadora, mas não a família de template deste layout.",
     "PDF-F02": "Documento não reconhecido — use entrada manual.",
   };

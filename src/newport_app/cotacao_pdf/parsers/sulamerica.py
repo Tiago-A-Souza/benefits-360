@@ -7,11 +7,11 @@ import unicodedata
 import uuid
 
 from newport_app.cotacao_pdf.coords_extract import (
-    classificar_regime_cabecalho,
-    extrair_tabelas_pagina,
     localizar_paginas_tabela_sulamerica,
     texto_pagina_enriquecido,
 )
+from newport_app.cotacao_pdf.sulamerica_table import extrair_tabelas_pagina_sulamerica
+from newport_app.cotacao_pdf.tarifa_validation import aplicar_validacao_estrutural_opcao
 from newport_app.cotacao_pdf.extract import PdfDocumento
 from newport_app.cotacao_pdf.parsers.base import faixa_extraida, novo_campo
 from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
@@ -19,7 +19,7 @@ from newport_app.cotacao_pdf.text_utils import extrair_datas, extrair_valores_re
 from newport_app.models.cotacao_pdf import AlertaExtracaoCotacao, OpcaoCotacaoCandidata
 from newport_app.models.draft import PriceBasisRascunho
 
-PARSER_VERSAO = "sulamerica@2.0.0"
+PARSER_VERSAO = "sulamerica@2.1.0"
 OPERADORA = "SulAmérica"
 TEMPLATE_ID = "sulamerica-pme-v2"
 
@@ -77,7 +77,7 @@ def parse(
         _, ocr = texto_pagina_enriquecido(doc, pagina)
         if ocr:
             meta["ocr_utilizado"] = True
-        secao = extrair_tabelas_pagina(doc, pagina)
+        secao = extrair_tabelas_pagina_sulamerica(doc, pagina)
         if secao is None:
             continue
         if secao.regime_tipo == "ambíguo":
@@ -199,8 +199,17 @@ def parse(
                     documento_hash=documento_hash,
                 ),
             )
+            alertas.extend(aplicar_validacao_estrutural_opcao(opcao))
             reconciliar_opcao(opcao)
             opcoes.append(opcao)
 
     meta["validade_oficial"] = validade
+    meta["planos_por_secao"] = [
+        {
+            "pagina": s.pagina,
+            "regime": s.regime_rotulo,
+            "planos": len(s.linhas),
+        }
+        for s in secoes_encontradas
+    ]
     return opcoes, alertas, meta

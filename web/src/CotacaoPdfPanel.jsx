@@ -18,16 +18,18 @@ import {
 import {
   ROTULOS_FAIXA,
   agruparOpcoes,
-  calcularEstimadoCentavos,
+  contextoSiscorSimulacao,
   exigeSelecaoConsciente,
   filtrarOpcoes,
   formatarDataUpload,
+  formatarEstimativaSiscor,
   inferirAcomodacao,
   inferirRegiao,
   mapaQuantidadesFaixa,
   nomePlanoExibicao,
   resumoFinanceiroOpcao,
   rotuloEstado,
+  rotuloReconciliacao,
   rotuloRegime,
   situacaoOpcao,
   traduzirAlerta,
@@ -88,6 +90,7 @@ function TabelaSelecaoCompacta({
   opcoes,
   templateId,
   quantidades,
+  siscorCtx,
   selecionados,
   onToggle,
 }) {
@@ -154,7 +157,7 @@ function TabelaSelecaoCompacta({
             <tbody>
               {opsGrupo.map((op) => {
                 const sit = situacaoOpcao(op);
-                const est = calcularEstimadoCentavos(op, quantidades);
+                const est = formatarEstimativaSiscor(op, quantidades, siscorCtx);
                 return (
                   <tr key={op.id} className={op.selecionada_para_comparativo ? "linha-selecionada" : ""}>
                     <td>
@@ -169,7 +172,7 @@ function TabelaSelecaoCompacta({
                     <td>{inferirAcomodacao(op)}</td>
                     <td>{rotuloRegime(op)}</td>
                     <td>{op.copart_percentual?.inteiro ?? "—"}</td>
-                    <td>{est != null ? centavosParaReaisExibicao(est) : "—"}</td>
+                    <td className={est.destacarGrupo ? "estimativa-indisponivel" : ""}>{est.texto}</td>
                     <td>
                       <BadgeSituacao situacao={sit} />
                     </td>
@@ -187,9 +190,12 @@ function TabelaSelecaoCompacta({
   );
 }
 
-function RevisaoPlano({ op, quantidades, onSalvarCampo, onConfirmarTabela }) {
+function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTabela }) {
   const faixasPorIndice = Object.fromEntries((op.tabela || []).map((fx) => [fx.faixa, fx]));
   let subtotal = 0;
+  const sit = situacaoOpcao(op);
+  const temPop = quantidades && Object.values(quantidades).some((q) => q > 0);
+  const estimativaIndisponivel = siscorCtx?.exigeEscolha || !temPop;
 
   return (
     <div className="cartao cartao--interno revisao-plano">
@@ -260,7 +266,12 @@ function RevisaoPlano({ op, quantidades, onSalvarCampo, onConfirmarTabela }) {
       </table>
 
       <p>
-        <strong>Subtotal estimado:</strong> {centavosParaReaisExibicao(subtotal)}
+        <strong>Subtotal estimado:</strong>{" "}
+        {estimativaIndisponivel
+          ? siscorCtx?.exigeEscolha
+            ? "Estimativa indisponível até selecionar o grupo"
+            : "—"
+          : centavosParaReaisExibicao(subtotal)}
       </p>
 
       <div className="resumo-financeiro-plano">
@@ -269,7 +280,11 @@ function RevisaoPlano({ op, quantidades, onSalvarCampo, onConfirmarTabela }) {
         <span>Total: {resumoFinanceiroOpcao(op)}</span>
       </div>
 
-      {op.reconciliacao && !op.reconciliacao.ok && (
+      <p className={op.reconciliacao?.ok ? "reconciliacao ok" : "muted"}>
+        {rotuloReconciliacao(op)}
+      </p>
+
+      {op.reconciliacao?.divergencias?.length > 0 && (
         <div className="pendencias-box">
           <strong>Divergências</strong>
           <ul>
@@ -280,9 +295,19 @@ function RevisaoPlano({ op, quantidades, onSalvarCampo, onConfirmarTabela }) {
         </div>
       )}
 
-      <button type="button" className="secundario" onClick={() => onConfirmarTabela(op)}>
+      <button
+        type="button"
+        className="secundario"
+        disabled={sit.bloqueiaConfirmacao}
+        onClick={() => onConfirmarTabela(op)}
+      >
         Confirmar tabela completa
       </button>
+      {sit.bloqueiaConfirmacao && (
+        <p className="alerta">
+          Confirmação bloqueada: {sit.motivos.join("; ")}. Corrija ou confira no PDF antes de confirmar.
+        </p>
+      )}
 
       <PainelAuditoria op={op} onSalvarCampo={onSalvarCampo} />
     </div>
@@ -352,6 +377,10 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
     [resumoSiscor, subgrupoSimulacao]
   );
   const quantidades = useMemo(() => mapaQuantidadesFaixa(planoSiscor), [planoSiscor]);
+  const siscorCtx = useMemo(
+    () => contextoSiscorSimulacao(resumoSiscor, subgrupoSimulacao),
+    [resumoSiscor, subgrupoSimulacao]
+  );
 
   const opcoesAtivas = useMemo(
     () => detalhe?.opcoes?.filter((o) => !o.excluida) || [],
@@ -411,6 +440,11 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
   }
 
   async function handleConfirmarTabela(op) {
+    const sit = situacaoOpcao(op);
+    if (sit.bloqueiaConfirmacao) {
+      setErro(`Não é possível confirmar «${nomePlanoExibicao(op)}»: ${sit.motivos.join("; ")}.`);
+      return;
+    }
     for (const fx of op.tabela || []) {
       const qtdSiscor = quantidades[fx.faixa];
       if (fx.valor?.centavos != null && !fx.valor.confirmado) {
@@ -541,8 +575,8 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
           )}
 
           {resumoSiscor?.planos?.length > 1 && (
-            <label>
-              Simular com beneficiários do grupo:
+            <label className={siscorCtx.exigeEscolha ? "siscor-grupo-destaque" : ""}>
+              Escolha o grupo de beneficiários para simular:
               <select
                 value={subgrupoSimulacao}
                 onChange={(e) => setSubgrupoSimulacao(e.target.value)}
@@ -555,6 +589,9 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                 ))}
               </select>
             </label>
+          )}
+          {siscorCtx.exigeEscolha && (
+            <p className="alerta">Estimativa indisponível até selecionar o grupo de beneficiários.</p>
           )}
 
           {fase === "selecao" && (
@@ -592,6 +629,7 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                 opcoes={opcoesAtivas}
                 templateId={docAberto?.template_id}
                 quantidades={quantidades}
+                siscorCtx={siscorCtx}
                 selecionados={{ filtros, setFiltro }}
                 onToggle={handleToggle}
               />
@@ -648,6 +686,7 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                   key={op.id}
                   op={op}
                   quantidades={quantidades}
+                  siscorCtx={siscorCtx}
                   onSalvarCampo={salvarCampo}
                   onConfirmarTabela={handleConfirmarTabela}
                 />

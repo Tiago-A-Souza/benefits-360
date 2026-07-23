@@ -57,8 +57,14 @@ def test_aceite_sulamerica_sem_coparticipacao():
     assert ext.opcoes
     assert all(op.regime_copart and op.regime_copart.texto == "sem" for op in ext.opcoes)
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
-    assert all(op.reconciliacao and op.reconciliacao.ok for op in ext.opcoes)
-    assert mat["valores_reconciliados"]
+    assert all(
+        op.reconciliacao
+        and (
+            op.reconciliacao.ok
+            or "Reconciliação ainda não realizada" in (op.reconciliacao.mensagem or "")
+        )
+        for op in ext.opcoes
+    )
 
 
 @pytest.mark.private_corpus
@@ -75,8 +81,18 @@ def test_aceite_sulamerica_ajustes_dual_regimes():
 
     assert len(sem) >= 1
     assert len(parcial) >= 1
+    assert len(ext.opcoes) == 22
+    assert len(sem) == 11
+    assert len(parcial) == 11
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
-    assert all(op.reconciliacao and op.reconciliacao.ok for op in ext.opcoes)
+    nomes_proibidos = {"Nacional", "Apartamento Nacional", "Direto Apartamento"}
+    assert not any((op.plano_nome.texto or "").strip() in nomes_proibidos for op in ext.opcoes)
+    assert all(
+        op.reconciliacao
+        and not op.reconciliacao.ok
+        and "Reconciliação ainda não realizada" in (op.reconciliacao.mensagem or "")
+        for op in ext.opcoes
+    )
     assert all(
         op.copart_percentual and op.copart_percentual.inteiro == 30 for op in parcial
     )

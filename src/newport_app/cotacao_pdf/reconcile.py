@@ -7,7 +7,11 @@ from newport_app.models.cotacao_pdf import (
     OpcaoCotacaoCandidata,
     ReconciliacaoOpcao,
 )
-from newport_app.models.draft import PriceBasisRascunho
+
+_MSG_PENDENTE = (
+    "Reconciliação ainda não realizada — faltam população ou total de referência."
+)
+_MSG_OK = "Valores reconciliados"
 
 
 def _centavos(campo) -> int | None:
@@ -87,6 +91,26 @@ def reconciliar_opcao(opcao: OpcaoCotacaoCandidata) -> ReconciliacaoOpcao:
                 )
             )
 
+    identidade_verificada = False
+    if divergencias:
+        identidade_verificada = False
+    elif tem_faixa and subtotal_inf is not None:
+        identidade_verificada = True
+    elif tem_faixa and premio is not None:
+        identidade_verificada = True
+    elif premio is not None and iof is not None and total_inf is not None:
+        identidade_verificada = True
+
+    if identidade_verificada:
+        ok = True
+        mensagem = _MSG_OK
+    elif divergencias:
+        ok = False
+        mensagem = None
+    else:
+        ok = False
+        mensagem = _MSG_PENDENTE
+
     rec = ReconciliacaoOpcao(
         subtotal_calculado_centavos=subtotal_calc if tem_faixa else None,
         subtotal_informado_centavos=subtotal_inf,
@@ -99,7 +123,8 @@ def reconciliar_opcao(opcao: OpcaoCotacaoCandidata) -> ReconciliacaoOpcao:
         ),
         primeira_parcela_informada_centavos=primeira_inf,
         divergencias=divergencias,
-        ok=not divergencias,
+        ok=ok,
+        mensagem=mensagem,
     )
     opcao.reconciliacao = rec
     return rec
