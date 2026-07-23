@@ -9,6 +9,7 @@ from newport_app.models.compilation import ErroCompilacao
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import PendenciaItem
 from newport_app.policy.registry import default_registry
+from newport_app.rascunho.cenarios_sync import cenarios_sincronizados
 
 _TRADUCOES: dict[str, tuple[str, str, str]] = {
     "APP-IMP-001": (
@@ -124,11 +125,17 @@ def _item_de_erro(codigo: str, erros: list[ErroCompilacao]) -> PendenciaItem:
     if codigo in _TRADUCOES:
         tipo, titulo, descricao = _TRADUCOES[codigo]
         titulo, descricao = _titulo_descricao_agrupados(codigo, titulo, descricao, quantidade)
+        acao = "Complete a etapa correspondente no fluxo guiado."
+        if codigo == "APP-QTD-001":
+            acao = (
+                "Na etapa Cotações, abra o PDF, confirme a tabela de cada plano "
+                "e clique em «Adicionar ao comparativo» novamente."
+            )
         return PendenciaItem(
             tipo=tipo,
             titulo=titulo,
             descricao=descricao,
-            acao_sugerida="Complete a etapa correspondente no fluxo guiado.",
+            acao_sugerida=acao,
             codigo=codigo,
             etapa=etapa,
             quantidade=quantidade,
@@ -166,15 +173,21 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
                 quantidade=1,
             )
         )
-    if rascunho.opcoes_proposta and not rascunho.cenarios:
+    if rascunho.opcoes_proposta and not cenarios_sincronizados(rascunho):
+        etapa = 4 if len(rascunho.subgrupos_atuais) > 1 else 3
+        acao = (
+            "Use a etapa Correspondência com os planos atuais."
+            if etapa == 4
+            else "Aguarde a sincronização automática ou revise as cotações."
+        )
         itens.append(
             PendenciaItem(
                 tipo="bloqueio",
                 titulo="Comparação com plano atual pendente",
                 descricao="Defina com qual plano atual comparar cada opção selecionada.",
-                acao_sugerida="Use a etapa Planos selecionados.",
+                acao_sugerida=acao,
                 codigo="APP-ET4-001",
-                etapa=4,
+                etapa=etapa,
                 quantidade=1,
             )
         )

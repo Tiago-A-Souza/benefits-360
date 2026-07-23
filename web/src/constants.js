@@ -34,15 +34,6 @@ export const BASES_IOF = [
   { value: "nao_aplica", label: "Não se aplica" },
 ];
 
-export const PASSOS = [
-  { id: 1, titulo: "Base atual", chave: "base" },
-  { id: 2, titulo: "Plano atual", chave: "plano" },
-  { id: 3, titulo: "Cotações", chave: "cotacoes" },
-  { id: 4, titulo: "Planos selecionados", chave: "selecionados" },
-  { id: 5, titulo: "Comparativo financeiro", chave: "comparativo" },
-  { id: 6, titulo: "Apresentação", chave: "apresentacao" },
-];
-
 export function novoId(prefixo) {
   return `${prefixo}-${crypto.randomUUID().slice(0, 8)}`;
 }

@@ -11,6 +11,7 @@ from newport_app.draft_compiler.structural import (
     validar_estrutura,
 )
 from newport_app.models.draft import RascunhoEstudo
+from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.repository.migration import migrar_estudos_db
 
 
@@ -31,9 +32,11 @@ class SQLiteStudyRepository:
             ).fetchone()
         if row is None:
             return None
-        return RascunhoEstudo.model_validate_json(row["payload"])
+        rascunho = RascunhoEstudo.model_validate_json(row["payload"])
+        return sincronizar_cenarios(rascunho)
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:
+        rascunho = sincronizar_cenarios(rascunho)
         erros = validar_estrutura(rascunho)
         if erros:
             raise RascunhoEstruturalInvalidoError(erros)

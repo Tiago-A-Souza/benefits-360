@@ -54,6 +54,7 @@ export default function PropostaPanel({
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
+  subgruposAtuais = [],
 }) {
   const [rascunho, setRascunho] = useState(null);
   const [sel, setSel] = useState(0);
@@ -83,6 +84,14 @@ export default function PropostaPanel({
   }, [estudoId]);
 
   if (!rascunho) return <p className="muted">Carregando cotações…</p>;
+
+  const planosAtuais = subgruposAtuais.length
+    ? subgruposAtuais
+    : rascunho.subgrupos_atuais || [];
+  const nPropostas = rascunho.opcoes_proposta.length;
+  const unicoPlanoAtual = planosAtuais.length === 1;
+  const nomePlanoAtual =
+    planosAtuais[0]?.plano_nome || planosAtuais[0]?.operadora || "plano atual";
 
   const op = rascunho.opcoes_proposta[sel];
 
@@ -148,6 +157,14 @@ export default function PropostaPanel({
       <p className="lead">
         Importe os PDFs enviados pelas operadoras. Escolha os planos desejados e adicione-os ao comparativo.
       </p>
+
+      {unicoPlanoAtual && nPropostas > 0 && (
+        <p className="ok comparativo-resumo">
+          {nPropostas === 1
+            ? `1 proposta será comparada com ${nomePlanoAtual}.`
+            : `${nPropostas} propostas serão comparadas com ${nomePlanoAtual}.`}
+        </p>
+      )}
 
       <CotacaoPdfPanel
         estudoId={estudoId}

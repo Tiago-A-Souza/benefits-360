@@ -15,7 +15,7 @@ import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import PropostaPanel from "./PropostaPanel";
 import RevisaoApresentacaoPanel from "./RevisaoApresentacaoPanel";
 import SiscorPanel from "./SiscorPanel";
-import { PASSOS } from "./constants";
+import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 
 export default function App() {
@@ -56,6 +56,17 @@ export default function App() {
     recarregarContexto();
   }, [estudoId, tela, recarregarContexto]);
 
+  const passos = useMemo(
+    () => passosVisiveis(ctxFluxo.rascunho),
+    [ctxFluxo.rascunho]
+  );
+
+  useEffect(() => {
+    if (passo > passos.length && passos.length > 0) {
+      setPasso(passos.length);
+    }
+  }, [passo, passos.length]);
+
   function entrarEstudo(id) {
     setEstudoId(id);
     setPasso(1);
@@ -73,14 +84,16 @@ export default function App() {
 
   const statusPassos = useMemo(() => {
     const map = {};
-    for (const p of PASSOS) {
-      map[p.id] = statusEtapa(p.id, ctxFluxo);
+    for (let i = 1; i <= passos.length; i += 1) {
+      map[i] = statusEtapa(i, ctxFluxo);
     }
     return map;
-  }, [ctxFluxo]);
+  }, [ctxFluxo, passos.length]);
+
+  const chavePassoAtual = passos[passo - 1]?.chave;
 
   function irProximo() {
-    if (passo < PASSOS.length && proximaEtapaDisponivel(passo, ctxFluxo)) {
+    if (passo < passos.length && proximaEtapaDisponivel(passo, ctxFluxo)) {
       setPasso(passo + 1);
     }
   }
@@ -91,7 +104,7 @@ export default function App() {
 
   if (tela === "lista") {
     return (
-      <div className="pagina pagina--fluxo pagina--larga">
+      <div className="pagina pagina--larga pagina--lista">
         <MeusEstudos onContinuar={entrarEstudo} />
       </div>
     );
@@ -99,85 +112,97 @@ export default function App() {
 
   return (
     <div className="pagina pagina--fluxo pagina--larga">
-      <EstudoCabecalho
-        resumo={resumo}
-        onTrocarEstudo={voltarLista}
-        onHistorico={() => setHistoricoAberto((v) => !v)}
-      />
-
-      <nav className="wizard wizard--operacional" aria-label="Etapas do estudo">
-        {PASSOS.map((p) => {
-          const st = statusPassos[p.id];
-          return (
-            <button
-              key={p.id}
-              type="button"
-              className={[
-                "wizard-passo",
-                passo === p.id ? "ativo" : "",
-                st?.concluida ? "concluida" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={() => setPasso(p.id)}
-            >
-              <span className="wizard-num">{p.id}</span>
-              <span className="wizard-titulo">{p.titulo}</span>
-              {st?.pendencia && !st.concluida && (
-                <span className="wizard-pendencia">{st.pendencia}</span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {passo === 1 && (
-        <SiscorPanel estudoId={estudoId} onAtualizado={recarregarContexto} />
-      )}
-      {passo === 2 && (
-        <ConfigEstudo estudoId={estudoId} onSalvo={recarregarContexto} />
-      )}
-      {passo === 3 && (
-        <PropostaPanel
-          estudoId={estudoId}
-          cestaGlobal={cestaGlobal}
-          setCestaGlobal={setCestaGlobal}
-          opcoesComparativo={ctxFluxo.rascunho?.opcoes_proposta || []}
-          onSalvo={recarregarContexto}
+      <div className="fluxo-shell">
+        <EstudoCabecalho
+          resumo={resumo}
+          onTrocarEstudo={voltarLista}
+          onHistorico={() => setHistoricoAberto((v) => !v)}
         />
-      )}
-      {passo === 4 && (
-        <PlanosSelecionadosPanel estudoId={estudoId} onSalvo={recarregarContexto} />
-      )}
-      {passo === 5 && <ComparativoPanel estudoId={estudoId} />}
-      {passo === 6 && <RevisaoApresentacaoPanel estudoId={estudoId} />}
 
-      {historicoAberto && (
-        <aside className="painel-complementar">
-          <HistoricoPanel estudoId={estudoId} />
-        </aside>
-      )}
+        <nav className="wizard wizard--operacional" aria-label="Etapas do estudo">
+          {passos.map((p) => {
+            const st = statusPassos[p.ordem];
+            return (
+              <button
+                key={p.chave}
+                type="button"
+                className={[
+                  "wizard-passo",
+                  passo === p.ordem ? "ativo" : "",
+                  st?.concluida ? "concluida" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onClick={() => setPasso(p.ordem)}
+              >
+                <span className="wizard-num">{p.ordem}</span>
+                <span className="wizard-titulo">{p.titulo}</span>
+                {st?.pendencia && !st.concluida && (
+                  <span className="wizard-pendencia">{st.pendencia}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
 
-      <div className="wizard-nav">
-        {passo > 1 && (
-          <button type="button" className="secundario" onClick={irAnterior}>
-            ← Etapa anterior
-          </button>
+        <main className="fluxo-conteudo">
+          {chavePassoAtual === "base" && (
+            <SiscorPanel estudoId={estudoId} onAtualizado={recarregarContexto} />
+          )}
+          {chavePassoAtual === "plano" && (
+            <ConfigEstudo estudoId={estudoId} onSalvo={recarregarContexto} />
+          )}
+          {chavePassoAtual === "cotacoes" && (
+            <PropostaPanel
+              estudoId={estudoId}
+              cestaGlobal={cestaGlobal}
+              setCestaGlobal={setCestaGlobal}
+              opcoesComparativo={ctxFluxo.rascunho?.opcoes_proposta || []}
+              subgruposAtuais={ctxFluxo.rascunho?.subgrupos_atuais || []}
+              onSalvo={recarregarContexto}
+            />
+          )}
+          {chavePassoAtual === "selecionados" && (
+            <PlanosSelecionadosPanel estudoId={estudoId} onSalvo={recarregarContexto} />
+          )}
+          {chavePassoAtual === "comparativo" && <ComparativoPanel estudoId={estudoId} />}
+          {chavePassoAtual === "apresentacao" && (
+            <RevisaoApresentacaoPanel estudoId={estudoId} />
+          )}
+        </main>
+
+        {historicoAberto && (
+          <aside className="painel-complementar">
+            <HistoricoPanel estudoId={estudoId} />
+          </aside>
         )}
-        {passo < PASSOS.length && (
-          <button
-            type="button"
-            onClick={irProximo}
-            disabled={!proximaEtapaDisponivel(passo, ctxFluxo)}
-            title={
-              !proximaEtapaDisponivel(passo, ctxFluxo)
-                ? statusPassos[passo]?.pendencia || "Conclua esta etapa primeiro"
-                : undefined
-            }
-          >
-            Próxima etapa →
-          </button>
-        )}
+
+        <div className="wizard-nav">
+          {passo > 1 && (
+            <button type="button" className="secundario" onClick={irAnterior}>
+              ← Etapa anterior
+            </button>
+          )}
+          <div className="wizard-nav-direita">
+            {!proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.pendencia && (
+              <p className="wizard-nav-pendencia">{statusPassos[passo].pendencia}</p>
+            )}
+            {passo < passos.length && (
+              <button
+                type="button"
+                onClick={irProximo}
+                disabled={!proximaEtapaDisponivel(passo, ctxFluxo)}
+                title={
+                  !proximaEtapaDisponivel(passo, ctxFluxo)
+                    ? statusPassos[passo]?.pendencia || "Conclua esta etapa primeiro"
+                    : undefined
+                }
+              >
+                Próxima etapa →
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

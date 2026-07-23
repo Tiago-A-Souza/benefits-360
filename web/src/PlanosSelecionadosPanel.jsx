@@ -10,36 +10,34 @@ function subgrupoDaOpcao(cenarios, opcaoId) {
   return "";
 }
 
+function cenarioDaOpcao(cenarios, opcaoId) {
+  for (const c of cenarios) {
+    if (c.atribuicoes.some((a) => a.opcao_plano_id === opcaoId)) return c;
+  }
+  return null;
+}
+
 function montarCenarios(rascunho, mapaOpcaoSubgrupo) {
   const { subgrupos_atuais, opcoes_proposta, cenarios } = rascunho;
   if (!opcoes_proposta.length) return cenarios;
 
-  if (subgrupos_atuais.length === 1) {
-    const sgId = subgrupos_atuais[0].id;
-    return opcoes_proposta.map((op, i) => ({
-      id: cenarios[i]?.id || novoId("c"),
-      rotulo: op.plano_nome || `Comparativo ${i + 1}`,
-      atribuicoes: [
-        {
-          id: cenarios[i]?.atribuicoes[0]?.id || novoId("a"),
-          alvo_tipo: "subgrupo",
-          alvo_id: sgId,
-          opcao_plano_id: op.id,
-        },
-      ],
-    }));
-  }
-
   return opcoes_proposta
     .map((op, i) => {
-      const sgId = mapaOpcaoSubgrupo[op.id];
+      const sgId =
+        subgrupos_atuais.length === 1
+          ? subgrupos_atuais[0].id
+          : mapaOpcaoSubgrupo[op.id];
       if (!sgId) return null;
+
+      const existente = cenarioDaOpcao(cenarios, op.id);
+      const atrExistente = existente?.atribuicoes[0];
+
       return {
-        id: cenarios[i]?.id || novoId("c"),
+        id: existente?.id || cenarios[i]?.id || novoId("c"),
         rotulo: op.plano_nome || `Comparativo ${i + 1}`,
         atribuicoes: [
           {
-            id: cenarios[i]?.atribuicoes[0]?.id || novoId("a"),
+            id: atrExistente?.id || novoId("a"),
             alvo_tipo: "subgrupo",
             alvo_id: sgId,
             opcao_plano_id: op.id,
@@ -64,22 +62,15 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
         for (const op of r.opcoes_proposta) {
           mapa[op.id] = subgrupoDaOpcao(r.cenarios, op.id);
         }
-        if (r.subgrupos_atuais.length === 1 && r.opcoes_proposta.length) {
-          const sgId = r.subgrupos_atuais[0].id;
-          for (const op of r.opcoes_proposta) {
-            if (!mapa[op.id]) mapa[op.id] = sgId;
-          }
-        }
         setMapaOpcaoSubgrupo(mapa);
         setRascunho({ ...r });
       })
       .catch((e) => setErro(e.message));
   }, [estudoId]);
 
-  if (!rascunho) return <p className="muted">Carregando planos selecionados…</p>;
+  if (!rascunho) return <p className="muted">Carregando correspondências…</p>;
 
   const multiplosPlanosAtuais = rascunho.subgrupos_atuais.length > 1;
-  const unicoPlanoAtual = rascunho.subgrupos_atuais.length === 1;
 
   function atualizarComparacao(opcaoId, subgrupoId) {
     setMapaOpcaoSubgrupo((prev) => ({ ...prev, [opcaoId]: subgrupoId }));
@@ -92,7 +83,7 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
       copia.cenarios = montarCenarios(copia, mapaOpcaoSubgrupo);
       await salvarRascunho(estudoId, copia);
       setRascunho(copia);
-      setMsg("Comparações salvas.");
+      setMsg("Correspondências confirmadas.");
       onSalvo?.();
     } catch (e) {
       setErro(e.message);
@@ -105,9 +96,10 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
 
   return (
     <section className="secao-fluxo">
-      <h2>Planos selecionados</h2>
+      <h2>Correspondência com os planos atuais</h2>
       <p className="lead">
-        Estes planos compõem o comparativo. Confira a ligação com o contrato vigente de cada grupo.
+        Indique com qual contrato vigente cada proposta será comparada. Todas as opções precisam de
+        correspondência antes do cálculo.
       </p>
 
       {rascunho.opcoes_proposta.length === 0 && (
@@ -126,37 +118,30 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
               {op.extracao_id ? " · importado de PDF" : " · entrada manual"}
             </p>
 
-            {multiplosPlanosAtuais ? (
-              <label>
-                Com qual plano atual deseja comparar esta opção?
-                <select
-                  value={mapaOpcaoSubgrupo[op.id] || ""}
-                  onChange={(e) => atualizarComparacao(op.id, e.target.value)}
-                >
-                  <option value="">Selecione…</option>
-                  {rascunho.subgrupos_atuais.map((sg) => (
-                    <option key={sg.id} value={sg.id}>
-                      {sg.plano_nome} ({sg.operadora})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : unicoPlanoAtual ? (
-              <p className="muted">
-                Comparado com:{" "}
-                <strong>{rascunho.subgrupos_atuais[0]?.plano_nome || "plano atual"}</strong>
-              </p>
-            ) : null}
+            <label>
+              Com qual plano atual deseja comparar esta opção?
+              <select
+                value={mapaOpcaoSubgrupo[op.id] || ""}
+                onChange={(e) => atualizarComparacao(op.id, e.target.value)}
+              >
+                <option value="">Selecione…</option>
+                {rascunho.subgrupos_atuais.map((sg) => (
+                  <option key={sg.id} value={sg.id}>
+                    {sg.plano_nome} ({sg.operadora})
+                  </option>
+                ))}
+              </select>
+            </label>
           </li>
         ))}
       </ul>
 
       {comparacaoIncompleta && (
-        <p className="alerta">Selecione o plano atual para cada opção antes de salvar.</p>
+        <p className="alerta">Selecione o plano atual para cada opção antes de confirmar.</p>
       )}
 
       <button type="button" onClick={handleSalvar} disabled={comparacaoIncompleta}>
-        Salvar comparações
+        Confirmar correspondências
       </button>
       {msg && <p className="ok">{msg}</p>}
       {erro && <p className="erro">{erro}</p>}
