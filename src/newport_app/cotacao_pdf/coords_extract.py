@@ -16,7 +16,13 @@ _RE_FAIXA_HEADER = re.compile(
     r"0\s*[-–a]\s*18",
     re.IGNORECASE,
 )
-_RE_PLANO_PORTO = re.compile(r"(P\d{3}\s*[A-Z0-9]+|BRONZE\s+[A-Z0-9\s]+|PRATA\s+[A-Z0-9\s]+|DIAMANTE\s+[A-Z0-9\s]+|OURO\s+[A-Z0-9\s]+)", re.IGNORECASE)
+_RE_PLANO_PORTO = re.compile(
+    r"(P\d{3}\s*[EQ](?:\s+COPAR(?:\s+\d{1,2})?)?|"
+    r"(?:BRONZE|PRATA|OURO|DIAMANTE)"
+    r"(?:\s+(?:RIO|BRASIL))?(?:\s+(?:PRO|MAIS|MAX))?(?:\s+I)?\s*[EQ]"
+    r"(?:\s+COPAR(?:\s+\d{1,2})?)?)",
+    re.IGNORECASE,
+)
 _RE_PCT_COPART = re.compile(r"(\d{1,2})\s*%\s*de\s+copart", re.IGNORECASE)
 _RE_DECIMAL_LINHA = re.compile(r"(?<!\d)([\d]{1,3}(?:\.\d{3})*,\d{2})(?!\d)")
 
@@ -125,13 +131,39 @@ def _eh_nome_plano_valido(texto: str) -> bool:
     return letras >= 4
 
 
+def _limpar_sufixo_preco_nome(nome: str, valores: list[int]) -> str:
+    """Remove tokens de preço/faixa acidentalmente colados ao nome do plano."""
+    nome = re.sub(r"\s+", " ", nome.strip())
+    if not nome:
+        return nome
+    tokens = nome.split()
+    primeiro = valores[0] if valores else None
+
+    def _token_e_preco(tok: str) -> bool:
+        if re.fullmatch(r"[\d.,]+", tok):
+            v = valor_para_centavos(tok)
+            if v is not None and primeiro is not None and v == primeiro:
+                return True
+            if re.fullmatch(r"\d{1,3},\d{2}", tok):
+                return True
+        if primeiro is not None and re.fullmatch(r"\d{2,4}", tok):
+            n = int(tok)
+            if primeiro // 100 == n:
+                return True
+        return False
+
+    while tokens and _token_e_preco(tokens[-1]):
+        tokens.pop()
+    return " ".join(tokens).strip()
+
+
 def _nome_plano_de_texto(texto: str, valores: list[int]) -> str:
     antes = _RE_DECIMAL_LINHA.split(texto)[0].strip()
     match = _RE_PLANO_PORTO.search(antes or texto)
     if match:
-        return match.group(1).upper().replace("  ", " ").strip()
+        return _limpar_sufixo_preco_nome(match.group(1).upper().replace("  ", " ").strip(), valores)
     if _eh_nome_plano_valido(antes):
-        return antes[:80]
+        return _limpar_sufixo_preco_nome(antes[:80], valores)
     return ""
 
 
