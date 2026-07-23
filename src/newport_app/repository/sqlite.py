@@ -1,7 +1,4 @@
-"""Implementação SQLite do StudyRepository.
-
-Persistência provisória em JSON — endurecimento previsto na ETAPA 2.6.
-"""
+"""Implementação SQLite do StudyRepository + migração histórica ETAPA 2.6."""
 
 from __future__ import annotations
 
@@ -14,42 +11,18 @@ from newport_app.draft_compiler.structural import (
     validar_estrutura,
 )
 from newport_app.models.draft import RascunhoEstudo
+from newport_app.repository.migration import migrar_estudos_db
 
 
 class SQLiteStudyRepository:
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._init_schema()
+        migrar_estudos_db(db_path)
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
         return conn
-
-    def _init_schema(self) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS rascunhos (
-                    id TEXT PRIMARY KEY,
-                    payload TEXT NOT NULL,
-                    atualizado_em TEXT NOT NULL
-                )
-                """
-            )
-            colunas = {
-                row[1]
-                for row in conn.execute("PRAGMA table_info(rascunhos)").fetchall()
-            }
-            if "rascunho_versao" not in colunas:
-                conn.execute(
-                    "ALTER TABLE rascunhos ADD COLUMN rascunho_versao TEXT NOT NULL DEFAULT '1.0'"
-                )
-            if "policy_set_versao" not in colunas:
-                conn.execute(
-                    "ALTER TABLE rascunhos ADD COLUMN policy_set_versao TEXT"
-                )
 
     def obter_rascunho(self, estudo_id: str) -> RascunhoEstudo | None:
         with self._connect() as conn:

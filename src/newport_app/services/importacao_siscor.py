@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from collections.abc import Callable
+
 from newport_app.config.paths import diretorio_uploads
 from newport_app.models.draft import (
     ComponenteFinanceiroRascunho,
@@ -28,6 +30,7 @@ from newport_app.models.siscor_import import (
     ImportacaoSiscorCandidata,
     LinhaSiscorCandidata,
 )
+from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.importacao_siscor import ImportacaoSiscorRepository
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.siscor_importer.duplicidades import recalcular_duplicidades
@@ -76,10 +79,38 @@ class ImportacaoSiscorService:
         importacoes: ImportacaoSiscorRepository,
         *,
         uploads_dir: Path | None = None,
+        historico: HistoricoRepository | None = None,
+        on_rascunho_alterado: Callable[[str, str], None] | None = None,
     ) -> None:
         self._estudos = estudos
         self._importacoes = importacoes
         self._uploads_dir = uploads_dir or diretorio_uploads()
+        self._historico = historico
+        self._on_rascunho_alterado = on_rascunho_alterado
+
+    def _persistir_rascunho(
+        self,
+        rascunho: RascunhoEstudo,
+        *,
+        motivo_invalidacao: str = "Alteração via SISCOR",
+    ) -> None:
+        self._estudos.salvar_rascunho(rascunho)
+        if self._on_rascunho_alterado:
+            self._on_rascunho_alterado(rascunho.id, motivo_invalidacao)
+
+    def _registrar_posicao_siscor(
+        self,
+        rascunho: RascunhoEstudo,
+        candidata: ImportacaoSiscorCandidata,
+    ) -> None:
+        if self._historico is None or not rascunho.vidas:
+            return
+        self._historico.registrar_posicao_cadastral(
+            rascunho,
+            origem="siscor",
+            documento_hash=candidata.documento_hash_sha256,
+            importador_versao=IMPORTADOR_SISCOR_VERSAO,
+        )
 
     def _salvar_arquivo(self, documento_id: str, conteudo: bytes) -> Path:
         self._uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -229,9 +260,9 @@ class ImportacaoSiscorService:
             rascunho = rascunho_vazio(rascunho.id, rascunho.titulo)
 
         if self._estudos.obter_rascunho(estudo_id) is None:
-            self._estudos.salvar_rascunho(rascunho)
+            self._persistir_rascunho(rascunho, motivo_invalidacao="Criação de estudo via SISCOR")
         elif modo == "substituir" or not possui_dados:
-            self._estudos.salvar_rascunho(rascunho)
+            self._persistir_rascunho(rascunho, motivo_invalidacao="Substituição via SISCOR")
 
         resumo = ResumoImportacaoSiscor(
             estudo_id=estudo_id,
@@ -290,7 +321,8 @@ class ImportacaoSiscorService:
         rascunho = self._obter_ou_criar_rascunho(estudo_id, None)
         rascunho = aplicar_candidata_ao_rascunho(rascunho, candidata)
         self._importacoes.salvar(candidata)
-        self._estudos.salvar_rascunho(rascunho)
+        self._persistir_rascunho(rascunho, motivo_invalidacao="Confirmação em lote SISCOR")
+        self._registrar_posicao_siscor(rascunho, candidata)
         excecoes = sum(1 for l in candidata.linhas if l.tem_excecao and not l.excluida)
         return ConfirmacaoLoteResponse(
             confirmadas=confirmadas,
@@ -425,5 +457,5 @@ class ImportacaoSiscorService:
             self._obter_ou_criar_rascunho(estudo_id, None), candidata
         )
         self._importacoes.salvar(candidata)
-        self._estudos.salvar_rascunho(rascunho)
+        self._persistir_rascunho(rascunho, motivo_invalidacao="Edição de linha SISCOR")
         return linha

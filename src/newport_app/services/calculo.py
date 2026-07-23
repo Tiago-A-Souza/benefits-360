@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from newport_app.adapters.motor_out import motor_result_para_comparativo, rascunho_para_resumo
 from newport_app.draft_compiler import compile
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
@@ -28,9 +30,11 @@ class CalculoService:
         self,
         repository: StudyRepository,
         policy_registry: PolicySetRegistry | None = None,
+        on_rascunho_alterado: Callable[[str, str], None] | None = None,
     ) -> None:
         self._repo = repository
         self._policy_registry = policy_registry or default_registry
+        self._on_rascunho_alterado = on_rascunho_alterado
 
     def obter_resumo(self, estudo_id: str) -> EstudoResumo:
         rascunho = self._repo.obter_rascunho(estudo_id)
@@ -57,6 +61,8 @@ class CalculoService:
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:
         self._repo.salvar_rascunho(rascunho)
+        if self._on_rascunho_alterado:
+            self._on_rascunho_alterado(rascunho.id, "Alteração no rascunho")
 
     def garantir_rascunho(self, rascunho: RascunhoEstudo) -> None:
         self.salvar_rascunho(rascunho)

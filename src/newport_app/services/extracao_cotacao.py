@@ -6,6 +6,8 @@ import uuid
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from collections.abc import Callable
+
 from newport_app.config.paths import diretorio_uploads_cotacao
 from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
@@ -50,10 +52,12 @@ class ExtracaoCotacaoService:
         extracoes: ExtracaoCotacaoRepository,
         *,
         uploads_dir: Path | None = None,
+        on_rascunho_alterado: Callable[[str, str], None] | None = None,
     ) -> None:
         self._estudos = estudos
         self._extracoes = extracoes
         self._uploads_dir = uploads_dir or diretorio_uploads_cotacao()
+        self._on_rascunho_alterado = on_rascunho_alterado
 
     def _salvar_pdf(self, documento_id: str, conteudo: bytes) -> Path:
         self._uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -284,6 +288,11 @@ class ExtracaoCotacaoService:
             )
 
         self._estudos.salvar_rascunho(rascunho)
+        if self._on_rascunho_alterado:
+            self._on_rascunho_alterado(
+                rascunho.id,
+                "Aplicação de proposta extraída do PDF",
+            )
         return AplicarExtracaoResponse(
             opcoes_adicionadas=aplicadas,
             opcoes_atualizadas=atualizadas,

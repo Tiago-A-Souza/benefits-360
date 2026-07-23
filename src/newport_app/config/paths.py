@@ -48,6 +48,12 @@ def caminho_banco_cotacoes(modo: ModoExecucao | None = None) -> Path:
     return diretorio_dados_demo() / "cotacoes_demo.db"
 
 
+def diretorio_entregaveis(modo: ModoExecucao | None = None) -> Path:
+    if (modo or modo_execucao()) == ModoExecucao.REAL:
+        return diretorio_runtime_privado() / "entregaveis"
+    return diretorio_dados_demo() / "entregaveis_demo"
+
+
 def diretorio_golden_privado() -> Path:
     return diretorio_runtime_privado().parent / "golden"
 
@@ -58,3 +64,4 @@ def garantir_diretorios(modo: ModoExecucao | None = None) -> None:
     caminho_banco_estudos(modo).parent.mkdir(parents=True, exist_ok=True)
     diretorio_uploads(modo).mkdir(parents=True, exist_ok=True)
     diretorio_uploads_cotacao(modo).mkdir(parents=True, exist_ok=True)
+    diretorio_entregaveis(modo).mkdir(parents=True, exist_ok=True)
