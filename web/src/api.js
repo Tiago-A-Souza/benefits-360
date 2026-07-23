@@ -68,11 +68,11 @@ export async function listarEstudos() {
   return tratarResposta(res, "Não foi possível listar estudos.");
 }
 
-export async function criarEstudo(id, titulo) {
+export async function criarEstudo({ titulo, nome_empresa, id } = {}) {
   const res = await fetch(`${API}/estudos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, titulo }),
+    body: JSON.stringify({ titulo, nome_empresa: nome_empresa, id: id || null }),
   });
   return tratarResposta(res, "Não foi possível criar o estudo.");
 }
@@ -204,6 +204,18 @@ export async function aplicarExtracaoCotacao(estudoId, extracaoId) {
     throw err;
   }
   return tratarResposta(res, "Não foi possível aplicar a extração.");
+}
+
+export async function removerExtracaoCotacao(estudoId, extracaoId) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}`,
+    { method: "DELETE" }
+  );
+  return tratarResposta(res, "Não foi possível remover a cotação.");
+}
+
+export async function urlPdfCotacao(estudoId, documentoId) {
+  return `${API}/estudos/${estudoId}/documentos-cotacao/${documentoId}/pdf`;
 }
 
 export async function gerarSnapshot(estudoId) {

@@ -24,9 +24,26 @@ def client(tmp_path: Path) -> TestClient:
 def test_listar_estudos_demo(client: TestClient):
     res = client.get("/api/estudos")
     assert res.status_code == 200
-    ids = res.json()
+    data = res.json()
+    assert isinstance(data, list)
+    ids = [e["id"] if isinstance(e, dict) else e for e in data]
     assert "demo-12" in ids
     assert "demo-41" in ids
+    demo12 = next(e for e in data if (e["id"] if isinstance(e, dict) else e) == "demo-12")
+    if isinstance(demo12, dict):
+        assert demo12["titulo"]
+        assert "beneficiarios_incluidos" in demo12
+
+
+def test_criar_estudo_id_automatico(client: TestClient):
+    res = client.post(
+        "/api/estudos",
+        json={"titulo": "Renovação teste", "nome_empresa": "Empresa Auto Ltda."},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["id"].startswith("est-")
+    assert data["titulo"] == "Renovação teste"
 
 
 def test_resumo_demo_12(client: TestClient):

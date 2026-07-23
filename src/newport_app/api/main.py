@@ -56,6 +56,7 @@ from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     ConfirmacaoExtracaoResponse,
     ListaExtracaoCotacaoResponse,
+    RemoverExtracaoResponse,
     ResultadoImportacaoCotacaoResponse,
 )
 from newport_app.models.cotacao_pdf import ExtracaoCotacaoCandidata
@@ -126,8 +127,9 @@ def _seed_inicial(service: CalculoService) -> None:
 
 
 class NovoEstudoRequest(BaseModel):
-    id: str
     titulo: str
+    nome_empresa: str
+    id: str | None = None
 
 
 class AtualizarLinhaSiscorRequest(BaseModel):
@@ -235,17 +237,35 @@ def create_app(
             "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
         }
 
-    @app.get("/api/estudos", response_model=list[str])
-    def listar_estudos() -> list[str]:
-        return repository.listar_ids()
+    @app.get("/api/estudos", response_model=list[EstudoResumo])
+    def listar_estudos() -> list[EstudoResumo]:
+        resumos = service.listar_resumos()
+        enriquecidos: list[EstudoResumo] = []
+        for resumo in resumos:
+            if snap_repo.snapshot_aprovado_atual(resumo.id):
+                enriquecidos.append(
+                    resumo.model_copy(
+                        update={"status": "aprovado", "status_exibicao": "Aprovado"}
+                    )
+                )
+            else:
+                enriquecidos.append(resumo)
+        return enriquecidos
 
     @app.post("/api/estudos", response_model=EstudoResumo)
     def criar_estudo_vazio(body: NovoEstudoRequest) -> EstudoResumo:
-        if repository.obter_rascunho(body.id) is not None:
+        import uuid
+
+        estudo_id = body.id or f"est-{uuid.uuid4().hex[:10]}"
+        if repository.obter_rascunho(estudo_id) is not None:
             raise HTTPException(status_code=409, detail="Estudo já existe.")
-        rascunho = rascunho_vazio(body.id, body.titulo)
+        rascunho = rascunho_vazio(
+            estudo_id,
+            body.titulo.strip(),
+            nome_empresa=body.nome_empresa.strip(),
+        )
         repository.salvar_rascunho(rascunho)
-        return service.obter_resumo(body.id)
+        return service.obter_resumo(estudo_id)
 
     @app.get("/api/estudos/{estudo_id}", response_model=EstudoResumo)
     def obter_estudo(estudo_id: str) -> EstudoResumo:
@@ -532,6 +552,19 @@ def create_app(
                     "bloqueios": [b.model_dump(mode="json") for b in exc.bloqueios],
                 },
             ) from None
+
+    @app.delete(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}",
+        response_model=RemoverExtracaoResponse,
+    )
+    def remover_extracao_cotacao(
+        estudo_id: str,
+        extracao_id: str,
+    ) -> RemoverExtracaoResponse:
+        try:
+            return cotacao.remover_extracao(estudo_id, extracao_id)
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
 
     @app.get("/api/estudos/{estudo_id}/documentos-cotacao/{documento_id}/pdf")
     def baixar_pdf_cotacao(estudo_id: str, documento_id: str):

@@ -40,7 +40,22 @@ class CalculoService:
         rascunho = self._repo.obter_rascunho(estudo_id)
         if rascunho is None:
             raise EstudoNaoEncontradoError(estudo_id)
-        return rascunho_para_resumo(rascunho)
+        meta = next(
+            ((i, u) for i, u in self._repo.listar_metadados() if i == estudo_id),
+            (estudo_id, None),
+        )
+        return rascunho_para_resumo(rascunho, ultima_alteracao=meta[1])
+
+    def listar_resumos(self) -> list[EstudoResumo]:
+        resumos: list[EstudoResumo] = []
+        for estudo_id, atualizado_em in self._repo.listar_metadados():
+            rascunho = self._repo.obter_rascunho(estudo_id)
+            if rascunho is None:
+                continue
+            resumos.append(
+                rascunho_para_resumo(rascunho, ultima_alteracao=atualizado_em)
+            )
+        return resumos
 
     def calcular(self, estudo_id: str) -> ComparativoResponse:
         rascunho = self._repo.obter_rascunho(estudo_id)

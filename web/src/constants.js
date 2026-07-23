@@ -35,13 +35,12 @@ export const BASES_IOF = [
 ];
 
 export const PASSOS = [
-  { id: 1, titulo: "Vidas e planos atuais" },
-  { id: 2, titulo: "Configuração do estudo" },
-  { id: 3, titulo: "Propostas" },
-  { id: 4, titulo: "Associação dos planos" },
-  { id: 5, titulo: "Comparativo" },
-  { id: 6, titulo: "Revisão e apresentação" },
-  { id: 7, titulo: "Histórico" },
+  { id: 1, titulo: "Base atual", chave: "base" },
+  { id: 2, titulo: "Plano atual", chave: "plano" },
+  { id: 3, titulo: "Cotações", chave: "cotacoes" },
+  { id: 4, titulo: "Planos selecionados", chave: "selecionados" },
+  { id: 5, titulo: "Comparativo financeiro", chave: "comparativo" },
+  { id: 6, titulo: "Apresentação", chave: "apresentacao" },
 ];
 
 export function novoId(prefixo) {

@@ -8,11 +8,15 @@ from pydantic import BaseModel, Field
 class EstudoResumo(BaseModel):
     id: str
     titulo: str
+    empresa: str | None = None
     formato: str
     formato_exibicao: str
     beneficiarios_incluidos: int
     beneficiarios_rotulo: str
     descricao: str
+    status: str = "em_andamento"
+    status_exibicao: str = "Em andamento"
+    ultima_alteracao: str | None = None
 
 
 class TotaisComparativo(BaseModel):

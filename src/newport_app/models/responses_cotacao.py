@@ -46,3 +46,10 @@ class AplicarExtracaoResponse(BaseModel):
 
 class ListaExtracaoCotacaoResponse(BaseModel):
     extracoes: list[ExtracaoCotacaoCandidata] = Field(default_factory=list)
+
+
+class RemoverExtracaoResponse(BaseModel):
+    removido: bool = True
+    planos_removidos: int = 0
+    aprovacao_invalidada: bool = False
+    mensagem: str = ""

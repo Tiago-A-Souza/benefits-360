@@ -229,14 +229,14 @@ def test_troca_plano_remonta_subgrupos(servico: ImportacaoSiscorService):
 
 
 def test_upload_limite_retorna_413(client: TestClient):
-    client.post("/api/estudos", json={"id": "big", "titulo": "Big"})
+    client.post("/api/estudos", json={"id": "big", "titulo": "Big", "nome_empresa": "Big"})
     grande = b"PK" + b"0" * (LIMITE_UPLOAD_BYTES + 1)
     res = _importar(client, "big", grande)
     assert res.status_code == 413
 
 
 def test_modo_invalido_api_retorna_400(client: TestClient):
-    client.post("/api/estudos", json={"id": "modo", "titulo": "Modo"})
+    client.post("/api/estudos", json={"id": "modo", "titulo": "Modo", "nome_empresa": "Modo"})
     _importar(client, "modo", planilha_12_vidas())
     res = _importar(client, "modo", planilha_12_vidas(), modo="merge")
     assert res.status_code == 400

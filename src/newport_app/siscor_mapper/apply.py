@@ -17,7 +17,12 @@ from newport_app.models.siscor_import import ImportacaoSiscorCandidata, LinhaSis
 from newport_app.policy.registry import POLICY_SET_VERSAO_PADRAO
 
 
-def rascunho_vazio(estudo_id: str, titulo: str) -> RascunhoEstudo:
+def rascunho_vazio(
+    estudo_id: str,
+    titulo: str,
+    *,
+    nome_empresa: str | None = None,
+) -> RascunhoEstudo:
     return RascunhoEstudo(
         rascunho_versao=RASCUNHO_VERSAO_ATUAL,
         policy_set_versao=POLICY_SET_VERSAO_PADRAO,
@@ -25,6 +30,7 @@ def rascunho_vazio(estudo_id: str, titulo: str) -> RascunhoEstudo:
         titulo=titulo,
         formato="renovacao",
         vidas=[],
+        empresa_cliente=EmpresaCliente(nome=nome_empresa) if nome_empresa else None,
     )
 
 

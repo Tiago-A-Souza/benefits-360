@@ -21,6 +21,7 @@ from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     BloqueioOpcaoExtracao,
     ConfirmacaoExtracaoResponse,
+    RemoverExtracaoResponse,
     ResultadoImportacaoCotacaoResponse,
 )
 from newport_app.repository.extracao_cotacao import ExtracaoCotacaoRepository
@@ -324,4 +325,50 @@ class ExtracaoCotacaoService:
             opcoes_atualizadas=atualizadas,
             total_opcoes=len(rascunho.opcoes_proposta),
             bloqueios=bloqueios,
+        )
+
+    def remover_extracao(self, estudo_id: str, extracao_id: str) -> RemoverExtracaoResponse:
+        extracao = self.obter_extracao(extracao_id)
+        if extracao.estudo_id != estudo_id:
+            raise ExtracaoNaoEncontradaError(extracao_id)
+
+        rascunho = self._estudos.obter_rascunho(estudo_id)
+        planos_removidos = 0
+        if rascunho is not None:
+            antes = len(rascunho.opcoes_proposta)
+            rascunho.opcoes_proposta = [
+                op for op in rascunho.opcoes_proposta if op.extracao_id != extracao.id
+            ]
+            planos_removidos = antes - len(rascunho.opcoes_proposta)
+            opcoes_validas = {op.id for op in rascunho.opcoes_proposta}
+            for cenario in rascunho.cenarios:
+                for atr in cenario.atribuicoes:
+                    if atr.opcao_plano_id and atr.opcao_plano_id not in opcoes_validas:
+                        atr.opcao_plano_id = ""
+            self._estudos.salvar_rascunho(rascunho)
+
+        self._extracoes.desativar_por_documento(estudo_id, extracao.documento.id)
+        caminho = self.caminho_pdf(extracao.documento.id)
+        if caminho is not None and caminho.is_file():
+            caminho.unlink()
+
+        if self._on_rascunho_alterado:
+            self._on_rascunho_alterado(
+                estudo_id,
+                f"Remoção da cotação PDF «{extracao.documento.nome_arquivo}»",
+            )
+
+        if planos_removidos:
+            msg = (
+                f"Cotação removida. {planos_removidos} plano(s) e associações derivadas "
+                "também foram retirados do comparativo."
+            )
+        else:
+            msg = "Cotação removida do estudo."
+
+        return RemoverExtracaoResponse(
+            removido=True,
+            planos_removidos=planos_removidos,
+            aprovacao_invalidada=planos_removidos > 0,
+            mensagem=msg,
         )

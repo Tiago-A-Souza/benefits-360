@@ -101,7 +101,17 @@ class ExtracaoCotacaoRepository:
                 """,
                 (estudo_id,),
             ).fetchall()
-        return [ExtracaoCotacaoCandidata.model_validate_json(r["payload"]) for r in rows]
+        return [ExtracaoCotacaoCandidata.model_validate_json(row["payload"]) for r in rows]
+
+    def desativar_por_documento(self, estudo_id: str, documento_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE extracoes_cotacao SET ativa = 0
+                WHERE estudo_id = ? AND documento_id = ?
+                """,
+                (estudo_id, documento_id),
+            )
 
     def listar_versoes(self, estudo_id: str, documento_id: str) -> list[int]:
         with self._connect() as conn:

@@ -3,13 +3,15 @@ import {
   aplicarExtracaoCotacao,
   atualizarCampoExtracao,
   confirmarLoteExtracao,
-  excluirOpcaoExtracao,
   importarCotacaoPdf,
   listarExtracoesCotacao,
   obterExtracaoCotacao,
   obterResumoPlanoAtual,
+  removerExtracaoCotacao,
   selecionarOpcaoExtracao,
+  urlPdfCotacao,
 } from "./api";
+import FilePickerButton from "./components/FilePickerButton";
 import {
   centavosParaReaisExibicao,
   centavosParaReaisTexto,
@@ -37,12 +39,26 @@ import {
 
 function BadgeSituacao({ situacao }) {
   const cls =
-    situacao.codigo === "pronto"
+    situacao.codigo === "pronto" || situacao.codigo === "adicionado"
       ? "badge--ok"
-      : situacao.codigo === "revisao"
+      : situacao.codigo === "revisao" || situacao.codigo === "selecionado"
         ? "badge--alerta"
         : "badge--muted";
   return <span className={`badge ${cls}`}>{situacao.rotulo}</span>;
+}
+
+function opcaoJaNoComparativo(op, opcoesComparativo) {
+  return opcoesComparativo.some((o) => o.extracao_opcao_id === op.id);
+}
+
+function estadoExibicaoOpcao(op, opcoesComparativo) {
+  if (opcaoJaNoComparativo(op, opcoesComparativo)) {
+    return { codigo: "adicionado", rotulo: "Adicionado ao comparativo" };
+  }
+  if (op.selecionada_para_comparativo) {
+    return { codigo: "selecionado", rotulo: "Selecionado" };
+  }
+  return { codigo: "disponivel", rotulo: "Disponível" };
 }
 
 function PainelAuditoria({ op, onSalvarCampo }) {
@@ -92,8 +108,10 @@ function TabelaSelecaoCompacta({
   quantidades,
   siscorCtx,
   selecionados,
+  opcoesComparativo,
   onToggle,
 }) {
+  const [maisFiltros, setMaisFiltros] = useState(false);
   const filtradas = useMemo(
     () => filtrarOpcoes(opcoes, selecionados.filtros),
     [opcoes, selecionados.filtros]
@@ -108,6 +126,7 @@ function TabelaSelecaoCompacta({
       <div className="filtros-compactos">
         <input
           type="search"
+          className="filtro-busca"
           placeholder="Buscar plano…"
           value={selecionados.filtros.busca}
           onChange={(e) => selecionados.setFiltro("busca", e.target.value)}
@@ -116,7 +135,7 @@ function TabelaSelecaoCompacta({
           value={selecionados.filtros.acomodacao}
           onChange={(e) => selecionados.setFiltro("acomodacao", e.target.value)}
         >
-          <option value="">Acomodação (todas)</option>
+          <option value="">Acomodação</option>
           <option value="Enfermaria">Enfermaria</option>
           <option value="Apartamento">Apartamento</option>
         </select>
@@ -124,63 +143,63 @@ function TabelaSelecaoCompacta({
           value={selecionados.filtros.regime}
           onChange={(e) => selecionados.setFiltro("regime", e.target.value)}
         >
-          <option value="">Regime (todos)</option>
+          <option value="">Coparticipação</option>
           <option value="Sem coparticipação">Sem coparticipação</option>
           <option value="Coparticipação 30%">Coparticipação 30%</option>
         </select>
-        <select
-          value={selecionados.filtros.regiao}
-          onChange={(e) => selecionados.setFiltro("regiao", e.target.value)}
+        <button
+          type="button"
+          className="secundario btn-compacto"
+          onClick={() => setMaisFiltros((v) => !v)}
         >
-          <option value="">Região (todas)</option>
-          <option value="Brasil">Brasil</option>
-          <option value="Rio">Rio</option>
-          <option value="Nacional">Nacional</option>
-        </select>
+          {maisFiltros ? "Menos filtros" : "Mais filtros"}
+        </button>
+        {maisFiltros && (
+          <select
+            value={selecionados.filtros.regiao}
+            onChange={(e) => selecionados.setFiltro("regiao", e.target.value)}
+          >
+            <option value="">Região (todas)</option>
+            <option value="Brasil">Brasil</option>
+            <option value="Rio">Rio</option>
+            <option value="Nacional">Nacional</option>
+          </select>
+        )}
       </div>
 
       {grupos.map(({ titulo, opcoes: opsGrupo }) => (
         <div key={titulo || "geral"} className="grupo-planos">
           {titulo && <h4 className="grupo-planos-titulo">{titulo}</h4>}
-          <table className="tabela-selecao-planos">
-            <thead>
-              <tr>
-                <th>Comparativo</th>
-                <th>Plano</th>
-                <th>Acomodação</th>
-                <th>Regime</th>
-                <th>%</th>
-                <th>Estimado (SISCOR)</th>
-                <th>Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {opsGrupo.map((op) => {
-                const sit = situacaoOpcao(op);
-                const est = formatarEstimativaSiscor(op, quantidades, siscorCtx);
-                return (
-                  <tr key={op.id} className={op.selecionada_para_comparativo ? "linha-selecionada" : ""}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(op.selecionada_para_comparativo)}
-                        onChange={(e) => onToggle(op.id, e.target.checked)}
-                        aria-label={`Selecionar ${nomePlanoExibicao(op)}`}
-                      />
-                    </td>
-                    <td>{nomePlanoExibicao(op)}</td>
-                    <td>{inferirAcomodacao(op)}</td>
-                    <td>{rotuloRegime(op)}</td>
-                    <td>{op.copart_percentual?.inteiro ?? "—"}</td>
-                    <td className={est.destacarGrupo ? "estimativa-indisponivel" : ""}>{est.texto}</td>
-                    <td>
-                      <BadgeSituacao situacao={sit} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="lista-planos-selecao">
+            {opsGrupo.map((op) => {
+              const estado = estadoExibicaoOpcao(op, opcoesComparativo);
+              const adicionado = estado.codigo === "adicionado";
+              const est = formatarEstimativaSiscor(op, quantidades, siscorCtx);
+              return (
+                <div
+                  key={op.id}
+                  className={`linha-plano-selecao${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${adicionado ? " linha-plano-selecao--adicionada" : ""}`}
+                >
+                  <label className="linha-plano-check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(op.selecionada_para_comparativo || adicionado)}
+                      disabled={adicionado}
+                      onChange={(e) => onToggle(op.id, e.target.checked)}
+                      aria-label={`Selecionar ${nomePlanoExibicao(op)}`}
+                    />
+                  </label>
+                  <span className="linha-plano-nome">{nomePlanoExibicao(op)}</span>
+                  <span className="linha-plano-meta">{inferirAcomodacao(op)}</span>
+                  <span className="linha-plano-meta">{rotuloRegime(op)}</span>
+                  <span className={`linha-plano-meta${est.destacarGrupo ? " estimativa-indisponivel" : ""}`}>
+                    {est.texto}
+                  </span>
+                  <BadgeSituacao situacao={estado} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
       {filtradas.length === 0 && (
@@ -314,7 +333,13 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
   );
 }
 
-export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
+export default function CotacaoPdfPanel({
+  estudoId,
+  onAplicado,
+  cestaGlobal = [],
+  setCestaGlobal,
+  opcoesComparativo = [],
+}) {
   const [extracoes, setExtracoes] = useState([]);
   const [fase, setFase] = useState("lista");
   const [extracaoId, setExtracaoId] = useState(null);
@@ -331,6 +356,7 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
   const [msg, setMsg] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [bloqueios, setBloqueios] = useState([]);
+  const [dragAtivo, setDragAtivo] = useState(false);
 
   const recarregar = useCallback(() => {
     listarExtracoesCotacao(estudoId)
@@ -387,9 +413,25 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
     [detalhe]
   );
   const selecionadas = useMemo(
-    () => opcoesAtivas.filter((o) => o.selecionada_para_comparativo),
-    [opcoesAtivas]
+    () => opcoesAtivas.filter((o) => o.selecionada_para_comparativo && !opcaoJaNoComparativo(o, opcoesComparativo)),
+    [opcoesAtivas, opcoesComparativo]
   );
+
+  function sincronizarCesta(idExtracao, opcoes, doc) {
+    if (!setCestaGlobal) return;
+    setCestaGlobal((prev) => {
+      const restantes = prev.filter((x) => x.extracaoId !== idExtracao);
+      const novos = opcoes
+        .filter((o) => o.selecionada_para_comparativo && !opcaoJaNoComparativo(o, opcoesComparativo))
+        .map((o) => ({
+          extracaoId: idExtracao,
+          opcaoId: o.id,
+          nome: nomePlanoExibicao(o),
+          operadora: doc?.operadora_detectada || o.operadora?.texto || "",
+        }));
+      return [...restantes, ...novos];
+    });
+  }
 
   function abrirDocumento(id) {
     setExtracaoId(id);
@@ -398,6 +440,11 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
     setErro(null);
     setMsg(null);
     setBloqueios([]);
+    obterExtracaoCotacao(estudoId, id).then((d) => {
+      setDetalhe(d);
+      const ativas = (d.opcoes || []).filter((o) => !o.excluida);
+      sincronizarCesta(id, ativas, d.documento);
+    });
   }
 
   function voltarLista() {
@@ -406,25 +453,56 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
     setDetalhe(null);
   }
 
-  async function handleUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function processarUploads(files) {
+    if (!files.length) return;
     setCarregando(true);
     setErro(null);
+    let ultimoId = null;
     try {
-      const res = await importarCotacaoPdf(estudoId, file);
-      setMsg(
-        res.sucesso
-          ? `${res.opcoes_encontradas} opção(ões) encontrada(s). Escolha os planos no card do documento.`
-          : `PDF recebido (${res.estado}).`
-      );
+      for (const file of files) {
+        const res = await importarCotacaoPdf(estudoId, file);
+        ultimoId = res.extracao_id;
+        setMsg(
+          res.sucesso
+            ? `${file.name}: ${res.opcoes_encontradas} opção(ões) encontrada(s).`
+            : `${file.name} recebido (${res.estado}).`
+        );
+      }
       recarregar();
-      abrirDocumento(res.extracao_id);
+      if (ultimoId) abrirDocumento(ultimoId);
     } catch (err) {
       setErro(err.message);
     } finally {
       setCarregando(false);
-      e.target.value = "";
+    }
+  }
+
+  async function handleRemoverExtracao(ex) {
+    const aplicados = opcoesComparativo.filter((o) => o.extracao_id === ex.id);
+    let texto = "Remover esta cotação do estudo?";
+    if (aplicados.length) {
+      texto = `Esta cotação já gerou ${aplicados.length} plano(s) no comparativo. Os planos e associações derivados também serão removidos. Deseja continuar?`;
+    }
+    if (!window.confirm(texto)) return;
+    setCarregando(true);
+    setErro(null);
+    try {
+      const res = await removerExtracaoCotacao(estudoId, ex.id);
+      if (res.aprovacao_invalidada) {
+        setMsg("Cotação removida. A aprovação anterior foi invalidada — revise o estudo.");
+      } else {
+        setMsg(res.mensagem || "Cotação removida.");
+      }
+      if (extracaoId === ex.id) voltarLista();
+      if (setCestaGlobal) {
+        setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== ex.id));
+      }
+      recarregar();
+      onAplicado?.();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setCarregando(false);
     }
   }
 
@@ -436,7 +514,10 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
 
   async function handleToggle(opcaoId, selecionada) {
     await selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, selecionada);
-    await recarregarDetalhe();
+    const d = await obterExtracaoCotacao(estudoId, extracaoId);
+    setDetalhe(d);
+    const ativas = (d.opcoes || []).filter((o) => !o.excluida);
+    sincronizarCesta(extracaoId, ativas, d.documento);
   }
 
   async function handleConfirmarTabela(op) {
@@ -466,17 +547,25 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
     setMsg("Campos prontos confirmados em lote.");
   }
 
-  async function handleAplicar() {
+  async function handleAdicionarComparativo() {
     setErro(null);
     setBloqueios([]);
+    if (selecionadas.length === 0) {
+      setErro("Selecione ao menos um plano antes de adicionar ao comparativo.");
+      return;
+    }
     try {
       const res = await aplicarExtracaoCotacao(estudoId, extracaoId);
       setMsg(
         res.opcoes_adicionadas || res.opcoes_atualizadas
-          ? `Aplicado: ${res.opcoes_adicionadas || 0} nova(s), ${res.opcoes_atualizadas || 0} atualizada(s).`
+          ? `${res.opcoes_adicionadas || 0} plano(s) adicionado(s) ao comparativo.`
           : "Nenhuma alteração."
       );
       if (res.bloqueios?.length) setBloqueios(res.bloqueios);
+      if (setCestaGlobal) {
+        setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
+      }
+      await recarregarDetalhe();
       onAplicado?.();
     } catch (err) {
       if (err.bloqueios) setBloqueios(err.bloqueios);
@@ -491,33 +580,48 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
   const docAberto = detalhe?.documento;
 
   return (
-    <section className="cartao cartao--interno cotacao-pdf-panel">
-      <h3>Cotações PDF</h3>
-      <p className="muted">
-        Cada PDF é um documento separado. Selecione poucos planos para comparar (recomendamos até
-        três). Reconhecer o template não homologa valores financeiros.
-      </p>
-
-      <label className="upload-label">
-        <input type="file" accept="application/pdf" onChange={handleUpload} disabled={carregando} />
-        {carregando ? "Processando PDF…" : "Enviar novo PDF de cotação"}
-      </label>
+    <div className="cotacao-pdf-panel">
+      <div
+        className={`upload-zona${dragAtivo ? " upload-zona--ativa" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragAtivo(true);
+        }}
+        onDragLeave={() => setDragAtivo(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragAtivo(false);
+          const pdfs = Array.from(e.dataTransfer.files || []).filter(
+            (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
+          );
+          processarUploads(pdfs);
+        }}
+      >
+        <FilePickerButton
+          accept="application/pdf"
+          multiple
+          disabled={carregando}
+          onFiles={processarUploads}
+        >
+          {carregando ? "Processando PDF…" : "Adicionar cotação em PDF"}
+        </FilePickerButton>
+        <p className="muted upload-dica">Arraste um ou mais PDFs ou use o botão acima.</p>
+      </div>
 
       {fase === "lista" && (
         <div className="documentos-pdf-grid">
           {extracoes.length === 0 && (
-            <p className="muted">Nenhum PDF importado ainda.</p>
+            <p className="muted">Nenhuma cotação importada ainda.</p>
           )}
           {extracoes.map((ex) => {
             const qtd = ex.opcoes?.filter((o) => !o.excluida).length ?? 0;
-            const ativo = extracaoId === ex.id && fase !== "lista";
+            const selCount =
+              ex.opcoes?.filter((o) => o.selecionada_para_comparativo && !o.excluida).length ?? 0;
+            const doc = ex.documento;
             return (
-              <article
-                key={ex.id}
-                className={`documento-pdf-card${ativo ? " documento-pdf-card--ativo" : ""}`}
-              >
+              <article key={ex.id} className="documento-pdf-card">
                 <header>
-                  <strong>{ex.documento?.operadora_detectada || "Documento"}</strong>
+                  <strong>{doc?.operadora_detectada || "Operadora"}</strong>
                   <BadgeSituacao
                     situacao={{
                       codigo: ex.estado === "extraido" ? "pronto" : "revisao",
@@ -526,15 +630,34 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                   />
                 </header>
                 <ul className="documento-pdf-meta">
-                  <li>{qtd} opção(ões) encontrada(s)</li>
+                  <li>{doc?.nome_arquivo || "arquivo.pdf"}</li>
                   <li>Enviado: {formatarDataUpload(ex.criado_em)}</li>
-                  {ex.documento?.template_id && (
-                    <li className="muted">Template: {ex.documento.template_id}</li>
-                  )}
+                  <li>{qtd} opção(ões) encontrada(s)</li>
+                  {selCount > 0 && <li>{selCount} selecionada(s)</li>}
                 </ul>
-                <button type="button" onClick={() => abrirDocumento(ex.id)}>
-                  Escolher planos
-                </button>
+                <div className="documento-pdf-acoes">
+                  <button type="button" onClick={() => abrirDocumento(ex.id)}>
+                    Escolher planos
+                  </button>
+                  {doc?.id && (
+                    <a
+                      className="btn-link secundario btn-compacto"
+                      href={urlPdfCotacao(estudoId, doc.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Ver PDF
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className="secundario btn-compacto"
+                    onClick={() => handleRemoverExtracao(ex)}
+                    disabled={carregando}
+                  >
+                    Remover do estudo
+                  </button>
+                </div>
               </article>
             );
           })}
@@ -631,6 +754,7 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                 quantidades={quantidades}
                 siscorCtx={siscorCtx}
                 selecionados={{ filtros, setFiltro }}
+                opcoesComparativo={opcoesComparativo}
                 onToggle={handleToggle}
               />
 
@@ -640,7 +764,14 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                   disabled={selecionadas.length === 0}
                   onClick={() => setFase("revisao")}
                 >
-                  Revisar planos selecionados ({selecionadas.length})
+                  Revisar {selecionadas.length} plano(s) selecionado(s)
+                </button>
+                <button
+                  type="button"
+                  disabled={selecionadas.length === 0}
+                  onClick={handleAdicionarComparativo}
+                >
+                  Adicionar {selecionadas.length} plano(s) ao comparativo
                 </button>
               </div>
             </>
@@ -699,8 +830,8 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
                 <button type="button" className="secundario" onClick={handleConfirmarLote}>
                   Confirmar lote (campos prontos)
                 </button>
-                <button type="button" onClick={handleAplicar}>
-                  Aplicar planos selecionados ao rascunho
+                <button type="button" onClick={handleAdicionarComparativo}>
+                  Adicionar {selecionadas.length} plano(s) ao comparativo
                 </button>
               </div>
             </>
@@ -728,6 +859,6 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
 
       {msg && <p className="ok">{msg}</p>}
       {erro && <p className="erro">{erro}</p>}
-    </section>
+    </div>
   );
 }

@@ -66,3 +66,10 @@ class SQLiteStudyRepository:
         with self._connect() as conn:
             rows = conn.execute("SELECT id FROM rascunhos ORDER BY id").fetchall()
         return [str(r["id"]) for r in rows]
+
+    def listar_metadados(self) -> list[tuple[str, str | None]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, atualizado_em FROM rascunhos ORDER BY atualizado_em DESC"
+            ).fetchall()
+        return [(str(r["id"]), r["atualizado_em"]) for r in rows]

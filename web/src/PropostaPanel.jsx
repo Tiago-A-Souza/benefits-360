@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { obterRascunho, salvarRascunho } from "./api";
 import CotacaoPdfPanel from "./CotacaoPdfPanel";
 import {
@@ -48,17 +48,56 @@ function patchCompFinanceiro(prev, campo, texto) {
   };
 }
 
-export default function PropostaPanel({ estudoId, onSalvo }) {
+function CestaPlanos({ cestaGlobal, opcoesComparativo }) {
+  const nomes = useMemo(() => {
+    const vistos = new Set();
+    const lista = [];
+    for (const op of opcoesComparativo) {
+      const nome = op.plano_nome || op.operadora || "Plano";
+      if (!vistos.has(op.id)) {
+        vistos.add(op.id);
+        lista.push(nome);
+      }
+    }
+    for (const item of cestaGlobal) {
+      const key = `${item.extracaoId}:${item.opcaoId}`;
+      if (!vistos.has(key)) {
+        vistos.add(key);
+        lista.push(item.nome);
+      }
+    }
+    return lista;
+  }, [cestaGlobal, opcoesComparativo]);
+
+  if (!nomes.length) return null;
+
+  return (
+    <div className="cesta-planos">
+      <strong>
+        {nomes.length} plano{nomes.length !== 1 ? "s" : ""} escolhido{nomes.length !== 1 ? "s" : ""}:
+      </strong>{" "}
+      {nomes.join(" · ")}
+    </div>
+  );
+}
+
+export default function PropostaPanel({
+  estudoId,
+  onSalvo,
+  cestaGlobal = [],
+  setCestaGlobal,
+  opcoesComparativo = [],
+}) {
   const [rascunho, setRascunho] = useState(null);
   const [sel, setSel] = useState(0);
-  const [modo, setModo] = useState("pdf");
+  const [manualAberto, setManualAberto] = useState(false);
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
 
   function recarregar() {
     obterRascunho(estudoId)
       .then((r) => {
-        if (!r.opcoes_proposta.length && modo === "manual") {
+        if (!r.opcoes_proposta.length && manualAberto) {
           r.opcoes_proposta = [novaOpcao()];
         }
         for (const o of r.opcoes_proposta) {
@@ -76,7 +115,7 @@ export default function PropostaPanel({ estudoId, onSalvo }) {
     recarregar();
   }, [estudoId]);
 
-  if (!rascunho) return <p className="muted">Carregando propostas…</p>;
+  if (!rascunho) return <p className="muted">Carregando cotações…</p>;
 
   const op = rascunho.opcoes_proposta[sel];
 
@@ -116,20 +155,20 @@ export default function PropostaPanel({ estudoId, onSalvo }) {
   }
 
   function adicionarOpcao() {
+    setManualAberto(true);
     setRascunho((prev) => {
       const copia = structuredClone(prev);
       copia.opcoes_proposta.push(novaOpcao());
       return copia;
     });
     setSel(rascunho.opcoes_proposta.length);
-    setModo("manual");
   }
 
   async function handleSalvar() {
     setErro(null);
     try {
       await salvarRascunho(estudoId, rascunho);
-      setMsg("Propostas salvas.");
+      setMsg("Cotação manual salva.");
       onSalvo?.();
     } catch (e) {
       setErro(e.message);
@@ -137,54 +176,66 @@ export default function PropostaPanel({ estudoId, onSalvo }) {
   }
 
   return (
-    <section className="cartao">
-      <h2>Propostas</h2>
-      <p className="muted">
-        Priorize a importação de PDFs. Use entrada manual somente como contingência.
+    <section className="secao-fluxo">
+      <h2>Cotações recebidas</h2>
+      <p className="lead">
+        Importe os PDFs enviados pelas operadoras. Escolha os planos desejados e adicione-os ao comparativo.
       </p>
 
-      <div className="acoes-lote">
+      <CestaPlanos cestaGlobal={cestaGlobal} opcoesComparativo={opcoesComparativo} />
+
+      <CotacaoPdfPanel
+        estudoId={estudoId}
+        onAplicado={() => {
+          recarregar();
+          onSalvo?.();
+        }}
+        cestaGlobal={cestaGlobal}
+        setCestaGlobal={setCestaGlobal}
+        opcoesComparativo={opcoesComparativo}
+      />
+
+      <div className="contingencia-manual">
         <button
           type="button"
-          className={modo === "pdf" ? "aba ativa" : "aba"}
-          onClick={() => setModo("pdf")}
+          className="link"
+          onClick={() => {
+            setManualAberto((v) => !v);
+            if (!manualAberto && !rascunho.opcoes_proposta.filter((o) => !o.extracao_id).length) {
+              adicionarOpcao();
+            }
+          }}
         >
-          PDFs de cotação
-        </button>
-        <button
-          type="button"
-          className={modo === "manual" ? "aba ativa" : "aba"}
-          onClick={() => setModo("manual")}
-        >
-          Entrada manual
+          {manualAberto
+            ? "Ocultar preenchimento manual"
+            : "Não foi possível importar? Preencher manualmente."}
         </button>
       </div>
 
-      {modo === "pdf" && (
-        <CotacaoPdfPanel estudoId={estudoId} onAplicado={recarregar} />
-      )}
-
-      {modo === "manual" && (
-        <>
+      {manualAberto && (
+        <div className="bloco-secao">
           <div className="acoes-lote">
-            {rascunho.opcoes_proposta.map((o, i) => (
-              <button
-                key={o.id}
-                type="button"
-                className={i === sel ? "aba ativa" : "aba"}
-                onClick={() => setSel(i)}
-              >
-                {o.plano_nome || o.operadora || `Proposta ${i + 1}`}
-              </button>
-            ))}
-            <button type="button" className="secundario" onClick={adicionarOpcao}>
-              + Nova proposta
+            {rascunho.opcoes_proposta
+              .map((o, i) => ({ o, i }))
+              .filter(({ o }) => !o.extracao_id)
+              .map(({ o, i }) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={i === sel ? "aba ativa" : "aba"}
+                  onClick={() => setSel(i)}
+                >
+                  {o.plano_nome || o.operadora || `Cotação ${i + 1}`}
+                </button>
+              ))}
+            <button type="button" className="secundario btn-compacto" onClick={adicionarOpcao}>
+              + Nova cotação manual
             </button>
           </div>
 
-          {op && (
+          {op && !op.extracao_id && (
             <>
-              <div className="grid-2">
+              <div className="grid-compacto">
                 <label>
                   Operadora
                   <input
@@ -204,9 +255,7 @@ export default function PropostaPanel({ estudoId, onSalvo }) {
                   Tipo fiscal
                   <select
                     value={op.tipo_fiscal || ""}
-                    onChange={(e) =>
-                      patchOpcao({ tipo_fiscal: e.target.value || null })
-                    }
+                    onChange={(e) => patchOpcao({ tipo_fiscal: e.target.value || null })}
                   >
                     <option value="">Selecione…</option>
                     {TIPOS_FISCAIS.map((t) => (
@@ -242,7 +291,7 @@ export default function PropostaPanel({ estudoId, onSalvo }) {
                   />
                 </label>
                 <label>
-                  Modalidade
+                  Adesão dos funcionários
                   <select
                     value={op.modalidade || ""}
                     onChange={(e) => patchOpcao({ modalidade: e.target.value || null })}
@@ -255,111 +304,65 @@ export default function PropostaPanel({ estudoId, onSalvo }) {
                     ))}
                   </select>
                 </label>
-                <label>
-                  Validade
-                  <input
-                    type="date"
-                    value={op.validade_oficial || ""}
-                    onChange={(e) =>
-                      patchOpcao({ validade_oficial: e.target.value || null })
-                    }
-                  />
-                </label>
-                <label>
-                  Observações
-                  <input
-                    value={op.observacoes || ""}
-                    onChange={(e) => patchOpcao({ observacoes: e.target.value || null })}
-                  />
-                </label>
               </div>
 
-              <h3>Totais (opcionais)</h3>
-              <div className="grid-2">
-                {[
-                  ["premio_saude", "Prêmio saúde"],
-                  ["iof", "IOF"],
-                  ["total_recorrente", "Total mensal"],
-                  ["total_primeira_parcela", "Primeira parcela"],
-                  ["subtotal_impresso", "Subtotal impresso"],
-                ].map(([campo, rotulo]) => (
-                  <label key={campo}>
-                    {rotulo}
-                    <input
-                      value={
-                        op[campo]?.centavos != null
-                          ? centavosParaReaisTexto(op[campo].centavos)
-                          : ""
-                      }
-                      onChange={(e) => patchComp(campo, e.target.value)}
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <h3>Tabela por faixa (0–9)</h3>
-              <table className="conferencia">
-                <thead>
-                  <tr>
-                    <th>Faixa</th>
-                    <th>Valor (R$)</th>
-                    <th>Qtd.</th>
-                    <th>IOF</th>
-                    <th>Confirmado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {op.tabela.map((f, i) => (
-                    <tr key={f.faixa}>
-                      <td>{f.faixa}</td>
-                      <td>
-                        <input
-                          value={
-                            f.valor_centavos != null
-                              ? centavosParaReaisTexto(f.valor_centavos)
-                              : ""
-                          }
-                          onChange={(e) => patchFaixa(i, "valor_reais", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          value={f.quantidade_cotada ?? ""}
-                          onChange={(e) => patchFaixa(i, "quantidade_cotada", e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          value={f.price_basis}
-                          onChange={(e) => patchFaixa(i, "price_basis", e.target.value)}
-                        >
-                          {BASES_IOF.map((b) => (
-                            <option key={b.value} value={b.value}>
-                              {b.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={f.proveniencia?.confirmado || false}
-                          onChange={(e) => patchFaixa(i, "confirmado", e.target.checked)}
-                        />
-                      </td>
+              <details className="detalhes-recolhidos">
+                <summary>Tabela por faixa etária</summary>
+                <table className="conferencia">
+                  <thead>
+                    <tr>
+                      <th>Faixa</th>
+                      <th>Valor (R$)</th>
+                      <th>Qtd.</th>
+                      <th>IOF</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {op.tabela.map((f, i) => (
+                      <tr key={f.faixa}>
+                        <td>{f.faixa}</td>
+                        <td>
+                          <input
+                            value={
+                              f.valor_centavos != null
+                                ? centavosParaReaisTexto(f.valor_centavos)
+                                : ""
+                            }
+                            onChange={(e) => patchFaixa(i, "valor_reais", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            value={f.quantidade_cotada ?? ""}
+                            onChange={(e) => patchFaixa(i, "quantidade_cotada", e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            value={f.price_basis}
+                            onChange={(e) => patchFaixa(i, "price_basis", e.target.value)}
+                          >
+                            {BASES_IOF.map((b) => (
+                              <option key={b.value} value={b.value}>
+                                {b.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+
+              <button type="button" onClick={handleSalvar}>
+                Salvar cotação manual
+              </button>
             </>
           )}
-
-          <button type="button" onClick={handleSalvar} style={{ marginTop: "1rem" }}>
-            Salvar propostas manuais
-          </button>
-        </>
+        </div>
       )}
 
       <datalist id="operadoras-list">

@@ -196,16 +196,31 @@ def _traduzir_validacao(
     )
 
 
-def rascunho_para_resumo(rascunho: RascunhoEstudo) -> EstudoResumo:
+def rascunho_para_resumo(
+    rascunho: RascunhoEstudo,
+    *,
+    ultima_alteracao: str | None = None,
+    status: str = "em_andamento",
+) -> EstudoResumo:
     n = len(rascunho.vidas_incluidas())
+    status_map = {
+        "em_andamento": "Em andamento",
+        "pronto_revisao": "Pronto para revisão",
+        "aprovado": "Aprovado",
+    }
+    empresa = rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None
     return EstudoResumo(
         id=rascunho.id,
         titulo=rascunho.titulo,
+        empresa=empresa,
         formato=rascunho.formato,
         formato_exibicao=formatar_tipo_estudo(rascunho.formato),
         beneficiarios_incluidos=n,
         beneficiarios_rotulo=plural_beneficiarios(n),
         descricao=descricao_estudo(rascunho.formato, n),
+        status=status,
+        status_exibicao=status_map.get(status, "Em andamento"),
+        ultima_alteracao=ultima_alteracao,
     )
 
 
