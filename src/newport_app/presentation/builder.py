@@ -1,4 +1,4 @@
-"""Constrói PresentationViewModel a partir de snapshot aprovado — ETAPA 2.8.1."""
+"""Constrói PresentationViewModel a partir de snapshot aprovado — ETAPA 2.8.2."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ from newport_app.presentation.motor_por_proposta import (
 )
 
 MAX_PROPOSTAS_POR_PAGINA = 3
+_ORDEM_REGIMES = ("sem", "parcial", "percentual", "customizada")
 
 
 def _rotulo_regime(tipo: str) -> str:
@@ -47,6 +48,39 @@ def _copart_descricao(rascunho: RascunhoEstudo, regime_id: str | None) -> str | 
     if regime is None:
         return None
     return _rotulo_regime(regime.tipo)
+
+
+def _coletar_regimes_apresentacao(
+    calculo_atual: CalculoProposta,
+    calculos: dict[str, CalculoProposta],
+    propostas_ids: list[str],
+) -> list[tuple[str, str]]:
+    encontrados: set[str] = set()
+    for sec in calculo_atual.secoes:
+        encontrados.add(sec.regime_tipo)
+    for op_id in propostas_ids:
+        calc = calculos.get(op_id)
+        if calc is None:
+            continue
+        for sec in calc.secoes:
+            encontrados.add(sec.regime_tipo)
+    return [
+        (tipo, _rotulo_regime(tipo))
+        for tipo in _ORDEM_REGIMES
+        if tipo in encontrados
+    ]
+
+
+def _propostas_do_regime(
+    propostas_ids: list[str],
+    calculos: dict[str, CalculoProposta],
+    regime_tipo: str,
+) -> list[str]:
+    return [
+        op_id
+        for op_id in propostas_ids
+        if any(s.regime_tipo == regime_tipo for s in calculos[op_id].secoes)
+    ]
 
 
 def _agregar_unitario_e_total(valores: list[int]) -> tuple[int | None, int | None, str | None]:
@@ -77,7 +111,7 @@ def _montar_faixas_plano(
     }
 
     for vida_id, dados in atual_por_vida.items():
-        if dados.subgrupo_id != subgrupo_id or dados.regime_tipo != regime_tipo:
+        if dados.subgrupo_id != subgrupo_id:
             continue
         fx = dados.faixa
         if fx is None or fx < 0 or fx > 9:
@@ -187,13 +221,18 @@ def construir_view_model(
     subgrupos_map = {s.id: s for s in rascunho.subgrupos_atuais}
 
     atual_por_vida: dict[str, VidaCalculoProposta] = {}
-    regimes_ordem: list[tuple[str, str]] = []
     for sec in calculo_atual.secoes:
-        regimes_ordem.append((sec.regime_tipo, sec.rotulo))
         atual_por_vida.update(sec.vidas)
+
+    regimes_ordem = _coletar_regimes_apresentacao(
+        calculo_atual, calculos, propostas_selecionadas
+    )
 
     secoes_vm: list[SecaoRegimeApresentacao] = []
     for regime_tipo, rotulo in regimes_ordem:
+        propostas_regime = _propostas_do_regime(
+            propostas_selecionadas, calculos, regime_tipo
+        )
         planos_vm: list[PlanoAtualApresentacao] = []
         for sg in rascunho.subgrupos_atuais:
             faixas = _montar_faixas_plano(
@@ -201,21 +240,19 @@ def construir_view_model(
                 vidas_map,
                 atual_por_vida,
                 calculos,
-                propostas_selecionadas,
+                propostas_regime,
                 regime_tipo,
             )
             vigentes = [
                 d.vigente_centavos
                 for d in atual_por_vida.values()
                 if d.subgrupo_id == sg.id
-                and d.regime_tipo == regime_tipo
                 and d.vigente_centavos is not None
             ]
             reajustados = [
                 d.reajustado_centavos
                 for d in atual_por_vida.values()
                 if d.subgrupo_id == sg.id
-                and d.regime_tipo == regime_tipo
                 and d.reajustado_centavos is not None
             ]
             planos_vm.append(
@@ -234,15 +271,14 @@ def construir_view_model(
 
         propostas_vm = [
             p
-            for op_id in propostas_selecionadas
+            for op_id in propostas_regime
             if (p := _montar_proposta_meta(rascunho, op_id, calculos[op_id], regime_tipo))
         ]
 
-        secao_atual = next((s for s in calculo_atual.secoes if s.regime_tipo == regime_tipo), None)
         totais_sec = TotaisSecaoApresentacao(
-            atual_centavos=secao_atual.total_atual_baseline_centavos if secao_atual else None,
+            atual_centavos=calculo_atual.total_atual_centavos,
         )
-        for op_id in propostas_selecionadas:
+        for op_id in propostas_regime:
             sec_calc = next(
                 (s for s in calculos[op_id].secoes if s.regime_tipo == regime_tipo),
                 None,
@@ -260,7 +296,7 @@ def construir_view_model(
                 propostas=propostas_vm,
                 planos_atuais=planos_vm,
                 totais=totais_sec,
-                paginas_faixas=_paginar_propostas(propostas_selecionadas),
+                paginas_faixas=_paginar_propostas(propostas_regime),
             )
         )
 
@@ -279,11 +315,11 @@ def construir_view_model(
                 continue
             cols: list[BeneficiarioPropostaColuna] = []
             for op_id in propostas_selecionadas:
-                sec = next(
-                    (s for s in calculos[op_id].secoes if s.regime_tipo == dados.regime_tipo),
-                    None,
-                )
-                vd = sec.vidas.get(vida_id) if sec else None
+                vd = None
+                for sec in calculos[op_id].secoes:
+                    if vida_id in sec.vidas:
+                        vd = sec.vidas[vida_id]
+                        break
                 cols.append(
                     BeneficiarioPropostaColuna(
                         opcao_id=op_id,

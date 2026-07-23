@@ -10,7 +10,9 @@ import pytest
 from newport_app.models.draft import (
     AtribuicaoRascunho,
     CenarioRascunho,
+    ComponenteFinanceiroRascunho,
     OpcaoPropostaRascunho,
+    PriceBasisRascunho,
     SubgrupoAtualRascunho,
     TabelaFaixaRascunho,
     VidaRascunho,
@@ -128,7 +130,8 @@ def test_hash_deterministico_sem_timestamp(stack):
     h2 = hash_snapshot_canonico(extrair_payload_canonico(s2.payload))
     assert h1 == h2
     assert "gerado_em" in s1.payload
-    assert s1.payload["gerado_em"] != s2.payload["gerado_em"] or True
+    assert "gerado_em" in s2.payload
+    assert s1.payload["gerado_em"] != s2.payload["gerado_em"]
 
 
 def test_auto_aprovacao_explicita(stack):
@@ -385,12 +388,21 @@ def test_confirmar_vinculo_novo_beneficiario(stack):
 
 def test_faixa_valor_persistidos_historico(stack):
     repo, historico, _, _, _ = stack
-    r = rascunho_demo_12_vidas()
+    base = rascunho_demo_12_vidas()
+    v0 = base.vidas[0].model_copy(
+        update={
+            "valor_fatura": ComponenteFinanceiroRascunho(
+                centavos=123_456,
+                price_basis=PriceBasisRascunho.EXCLUI_IOF,
+            )
+        }
+    )
+    r = base.model_copy(update={"vidas": [v0, *base.vidas[1:]]})
     repo.salvar_rascunho(r)
     historico.registrar_posicao_cadastral(r, origem="siscor", documento_hash="x", importador_versao="1")
     p = historico.listar_participacoes("demo-12")[0]
     assert p.faixa is not None
-    assert p.valor_centavos is None or p.valor_centavos >= 0
+    assert p.valor_centavos == 123_456
 
 
 def test_matriz_reconciliacao_faixa_proposta(stack):

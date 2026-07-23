@@ -103,7 +103,7 @@ from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.motor_por_proposta import PropostaNaoCalculavelError
 from newport_app.siscor_mapper.apply import rascunho_vazio
 
-API_VERSAO = "2.8.1"
+API_VERSAO = "2.8.2"
 
 ROOT = Path(__file__).resolve().parents[3]
 WEB_DIST = ROOT / "web" / "dist"
