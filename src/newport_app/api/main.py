@@ -16,6 +16,7 @@ from newport_app.config.paths import (
     caminho_banco_cotacoes,
     caminho_banco_estudos,
     caminho_banco_importacoes,
+    diretorio_entregaveis,
     diretorio_uploads,
     diretorio_uploads_cotacao,
     garantir_diretorios,
@@ -29,6 +30,20 @@ from newport_app.config.runtime import (
 )
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import PriceBasisRascunho, RascunhoEstudo
+from newport_app.models.historico import (
+    PlanoContratadoVersao,
+    PosicaoCadastralVersao,
+    RegistrarPlanoContratadoRequest,
+)
+from newport_app.models.presentation import PresentationViewModel
+from newport_app.models.snapshot import (
+    AprovarSnapshotRequest,
+    AprovarSnapshotResponse,
+    GerarApresentacaoRequest,
+    GerarApresentacaoResponse,
+    GerarSnapshotResponse,
+    SnapshotCalculo,
+)
 from newport_app.models.responses import ComparativoResponse, EstudoResumo, PendenciaItem, ResumoPlanoAtualResponse
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
@@ -43,9 +58,12 @@ from newport_app.models.responses_siscor import (
     ResultadoImportacaoSiscorResponse,
 )
 from newport_app.repository.extracao_cotacao import ExtracaoCotacaoRepository
+from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.importacao_siscor import ImportacaoSiscorRepository
+from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.seed.ficticio import rascunho_demo_12_vidas, rascunho_demo_41_vidas
+from newport_app.services.apresentacao import ApresentacaoService
 from newport_app.services.calculo import (
     CalculoService,
     EstudoNaoEncontradoError,
@@ -68,7 +86,17 @@ from newport_app.services.importacao_siscor import (
     LinhaNaoEncontradaError,
     ModoImportacaoInvalidoError,
 )
+from newport_app.services.snapshot import (
+    AprovacaoInvalidaError,
+    SnapshotBloqueadoError,
+    SnapshotNaoEncontradoError,
+    SnapshotService,
+)
+from newport_app.presentation.builder import construir_view_model
+from newport_app.presentation.html_renderer import RENDERER_VERSAO
 from newport_app.siscor_mapper.apply import rascunho_vazio
+
+API_VERSAO = "2.8.0"
 
 ROOT = Path(__file__).resolve().parents[3]
 WEB_DIST = ROOT / "web" / "dist"
@@ -130,29 +158,48 @@ def create_app(
         seed_demos = modo_execucao() == ModoExecucao.DEMO
 
     repository = repo or _criar_repo()
+    db_path = repository._db_path  # noqa: SLF001 — wiring piloto local
     importacoes = import_repo or _criar_import_repo()
     extracoes_cotacao = cotacao_repo or ExtracaoCotacaoRepository(caminho_banco_cotacoes())
     uploads = uploads_dir or diretorio_uploads()
     uploads_cotacao = uploads_cotacao_dir or diretorio_uploads_cotacao()
+    historico = HistoricoRepository(db_path)
+    snap_repo = SnapshotRepository(db_path)
+    snapshot_service = SnapshotService(repository, snap_repo, historico)
 
-    service = CalculoService(repository)
+    def _invalidar(estudo_id: str, motivo: str) -> None:
+        snapshot_service.invalidar_por_alteracao(estudo_id, motivo)
+
+    service = CalculoService(repository, on_rascunho_alterado=_invalidar)
     siscor = ImportacaoSiscorService(
         repository,
         importacoes,
         uploads_dir=uploads,
+        historico=historico,
+        on_rascunho_alterado=_invalidar,
     )
     cotacao = ExtracaoCotacaoService(
         repository,
         extracoes_cotacao,
         uploads_dir=uploads_cotacao,
+        on_rascunho_alterado=_invalidar,
+    )
+    apresentacao = ApresentacaoService(
+        snapshot_service,
+        snap_repo,
+        diretorio_entregaveis(),
     )
     if seed_demos:
         _seed_inicial(service)
 
-    app = FastAPI(title="Newport Estudos", version="2.5.5")
+    app = FastAPI(title="Newport Estudos", version=API_VERSAO)
     app.state.calculo_service = service
     app.state.siscor_service = siscor
     app.state.cotacao_service = cotacao
+    app.state.snapshot_service = snapshot_service
+    app.state.apresentacao_service = apresentacao
+    app.state.historico_repo = historico
+    app.state.snapshot_repo = snap_repo
     app.state.repository = repository
     app.state.modo = modo_execucao().value
 
@@ -172,7 +219,7 @@ def create_app(
     def obter_config() -> dict[str, str | int]:
         return {
             "modo": modo_execucao().value,
-            "versao": "2.5.5",
+            "versao": API_VERSAO,
             "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
         }
 
@@ -477,6 +524,172 @@ def create_app(
                     "compiler_versao": exc.resultado.compiler_versao,
                 },
             ) from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/snapshot",
+        response_model=GerarSnapshotResponse,
+    )
+    def gerar_snapshot(estudo_id: str) -> GerarSnapshotResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        try:
+            return snapshot_service.gerar_snapshot_candidato(estudo_id)
+        except SnapshotBloqueadoError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except RascunhoNaoCompilavelError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "erros": [e.model_dump() for e in exc.resultado.erros],
+                    "compiler_versao": exc.resultado.compiler_versao,
+                },
+            ) from None
+
+    @app.get(
+        "/api/estudos/{estudo_id}/snapshots",
+        response_model=list[SnapshotCalculo],
+    )
+    def listar_snapshots(estudo_id: str) -> list[SnapshotCalculo]:
+        if repository.obter_rascunho(estudo_id) is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return snapshot_service.listar_snapshots(estudo_id)
+
+    @app.get(
+        "/api/estudos/{estudo_id}/snapshots/{snapshot_id}",
+        response_model=SnapshotCalculo,
+    )
+    def obter_snapshot(estudo_id: str, snapshot_id: str) -> SnapshotCalculo:
+        try:
+            snap = snapshot_service.obter_snapshot(snapshot_id)
+        except SnapshotNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        if snap.estudo_id != estudo_id:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        return snap
+
+    @app.post(
+        "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/aprovar",
+        response_model=AprovarSnapshotResponse,
+    )
+    def aprovar_snapshot(
+        estudo_id: str,
+        snapshot_id: str,
+        body: AprovarSnapshotRequest,
+    ) -> AprovarSnapshotResponse:
+        try:
+            return snapshot_service.aprovar_snapshot(estudo_id, snapshot_id, body)
+        except SnapshotNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        except AprovacaoInvalidaError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+
+    @app.get("/api/estudos/{estudo_id}/snapshot-aprovado")
+    def snapshot_aprovado_atual(estudo_id: str):
+        snap = snap_repo.snapshot_aprovado_atual(estudo_id)
+        if snap is None:
+            return {"aprovado": False}
+        aprov = snap_repo.obter_aprovacao(snap.id)
+        return {
+            "aprovado": True,
+            "snapshot_id": snap.id,
+            "hash_sha256": snap.hash_sha256,
+            "aprovacao": aprov.model_dump(mode="json") if aprov else None,
+        }
+
+    @app.post(
+        "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/apresentacao/preview",
+        response_model=PresentationViewModel,
+    )
+    def preview_apresentacao(
+        estudo_id: str,
+        snapshot_id: str,
+        body: GerarApresentacaoRequest,
+    ) -> PresentationViewModel:
+        try:
+            snap = snapshot_service.obter_snapshot(snapshot_id)
+        except SnapshotNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        if snap.estudo_id != estudo_id:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        if snap.estado != "aprovado":
+            raise HTTPException(
+                status_code=422,
+                detail="Pré-visualização disponível somente para snapshot aprovado.",
+            ) from None
+        return construir_view_model(
+            snap,
+            modo=body.modo,
+            propostas_selecionadas=body.propostas_selecionadas,
+            ressalvas=body.ressalvas,
+            titulo=body.titulo,
+            renderer_versao=RENDERER_VERSAO,
+        )
+
+    @app.post(
+        "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/apresentacao/gerar",
+        response_model=GerarApresentacaoResponse,
+    )
+    def gerar_apresentacao_html(
+        estudo_id: str,
+        snapshot_id: str,
+        body: GerarApresentacaoRequest,
+    ) -> GerarApresentacaoResponse:
+        try:
+            return apresentacao.gerar_html(estudo_id, snapshot_id, body)
+        except AprovacaoInvalidaError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+
+    @app.get("/api/estudos/{estudo_id}/entregaveis/{entregavel_id}/html")
+    def baixar_entregavel_html(estudo_id: str, entregavel_id: str):
+        from fastapi.responses import FileResponse
+
+        entregaveis = snap_repo.listar_entregaveis(estudo_id)
+        ent = next((e for e in entregaveis if e.id == entregavel_id), None)
+        if ent is None or ent.invalidado:
+            raise HTTPException(status_code=404, detail="Entregável não encontrado") from None
+        caminho = Path(ent.caminho_arquivo)
+        if not caminho.is_file():
+            raise HTTPException(status_code=404, detail="Arquivo não encontrado") from None
+        return FileResponse(
+            caminho,
+            media_type="text/html",
+            filename=caminho.name,
+        )
+
+    @app.post(
+        "/api/estudos/{estudo_id}/plano-contratado",
+        response_model=PlanoContratadoVersao,
+    )
+    def registrar_plano_contratado(
+        estudo_id: str,
+        body: RegistrarPlanoContratadoRequest,
+    ) -> PlanoContratadoVersao:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        try:
+            return historico.registrar_plano_contratado(rascunho, body)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+
+    @app.get(
+        "/api/estudos/{estudo_id}/planos-contratados",
+        response_model=list[PlanoContratadoVersao],
+    )
+    def listar_planos_contratados(estudo_id: str) -> list[PlanoContratadoVersao]:
+        if repository.obter_rascunho(estudo_id) is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return historico.listar_planos_contratados(estudo_id)
+
+    @app.get(
+        "/api/estudos/{estudo_id}/historico/posicoes",
+        response_model=list[PosicaoCadastralVersao],
+    )
+    def listar_posicoes_cadastrais(estudo_id: str) -> list[PosicaoCadastralVersao]:
+        if repository.obter_rascunho(estudo_id) is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return historico.listar_posicoes(estudo_id)
 
     if WEB_DIST.is_dir():
         app.mount("/", StaticFiles(directory=str(WEB_DIST), html=True), name="static")

@@ -193,3 +193,57 @@ export async function aplicarExtracaoCotacao(estudoId, extracaoId) {
   }
   return tratarResposta(res, "Não foi possível aplicar a extração.");
 }
+
+export async function gerarSnapshot(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/snapshot`, { method: "POST" });
+  return tratarResposta(res, "Não foi possível gerar o snapshot.");
+}
+
+export async function listarSnapshots(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/snapshots`);
+  return tratarResposta(res, "Não foi possível listar snapshots.");
+}
+
+export async function obterSnapshot(estudoId, snapshotId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}`);
+  return tratarResposta(res, "Não foi possível carregar o snapshot.");
+}
+
+export async function aprovarSnapshot(estudoId, snapshotId, body) {
+  const res = await fetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}/aprovar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return tratarResposta(res, "Não foi possível aprovar o snapshot.");
+}
+
+export async function obterSnapshotAprovado(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/snapshot-aprovado`);
+  if (!res.ok) throw new Error("Não foi possível verificar aprovação.");
+  return res.json();
+}
+
+export async function previewApresentacao(estudoId, snapshotId, body) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/snapshots/${snapshotId}/apresentacao/preview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+  return tratarResposta(res, "Não foi possível pré-visualizar.");
+}
+
+export async function gerarApresentacaoHtml(estudoId, snapshotId, body) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/snapshots/${snapshotId}/apresentacao/gerar`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+  return tratarResposta(res, "Não foi possível gerar o HTML.");
+}

@@ -40,6 +40,7 @@ export const PASSOS = [
   { id: 3, titulo: "Propostas" },
   { id: 4, titulo: "Associação dos planos" },
   { id: 5, titulo: "Comparativo" },
+  { id: 6, titulo: "Revisão e apresentação" },
 ];
 
 export function novoId(prefixo) {

@@ -4,6 +4,7 @@ import CenarioPanel from "./CenarioPanel";
 import ComparativoPanel from "./ComparativoPanel";
 import ConfigEstudo from "./ConfigEstudo";
 import PropostaPanel from "./PropostaPanel";
+import RevisaoApresentacaoPanel from "./RevisaoApresentacaoPanel";
 import SiscorPanel from "./SiscorPanel";
 import { PASSOS } from "./constants";
 
@@ -79,6 +80,7 @@ export default function App() {
       {passo === 3 && <PropostaPanel estudoId={estudoId} onSalvo={recarregarEstudos} />}
       {passo === 4 && <CenarioPanel estudoId={estudoId} onSalvo={recarregarEstudos} />}
       {passo === 5 && <ComparativoPanel estudoId={estudoId} />}
+      {passo === 6 && <RevisaoApresentacaoPanel estudoId={estudoId} />}
 
       <div className="wizard-nav">
         {passo > 1 && (
@@ -86,7 +88,7 @@ export default function App() {
             ← Etapa anterior
           </button>
         )}
-        {passo < 5 && (
+        {passo < 6 && (
           <button type="button" onClick={() => setPasso(passo + 1)}>
             Próxima etapa →
           </button>
