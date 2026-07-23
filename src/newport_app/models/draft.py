@@ -45,6 +45,9 @@ class ProvenienciaRascunho(BaseModel):
     extrator_versao: str = "manual"
     linha_origem: int | None = None
     celula_origem: str | None = None
+    pagina: int | None = None
+    evidencia: str | None = None
+    coordenadas: str | None = None
     confirmado: bool = False
 
 
@@ -183,8 +186,8 @@ class OpcaoPropostaRascunho(BaseModel):
     id: str
     operadora: str
     plano_nome: str
-    regime_copart_id: str
-    tipo_fiscal: Literal["seguradora", "operadora"]
+    regime_copart_id: str | None = None
+    tipo_fiscal: Literal["seguradora", "operadora"] | None = None
     acomodacao: str | None = None
     modalidade: ModalidadeRascunho | None = None
     tabela: list[TabelaFaixaRascunho] = Field(default_factory=list)

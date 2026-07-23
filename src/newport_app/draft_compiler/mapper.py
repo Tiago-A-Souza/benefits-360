@@ -316,6 +316,24 @@ def mapear_estudo_input(
 
     opcoes: list[OpcaoPlano] = []
     for idx, op in enumerate(rascunho.opcoes_proposta):
+        if op.tipo_fiscal is None:
+            erros.append(
+                _erro(
+                    "APP-IMP-001",
+                    f"/opcoes_proposta/{idx}/tipo_fiscal",
+                    "Informe se a proposta é contrato da seguradora ou da operadora.",
+                )
+            )
+            continue
+        if op.regime_copart_id is None:
+            erros.append(
+                _erro(
+                    "APP-IMP-002",
+                    f"/opcoes_proposta/{idx}/regime_copart_id",
+                    "Selecione o regime de coparticipação da proposta.",
+                )
+            )
+            continue
         tabela: list[TabelaPrecoFaixa] = []
         for f_idx, faixa in enumerate(op.tabela):
             item = _tabela_faixa_motor(

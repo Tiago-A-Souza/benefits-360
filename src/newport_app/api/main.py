@@ -13,9 +13,11 @@ from pydantic import BaseModel
 from newport_app.api.middleware import ModoRealLocalMiddleware
 from newport_app.api.validation_handlers import resposta_validacao_sanitizada
 from newport_app.config.paths import (
+    caminho_banco_cotacoes,
     caminho_banco_estudos,
     caminho_banco_importacoes,
     diretorio_uploads,
+    diretorio_uploads_cotacao,
     garantir_diretorios,
 )
 from newport_app.config.runtime import (
@@ -27,12 +29,20 @@ from newport_app.config.runtime import (
 )
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import RascunhoEstudo
-from newport_app.models.responses import ComparativoResponse, EstudoResumo, PendenciaItem
+from newport_app.models.responses import ComparativoResponse, EstudoResumo, PendenciaItem, ResumoPlanoAtualResponse
+from newport_app.models.responses_cotacao import (
+    AplicarExtracaoResponse,
+    ConfirmacaoExtracaoResponse,
+    ListaExtracaoCotacaoResponse,
+    ResultadoImportacaoCotacaoResponse,
+)
+from newport_app.models.cotacao_pdf import ExtracaoCotacaoCandidata
 from newport_app.models.responses_siscor import (
     ConfirmacaoLoteResponse,
     ConferenciaSiscorResponse,
     ResultadoImportacaoSiscorResponse,
 )
+from newport_app.repository.extracao_cotacao import ExtracaoCotacaoRepository
 from newport_app.repository.importacao_siscor import ImportacaoSiscorRepository
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.seed.ficticio import rascunho_demo_12_vidas, rascunho_demo_41_vidas
@@ -41,6 +51,13 @@ from newport_app.services.calculo import (
     EstudoNaoEncontradoError,
     RascunhoNaoCompilavelError,
 )
+from newport_app.services.extracao_cotacao import (
+    CampoNaoEncontradoError,
+    EstudoNaoEncontradoError as EstudoCotacaoNaoEncontradoError,
+    ExtracaoCotacaoService,
+    ExtracaoNaoEncontradaError,
+)
+from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
 from newport_app.services.pendencias import pendencias_compilacao
 from newport_app.services.importacao_siscor import (
     ExclusaoSemMotivoError,
@@ -90,10 +107,19 @@ class AtualizarLinhaSiscorRequest(BaseModel):
     confirmar: bool = False
 
 
+class AtualizarCampoExtracaoRequest(BaseModel):
+    centavos: int | None = None
+    texto: str | None = None
+    inteiro: int | None = None
+    confirmado: bool | None = None
+
+
 def create_app(
     repo: SQLiteStudyRepository | None = None,
     import_repo: ImportacaoSiscorRepository | None = None,
+    cotacao_repo: ExtracaoCotacaoRepository | None = None,
     uploads_dir: Path | None = None,
+    uploads_cotacao_dir: Path | None = None,
     *,
     seed_demos: bool | None = None,
 ) -> FastAPI:
@@ -102,7 +128,9 @@ def create_app(
 
     repository = repo or _criar_repo()
     importacoes = import_repo or _criar_import_repo()
+    extracoes_cotacao = cotacao_repo or ExtracaoCotacaoRepository(caminho_banco_cotacoes())
     uploads = uploads_dir or diretorio_uploads()
+    uploads_cotacao = uploads_cotacao_dir or diretorio_uploads_cotacao()
 
     service = CalculoService(repository)
     siscor = ImportacaoSiscorService(
@@ -110,12 +138,18 @@ def create_app(
         importacoes,
         uploads_dir=uploads,
     )
+    cotacao = ExtracaoCotacaoService(
+        repository,
+        extracoes_cotacao,
+        uploads_dir=uploads_cotacao,
+    )
     if seed_demos:
         _seed_inicial(service)
 
-    app = FastAPI(title="Newport Estudos", version="2.5.0")
+    app = FastAPI(title="Newport Estudos", version="2.5.5")
     app.state.calculo_service = service
     app.state.siscor_service = siscor
+    app.state.cotacao_service = cotacao
     app.state.repository = repository
     app.state.modo = modo_execucao().value
 
@@ -135,7 +169,7 @@ def create_app(
     def obter_config() -> dict[str, str | int]:
         return {
             "modo": modo_execucao().value,
-            "versao": "2.5.0",
+            "versao": "2.5.5",
             "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
         }
 
@@ -282,6 +316,118 @@ def create_app(
                 status_code=422,
                 detail="Linha incompleta ou com exceções — não pode ser confirmada.",
             ) from None
+
+    @app.get("/api/estudos/{estudo_id}/resumo-plano-atual", response_model=ResumoPlanoAtualResponse)
+    def resumo_plano_atual(estudo_id: str) -> ResumoPlanoAtualResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return montar_resumo_plano_atual(rascunho)
+
+    @app.post(
+        "/api/estudos/{estudo_id}/importar-cotacao-pdf",
+        response_model=ResultadoImportacaoCotacaoResponse,
+    )
+    async def importar_cotacao_pdf(
+        estudo_id: str,
+        arquivo: UploadFile = File(...),
+    ) -> ResultadoImportacaoCotacaoResponse:
+        conteudo = await arquivo.read()
+        if len(conteudo) > LIMITE_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Arquivo excede o limite permitido.")
+        if not conteudo.startswith(b"%PDF"):
+            raise HTTPException(status_code=400, detail="Envie um arquivo PDF de cotação.")
+        try:
+            return cotacao.importar_pdf(
+                estudo_id,
+                conteudo,
+                arquivo.filename or "cotacao.pdf",
+            )
+        except EstudoCotacaoNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+
+    @app.get(
+        "/api/estudos/{estudo_id}/extracao-cotacao",
+        response_model=ListaExtracaoCotacaoResponse,
+    )
+    def listar_extracao_cotacao(estudo_id: str) -> ListaExtracaoCotacaoResponse:
+        return ListaExtracaoCotacaoResponse(extracoes=cotacao.listar_extracoes(estudo_id))
+
+    @app.get(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}",
+        response_model=ExtracaoCotacaoCandidata,
+    )
+    def obter_extracao_cotacao(estudo_id: str, extracao_id: str) -> ExtracaoCotacaoCandidata:
+        try:
+            ext = cotacao.obter_extracao(extracao_id)
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        if ext.estudo_id != estudo_id:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        return ext
+
+    @app.patch(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/campos/{campo_id}",
+    )
+    def atualizar_campo_extracao(
+        estudo_id: str,
+        extracao_id: str,
+        campo_id: str,
+        body: AtualizarCampoExtracaoRequest,
+    ):
+        try:
+            campo = cotacao.atualizar_campo(
+                extracao_id,
+                campo_id,
+                centavos=body.centavos,
+                texto=body.texto,
+                inteiro=body.inteiro,
+                confirmado=body.confirmado,
+            )
+            return {"campo": campo.model_dump(mode="json")}
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        except CampoNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Campo não encontrado") from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/confirmar-lote",
+        response_model=ConfirmacaoExtracaoResponse,
+    )
+    def confirmar_lote_extracao(
+        estudo_id: str,
+        extracao_id: str,
+    ) -> ConfirmacaoExtracaoResponse:
+        try:
+            return cotacao.confirmar_lote_sem_alerta(extracao_id)
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/aplicar",
+        response_model=AplicarExtracaoResponse,
+    )
+    def aplicar_extracao(estudo_id: str, extracao_id: str) -> AplicarExtracaoResponse:
+        try:
+            ext = cotacao.obter_extracao(extracao_id)
+            if ext.estudo_id != estudo_id:
+                raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+            return cotacao.aplicar_ao_rascunho(extracao_id)
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+
+    @app.get("/api/estudos/{estudo_id}/documentos-cotacao/{documento_id}/pdf")
+    def baixar_pdf_cotacao(estudo_id: str, documento_id: str):
+        from fastapi.responses import FileResponse
+
+        caminho = cotacao.caminho_pdf(documento_id)
+        if caminho is None:
+            raise HTTPException(status_code=404, detail="PDF não encontrado") from None
+        return FileResponse(
+            caminho,
+            media_type="application/pdf",
+            filename="cotacao.pdf",
+        )
 
     @app.post("/api/estudos/{estudo_id}/calcular", response_model=ComparativoResponse)
     def calcular_estudo(estudo_id: str) -> ComparativoResponse:

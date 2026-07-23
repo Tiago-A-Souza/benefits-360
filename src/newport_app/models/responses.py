@@ -40,6 +40,28 @@ class AuditoriaItem(BaseModel):
     alvo: str | None = None
 
 
+class ResumoFaixaPlanoAtual(BaseModel):
+    faixa: int
+    quantidade_vidas: int
+    valor_observado_reais: str | None = None
+    alerta_inconsistencia: str | None = None
+
+
+class ResumoPlanoAtualItem(BaseModel):
+    subgrupo_id: str
+    operadora: str
+    plano_nome: str
+    faixas: list[ResumoFaixaPlanoAtual] = Field(default_factory=list)
+    subtotal_calculado_reais: str | None = None
+    observacao: str | None = None
+
+
+class ResumoPlanoAtualResponse(BaseModel):
+    planos: list[ResumoPlanoAtualItem] = Field(default_factory=list)
+    total_calculado_reais: str | None = None
+    requer_data_referencia: bool = False
+
+
 class DetalheVidaComparativo(BaseModel):
     vida_id: str
     nome: str

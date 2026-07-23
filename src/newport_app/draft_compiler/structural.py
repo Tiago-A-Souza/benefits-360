@@ -98,7 +98,7 @@ def validar_estrutura(rascunho: RascunhoEstudo) -> list[ErroCompilacao]:
             )
 
     for idx, op in enumerate(rascunho.opcoes_proposta):
-        if op.regime_copart_id not in regime_ids:
+        if op.regime_copart_id is not None and op.regime_copart_id not in regime_ids:
             erros.append(
                 _erro(
                     "APP-STR-002",
