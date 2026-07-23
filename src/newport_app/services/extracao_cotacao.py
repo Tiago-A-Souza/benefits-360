@@ -9,6 +9,7 @@ from pathlib import Path
 from collections.abc import Callable
 
 from newport_app.config.paths import diretorio_uploads_cotacao
+from newport_app.cotacao_pdf.maturidade import avaliar_maturidade
 from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
 from newport_app.cotacao_pdf.conferencia import normalizar_extracao
@@ -36,6 +37,10 @@ class ExtracaoNaoEncontradaError(Exception):
 
 
 class CampoNaoEncontradoError(Exception):
+    pass
+
+
+class OpcaoNaoEncontradaError(Exception):
     pass
 
 
@@ -101,6 +106,7 @@ class ExtracaoCotacaoService:
             template_id=extracao.documento.template_id,
             opcoes_encontradas=len(extracao.opcoes),
             alertas=extracao.alertas,
+            maturidade=avaliar_maturidade(extracao),
         )
 
     def obter_extracao(self, extracao_id: str) -> ExtracaoCotacaoCandidata:
@@ -248,8 +254,28 @@ class ExtracaoCotacaoService:
         for op in extracao.opcoes:
             if op.id == opcao_id:
                 op.excluida = True
+                op.selecionada_para_comparativo = False
                 break
+        else:
+            raise OpcaoNaoEncontradaError(opcao_id)
         self._extracoes.salvar(extracao)
+
+    def selecionar_opcao(
+        self,
+        extracao_id: str,
+        opcao_id: str,
+        *,
+        selecionada: bool,
+    ) -> OpcaoCotacaoCandidata:
+        extracao = self.obter_extracao(extracao_id)
+        for op in extracao.opcoes:
+            if op.id == opcao_id:
+                if op.excluida:
+                    raise OpcaoNaoEncontradaError(opcao_id)
+                op.selecionada_para_comparativo = selecionada
+                self._extracoes.salvar(extracao)
+                return op
+        raise OpcaoNaoEncontradaError(opcao_id)
 
     def aplicar_ao_rascunho(self, extracao_id: str) -> AplicarExtracaoResponse:
         extracao = self.obter_extracao(extracao_id)

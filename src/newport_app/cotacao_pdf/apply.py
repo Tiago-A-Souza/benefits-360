@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 
+from newport_app.cotacao_pdf.maturidade import exige_selecao_consciente, opcoes_ativas
 from newport_app.cotacao_pdf.validation import pendencias_opcao
 from newport_app.models.cotacao_pdf import ExtracaoCotacaoCandidata, OpcaoCotacaoCandidata, ValorExtraido
 from newport_app.models.draft import (
@@ -208,8 +209,27 @@ def aplicar_extracao_confirmada(
         )
     ]
 
+    ativas = opcoes_ativas(extracao)
+    if exige_selecao_consciente(extracao):
+        selecionadas = [o for o in ativas if o.selecionada_para_comparativo]
+        if not selecionadas:
+            bloqueios.append(
+                {
+                    "opcao_id": "",
+                    "plano": "Seleção de planos",
+                    "motivos": [
+                        "Selecione conscientemente quais planos levar ao comparativo "
+                        "(documento com tabela geral extensa)."
+                    ],
+                }
+            )
+            return rascunho, bloqueios
+        ids_aplicaveis = {o.id for o in selecionadas}
+    else:
+        ids_aplicaveis = {o.id for o in ativas}
+
     for op_c in extracao.opcoes:
-        if op_c.excluida:
+        if op_c.excluida or op_c.id not in ids_aplicaveis:
             continue
         pendencias = pendencias_opcao(op_c)
         if pendencias:

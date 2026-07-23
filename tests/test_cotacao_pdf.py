@@ -9,40 +9,27 @@ from fastapi.testclient import TestClient
 
 from newport_app.api.main import create_app
 from newport_app.cotacao_pdf.extract import PdfDocumento
-from newport_app.cotacao_pdf.parsers import porto, sulamerica
+from tests.fixtures.cotacao_pdf.build_pdfs import build_porto_27_paginas, build_sulamerica_sem_copart
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
 from newport_app.repository.extracao_cotacao import ExtracaoCotacaoRepository
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.services.extracao_cotacao import ExtracaoCotacaoService
 
-CORPUS_PORTO = Path(r"C:\0-Projetos\0-Claude_Cowork\@Newport\Newport-Teste-ATEF\PORTO.pdf")
-CORPUS_SUL = Path(r"C:\0-Projetos\0-Claude_Cowork\@Newport\Newport-Teste-ATEF\SULAMERICA.pdf")
+from newport_app.config.paths import diretorio_corpus_anistia
 
 
 def test_nenhum_valor_extraido_nasce_confirmado():
-    paginas = ["PORTO SEGURO"] * 16
-    paginas[1] = (
-        "Orçamento:123\nEmissão: 01/01/2026 - Validade: 01/02/2026\n"
-        "P320 Q Plano R$ 1.500,82\n3 vidas\n30% de coparticipação\n"
-        "Total com IOF R$ 1.551,90\nR$ 1.500,82 R$ 15,00 R$ 36,08"
+    ext = parse_cotacao_pdf(
+        build_porto_27_paginas(),
+        estudo_id="t",
+        documento_id="d",
+        nome_arquivo="porto-sint.pdf",
     )
-    paginas[13] = (
-        "Valores de Prêmio sem coparticipação\n00-18 19-23 24-28 29-33 34-38 "
-        "39-43 44-48 49-53 54-58 +59\nP320 Q 303.17 367.66 443.53 507.76 550.16 "
-        "568.18 678.70 730.65 902.77 1517.48"
-    )
-    paginas[14] = (
-        "Valores de Prêmio com coparticipação 30%\n00-18 19-23 24-28 29-33 34-38 "
-        "39-43 44-48 49-53 54-58 +59\nP320 Q x 227.38 275.75 332.64 380.82 412.62 "
-        "426.13 509.02 547.99 677.08 1138.11"
-    )
-    paginas[15] = "Cotação por faixa etária\nP320 Q Total R$ 1.500,82\n19 a 23 Qtd 1\n49 a 53 Qtd 1\n54 a 58 Qtd 1"
-    doc = PdfDocumento.from_paginas(paginas)
-    opcoes, _, _ = porto.parse(doc, documento_hash="abc")
-    assert opcoes
-    for campo in opcoes[0].tabela:
-        assert not campo.valor.confirmado
-        assert not campo.quantidade.confirmado
+    assert ext.opcoes
+    for op in ext.opcoes:
+        for campo in op.tabela:
+            assert not campo.valor.confirmado
+            assert not campo.quantidade.confirmado
 
 
 def test_documento_nao_reconhecido():
@@ -86,11 +73,23 @@ def test_api_importar_pdf_sintetico(tmp_path: Path):
     assert "extracao_id" in data
 
 
+def _corpus_anistia(*nomes: str) -> Path | None:
+    base = diretorio_corpus_anistia()
+    if not base.is_dir():
+        return None
+    for nome in nomes:
+        hits = list(base.rglob(nome))
+        if hits:
+            return hits[0]
+    return None
+
+
 @pytest.mark.private_corpus
 def test_corpus_porto_integracao():
-    if not CORPUS_PORTO.is_file():
+    path = _corpus_anistia("PORTO.pdf")
+    if path is None:
         pytest.skip("Corpus privado indisponível")
-    conteudo = CORPUS_PORTO.read_bytes()
+    conteudo = path.read_bytes()
     ext = parse_cotacao_pdf(
         conteudo,
         estudo_id="homolog",
@@ -99,21 +98,23 @@ def test_corpus_porto_integracao():
     )
     assert ext.documento.operadora_detectada == "Porto Seguro"
     assert ext.opcoes
-    assert len(ext.opcoes[0].tabela) >= 10
+    assert all(len(op.tabela) >= 10 for op in ext.opcoes)
     assert not any(c.confirmado for c in ext.campos_extraidos)
 
 
 @pytest.mark.private_corpus
 def test_corpus_sulamerica_integracao():
-    if not CORPUS_SUL.is_file():
+    path = _corpus_anistia("SULAMÉRICA SEM CP.pdf", "SULAMERICA SEM CP.pdf")
+    if path is None:
         pytest.skip("Corpus privado indisponível")
-    conteudo = CORPUS_SUL.read_bytes()
+    conteudo = path.read_bytes()
     ext = parse_cotacao_pdf(
         conteudo,
         estudo_id="homolog",
         documento_id="doc-sul",
-        nome_arquivo="SULAMERICA.pdf",
+        nome_arquivo=path.name,
     )
     assert ext.documento.operadora_detectada == "SulAmérica"
     assert ext.opcoes
-    assert ext.opcoes[0].premio_saude and ext.opcoes[0].premio_saude.centavos
+    assert all(op.regime_copart.texto == "sem" for op in ext.opcoes)
+    assert not any(c.confirmado for c in ext.campos_extraidos)

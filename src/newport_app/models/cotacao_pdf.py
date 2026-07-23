@@ -88,6 +88,7 @@ class OpcaoCotacaoCandidata(BaseModel):
     observacoes: ValorExtraido | None = None
     reconciliacao: ReconciliacaoOpcao | None = None
     excluida: bool = False
+    selecionada_para_comparativo: bool = False
 
 
 class DocumentoCotacaoPDF(BaseModel):

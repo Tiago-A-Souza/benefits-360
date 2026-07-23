@@ -172,6 +172,18 @@ export async function excluirOpcaoExtracao(estudoId, extracaoId, opcaoId) {
   return tratarResposta(res, "Não foi possível excluir a opção.");
 }
 
+export async function selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, selecionada) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/opcoes/${opcaoId}/selecionar`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selecionada }),
+    }
+  );
+  return tratarResposta(res, "Não foi possível atualizar a seleção.");
+}
+
 export async function confirmarLoteExtracao(estudoId, extracaoId) {
   const res = await fetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/confirmar-lote`,

@@ -54,6 +54,23 @@ def diretorio_entregaveis(modo: ModoExecucao | None = None) -> Path:
     return diretorio_dados_demo() / "entregaveis_demo"
 
 
+def diretorio_corpus_cotacoes() -> Path:
+    """Corpus privado de cotações (PDFs reais — nunca versionados)."""
+    env = os.environ.get("NEWPORT_CORPUS_COTACOES")
+    if env:
+        return Path(env)
+    root = ROOT / ".private" / "corpus"
+    for nome in ("cotacoes", "cotações", "cota\u00e7\u00f5es"):
+        candidato = root / nome
+        if candidato.is_dir():
+            return candidato
+    return root / "cotacoes"
+
+
+def diretorio_corpus_anistia() -> Path:
+    return diretorio_corpus_cotacoes()
+
+
 def diretorio_golden_privado() -> Path:
     return diretorio_runtime_privado().parent / "golden"
 

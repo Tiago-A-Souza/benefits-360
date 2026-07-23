@@ -1,4 +1,4 @@
-"""Parser SulAmérica — tabela por faixa etária."""
+"""Parser SulAmérica — extração por coordenadas (págs. 5–6, regimes separados)."""
 
 from __future__ import annotations
 
@@ -6,20 +6,22 @@ import re
 import unicodedata
 import uuid
 
+from newport_app.cotacao_pdf.coords_extract import (
+    classificar_regime_cabecalho,
+    extrair_tabelas_pagina,
+    localizar_paginas_tabela_sulamerica,
+    texto_pagina_enriquecido,
+)
 from newport_app.cotacao_pdf.extract import PdfDocumento
 from newport_app.cotacao_pdf.parsers.base import faixa_extraida, novo_campo
 from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
-from newport_app.cotacao_pdf.text_utils import (
-    extrair_datas,
-    extrair_primeiro_reais,
-    extrair_valores_reais,
-)
+from newport_app.cotacao_pdf.text_utils import extrair_datas, extrair_valores_reais
 from newport_app.models.cotacao_pdf import AlertaExtracaoCotacao, OpcaoCotacaoCandidata
 from newport_app.models.draft import PriceBasisRascunho
 
-PARSER_VERSAO = "sulamerica@1.0.0"
+PARSER_VERSAO = "sulamerica@2.0.0"
 OPERADORA = "SulAmérica"
-TEMPLATE_ID = "sulamerica-pme-v1"
+TEMPLATE_ID = "sulamerica-pme-v2"
 
 
 def _ascii_upper(texto: str) -> str:
@@ -31,38 +33,17 @@ def identificar(doc: PdfDocumento) -> bool:
     return "SUL" in amostra and "AMERICA" in amostra
 
 
-def _linha_valores_faixa(doc: PdfDocumento) -> tuple[list[int], str | None, int]:
-    melhor: tuple[list[int], str | None, int] | None = None
-    for pagina in range(doc.numero_paginas):
-        texto = doc.texto(pagina)
-        for linha in doc.linhas(pagina):
-            if linha.count("R$") >= 8:
-                valores = extrair_valores_reais(linha)
-                if len(valores) >= 10:
-                    return valores[:10], linha, pagina + 1
-        valores = extrair_valores_reais(texto)
-        for i in range(len(valores) - 9):
-            bloco = valores[i : i + 10]
-            if bloco[0] < 5000 or bloco[-1] <= bloco[0]:
-                continue
-            if all(bloco[j] <= bloco[j + 1] for j in range(9)):
-                candidato = (bloco, texto[max(0, i - 1) : i + 80], pagina + 1)
-                if melhor is None or bloco[0] > melhor[0][0]:
-                    melhor = candidato
-    if melhor:
-        return melhor
-    return [], None, 0
-
-
 def _extrair_financeiro(texto: str) -> tuple[int | None, int | None, int | None]:
-    from newport_app.siscor_importer.money import valor_para_centavos
-
     match_total = re.search(
         r"Total de Pr[eê]mio Sa[uú]de:\s*R\$\s*([\d.,]+)",
         texto,
         re.IGNORECASE,
     )
-    total = valor_para_centavos(match_total.group(1)) if match_total else None
+    total = None
+    if match_total:
+        from newport_app.siscor_importer.money import valor_para_centavos
+
+        total = valor_para_centavos(match_total.group(1))
 
     idx = re.search(r"Pr[eê]mio\s*Sa[uú]de", texto, re.IGNORECASE)
     if idx:
@@ -76,111 +57,150 @@ def _extrair_financeiro(texto: str) -> tuple[int | None, int | None, int | None]
     return None, None, total
 
 
+def _paginas_tabela_sulamerica(doc: PdfDocumento) -> list[int]:
+    return localizar_paginas_tabela_sulamerica(doc)
+
+
 def parse(
     doc: PdfDocumento,
     *,
     documento_hash: str,
 ) -> tuple[list[OpcaoCotacaoCandidata], list[AlertaExtracaoCotacao], dict]:
     alertas: list[AlertaExtracaoCotacao] = []
-    meta: dict = {}
-    valores, trecho, pagina = _linha_valores_faixa(doc)
-    if not valores:
+    meta: dict = {"ocr_utilizado": False}
+    opcoes: list[OpcaoCotacaoCandidata] = []
+
+    paginas_alvo = _paginas_tabela_sulamerica(doc)
+    secoes_encontradas = []
+
+    for pagina in paginas_alvo:
+        _, ocr = texto_pagina_enriquecido(doc, pagina)
+        if ocr:
+            meta["ocr_utilizado"] = True
+        secao = extrair_tabelas_pagina(doc, pagina)
+        if secao is None:
+            continue
+        if secao.regime_tipo == "ambíguo":
+            alertas.append(
+                AlertaExtracaoCotacao(
+                    codigo="PDF-SUL-003",
+                    mensagem=(
+                        f"Regime de coparticipação ambíguo na página {secao.pagina} — "
+                        "confirme pelo cabeçalho da tabela."
+                    ),
+                    severidade="alerta",
+                    pagina=secao.pagina,
+                )
+            )
+            continue
+        secoes_encontradas.append(secao)
+
+    if not secoes_encontradas:
         alertas.append(
             AlertaExtracaoCotacao(
                 codigo="PDF-SUL-001",
-                mensagem="Tabela de valores por faixa não encontrada.",
+                mensagem=(
+                    "Nenhuma tabela tarifária localizada (esperado nas págs. 5–6 "
+                    "com cabeçalho de faixas etárias)."
+                ),
                 severidade="alerta",
             )
         )
         return [], alertas, meta
 
-    plano_nome = "Direto SP (CAP1)"
-    for pagina_i in range(doc.numero_paginas):
-        for linha in doc.linhas(pagina_i):
-            if "CAP" in linha.upper() or "DIRETO" in linha.upper():
-                plano_nome = linha.strip()
-                break
-
     texto_todo = doc.texto_todo()
     validade = None
-    match_val = re.search(
-        r"[Vv]alidade[^:]*:\s*(\d{2}/\d{2}/\d{4})",
-        texto_todo,
-    )
+    match_val = re.search(r"[Vv]alidade[^:]*:\s*(\d{2}/\d{2}/\d{4})", texto_todo)
     if match_val:
         datas = extrair_datas(match_val.group(0))
         validade = datas[0] if datas else None
 
     premio, iof, total = _extrair_financeiro(texto_todo)
 
-    com_copart = "coparticip" in texto_todo.lower()
-    tabela = [
-        faixa_extraida(
-            idx,
-            valor_centavos=centavos,
-            quantidade=None,
-            price_basis=PriceBasisRascunho.EXCLUI_IOF,
-            pagina=pagina,
-            trecho_valor=trecho,
-            trecho_qtd=None,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        )
-        for idx, centavos in enumerate(valores)
-    ]
+    for secao in secoes_encontradas:
+        for linha in secao.linhas:
+            regime_tipo = secao.regime_tipo if secao.regime_tipo != "ambíguo" else "sem"
+            tabela = [
+                faixa_extraida(
+                    idx,
+                    valor_centavos=centavos,
+                    quantidade=None,
+                    price_basis=PriceBasisRascunho.EXCLUI_IOF,
+                    pagina=linha.pagina,
+                    trecho_valor=linha.trecho,
+                    trecho_qtd=None,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                )
+                for idx, centavos in enumerate(linha.valores)
+            ]
+            rotulo_regime = secao.regime_rotulo
+            opcao = OpcaoCotacaoCandidata(
+                id=str(uuid.uuid4()),
+                operadora=novo_campo(
+                    "Operadora",
+                    texto=OPERADORA,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                plano_nome=novo_campo(
+                    "Nome do plano",
+                    texto=linha.plano_nome,
+                    pagina=linha.pagina,
+                    trecho=linha.trecho,
+                    coordenadas=linha.coordenadas,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                regime_copart=novo_campo(
+                    "Regime de coparticipação",
+                    texto=regime_tipo,
+                    pagina=secao.pagina,
+                    trecho=secao.cabecalho,
+                    estado="revisar",
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                copart_percentual=novo_campo(
+                    "Percentual de coparticipação",
+                    inteiro=secao.copart_percentual,
+                    pagina=secao.pagina,
+                    trecho=secao.cabecalho,
+                    estado="confirmar" if secao.copart_percentual else "ausente",
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                tabela=tabela,
+                premio_saude=novo_campo(
+                    "Prêmio saúde",
+                    centavos=premio if len(secoes_encontradas) == 1 and len(secao.linhas) == 1 else None,
+                    price_basis=PriceBasisRascunho.EXCLUI_IOF,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                iof=novo_campo(
+                    "IOF",
+                    centavos=iof if len(secoes_encontradas) == 1 and len(secao.linhas) == 1 else None,
+                    price_basis=PriceBasisRascunho.EXCLUI_IOF,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                total_recorrente=novo_campo(
+                    "Total mensal",
+                    centavos=total if len(secoes_encontradas) == 1 and len(secao.linhas) == 1 else None,
+                    price_basis=PriceBasisRascunho.INCLUI_IOF,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+                validade_oficial=novo_campo(
+                    "Validade",
+                    data=validade,
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                ),
+            )
+            reconciliar_opcao(opcao)
+            opcoes.append(opcao)
 
-    opcao = OpcaoCotacaoCandidata(
-        id=str(uuid.uuid4()),
-        operadora=novo_campo(
-            "Operadora",
-            texto=OPERADORA,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-        plano_nome=novo_campo(
-            "Nome do plano",
-            texto=plano_nome,
-            pagina=pagina,
-            trecho=trecho,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-        regime_copart=novo_campo(
-            "Regime de coparticipação",
-            texto="parcial" if com_copart else "sem",
-            estado="revisar",
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-        tabela=tabela,
-        premio_saude=novo_campo(
-            "Prêmio saúde",
-            centavos=premio,
-            price_basis=PriceBasisRascunho.EXCLUI_IOF,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-        iof=novo_campo(
-            "IOF",
-            centavos=iof,
-            price_basis=PriceBasisRascunho.EXCLUI_IOF,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-        total_recorrente=novo_campo(
-            "Total mensal",
-            centavos=total,
-            price_basis=PriceBasisRascunho.INCLUI_IOF,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-        validade_oficial=novo_campo(
-            "Validade",
-            data=validade,
-            parser_versao=PARSER_VERSAO,
-            documento_hash=documento_hash,
-        ),
-    )
-    reconciliar_opcao(opcao)
     meta["validade_oficial"] = validade
-    return [opcao], alertas, meta
+    return opcoes, alertas, meta

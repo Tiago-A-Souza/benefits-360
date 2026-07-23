@@ -7,6 +7,7 @@ import {
   importarCotacaoPdf,
   listarExtracoesCotacao,
   obterExtracaoCotacao,
+  selecionarOpcaoExtracao,
 } from "./api";
 import {
   centavosParaReaisExibicao,
@@ -194,7 +195,7 @@ function CampoSelect({ campo, onSalvar, opcoes, label }) {
   );
 }
 
-function OpcaoExtracao({ op, estudoId, documentoId, onSalvarCampo, onExcluir }) {
+function OpcaoExtracao({ op, estudoId, documentoId, onSalvarCampo, onExcluir, exigeSelecao, onSelecionar }) {
   if (op.excluida) {
     return (
       <div className="cartao cartao--interno opcao-excluida">
@@ -208,7 +209,17 @@ function OpcaoExtracao({ op, estudoId, documentoId, onSalvarCampo, onExcluir }) 
   return (
     <div className="cartao cartao--interno opcao-extracao">
       <div className="opcao-header">
-        <h4>{op.plano_nome?.texto || "Proposta extraída"}</h4>
+        {exigeSelecao && (
+          <label className="opcao-selecao">
+            <input
+              type="checkbox"
+              checked={Boolean(op.selecionada_para_comparativo)}
+              onChange={(e) => onSelecionar(op.id, e.target.checked)}
+            />
+            Levar ao comparativo
+          </label>
+        )}
+        <h4>{op.plano_nome?.texto || "Opção extraída"}</h4>
         <button type="button" className="secundario" onClick={() => onExcluir(op.id)}>
           Excluir opção
         </button>
@@ -439,7 +450,7 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
       const res = await importarCotacaoPdf(estudoId, file);
       setMsg(
         res.sucesso
-          ? `PDF identificado (${res.operadora || res.estado}) — ${res.opcoes_encontradas} proposta(s).`
+          ? `Template reconhecido (${res.template_id || res.operadora}) — ${res.opcoes_encontradas} opção(ões) encontrada(s). Revise e selecione antes de aplicar.`
           : `PDF recebido (${res.estado}). Revise ou use entrada manual.`
       );
       recarregar();
@@ -491,6 +502,12 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
     }
   }
 
+  async function handleSelecionarOpcao(opcaoId, selecionada) {
+    if (!sel) return;
+    await selecionarOpcaoExtracao(estudoId, sel, opcaoId, selecionada);
+    await recarregarDetalhe();
+  }
+
   async function handleExcluirOpcao(opcaoId) {
     await excluirOpcaoExtracao(estudoId, sel, opcaoId);
     await recarregarDetalhe();
@@ -498,13 +515,17 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
   }
 
   const docId = detalhe?.documento?.id;
+  const exigeSelecao =
+    detalhe?.documento?.template_id?.startsWith("porto-") ||
+    (detalhe?.opcoes?.filter((o) => !o.excluida).length || 0) > 3;
 
   return (
     <section className="cartao cartao--interno">
       <h3>Importar cotações (PDF)</h3>
       <p className="muted">
-        Envie PDFs de Porto, SulAmérica, Amil, Bradesco ou Omint. Nenhum valor é confirmado
-        automaticamente. Tipo fiscal e coparticipação exigem confirmação explícita.
+        Envie PDFs de Porto, SulAmérica, Amil, Bradesco ou Omint. Reconhecer o template não
+        homologa a extração financeira. Confirme campos e selecione conscientemente quais planos
+        levar ao comparativo quando a tabela geral listar muitos planos.
       </p>
       <label className="upload-label">
         <input type="file" accept="application/pdf" onChange={handleUpload} disabled={carregando} />
@@ -525,8 +546,21 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
 
       {detalhe && (
         <>
+          {detalhe.documento?.template_id && (
+            <p className="muted">
+              Template: <strong>{detalhe.documento.template_id}</strong> — opções extraídas para
+              revisão; aplicar ao rascunho só após confirmação (e seleção quando necessário).
+            </p>
+          )}
+          {exigeSelecao && (
+            <p className="alerta">
+              Este documento lista vários planos na tabela geral. Marque apenas os que o cliente
+              deseja comparar — nenhum plano é aplicado automaticamente.
+            </p>
+          )}
           {detalhe.alertas?.map((a, i) => (
             <p key={i} className="alerta">
+              {a.codigo ? `[${a.codigo}] ` : ""}
               {a.mensagem}
             </p>
           ))}
@@ -538,6 +572,8 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
               documentoId={docId}
               onSalvarCampo={salvarCampo}
               onExcluir={handleExcluirOpcao}
+              exigeSelecao={exigeSelecao}
+              onSelecionar={handleSelecionarOpcao}
             />
           ))}
           <div className="acoes-lote">
@@ -545,7 +581,7 @@ export default function CotacaoPdfPanel({ estudoId, onAplicado }) {
               Confirmar lote (somente sem alerta)
             </button>
             <button type="button" onClick={handleAplicar}>
-              Aplicar propostas confirmadas
+              Aplicar opções confirmadas ao rascunho
             </button>
           </div>
           {bloqueios.length > 0 && (

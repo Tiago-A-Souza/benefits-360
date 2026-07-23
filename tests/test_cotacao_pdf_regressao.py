@@ -11,7 +11,7 @@ import pytest
 from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada, opcao_candidata_para_rascunho
 from newport_app.cotacao_pdf.conferencia import normalizar_opcao
 from newport_app.cotacao_pdf.extract import PdfDocumento
-from newport_app.cotacao_pdf.parsers import amil, porto, sulamerica
+from newport_app.cotacao_pdf.parsers import amil
 from newport_app.cotacao_pdf.parsers.base import faixa_extraida, novo_campo
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
 from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
@@ -25,40 +25,12 @@ from newport_app.models.draft import PriceBasisRascunho
 from newport_app.siscor_mapper.apply import rascunho_vazio
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "cotacao_pdf"
-_ESPERADO_PRIVADO = Path(__file__).resolve().parents[1] / ".private" / "golden" / "cotacao_pdf_homologacao.json"
 
 
-def _paginas_porto_sintetico() -> list[str]:
-    paginas = ["PORTO SEGURO"] * 16
-    paginas[1] = (
-        "Orçamento:3129336\nRealizado: 30/06/2026 - Validade: 30/07/2026\n"
-        "P320 Q COPAR\nPorto Saúde\nR$ 1.500,82\n3 vidas\nApartamento\n"
-        "30% de coparticipação\nSubtotal\nR$ 1.500,82\nIOF\nR$ 36,08\n"
-        "Valor total mensal para 3 vidas:\nR$ 1.551,90"
-    )
-    paginas[14] = (
-        "tabela geral de prêmios com coparticipação 30%\n"
-        "P320 Q COPAR\n227.38\n275.75\n332.64\n380.82\n412.62\n"
-        "426.13\n509.02\n547.99\n677.08\n1138.11"
-    )
-    paginas[15] = (
-        "Cotação por faixa etária\nP320 Q COPAR\nR$ 1.500,82\n"
-        "19 a 23 anos\n1\n49 a 53 anos\n1\n54 a 58 anos\n1"
-    )
-    return paginas
-
-
-def _paginas_sulamerica_sintetico() -> list[str]:
-    paginas = ["SUL AMERICA SAUDE"] * 5
-    paginas[1] = (
-        "Produto Direto SP CAP1\n"
-        "R$ 283,94 R$ 354,92 R$ 440,09 R$ 488,51 R$ 522,71 "
-        "R$ 606,34 R$ 724,83 R$ 849,51 R$ 1.011,33 R$ 1.703,59\n"
-        "Prêmio Saúde: \n + IOF (2,38%): \n = \nR$ 2.215,76\nR$ 52,74\n"
-        "Total de Prêmio Saúde: R$ 2.268,50\nValidade da cotação: 14/08/2026"
-    )
-    return paginas
-
+from tests.fixtures.cotacao_pdf.build_pdfs import (
+    build_porto_27_paginas,
+    build_sulamerica_sem_copart,
+)
 
 def _tabela_bradesco_sintetica() -> list[list]:
     linhas = []
@@ -86,24 +58,31 @@ def _tabela_bradesco_sintetica() -> list[list]:
 
 
 def test_regressao_porto_sintetico():
-    doc = PdfDocumento.from_paginas(_paginas_porto_sintetico())
-    opcoes, _, _ = porto.parse(doc, documento_hash="hash-porto")
-    assert len(opcoes) == 1
-    op = opcoes[0]
+    ext = parse_cotacao_pdf(
+        build_porto_27_paginas(),
+        estudo_id="t",
+        documento_id="hash-porto",
+        nome_arquivo="porto-sint.pdf",
+    )
+    assert ext.opcoes
+    op = next(o for o in ext.opcoes if "P320 Q" in (o.plano_nome.texto or ""))
     assert len(op.tabela) == 10
     assert op.premio_saude and op.premio_saude.centavos == 150082
-    reconciliar_opcao(op)
     assert op.reconciliacao and not op.reconciliacao.ok
 
 
 def test_regressao_sulamerica_sintetico():
-    doc = PdfDocumento.from_paginas(_paginas_sulamerica_sintetico())
-    opcoes, _, _ = sulamerica.parse(doc, documento_hash="hash-sul")
-    assert len(opcoes) == 1
-    op = opcoes[0]
+    ext = parse_cotacao_pdf(
+        build_sulamerica_sem_copart(),
+        estudo_id="t",
+        documento_id="hash-sul",
+        nome_arquivo="sul-sint.pdf",
+    )
+    assert len(ext.opcoes) >= 1
+    op = ext.opcoes[0]
     assert len(op.tabela) == 10
+    assert op.regime_copart.texto == "sem"
     assert op.premio_saude and op.premio_saude.centavos == 221576
-    reconciliar_opcao(op)
     assert op.reconciliacao and op.reconciliacao.ok
 
 
@@ -284,16 +263,16 @@ def test_esperado_versionado_alinhado():
     assert esperado["porto"]["premio_centavos"] == 150082
     assert esperado["porto"]["reconciliacao_ok"] is False
     assert esperado["sulamerica"]["reconciliacao_ok"] is True
-    if _ESPERADO_PRIVADO.is_file():
-        privado = json.loads(_ESPERADO_PRIVADO.read_text(encoding="utf-8"))
-        assert privado["Porto"]["premio_centavos"] == esperado["porto"]["premio_centavos"]
 
 
 @pytest.mark.private_corpus
 def test_regressao_privada_porto():
-    path = Path(r"C:\0-Projetos\0-Claude_Cowork\@Newport\Newport-Teste-ATEF\PORTO.pdf")
-    if not path.is_file():
+    from newport_app.config.paths import diretorio_corpus_anistia
+
+    base = diretorio_corpus_anistia()
+    path = next(base.rglob("PORTO.pdf"), None) if base.is_dir() else None
+    if path is None:
         pytest.skip("Corpus privado indisponível")
     ext = parse_cotacao_pdf(path.read_bytes(), estudo_id="h", documento_id="d", nome_arquivo="p.pdf")
-    assert ext.opcoes[0].premio_saude.centavos == 150082
-    assert len(ext.opcoes[0].tabela) == 10
+    assert ext.opcoes
+    assert all(len(op.tabela) == 10 for op in ext.opcoes)

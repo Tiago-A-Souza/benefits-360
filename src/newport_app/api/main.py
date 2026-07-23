@@ -82,6 +82,7 @@ from newport_app.services.extracao_cotacao import (
     AplicacaoExtracaoError,
     ExtracaoCotacaoService,
     ExtracaoNaoEncontradaError,
+    OpcaoNaoEncontradaError,
 )
 from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
 from newport_app.services.pendencias import pendencias_compilacao
@@ -150,6 +151,10 @@ class AtualizarCampoExtracaoRequest(BaseModel):
     data: str | None = None
     price_basis: PriceBasisRascunho | None = None
     confirmado: bool | None = None
+
+
+class SelecionarOpcaoExtracaoRequest(BaseModel):
+    selecionada: bool = True
 
 
 def create_app(
@@ -469,6 +474,30 @@ def create_app(
             return {"ok": True}
         except ExtracaoNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/opcoes/{opcao_id}/selecionar",
+    )
+    def selecionar_opcao_extracao(
+        estudo_id: str,
+        extracao_id: str,
+        opcao_id: str,
+        body: SelecionarOpcaoExtracaoRequest,
+    ):
+        try:
+            ext = cotacao.obter_extracao(extracao_id)
+            if ext.estudo_id != estudo_id:
+                raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+            opcao = cotacao.selecionar_opcao(
+                extracao_id,
+                opcao_id,
+                selecionada=body.selecionada,
+            )
+            return {"opcao": opcao.model_dump(mode="json")}
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        except OpcaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Opção não encontrada") from None
 
     @app.post(
         "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/confirmar-lote",
