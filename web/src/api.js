@@ -152,6 +152,26 @@ export async function obterExtracaoCotacao(estudoId, extracaoId) {
   return tratarResposta(res, "Não foi possível carregar a extração.");
 }
 
+export async function atualizarCampoExtracao(estudoId, extracaoId, campoId, patch) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/campos/${campoId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }
+  );
+  return tratarResposta(res, "Não foi possível atualizar o campo.");
+}
+
+export async function excluirOpcaoExtracao(estudoId, extracaoId, opcaoId) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/opcoes/${opcaoId}/excluir`,
+    { method: "POST" }
+  );
+  return tratarResposta(res, "Não foi possível excluir a opção.");
+}
+
 export async function confirmarLoteExtracao(estudoId, extracaoId) {
   const res = await fetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/confirmar-lote`,
@@ -165,5 +185,11 @@ export async function aplicarExtracaoCotacao(estudoId, extracaoId) {
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/aplicar`,
     { method: "POST" }
   );
+  if (res.status === 422) {
+    const body = await res.json();
+    const err = new Error(body.detail?.mensagem || "Não foi possível aplicar a extração.");
+    err.bloqueios = body.detail?.bloqueios || [];
+    throw err;
+  }
   return tratarResposta(res, "Não foi possível aplicar a extração.");
 }
