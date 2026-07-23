@@ -63,6 +63,15 @@ export async function calcularEstudo(estudoId) {
   return res.json();
 }
 
+export async function confirmarComparativo(estudoId, hashComparativo, opcaoIds) {
+  const res = await fetch(`${API}/estudos/${estudoId}/comparativo/confirmar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hash_comparativo: hashComparativo, opcao_ids: opcaoIds }),
+  });
+  return tratarResposta(res, "Não foi possível confirmar o comparativo.");
+}
+
 export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
   const res = await fetch(`${API}/estudos/${estudoId}/comparativo/selecao-apresentacao`, {
     method: "PUT",
@@ -223,8 +232,36 @@ export async function removerExtracaoCotacao(estudoId, extracaoId) {
   return tratarResposta(res, "Não foi possível remover a cotação.");
 }
 
-export async function urlPdfCotacao(estudoId, documentoId) {
+export function urlPdfCotacao(estudoId, documentoId) {
   return `${API}/estudos/${estudoId}/documentos-cotacao/${documentoId}/pdf`;
+}
+
+/** Carrega o PDF como blob URL — renderiza inline sem popup de download. */
+export async function carregarPdfCotacaoBlob(estudoId, documentoId) {
+  const res = await fetch(urlPdfCotacao(estudoId, documentoId));
+  if (!res.ok) {
+    let detalhe = "Não foi possível carregar o PDF.";
+    try {
+      const body = await res.json();
+      if (typeof body.detail === "string") detalhe = body.detail;
+    } catch {
+      /* resposta não-JSON */
+    }
+    throw new Error(detalhe);
+  }
+  const blob = await res.blob();
+  if (!blob.size) throw new Error("O arquivo PDF está vazio ou indisponível.");
+  return URL.createObjectURL(blob);
+}
+
+export function abrirPdfCotacao(estudoId, documentoId) {
+  carregarPdfCotacaoBlob(estudoId, documentoId)
+    .then((blobUrl) => {
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+    })
+    .catch((err) => {
+      window.alert(err.message || "Não foi possível abrir o PDF.");
+    });
 }
 
 export async function gerarSnapshot(estudoId) {

@@ -53,6 +53,8 @@ from newport_app.models.snapshot import (
 )
 from newport_app.models.responses import (
     ComparativoResponse,
+    ConfirmarComparativoRequest,
+    ConfirmarComparativoResponse,
     EstudoResumo,
     PendenciaItem,
     ResumoPlanoAtualResponse,
@@ -84,6 +86,7 @@ from newport_app.services.calculo import (
     EstudoNaoEncontradoError,
     RascunhoNaoCompilavelError,
 )
+from newport_app.services.comparativo_confirmacao import ConfirmacaoComparativoInvalidaError
 from newport_app.services.comparativo_ui import (
     SelecaoApresentacaoInvalidaError,
     resolver_propostas_apresentacao_snapshot,
@@ -632,6 +635,31 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(exc)) from None
         repository.salvar_rascunho(rascunho)
         return resp
+
+    @app.post(
+        "/api/estudos/{estudo_id}/comparativo/confirmar",
+        response_model=ConfirmarComparativoResponse,
+    )
+    def confirmar_comparativo_estudo(
+        estudo_id: str,
+        body: ConfirmarComparativoRequest,
+    ) -> ConfirmarComparativoResponse:
+        try:
+            return service.confirmar_comparativo(
+                estudo_id, body.hash_comparativo, body.opcao_ids
+            )
+        except EstudoNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        except ConfirmacaoComparativoInvalidaError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except RascunhoNaoCompilavelError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "erros": [e.model_dump() for e in exc.resultado.erros],
+                    "compiler_versao": exc.resultado.compiler_versao,
+                },
+            ) from None
 
     @app.post(
         "/api/estudos/{estudo_id}/snapshot",

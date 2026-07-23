@@ -143,6 +143,16 @@ class SelecaoApresentacaoRascunho(BaseModel):
     ordem: list[str] = Field(default_factory=list)
 
 
+class ConfirmacaoComparativoRascunho(BaseModel):
+    """Revisão do comparativo confirmada pelo analista — desbloqueia Apresentação."""
+
+    opcao_ids: list[str] = Field(default_factory=list)
+    ordem: list[str] = Field(default_factory=list)
+    hash_comparativo: str
+    rascunho_fingerprint: str
+    confirmado_em: datetime
+
+
 class VidaRascunho(BaseModel):
     id: str
     nome: str
@@ -248,6 +258,7 @@ class RascunhoEstudo(BaseModel):
     documentos_siscor: list[DocumentoSiscorRascunho] = Field(default_factory=list)
     escolhas: EscolhasEstudo = Field(default_factory=EscolhasEstudo)
     selecao_apresentacao: SelecaoApresentacaoRascunho | None = None
+    confirmacao_comparativo: ConfirmacaoComparativoRascunho | None = None
     observacoes: ObservacoesRascunho | None = None
     metadados_pptx: MetadadosPptxRascunho | None = None
 

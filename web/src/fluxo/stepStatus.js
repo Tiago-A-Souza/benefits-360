@@ -37,6 +37,13 @@ export function cenariosSincronizados(rascunho) {
   });
 }
 
+export function comparativoConfirmado(rascunho) {
+  const conf = rascunho?.confirmacao_comparativo;
+  return Boolean(
+    conf?.hash_comparativo && conf?.ordem?.length && conf?.confirmado_em && conf?.rascunho_fingerprint
+  );
+}
+
 export function statusEtapaPorChave(chave, ctx) {
   const { conferencia, rascunho, extracoes, pendencias } = ctx;
 
@@ -104,7 +111,13 @@ export function statusEtapaPorChave(chave, ctx) {
           pendencia: "Defina a correspondência de todas as propostas",
         };
       }
-      return { concluida: false, pendencia: "Execute o comparativo financeiro" };
+      if (!comparativoConfirmado(rascunho)) {
+        return {
+          concluida: false,
+          pendencia: "Calcule, selecione propostas e confirme o comparativo",
+        };
+      }
+      return { concluida: true, pendencia: null };
     }
     case "apresentacao":
       return { concluida: false, pendencia: "Gere e revise a apresentação" };

@@ -116,6 +116,7 @@ class PlanoAtualComparativo(BaseModel):
     plano_nome: str
     operadora: str
     acomodacao: str | None = None
+    regime_coparticipacao: str | None = None
     mensal_centavos: int | None = None
     mensal_reais: str | None = None
 
@@ -169,6 +170,17 @@ class SalvarSelecaoApresentacaoResponse(BaseModel):
     ordem: list[str] = Field(default_factory=list)
 
 
+class ConfirmarComparativoRequest(BaseModel):
+    hash_comparativo: str
+    opcao_ids: list[str] = Field(default_factory=list)
+
+
+class ConfirmarComparativoResponse(BaseModel):
+    hash_comparativo: str
+    ordem: list[str] = Field(default_factory=list)
+    confirmado_em: str
+
+
 class ComparativoResponse(BaseModel):
     estudo_id: str
     titulo: str
@@ -183,3 +195,4 @@ class ComparativoResponse(BaseModel):
     validade_proposta: str | None = None
     pendencias: list[PendenciaItem] = Field(default_factory=list)
     auditoria: list[AuditoriaItem] = Field(default_factory=list)
+    hash_comparativo: str | None = None

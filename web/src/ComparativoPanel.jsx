@@ -1,34 +1,42 @@
-import { useEffect, useState } from "react";
-import { calcularEstudo, obterPendencias, obterRascunho } from "./api";
+import { useEffect, useMemo, useState } from "react";
+import {
+  calcularEstudo,
+  confirmarComparativo,
+  obterPendencias,
+  obterRascunho,
+} from "./api";
 import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
+import { comparativoConfirmado } from "./fluxo/stepStatus";
+import { tituloPasso } from "./fluxo/passos";
 
-function Pendencias({ items }) {
-  if (!items?.length) return <p className="ok">Nenhuma pendência bloqueante nesta verificação.</p>;
-  return (
-    <ul className="pendencias">
-      {items.map((p, i) => (
-        <li key={i} className={`pendencia pendencia--${p.tipo}`}>
-          <strong>{p.titulo}</strong>
-          <p>{p.descricao}</p>
-          {p.acao_sugerida && <p className="acao">{p.acao_sugerida}</p>}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-export default function ComparativoPanel({ estudoId }) {
+export default function ComparativoPanel({ estudoId, onAtualizado }) {
   const [pendencias, setPendencias] = useState([]);
+  const [rascunho, setRascunho] = useState(null);
   const [resultado, setResultado] = useState(null);
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  async function recarregarContextoLocal() {
+    if (!estudoId) return;
+    const [p, r] = await Promise.all([
+      obterPendencias(estudoId).catch(() => []),
+      obterRascunho(estudoId).catch(() => null),
+    ]);
+    setPendencias(p);
+    setRascunho(r);
+  }
 
   useEffect(() => {
-    if (!estudoId) return;
-    obterPendencias(estudoId)
-      .then(setPendencias)
-      .catch(() => setPendencias([]));
+    recarregarContextoLocal();
   }, [estudoId]);
+
+  const rotuloEtapa = useMemo(
+    () => tituloPasso(rascunho, "comparativo"),
+    [rascunho]
+  );
+
+  const jaConfirmado = comparativoConfirmado(rascunho);
 
   async function handleCalcular() {
     setCarregando(true);
@@ -43,9 +51,10 @@ export default function ComparativoPanel({ estudoId }) {
         return;
       }
       const data = await calcularEstudo(estudoId);
-      const rascunho = await obterRascunho(estudoId);
-      if (rascunho.selecao_apresentacao?.ordem?.length) {
-        data.propostas_apresentacao = rascunho.selecao_apresentacao.ordem;
+      const r = await obterRascunho(estudoId);
+      setRascunho(r);
+      if (r?.selecao_apresentacao?.ordem?.length) {
+        data.propostas_apresentacao = r.selecao_apresentacao.ordem;
       }
       setResultado(data);
       if (data.consistencia && !data.consistencia.consistente) {
@@ -58,38 +67,102 @@ export default function ComparativoPanel({ estudoId }) {
     }
   }
 
+  async function handleConfirmar(opcaoIds) {
+    if (!resultado?.hash_comparativo || !opcaoIds?.length) return;
+    setConfirmando(true);
+    setErro(null);
+    try {
+      await confirmarComparativo(estudoId, resultado.hash_comparativo, opcaoIds);
+      await recarregarContextoLocal();
+      onAtualizado?.();
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setConfirmando(false);
+    }
+  }
+
+  const bloqueios = pendencias.filter((p) => p.tipo === "bloqueio");
+  const alertas = pendencias.filter((p) => p.tipo === "alerta");
+  const pronto = bloqueios.length === 0;
+
   return (
-    <section className="cartao">
-      <h2>Comparativo financeiro</h2>
-      <p className="muted">
-        Calcule todas as propostas, selecione as que irão à apresentação e revise a prévia do
-        cliente antes do snapshot.
-      </p>
+    <section className="cmp-pagina">
+      {!resultado?.calculo_realizado && (
+        <header className="cmp-hero cmp-hero--pre cmp-hero--compact">
+          <div className="cmp-hero-linha cmp-hero-linha--titulo">
+            <div className="cmp-hero-identidade">
+              <span className="cmp-etapa">{rotuloEtapa}</span>
+              <h2 className="cmp-hero-titulo">Comparativo financeiro</h2>
+            </div>
+          </div>
 
-      <h3>Antes de calcular</h3>
-      <Pendencias items={pendencias} />
+          <div className="cmp-hero-linha cmp-hero-linha--pre">
+            <div className="cmp-pre-status">
+              {jaConfirmado && (
+                <span className="cmp-pre-badge cmp-pre-badge--ok">
+                  Comparativo confirmado — pode avançar para Apresentação
+                </span>
+              )}
+              {!jaConfirmado && pronto && alertas.length === 0 && (
+                <span className="cmp-pre-badge cmp-pre-badge--ok">Pronto para calcular</span>
+              )}
+              {!jaConfirmado && pronto && alertas.length > 0 && (
+                <span className="cmp-pre-badge cmp-pre-badge--alerta">
+                  {alertas.length} alerta(s) — cálculo permitido
+                </span>
+              )}
+              {!jaConfirmado && !pronto && (
+                <div className="cmp-pre-bloqueios">
+                  <span className="cmp-pre-badge cmp-pre-badge--erro">
+                    {bloqueios.length} pendência(s) bloqueante(s)
+                  </span>
+                  <ul className="cmp-pre-lista">
+                    {bloqueios.slice(0, 2).map((p, i) => (
+                      <li key={i}>{p.titulo}</li>
+                    ))}
+                    {bloqueios.length > 2 && (
+                      <li className="muted">+ {bloqueios.length - 2} outra(s)</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              className="cmp-btn-principal cmp-btn-calcular"
+              onClick={handleCalcular}
+              disabled={carregando || !pronto}
+            >
+              {carregando ? "Calculando…" : "Calcular comparativo"}
+            </button>
+          </div>
 
-      <button type="button" onClick={handleCalcular} disabled={carregando}>
-        {carregando ? "Calculando…" : "Calcular comparativo"}
-      </button>
-      {erro && <p className="erro">{erro}</p>}
+          <p className="cmp-pre-hint muted">
+            Processa todas as propostas dos cenários · selecione e confirme para liberar Apresentação
+          </p>
+        </header>
+      )}
+
+      {erro && <p className="erro cmp-erro-global">{erro}</p>}
 
       {resultado && !resultado.calculo_realizado && (
-        <p className="erro">
+        <p className="erro cmp-erro-global">
           O comparativo não está completo — corrija a inconsistência antes de avançar.
         </p>
       )}
 
       {resultado?.calculo_realizado && (
-        <>
-          <p className="cmp-meta-resumo">
-            Beneficiários: <strong>{resultado.beneficiarios_calculados}</strong>
-            {resultado.validade_proposta && (
-              <span className="muted"> · Validade: {resultado.validade_proposta}</span>
-            )}
-          </p>
-          <ComparativoExperiencia estudoId={estudoId} resultado={resultado} />
-        </>
+        <ComparativoExperiencia
+          estudoId={estudoId}
+          resultado={resultado}
+          rotuloEtapa={rotuloEtapa}
+          confirmado={jaConfirmado}
+          confirmando={confirmando}
+          onConfirmar={handleConfirmar}
+          onRecalcular={handleCalcular}
+          recalculando={carregando}
+        />
       )}
     </section>
   );

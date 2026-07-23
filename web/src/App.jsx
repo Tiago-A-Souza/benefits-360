@@ -165,7 +165,9 @@ export default function App() {
           {chavePassoAtual === "selecionados" && (
             <PlanosSelecionadosPanel estudoId={estudoId} onSalvo={recarregarContexto} />
           )}
-          {chavePassoAtual === "comparativo" && <ComparativoPanel estudoId={estudoId} />}
+          {chavePassoAtual === "comparativo" && (
+            <ComparativoPanel estudoId={estudoId} onAtualizado={recarregarContexto} />
+          )}
           {chavePassoAtual === "apresentacao" && (
             <RevisaoApresentacaoPanel estudoId={estudoId} />
           )}

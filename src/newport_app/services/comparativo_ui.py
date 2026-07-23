@@ -1,4 +1,4 @@
-"""Persistência da seleção de propostas para apresentação (tela 5)."""
+"""Persistência da seleção de propostas para apresentação (Comparativo)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ class SelecaoApresentacaoInvalidaError(Exception):
 def salvar_selecao_apresentacao(
     rascunho: RascunhoEstudo,
     opcao_ids: list[str],
+    *,
+    invalidar_confirmacao: bool = True,
 ) -> SalvarSelecaoApresentacaoResponse:
     validos = {op.id for op in rascunho.opcoes_proposta}
     ordem: list[str] = []
@@ -28,6 +30,8 @@ def salvar_selecao_apresentacao(
         opcao_ids=list(ordem),
         ordem=list(ordem),
     )
+    if invalidar_confirmacao:
+        rascunho.confirmacao_comparativo = None
     return SalvarSelecaoApresentacaoResponse(opcao_ids=list(ordem), ordem=list(ordem))
 
 

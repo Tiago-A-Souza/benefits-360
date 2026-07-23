@@ -975,6 +975,7 @@
     }
   },
   "selecao_apresentacao": null,
+  "confirmacao_comparativo": null,
   "observacoes": null,
   "metadados_pptx": null
 }

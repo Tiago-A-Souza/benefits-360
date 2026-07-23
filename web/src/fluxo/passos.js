@@ -31,6 +31,11 @@ export function chavePassoVisivel(rascunho, indicePasso) {
   return passos[indicePasso - 1].chave;
 }
 
+export function tituloPasso(rascunho, chave) {
+  const passo = passosVisiveis(rascunho).find((p) => p.chave === chave);
+  return passo?.titulo || chave;
+}
+
 /** @deprecated use PASSOS_FLUXO / passosVisiveis */
 export const PASSOS = PASSOS_FLUXO.map((p, i) => ({
   id: i + 1,

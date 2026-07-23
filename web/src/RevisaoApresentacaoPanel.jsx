@@ -294,7 +294,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
           <fieldset>
             <legend>Propostas no material</legend>
             <p className="muted cmp-previa-lead">
-              Seleção definida na tela 5 (Comparativo). Para alterar planos ou ordem, volte ao
+              Seleção definida na etapa Comparativo. Para alterar planos ou ordem, volte ao
               comparativo financeiro.
             </p>
             {propostasSel.length ? (
@@ -309,7 +309,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
                 })}
               </ol>
             ) : (
-              <p className="erro">Nenhuma proposta selecionada na tela 5.</p>
+              <p className="erro">Nenhuma proposta selecionada no Comparativo.</p>
             )}
           </fieldset>
 
