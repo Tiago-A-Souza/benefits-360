@@ -21,7 +21,9 @@ export function statusEtapa(passo, ctx) {
           !rascunho.escolhas?.precedencia_atual_vida?.confirmado) {
         return { concluida: false, pendencia: "Confirme as informações do plano" };
       }
-      const p2 = (pendencias || []).filter((p) => p.tipo === "bloqueio");
+      const p2 = (pendencias || []).filter(
+        (p) => p.tipo === "bloqueio" && p.etapa === 2
+      );
       if (p2.length) return { concluida: false, pendencia: p2[0].titulo };
       return { concluida: true, pendencia: null };
     }

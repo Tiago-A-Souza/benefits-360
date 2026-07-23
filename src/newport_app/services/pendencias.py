@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+
 from newport_app.draft_compiler import compile
+from newport_app.models.compilation import ErroCompilacao
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import PendenciaItem
 from newport_app.policy.registry import default_registry
@@ -53,53 +56,126 @@ _TRADUCOES: dict[str, tuple[str, str, str]] = {
         "Quantidade cotada na proposta",
         "Informe a quantidade cotada de cada faixa ou confirme zero.",
     ),
+    "APP-DOC-001": (
+        "bloqueio",
+        "Documento de cotação pendente",
+        "Conclua a extração ou confirme o PDF antes de calcular.",
+    ),
+    "APP-BAS-001": (
+        "bloqueio",
+        "Base IOF inválida",
+        "A opção «não se aplica» só é permitida para operadoras sem IOF.",
+    ),
+    "APP-ET3-001": (
+        "bloqueio",
+        "Nenhuma cotação cadastrada",
+        "Cadastre ao menos uma opção de plano na etapa Cotações.",
+    ),
+    "APP-ET4-001": (
+        "bloqueio",
+        "Comparação com plano atual pendente",
+        "Defina com qual plano atual comparar cada opção selecionada.",
+    ),
 }
+
+
+def _etapa_erro(codigo: str, caminho: str) -> int:
+    if codigo in ("APP-ET3-001",):
+        return 3
+    if codigo in ("APP-ET4-001",):
+        return 4
+    if codigo.startswith("APP-ESC") or codigo.startswith("APP-IMP"):
+        return 2
+    if "/vidas/" in caminho or "/subgrupos_atuais/" in caminho:
+        return 2
+    if "/opcoes_proposta/" in caminho or codigo in ("APP-QTD-001", "APP-DOC-001"):
+        return 3
+    if "/cenarios/" in caminho:
+        return 4
+    if codigo.startswith("APP-FIN") or codigo == "APP-BAS-001":
+        return 2 if "/opcoes_proposta/" not in caminho else 3
+    return 2
+
+
+def _titulo_descricao_agrupados(
+    codigo: str,
+    titulo: str,
+    descricao: str,
+    quantidade: int,
+) -> tuple[str, str]:
+    if quantidade <= 1:
+        return titulo, descricao
+    rotulos = {
+        "APP-FIN-001": f"Base de IOF pendente em {quantidade} valores",
+        "APP-FIN-002": f"Confirmação de valor pendente em {quantidade} campos",
+        "APP-FIN-003": f"Valor financeiro incompleto em {quantidade} campos",
+        "APP-IMP-001": f"Tipo fiscal pendente em {quantidade} planos",
+        "APP-IMP-002": f"Regime de coparticipação pendente em {quantidade} planos",
+    }
+    if codigo in rotulos:
+        return rotulos[codigo], descricao
+    return titulo, f"{descricao} ({quantidade} ocorrências)."
+
+
+def _item_de_erro(codigo: str, erros: list[ErroCompilacao]) -> PendenciaItem:
+    caminho = erros[0].caminho
+    etapa = _etapa_erro(codigo, caminho)
+    quantidade = len(erros)
+    if codigo in _TRADUCOES:
+        tipo, titulo, descricao = _TRADUCOES[codigo]
+        titulo, descricao = _titulo_descricao_agrupados(codigo, titulo, descricao, quantidade)
+        return PendenciaItem(
+            tipo=tipo,
+            titulo=titulo,
+            descricao=descricao,
+            acao_sugerida="Complete a etapa correspondente no fluxo guiado.",
+            codigo=codigo,
+            etapa=etapa,
+            quantidade=quantidade,
+        )
+    return PendenciaItem(
+        tipo="bloqueio",
+        titulo="Informação pendente no estudo",
+        descricao=erros[0].mensagem,
+        acao_sugerida="Revise os dados nas etapas anteriores.",
+        codigo=codigo,
+        etapa=etapa,
+        quantidade=quantidade,
+    )
 
 
 def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
     resultado = compile(rascunho, policy_registry=default_registry)
-    itens: list[PendenciaItem] = []
-    vistos: set[str] = set()
+    por_codigo: dict[str, list[ErroCompilacao]] = defaultdict(list)
     for erro in resultado.erros:
-        chave = f"{erro.codigo}:{erro.caminho}"
-        if chave in vistos:
-            continue
-        vistos.add(chave)
-        if erro.codigo in _TRADUCOES:
-            tipo, titulo, descricao = _TRADUCOES[erro.codigo]
-            itens.append(
-                PendenciaItem(
-                    tipo=tipo,
-                    titulo=titulo,
-                    descricao=descricao,
-                    acao_sugerida="Complete a etapa correspondente no fluxo guiado.",
-                )
-            )
-        else:
-            itens.append(
-                PendenciaItem(
-                    tipo="bloqueio",
-                    titulo="Informação pendente no estudo",
-                    descricao=erro.mensagem,
-                    acao_sugerida="Revise os dados nas etapas anteriores.",
-                )
-            )
+        por_codigo[erro.codigo].append(erro)
+
+    itens: list[PendenciaItem] = [
+        _item_de_erro(codigo, erros) for codigo, erros in sorted(por_codigo.items())
+    ]
+
     if not rascunho.opcoes_proposta:
         itens.append(
             PendenciaItem(
                 tipo="bloqueio",
-                titulo="Nenhuma proposta cadastrada",
-                descricao="Cadastre ao menos uma opção de plano na proposta.",
-                acao_sugerida="Use a etapa Propostas para incluir a cotação.",
+                titulo="Nenhuma cotação cadastrada",
+                descricao="Cadastre ao menos uma opção de plano na etapa Cotações.",
+                acao_sugerida="Use a etapa Cotações para incluir a proposta.",
+                codigo="APP-ET3-001",
+                etapa=3,
+                quantidade=1,
             )
         )
     if rascunho.opcoes_proposta and not rascunho.cenarios:
         itens.append(
             PendenciaItem(
                 tipo="bloqueio",
-                titulo="Associação de planos pendente",
-                descricao="Associe cada plano atual à proposta correspondente.",
-                acao_sugerida="Use a etapa Associação dos planos.",
+                titulo="Comparação com plano atual pendente",
+                descricao="Defina com qual plano atual comparar cada opção selecionada.",
+                acao_sugerida="Use a etapa Planos selecionados.",
+                codigo="APP-ET4-001",
+                etapa=4,
+                quantidade=1,
             )
         )
     return itens

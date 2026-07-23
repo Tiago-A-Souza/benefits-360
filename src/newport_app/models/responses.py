@@ -35,6 +35,9 @@ class PendenciaItem(BaseModel):
     titulo: str
     descricao: str
     acao_sugerida: str | None = None
+    codigo: str | None = None
+    etapa: int | None = None
+    quantidade: int = 1
 
 
 class AuditoriaItem(BaseModel):

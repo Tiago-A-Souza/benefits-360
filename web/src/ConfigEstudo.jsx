@@ -281,13 +281,15 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
         Revisei e confirmo as informações do plano atual.
       </label>
 
-      {pendencias.length > 0 && (
+      {pendencias.filter((p) => p.etapa === 2).length > 0 && (
         <ul className="pendencias">
-          {pendencias.slice(0, 3).map((p, i) => (
-            <li key={i} className={`pendencia pendencia--${p.tipo}`}>
-              {p.titulo}
-            </li>
-          ))}
+          {pendencias
+            .filter((p) => p.etapa === 2)
+            .map((p, i) => (
+              <li key={p.codigo || i} className={`pendencia pendencia--${p.tipo}`}>
+                {p.titulo}
+              </li>
+            ))}
         </ul>
       )}
 

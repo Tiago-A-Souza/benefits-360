@@ -20,6 +20,18 @@ def _erro(codigo: str, caminho: str, mensagem: str) -> ErroCompilacao:
     )
 
 
+def resolver_basis_fatura_vida(
+    basis_individual: PriceBasisRascunho,
+    basis_subgrupo: PriceBasisRascunho | None,
+) -> PriceBasisRascunho:
+    """Herda a base IOF do subgrupo quando o componente da vida está desconhecido."""
+    if basis_individual != PriceBasisRascunho.DESCONHECIDO:
+        return basis_individual
+    if basis_subgrupo is not None and basis_subgrupo != PriceBasisRascunho.DESCONHECIDO:
+        return basis_subgrupo
+    return PriceBasisRascunho.DESCONHECIDO
+
+
 def validar_price_basis_usavel(
     basis: PriceBasisRascunho,
     tipo_fiscal: str,
@@ -69,8 +81,11 @@ def validar_componente_financeiro(
     tipo_fiscal: str,
     caminho_base: str,
     erros: list[ErroCompilacao],
+    *,
+    price_basis_efetivo: PriceBasisRascunho | None = None,
 ) -> bool:
     ok = True
+    basis = price_basis_efetivo if price_basis_efetivo is not None else comp.price_basis
     if comp.centavos is None:
         erros.append(
             _erro(
@@ -81,7 +96,7 @@ def validar_componente_financeiro(
         )
         ok = False
     if not validar_price_basis_usavel(
-        comp.price_basis, tipo_fiscal, f"{caminho_base}/price_basis", erros
+        basis, tipo_fiscal, f"{caminho_base}/price_basis", erros
     ):
         ok = False
     if not validar_proveniencia_confirmada(

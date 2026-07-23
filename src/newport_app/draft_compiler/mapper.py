@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from newport_app.draft_compiler.finance_validation import (
+    resolver_basis_fatura_vida,
     validar_componente_financeiro,
     validar_faixa_tabela,
     validar_price_basis_usavel,
@@ -212,10 +213,20 @@ def mapear_estudo_input(
                         continue
                     sg_tipo = sg.tipo_fiscal
             caminho = f"/vidas/{idx}/valor_fatura"
-            if not validar_componente_financeiro(v.valor_fatura, sg_tipo, caminho, erros):
+            basis_efetivo = resolver_basis_fatura_vida(
+                v.valor_fatura.price_basis,
+                sg.fatura_price_basis if sg is not None else None,
+            )
+            if not validar_componente_financeiro(
+                v.valor_fatura,
+                sg_tipo,
+                caminho,
+                erros,
+                price_basis_efetivo=basis_efetivo,
+            ):
                 continue
             mapped = mapear_price_basis(
-                v.valor_fatura.price_basis,
+                basis_efetivo,
                 sg_tipo,
                 f"{caminho}/price_basis",
             )
