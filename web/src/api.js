@@ -126,3 +126,44 @@ export async function atualizarLinhaSiscor(estudoId, linhaId, patch) {
   );
   return tratarResposta(res, "Não foi possível atualizar a linha.");
 }
+
+export async function obterResumoPlanoAtual(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/resumo-plano-atual`);
+  return tratarResposta(res, "Não foi possível carregar o resumo do plano atual.");
+}
+
+export async function importarCotacaoPdf(estudoId, arquivo) {
+  const form = new FormData();
+  form.append("arquivo", arquivo);
+  const res = await fetch(`${API}/estudos/${estudoId}/importar-cotacao-pdf`, {
+    method: "POST",
+    body: form,
+  });
+  return tratarResposta(res, "Não foi possível importar o PDF.");
+}
+
+export async function listarExtracoesCotacao(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/extracao-cotacao`);
+  return tratarResposta(res, "Não foi possível listar extrações.");
+}
+
+export async function obterExtracaoCotacao(estudoId, extracaoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}`);
+  return tratarResposta(res, "Não foi possível carregar a extração.");
+}
+
+export async function confirmarLoteExtracao(estudoId, extracaoId) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/confirmar-lote`,
+    { method: "POST" }
+  );
+  return tratarResposta(res, "Não foi possível confirmar o lote.");
+}
+
+export async function aplicarExtracaoCotacao(estudoId, extracaoId) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/aplicar`,
+    { method: "POST" }
+  );
+  return tratarResposta(res, "Não foi possível aplicar a extração.");
+}

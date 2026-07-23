@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obterPendencias, obterRascunho, salvarRascunho } from "./api";
+import { obterPendencias, obterRascunho, obterResumoPlanoAtual, salvarRascunho } from "./api";
 import {
   BASES_IOF,
   MODALIDADES,
@@ -12,6 +12,7 @@ import {
 export default function ConfigEstudo({ estudoId, onSalvo }) {
   const [rascunho, setRascunho] = useState(null);
   const [pendencias, setPendencias] = useState([]);
+  const [resumoAtual, setResumoAtual] = useState(null);
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -19,10 +20,15 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
   useEffect(() => {
     if (!estudoId) return;
     setErro(null);
-    Promise.all([obterRascunho(estudoId), obterPendencias(estudoId)])
-      .then(([r, p]) => {
+    Promise.all([
+      obterRascunho(estudoId),
+      obterPendencias(estudoId),
+      obterResumoPlanoAtual(estudoId).catch(() => null),
+    ])
+      .then(([r, p, resumo]) => {
         setRascunho(r);
         setPendencias(p);
+        setResumoAtual(resumo);
       })
       .catch((e) => setErro(e.message));
   }, [estudoId]);
@@ -244,6 +250,35 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
           Confirmo a fonte do valor atual
         </label>
       </div>
+
+      {resumoAtual?.requer_data_referencia && (
+        <p className="alerta">Informe a data de referência para calcular faixas e subtotais observados.</p>
+      )}
+      {resumoAtual?.planos?.length > 0 && (
+        <div className="cartao cartao--interno">
+          <h3>Resumo observado do plano atual (SISCOR)</h3>
+          <p className="muted">Valores por fatura/vida — não é tabela oficial.</p>
+          {resumoAtual.planos.map((pl) => (
+            <div key={pl.subgrupo_id}>
+              <h4>{pl.plano_nome}</h4>
+              <p>Subtotal observado: {pl.subtotal_calculado_reais || "—"}</p>
+              <ul>
+                {pl.faixas.map((f) => (
+                  <li key={f.faixa}>
+                    Faixa {f.faixa}: {f.quantidade_vidas} vida(s) — {f.valor_observado_reais || "sem valor único"}
+                    {f.alerta_inconsistencia && (
+                      <span className="alerta"> {f.alerta_inconsistencia}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p>
+            <strong>Total observado:</strong> {resumoAtual.total_calculado_reais || "—"}
+          </p>
+        </div>
+      )}
 
       {pendencias.length > 0 && (
         <div className="pendencias-box">
