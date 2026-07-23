@@ -44,3 +44,9 @@ class ConfirmacaoLoteResponse(BaseModel):
     confirmadas: int
     excecoes_restantes: int
     vidas_no_rascunho: int
+    base_aplicada: bool = True
+    historico_registrado: bool = True
+    repeticao: bool = False
+    mensagem: str | None = None
+    posicoes_cadastrais: int = 0
+    participacoes_historicas: int = 0

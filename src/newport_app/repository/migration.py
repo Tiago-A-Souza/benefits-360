@@ -185,6 +185,131 @@ def migrar_estudos_db(db_path: Path) -> None:
             )
 
         _migrar_281(conn)
+        _migrar_301(conn, db_path=db_path)
+
+
+def _participacao_precisa_correcao(conn: sqlite3.Connection) -> bool:
+    cols = {
+        r[1]: r
+        for r in conn.execute("PRAGMA table_info(beneficiario_participacao)").fetchall()
+    }
+    if not cols:
+        return False
+    if "beneficiario_logico_id" in cols:
+        return True
+    if "beneficiario_id" not in cols or "vinculo_status" not in cols:
+        return True
+    return False
+
+
+def _ensure_idx_posicao_importacao(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_posicao_estudo_importacao
+        ON posicao_cadastral_versao(estudo_id, importacao_id)
+        WHERE importacao_id IS NOT NULL
+        """
+    )
+
+
+def _recriar_beneficiario_participacao(conn: sqlite3.Connection) -> None:
+    conn.execute("DROP TABLE IF EXISTS beneficiario_participacao_new")
+    cols = {
+        r[1]: r
+        for r in conn.execute("PRAGMA table_info(beneficiario_participacao)").fetchall()
+    }
+    has_logico = "beneficiario_logico_id" in cols
+
+    conn.executescript(
+        """
+        CREATE TABLE beneficiario_participacao_new (
+            id TEXT PRIMARY KEY,
+            estudo_id TEXT NOT NULL,
+            posicao_versao_id TEXT NOT NULL,
+            beneficiario_id TEXT,
+            vida_rascunho_id TEXT NOT NULL,
+            nome TEXT NOT NULL,
+            nascimento TEXT NOT NULL,
+            parentesco TEXT,
+            sexo TEXT,
+            status TEXT NOT NULL,
+            subgrupo_id TEXT,
+            plano_nome TEXT,
+            faixa INTEGER,
+            valor_centavos INTEGER,
+            motivo_alteracao TEXT,
+            sugestao_vinculo TEXT,
+            vinculo_status TEXT NOT NULL DEFAULT 'pendente'
+        );
+        """
+    )
+    if has_logico:
+        conn.execute(
+            """
+            INSERT INTO beneficiario_participacao_new (
+                id, estudo_id, posicao_versao_id, beneficiario_id, vida_rascunho_id,
+                nome, nascimento, parentesco, sexo, status, subgrupo_id, plano_nome,
+                faixa, valor_centavos, motivo_alteracao, sugestao_vinculo, vinculo_status
+            )
+            SELECT
+                id, estudo_id, posicao_versao_id,
+                COALESCE(beneficiario_id, beneficiario_logico_id),
+                vida_rascunho_id, nome, nascimento, parentesco, sexo,
+                status, subgrupo_id, plano_nome, faixa, valor_centavos,
+                motivo_alteracao, sugestao_vinculo,
+                COALESCE(vinculo_status, 'pendente')
+            FROM beneficiario_participacao
+            """
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO beneficiario_participacao_new (
+                id, estudo_id, posicao_versao_id, beneficiario_id, vida_rascunho_id,
+                nome, nascimento, parentesco, sexo, status, subgrupo_id, plano_nome,
+                faixa, valor_centavos, motivo_alteracao, sugestao_vinculo, vinculo_status
+            )
+            SELECT
+                id, estudo_id, posicao_versao_id, beneficiario_id, vida_rascunho_id,
+                nome, nascimento, parentesco, sexo, status, subgrupo_id, plano_nome,
+                faixa, valor_centavos, motivo_alteracao, sugestao_vinculo,
+                COALESCE(vinculo_status, 'pendente')
+            FROM beneficiario_participacao
+            """
+        )
+    conn.execute("DROP TABLE beneficiario_participacao")
+    conn.execute("ALTER TABLE beneficiario_participacao_new RENAME TO beneficiario_participacao")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_benef_estudo ON beneficiario_participacao(estudo_id)"
+    )
+
+
+def _migrar_301(conn: sqlite3.Connection, *, db_path: Path) -> None:
+    """Correção 3.0.1 — estrutura real de participação e importacao_id em posição."""
+    ja_aplicada = (
+        conn.execute(
+            "SELECT versao FROM schema_migrations WHERE versao = ?", ("3.0.1",)
+        ).fetchone()
+        is not None
+    )
+    precisa = _participacao_precisa_correcao(conn)
+
+    if ja_aplicada and not precisa:
+        _ensure_column(conn, "posicao_cadastral_versao", "importacao_id", "TEXT")
+        _ensure_idx_posicao_importacao(conn)
+        return
+
+    if precisa:
+        backup_banco(db_path)
+        _recriar_beneficiario_participacao(conn)
+
+    _ensure_column(conn, "posicao_cadastral_versao", "importacao_id", "TEXT")
+    _ensure_idx_posicao_importacao(conn)
+    if not ja_aplicada:
+        conn.execute(
+            "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+            ("3.0.1", datetime.now(timezone.utc).isoformat()),
+        )
 
 
 def _migrar_281(conn: sqlite3.Connection) -> None:

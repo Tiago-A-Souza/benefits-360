@@ -55,9 +55,12 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
 
   async function handleConfirmarLote() {
     setCarregando(true);
+    setErro(null);
     try {
       const res = await confirmarLoteSiscor(estudoId);
-      setMsg(`${res.confirmadas} confirmada(s); ${res.excecoes_restantes} exceção(ões) restante(s).`);
+      const texto = res.mensagem
+        || `${res.confirmadas} confirmada(s); ${res.excecoes_restantes} exceção(ões) restante(s).`;
+      setMsg(texto);
       recarregarConferencia();
     } catch (err) {
       setErro(err.message);

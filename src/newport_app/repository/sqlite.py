@@ -41,26 +41,39 @@ class SQLiteStudyRepository:
         agora = datetime.now(timezone.utc).isoformat()
         payload = rascunho.model_dump_json()
         with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO rascunhos (
-                    id, payload, rascunho_versao, policy_set_versao, atualizado_em
-                )
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    payload = excluded.payload,
-                    rascunho_versao = excluded.rascunho_versao,
-                    policy_set_versao = excluded.policy_set_versao,
-                    atualizado_em = excluded.atualizado_em
-                """,
-                (
-                    rascunho.id,
-                    payload,
-                    rascunho.rascunho_versao,
-                    rascunho.policy_set_versao,
-                    agora,
-                ),
+            self._salvar_rascunho_conn(conn, rascunho, payload, agora)
+
+    def _salvar_rascunho_conn(
+        self,
+        conn: sqlite3.Connection,
+        rascunho: RascunhoEstudo,
+        payload: str,
+        agora: str,
+    ) -> None:
+        conn.execute(
+            """
+            INSERT INTO rascunhos (
+                id, payload, rascunho_versao, policy_set_versao, atualizado_em
             )
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                payload = excluded.payload,
+                rascunho_versao = excluded.rascunho_versao,
+                policy_set_versao = excluded.policy_set_versao,
+                atualizado_em = excluded.atualizado_em
+            """,
+            (
+                rascunho.id,
+                payload,
+                rascunho.rascunho_versao,
+                rascunho.policy_set_versao,
+                agora,
+            ),
+        )
+
+    @property
+    def db_path(self) -> Path:
+        return self._db_path
 
     def listar_ids(self) -> list[str]:
         with self._connect() as conn:

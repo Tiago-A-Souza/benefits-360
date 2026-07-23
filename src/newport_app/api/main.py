@@ -89,6 +89,7 @@ from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
 from newport_app.services.pendencias import pendencias_compilacao
 from newport_app.services.importacao_siscor import (
     ExclusaoSemMotivoError,
+    HistoricoPersistenciaError,
     ImportacaoRequerDecisaoError,
     ImportacaoSiscorService,
     LinhaIncompletaConfirmacaoError,
@@ -360,6 +361,14 @@ def create_app(
             return siscor.confirmar_lote(estudo_id)
         except EstudoNaoEncontradoError:
             raise HTTPException(status_code=404, detail="Importação não encontrada") from None
+        except HistoricoPersistenciaError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "codigo": "historico_persistencia_falhou",
+                    "mensagem": exc.mensagem_operacional,
+                },
+            ) from None
 
     @app.patch("/api/estudos/{estudo_id}/conferencia-siscor/linhas/{linha_id}")
     def atualizar_linha_siscor(

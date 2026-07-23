@@ -153,55 +153,247 @@ class HistoricoRepository:
             return None
         return self._row_estudo_meta(row)
 
+    def _row_posicao(self, row: sqlite3.Row) -> PosicaoCadastralVersao:
+        keys = row.keys()
+        return PosicaoCadastralVersao(
+            id=row["id"],
+            estudo_id=row["estudo_id"],
+            versao=row["versao"],
+            origem=row["origem"],
+            documento_hash=row["documento_hash"],
+            importador_versao=row["importador_versao"],
+            importacao_id=row["importacao_id"] if "importacao_id" in keys else None,
+            criado_em=datetime.fromisoformat(row["criado_em"]),
+            observacao=row["observacao"],
+        )
+
+    def obter_posicao_por_importacao(
+        self,
+        estudo_id: str,
+        importacao_id: str,
+    ) -> PosicaoCadastralVersao | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM posicao_cadastral_versao
+                WHERE estudo_id=? AND importacao_id=?
+                """,
+                (estudo_id, importacao_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return self._row_posicao(row)
+
+    def contar_posicoes(self, estudo_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM posicao_cadastral_versao WHERE estudo_id=?",
+                (estudo_id,),
+            ).fetchone()
+        return int(row["n"])
+
+    def contar_participacoes(self, estudo_id: str, *, posicao_id: str | None = None) -> int:
+        with self._connect() as conn:
+            if posicao_id:
+                row = conn.execute(
+                    """
+                    SELECT COUNT(*) AS n FROM beneficiario_participacao
+                    WHERE estudo_id=? AND posicao_versao_id=?
+                    """,
+                    (estudo_id, posicao_id),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT COUNT(*) AS n FROM beneficiario_participacao WHERE estudo_id=?",
+                    (estudo_id,),
+                ).fetchone()
+        return int(row["n"])
+
+    def registrar_posicao_cadastral(
+        self,
+        rascunho: RascunhoEstudo,
+        *,
+        origem: str,
+        documento_hash: str | None,
+        importador_versao: str | None,
+        importacao_id: str | None = None,
+    ) -> PosicaoCadastralVersao:
+        with self._connect() as conn:
+            return self._registrar_posicao_cadastral_conn(
+                conn,
+                rascunho,
+                origem=origem,
+                documento_hash=documento_hash,
+                importador_versao=importador_versao,
+                importacao_id=importacao_id,
+            )
+
+    def _registrar_posicao_cadastral_conn(
+        self,
+        conn: sqlite3.Connection,
+        rascunho: RascunhoEstudo,
+        *,
+        origem: str,
+        documento_hash: str | None,
+        importador_versao: str | None,
+        importacao_id: str | None = None,
+    ) -> PosicaoCadastralVersao:
+        if importacao_id:
+            existente = conn.execute(
+                """
+                SELECT * FROM posicao_cadastral_versao
+                WHERE estudo_id=? AND importacao_id=?
+                """,
+                (rascunho.id, importacao_id),
+            ).fetchone()
+            if existente is not None:
+                return self._row_posicao(existente)
+
+        agora = datetime.now(timezone.utc)
+        self.sincronizar_estudo_meta_conn(conn, rascunho, agora)
+        ultima = conn.execute(
+            "SELECT MAX(versao) AS v FROM posicao_cadastral_versao WHERE estudo_id=?",
+            (rascunho.id,),
+        ).fetchone()
+        versao = int(ultima["v"] or 0) + 1
+        pos_id = str(uuid.uuid4())
+        conn.execute(
+            """
+            INSERT INTO posicao_cadastral_versao (
+                id, estudo_id, versao, origem, documento_hash,
+                importador_versao, importacao_id, criado_em
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                pos_id,
+                rascunho.id,
+                versao,
+                origem,
+                documento_hash,
+                importador_versao,
+                importacao_id,
+                agora.isoformat(),
+            ),
+        )
+        meta = conn.execute(
+            "SELECT cliente_id FROM estudos_meta WHERE id=?", (rascunho.id,)
+        ).fetchone()
+        cliente_id = meta["cliente_id"] if meta else None
+
+        for vida in rascunho.vidas:
+            parentesco = vida.parentesco.value if vida.parentesco else None
+            sugestao = self._sugestao_hash(vida.nome, vida.nascimento, parentesco)
+            sg = next(
+                (s for s in rascunho.subgrupos_atuais if s.id == vida.subgrupo_atual_id),
+                None,
+            )
+            faixa, valor = self._faixa_valor_vida(rascunho, vida.id)
+            participacao_id = str(uuid.uuid4())
+            conn.execute(
+                """
+                INSERT INTO beneficiario_participacao (
+                    id, estudo_id, posicao_versao_id, beneficiario_id,
+                    vida_rascunho_id, nome, nascimento, parentesco, status,
+                    subgrupo_id, plano_nome, faixa, valor_centavos,
+                    sugestao_vinculo, vinculo_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    participacao_id,
+                    rascunho.id,
+                    pos_id,
+                    None,
+                    vida.id,
+                    vida.nome,
+                    vida.nascimento.isoformat(),
+                    parentesco,
+                    "incluido" if vida.incluida else "excluido",
+                    vida.subgrupo_atual_id,
+                    sg.plano_nome if sg else None,
+                    faixa,
+                    valor,
+                    sugestao,
+                    "pendente",
+                ),
+            )
+            if cliente_id:
+                self._registrar_sugestao_vinculo(
+                    conn,
+                    participacao_id,
+                    cliente_id,
+                    sugestao,
+                    vida.nome,
+                    vida.nascimento,
+                    parentesco,
+                )
+        return PosicaoCadastralVersao(
+            id=pos_id,
+            estudo_id=rascunho.id,
+            versao=versao,
+            origem=origem,  # type: ignore[arg-type]
+            documento_hash=documento_hash,
+            importador_versao=importador_versao,
+            importacao_id=importacao_id,
+            criado_em=agora,
+        )
+
+    def sincronizar_estudo_meta_conn(
+        self,
+        conn: sqlite3.Connection,
+        rascunho: RascunhoEstudo,
+        agora: datetime,
+    ) -> EstudoMeta:
+        row = conn.execute(
+            "SELECT * FROM estudos_meta WHERE id = ?", (rascunho.id,)
+        ).fetchone()
+        cliente_nome = rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None
+        if row is None:
+            meta = EstudoMeta(
+                id=rascunho.id,
+                titulo=rascunho.titulo,
+                formato=rascunho.formato,
+                cliente_nome=cliente_nome,
+                criado_em=agora,
+                atualizado_em=agora,
+            )
+            conn.execute(
+                """
+                INSERT INTO estudos_meta (
+                    id, titulo, formato, cliente_nome, ciclo_numero,
+                    estado_workflow, criado_em, atualizado_em
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    meta.id,
+                    meta.titulo,
+                    meta.formato,
+                    meta.cliente_nome,
+                    meta.ciclo_numero,
+                    meta.estado_workflow,
+                    meta.criado_em.isoformat(),
+                    meta.atualizado_em.isoformat(),
+                ),
+            )
+            if cliente_nome:
+                self._garantir_cliente_por_nome(conn, rascunho.id, cliente_nome, agora)
+            return meta
+        conn.execute(
+            """
+            UPDATE estudos_meta SET titulo=?, cliente_nome=?, atualizado_em=?
+            WHERE id=?
+            """,
+            (rascunho.titulo, cliente_nome, agora.isoformat(), rascunho.id),
+        )
+        if cliente_nome and not row["cliente_id"]:
+            self._garantir_cliente_por_nome(conn, rascunho.id, cliente_nome, agora)
+        return self._row_estudo_meta(
+            conn.execute("SELECT * FROM estudos_meta WHERE id=?", (rascunho.id,)).fetchone()
+        )
+
     def sincronizar_estudo_meta(self, rascunho: RascunhoEstudo) -> EstudoMeta:
         agora = datetime.now(timezone.utc)
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM estudos_meta WHERE id = ?", (rascunho.id,)
-            ).fetchone()
-            cliente_nome = rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None
-            if row is None:
-                meta = EstudoMeta(
-                    id=rascunho.id,
-                    titulo=rascunho.titulo,
-                    formato=rascunho.formato,
-                    cliente_nome=cliente_nome,
-                    criado_em=agora,
-                    atualizado_em=agora,
-                )
-                conn.execute(
-                    """
-                    INSERT INTO estudos_meta (
-                        id, titulo, formato, cliente_nome, ciclo_numero,
-                        estado_workflow, criado_em, atualizado_em
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        meta.id,
-                        meta.titulo,
-                        meta.formato,
-                        meta.cliente_nome,
-                        meta.ciclo_numero,
-                        meta.estado_workflow,
-                        meta.criado_em.isoformat(),
-                        meta.atualizado_em.isoformat(),
-                    ),
-                )
-                if cliente_nome:
-                    self._garantir_cliente_por_nome(conn, rascunho.id, cliente_nome, agora)
-                return meta
-            conn.execute(
-                """
-                UPDATE estudos_meta SET titulo=?, cliente_nome=?, atualizado_em=?
-                WHERE id=?
-                """,
-                (rascunho.titulo, cliente_nome, agora.isoformat(), rascunho.id),
-            )
-            if cliente_nome and not row["cliente_id"]:
-                self._garantir_cliente_por_nome(conn, rascunho.id, cliente_nome, agora)
-            return self._row_estudo_meta(
-                conn.execute("SELECT * FROM estudos_meta WHERE id=?", (rascunho.id,)).fetchone()
-            )
+            return self.sincronizar_estudo_meta_conn(conn, rascunho, agora)
 
     def _garantir_cliente_por_nome(
         self,
@@ -252,95 +444,6 @@ class HistoricoRepository:
         elif vida.valor_conferencia:
             valor = vida.valor_conferencia.centavos
         return faixa, valor
-
-    def registrar_posicao_cadastral(
-        self,
-        rascunho: RascunhoEstudo,
-        *,
-        origem: str,
-        documento_hash: str | None,
-        importador_versao: str | None,
-    ) -> PosicaoCadastralVersao:
-        agora = datetime.now(timezone.utc)
-        self.sincronizar_estudo_meta(rascunho)
-        with self._connect() as conn:
-            ultima = conn.execute(
-                "SELECT MAX(versao) AS v FROM posicao_cadastral_versao WHERE estudo_id=?",
-                (rascunho.id,),
-            ).fetchone()
-            versao = int(ultima["v"] or 0) + 1
-            pos_id = str(uuid.uuid4())
-            conn.execute(
-                """
-                INSERT INTO posicao_cadastral_versao (
-                    id, estudo_id, versao, origem, documento_hash,
-                    importador_versao, criado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    pos_id,
-                    rascunho.id,
-                    versao,
-                    origem,
-                    documento_hash,
-                    importador_versao,
-                    agora.isoformat(),
-                ),
-            )
-            meta = conn.execute(
-                "SELECT cliente_id FROM estudos_meta WHERE id=?", (rascunho.id,)
-            ).fetchone()
-            cliente_id = meta["cliente_id"] if meta else None
-
-            for vida in rascunho.vidas:
-                parentesco = vida.parentesco.value if vida.parentesco else None
-                sugestao = self._sugestao_hash(vida.nome, vida.nascimento, parentesco)
-                sg = next(
-                    (s for s in rascunho.subgrupos_atuais if s.id == vida.subgrupo_atual_id),
-                    None,
-                )
-                faixa, valor = self._faixa_valor_vida(rascunho, vida.id)
-                participacao_id = str(uuid.uuid4())
-                conn.execute(
-                    """
-                    INSERT INTO beneficiario_participacao (
-                        id, estudo_id, posicao_versao_id, beneficiario_id,
-                        vida_rascunho_id, nome, nascimento, parentesco, status,
-                        subgrupo_id, plano_nome, faixa, valor_centavos,
-                        sugestao_vinculo, vinculo_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        participacao_id,
-                        rascunho.id,
-                        pos_id,
-                        None,
-                        vida.id,
-                        vida.nome,
-                        vida.nascimento.isoformat(),
-                        parentesco,
-                        "incluido" if vida.incluida else "excluido",
-                        vida.subgrupo_atual_id,
-                        sg.plano_nome if sg else None,
-                        faixa,
-                        valor,
-                        sugestao,
-                        "pendente",
-                    ),
-                )
-                if cliente_id:
-                    self._registrar_sugestao_vinculo(
-                        conn, participacao_id, cliente_id, sugestao, vida.nome, vida.nascimento, parentesco
-                    )
-        return PosicaoCadastralVersao(
-            id=pos_id,
-            estudo_id=rascunho.id,
-            versao=versao,
-            origem=origem,  # type: ignore[arg-type]
-            documento_hash=documento_hash,
-            importador_versao=importador_versao,
-            criado_em=agora,
-        )
 
     def _registrar_sugestao_vinculo(
         self,
@@ -468,19 +571,7 @@ class HistoricoRepository:
                 """,
                 (estudo_id,),
             ).fetchall()
-        return [
-            PosicaoCadastralVersao(
-                id=r["id"],
-                estudo_id=r["estudo_id"],
-                versao=r["versao"],
-                origem=r["origem"],
-                documento_hash=r["documento_hash"],
-                importador_versao=r["importador_versao"],
-                criado_em=datetime.fromisoformat(r["criado_em"]),
-                observacao=r["observacao"],
-            )
-            for r in rows
-        ]
+        return [self._row_posicao(r) for r in rows]
 
     def listar_participacoes(
         self, estudo_id: str, posicao_versao_id: str | None = None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any
 from collections.abc import Callable
 
 from newport_app.config.paths import diretorio_uploads
+from newport_app.draft_compiler.structural import validar_estrutura
 from newport_app.models.draft import (
     ComponenteFinanceiroRascunho,
     OrigemValorRascunho,
@@ -45,9 +47,20 @@ from newport_app.siscor_mapper.apply import (
 
 MODOS_REIMPORTACAO_VALIDOS = frozenset({"substituir", "nova_versao"})
 
+MENSAGEM_HISTORICO_FALHOU = (
+    "Os dados foram lidos, mas não foi possível concluir o registro histórico. "
+    "Nenhuma nova importação é necessária."
+)
+
 
 class EstudoNaoEncontradoError(Exception):
     pass
+
+
+class HistoricoPersistenciaError(Exception):
+    def __init__(self, mensagem_operacional: str = MENSAGEM_HISTORICO_FALHOU) -> None:
+        self.mensagem_operacional = mensagem_operacional
+        super().__init__(mensagem_operacional)
 
 
 class ImportacaoRequerDecisaoError(Exception):
@@ -100,17 +113,66 @@ class ImportacaoSiscorService:
 
     def _registrar_posicao_siscor(
         self,
+        conn: sqlite3.Connection,
         rascunho: RascunhoEstudo,
         candidata: ImportacaoSiscorCandidata,
-    ) -> None:
+    ):
         if self._historico is None or not rascunho.vidas:
-            return
-        self._historico.registrar_posicao_cadastral(
+            return None
+        return self._historico._registrar_posicao_cadastral_conn(
+            conn,
             rascunho,
             origem="siscor",
             documento_hash=candidata.documento_hash_sha256,
             importador_versao=IMPORTADOR_SISCOR_VERSAO,
+            importacao_id=candidata.id,
         )
+
+    def _resposta_confirmacao_idempotente(
+        self,
+        estudo_id: str,
+        candidata: ImportacaoSiscorCandidata,
+        posicao,
+    ) -> ConfirmacaoLoteResponse:
+        rascunho = self._estudos.obter_rascunho(estudo_id)
+        excecoes = sum(1 for l in candidata.linhas if l.tem_excecao and not l.excluida)
+        participacoes = 0
+        if self._historico and posicao:
+            participacoes = self._historico.contar_participacoes(
+                estudo_id, posicao_id=posicao.id
+            )
+        return ConfirmacaoLoteResponse(
+            confirmadas=candidata.estatisticas.confirmadas,
+            excecoes_restantes=excecoes,
+            vidas_no_rascunho=len(rascunho.vidas) if rascunho else candidata.estatisticas.vidas_no_rascunho,
+            base_aplicada=True,
+            historico_registrado=posicao is not None,
+            repeticao=True,
+            mensagem="Confirmação já registrada para esta importação.",
+            posicoes_cadastrais=self._historico.contar_posicoes(estudo_id) if self._historico else 0,
+            participacoes_historicas=participacoes,
+        )
+
+    def _persistir_confirmacao_transacional(
+        self,
+        candidata: ImportacaoSiscorCandidata,
+        rascunho: RascunhoEstudo,
+    ):
+        agora = datetime.now(timezone.utc).isoformat()
+        payload = rascunho.model_dump_json()
+        conn = sqlite3.connect(self._estudos.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            self._estudos._salvar_rascunho_conn(conn, rascunho, payload, agora)
+            posicao = self._registrar_posicao_siscor(conn, rascunho, candidata)
+            conn.commit()
+            return posicao
+        except sqlite3.Error as exc:
+            conn.rollback()
+            raise HistoricoPersistenciaError() from exc
+        finally:
+            conn.close()
 
     def _salvar_arquivo(self, documento_id: str, conteudo: bytes) -> Path:
         self._uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -305,6 +367,12 @@ class ImportacaoSiscorService:
         candidata = self._importacoes.obter_ativa(estudo_id)
         if candidata is None:
             raise EstudoNaoEncontradoError(estudo_id)
+
+        if self._historico is not None:
+            existente = self._historico.obter_posicao_por_importacao(estudo_id, candidata.id)
+            if existente is not None:
+                return self._resposta_confirmacao_idempotente(estudo_id, candidata, existente)
+
         agora = datetime.now(timezone.utc)
         confirmadas = 0
         for linha in candidata.linhas:
@@ -318,16 +386,46 @@ class ImportacaoSiscorService:
             linha.confirmado_por = confirmado_por
             confirmadas += 1
         self._recalcular_estatisticas(candidata)
+
         rascunho = self._obter_ou_criar_rascunho(estudo_id, None)
         rascunho = aplicar_candidata_ao_rascunho(rascunho, candidata)
+
+        erros_estrutura = validar_estrutura(rascunho)
+        if erros_estrutura:
+            raise HistoricoPersistenciaError(
+                "Não foi possível aplicar a base confirmada — revise pendências na conferência."
+            )
+
+        posicao = None
+        if self._historico is not None and rascunho.vidas:
+            posicao = self._persistir_confirmacao_transacional(candidata, rascunho)
+        else:
+            self._persistir_rascunho(rascunho, motivo_invalidacao="Confirmação em lote SISCOR")
+
         self._importacoes.salvar(candidata)
-        self._persistir_rascunho(rascunho, motivo_invalidacao="Confirmação em lote SISCOR")
-        self._registrar_posicao_siscor(rascunho, candidata)
+        if self._on_rascunho_alterado:
+            self._on_rascunho_alterado(rascunho.id, "Confirmação em lote SISCOR")
+
         excecoes = sum(1 for l in candidata.linhas if l.tem_excecao and not l.excluida)
+        participacoes = 0
+        posicoes = 0
+        if self._historico:
+            posicoes = self._historico.contar_posicoes(estudo_id)
+            if posicao:
+                participacoes = self._historico.contar_participacoes(
+                    estudo_id, posicao_id=posicao.id
+                )
+
         return ConfirmacaoLoteResponse(
             confirmadas=confirmadas,
             excecoes_restantes=excecoes,
-            vidas_no_rascunho=candidata.estatisticas.vidas_no_rascunho,
+            vidas_no_rascunho=len(rascunho.vidas),
+            base_aplicada=True,
+            historico_registrado=posicao is not None,
+            repeticao=False,
+            mensagem="Base confirmada e histórico registrado.",
+            posicoes_cadastrais=posicoes,
+            participacoes_historicas=participacoes,
         )
 
     def atualizar_linha(

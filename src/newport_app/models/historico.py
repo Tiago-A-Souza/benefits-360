@@ -55,6 +55,7 @@ class PosicaoCadastralVersao(BaseModel):
     origem: Literal["siscor", "manual", "seguro_novo"] = "siscor"
     documento_hash: str | None = None
     importador_versao: str | None = None
+    importacao_id: str | None = None
     criado_em: datetime
     observacao: str | None = None
 
