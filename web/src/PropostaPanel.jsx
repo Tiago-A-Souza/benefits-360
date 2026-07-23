@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { obterRascunho, salvarRascunho } from "./api";
 import CotacaoPdfPanel from "./CotacaoPdfPanel";
 import {
@@ -46,39 +46,6 @@ function patchCompFinanceiro(prev, campo, texto) {
       proveniencia: { origem: "manual", extrator_versao: "manual", confirmado: false },
     },
   };
-}
-
-function CestaPlanos({ cestaGlobal, opcoesComparativo }) {
-  const nomes = useMemo(() => {
-    const vistos = new Set();
-    const lista = [];
-    for (const op of opcoesComparativo) {
-      const nome = op.plano_nome || op.operadora || "Plano";
-      if (!vistos.has(op.id)) {
-        vistos.add(op.id);
-        lista.push(nome);
-      }
-    }
-    for (const item of cestaGlobal) {
-      const key = `${item.extracaoId}:${item.opcaoId}`;
-      if (!vistos.has(key)) {
-        vistos.add(key);
-        lista.push(item.nome);
-      }
-    }
-    return lista;
-  }, [cestaGlobal, opcoesComparativo]);
-
-  if (!nomes.length) return null;
-
-  return (
-    <div className="cesta-planos">
-      <strong>
-        {nomes.length} plano{nomes.length !== 1 ? "s" : ""} escolhido{nomes.length !== 1 ? "s" : ""}:
-      </strong>{" "}
-      {nomes.join(" · ")}
-    </div>
-  );
 }
 
 export default function PropostaPanel({
@@ -182,8 +149,6 @@ export default function PropostaPanel({
         Importe os PDFs enviados pelas operadoras. Escolha os planos desejados e adicione-os ao comparativo.
       </p>
 
-      <CestaPlanos cestaGlobal={cestaGlobal} opcoesComparativo={opcoesComparativo} />
-
       <CotacaoPdfPanel
         estudoId={estudoId}
         onAplicado={() => {
@@ -193,6 +158,7 @@ export default function PropostaPanel({
         cestaGlobal={cestaGlobal}
         setCestaGlobal={setCestaGlobal}
         opcoesComparativo={opcoesComparativo}
+        documentosCotacao={rascunho.documentos_cotacao || []}
       />
 
       <div className="contingencia-manual">

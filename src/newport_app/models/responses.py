@@ -38,6 +38,7 @@ class PendenciaItem(BaseModel):
     codigo: str | None = None
     etapa: int | None = None
     quantidade: int = 1
+    alvo: str | None = None
 
 
 class AuditoriaItem(BaseModel):
@@ -103,6 +104,28 @@ class SecaoComparativo(BaseModel):
     vidas: list[DetalheVidaComparativo] = Field(default_factory=list)
 
 
+class ConsistenciaComparativo(BaseModel):
+    propostas_selecionadas: int
+    cenarios_configurados: int
+    resultados_apresentados: int
+    consistente: bool
+    mensagem: str | None = None
+
+
+class ResultadoPropostaComparativo(BaseModel):
+    opcao_id: str
+    cenario_id: str
+    plano_nome: str
+    regime_coparticipacao: str
+    regime_tipo: str
+    grupo_regime: str  # sem_copart | com_copart
+    totais: TotaisComparativo | None = None
+    diferenca_percentual: str | None = None
+    secoes: list[SecaoComparativo] = Field(default_factory=list)
+    pendencias: list[PendenciaItem] = Field(default_factory=list)
+    calculo_realizado: bool = True
+
+
 class ComparativoResponse(BaseModel):
     estudo_id: str
     titulo: str
@@ -110,6 +133,8 @@ class ComparativoResponse(BaseModel):
     calculo_realizado: bool
     totais: TotaisComparativo | None = None
     secoes: list[SecaoComparativo] = Field(default_factory=list)
+    propostas: list[ResultadoPropostaComparativo] = Field(default_factory=list)
+    consistencia: ConsistenciaComparativo | None = None
     validade_proposta: str | None = None
     pendencias: list[PendenciaItem] = Field(default_factory=list)
     auditoria: list[AuditoriaItem] = Field(default_factory=list)

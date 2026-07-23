@@ -6,9 +6,11 @@ from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import (
     AuditoriaItem,
     ComparativoResponse,
+    ConsistenciaComparativo,
     DetalheVidaComparativo,
     EstudoResumo,
     PendenciaItem,
+    ResultadoPropostaComparativo,
     SecaoComparativo,
     TotaisComparativo,
 )
@@ -19,10 +21,10 @@ from newport_app.presentation.textos import (
     plural_beneficiarios,
     rotulos_diferenca,
 )
-from newport_motor.result import MotorResult
+from newport_motor.result import MotorResult, ScenarioResult
 from newport_motor.types import SeveridadeValidacao
 
-_TRADUCOES: dict[str, tuple[str, str, str | None]] = {
+_TRADUCOES: dict[str, tuple[str, str, str, str | None]] = {
     "B-08": (
         "bloqueio",
         "Nenhum beneficiário incluído",
@@ -84,13 +86,75 @@ def _rotulo_regime(tipo: str) -> str:
     return mapa.get(tipo, tipo)
 
 
-def _montar_secoes(
+def _grupo_regime(tipo: str) -> str:
+    return "sem_copart" if tipo == "sem" else "com_copart"
+
+
+def _baseline_rotulo(rascunho: RascunhoEstudo) -> str:
+    return (
+        "Contrato reajustado"
+        if rascunho.escolhas.baseline_escolhido.valor == "reajustado"
+        else "Contrato vigente"
+    )
+
+
+def _formatar_reais(centavos: int) -> str:
+    sinal = "-" if centavos < 0 else ""
+    valor = abs(centavos)
+    reais, cents = divmod(valor, 100)
+    inteiro = f"{reais:,}".replace(",", ".")
+    return f"{sinal}R$ {inteiro},{cents:02d}"
+
+
+def _formatar_percentual(atual_centavos: int, proposta_centavos: int) -> str | None:
+    if atual_centavos == 0:
+        return None
+    pct = ((proposta_centavos - atual_centavos) / atual_centavos) * 100
+    sinal = "+" if pct > 0 else ""
+    texto = f"{pct:.1f}".replace(".", ",")
+    return f"{sinal}{texto}%"
+
+
+def _diff_exibicao_centavos(diff_centavos: int, semantica: str) -> int:
+    if semantica == "empate":
+        return 0
+    if semantica == "economia":
+        return abs(diff_centavos)
+    return diff_centavos
+
+
+def _montar_totais_cenario(
+    cenario: ScenarioResult,
     rascunho: RascunhoEstudo,
-    resultado: MotorResult,
+) -> TotaisComparativo | None:
+    atual = cenario.total_atual_baseline_centavos
+    proposta = cenario.total_proposta_centavos
+    diff_m = cenario.diff_mes_centavos
+    diff_a = cenario.diff_ano_centavos
+    if not (atual and proposta and diff_m and diff_a):
+        return None
+    semantica, rotulo_mes, rotulo_ano = rotulos_diferenca(
+        diff_m.centavos,
+        diff_a.centavos,
+    )
+    diff_mes_exib = _diff_exibicao_centavos(diff_m.centavos, semantica)
+    diff_ano_exib = _diff_exibicao_centavos(diff_a.centavos, semantica)
+    return TotaisComparativo(
+        atual_mensal_reais=_formatar_reais(atual.centavos),
+        proposta_mensal_reais=_formatar_reais(proposta.centavos),
+        diferenca_mensal_reais=_formatar_reais(diff_mes_exib),
+        diferenca_anual_reais=_formatar_reais(diff_ano_exib),
+        diferenca_semantica=semantica,
+        rotulo_diferenca_mensal=rotulo_mes,
+        rotulo_diferenca_anual=rotulo_ano,
+        baseline_rotulo=_baseline_rotulo(rascunho),
+    )
+
+
+def _montar_secoes_cenario(
+    rascunho: RascunhoEstudo,
+    cenario: ScenarioResult,
 ) -> tuple[list[SecaoComparativo], int]:
-    if not resultado.cenarios:
-        return [], 0
-    cenario = resultado.cenarios[0]
     vidas_por_id = {v.id: v for v in rascunho.vidas}
     subgrupos_por_id = {s.id: s for s in rascunho.subgrupos_atuais}
     secoes: list[SecaoComparativo] = []
@@ -126,15 +190,8 @@ def _montar_secoes(
                 secao_motor.diff_mes_centavos.centavos,
                 secao_motor.diff_ano_centavos.centavos,
             )
-            if semantica == "empate":
-                diff_mes_exib = 0
-                diff_ano_exib = 0
-            elif semantica == "economia":
-                diff_mes_exib = abs(secao_motor.diff_mes_centavos.centavos)
-                diff_ano_exib = abs(secao_motor.diff_ano_centavos.centavos)
-            else:
-                diff_mes_exib = secao_motor.diff_mes_centavos.centavos
-                diff_ano_exib = secao_motor.diff_ano_centavos.centavos
+            diff_mes_exib = _diff_exibicao_centavos(secao_motor.diff_mes_centavos.centavos, semantica)
+            diff_ano_exib = _diff_exibicao_centavos(secao_motor.diff_ano_centavos.centavos, semantica)
         secoes.append(
             SecaoComparativo(
                 rotulo=secao_motor.rotulo_derivado or _rotulo_regime(secao_motor.regime_tipo.value),
@@ -155,19 +212,172 @@ def _montar_secoes(
     return secoes, total_benef
 
 
+def _regime_tipo_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
+    op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
+    if op is None or not op.regime_copart_id:
+        return "sem"
+    for regime in rascunho.regimes_copart:
+        if regime.id == op.regime_copart_id:
+            return regime.tipo
+    return op.regime_copart_id.replace("regime-", "")
+
+
+def _opcao_principal_cenario(rascunho: RascunhoEstudo, cenario_id: str) -> str | None:
+    cenario = next((c for c in rascunho.cenarios if c.id == cenario_id), None)
+    if cenario is None:
+        return None
+    for atr in cenario.atribuicoes:
+        if atr.opcao_plano_id:
+            return atr.opcao_plano_id
+    return None
+
+
+def _pendencias_proposta(
+    *,
+    calculo_realizado: bool,
+) -> list[PendenciaItem]:
+    if calculo_realizado:
+        return []
+    return [
+        PendenciaItem(
+            tipo="bloqueio",
+            titulo="Proposta não calculada",
+            descricao="Este cenário não produziu resultado no motor.",
+            acao_sugerida="Revise atribuições e dados da proposta na etapa anterior.",
+        )
+    ]
+
+
+def _montar_propostas(
+    rascunho: RascunhoEstudo,
+    resultado: MotorResult,
+) -> list[ResultadoPropostaComparativo]:
+    cenarios_motor = {c.cenario_id: c for c in resultado.cenarios}
+    propostas: list[ResultadoPropostaComparativo] = []
+
+    for cenario_rasc in rascunho.cenarios:
+        opcao_id = _opcao_principal_cenario(rascunho, cenario_rasc.id)
+        if not opcao_id:
+            continue
+        op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
+        plano_nome = op.plano_nome if op and op.plano_nome else cenario_rasc.rotulo
+        regime_tipo = _regime_tipo_opcao(rascunho, opcao_id)
+        cenario_motor = cenarios_motor.get(cenario_rasc.id)
+        calculo_realizado = cenario_motor is not None
+
+        if cenario_motor is None:
+            propostas.append(
+                ResultadoPropostaComparativo(
+                    opcao_id=opcao_id,
+                    cenario_id=cenario_rasc.id,
+                    plano_nome=plano_nome or "Proposta sem nome",
+                    regime_coparticipacao=_rotulo_regime(regime_tipo),
+                    regime_tipo=regime_tipo,
+                    grupo_regime=_grupo_regime(regime_tipo),
+                    totais=None,
+                    diferenca_percentual=None,
+                    secoes=[],
+                    pendencias=_pendencias_proposta(calculo_realizado=False),
+                    calculo_realizado=False,
+                )
+            )
+            continue
+
+        secoes, _ = _montar_secoes_cenario(rascunho, cenario_motor)
+        totais = _montar_totais_cenario(cenario_motor, rascunho)
+        diff_pct = None
+        if (
+            totais
+            and cenario_motor.total_atual_baseline_centavos
+            and cenario_motor.total_proposta_centavos
+        ):
+            diff_pct = _formatar_percentual(
+                cenario_motor.total_atual_baseline_centavos.centavos,
+                cenario_motor.total_proposta_centavos.centavos,
+            )
+
+        propostas.append(
+            ResultadoPropostaComparativo(
+                opcao_id=opcao_id,
+                cenario_id=cenario_rasc.id,
+                plano_nome=plano_nome or "Proposta sem nome",
+                regime_coparticipacao=_rotulo_regime(regime_tipo),
+                regime_tipo=regime_tipo,
+                grupo_regime=_grupo_regime(regime_tipo),
+                totais=totais,
+                diferenca_percentual=diff_pct,
+                secoes=secoes,
+                pendencias=_pendencias_proposta(calculo_realizado=True),
+                calculo_realizado=True,
+            )
+        )
+
+    return propostas
+
+
+def _avaliar_consistencia(
+    rascunho: RascunhoEstudo,
+    propostas: list[ResultadoPropostaComparativo],
+    resultado: MotorResult,
+) -> ConsistenciaComparativo:
+    n_propostas = len(rascunho.opcoes_proposta)
+    n_cenarios = len(rascunho.cenarios)
+    n_resultados_motor = len(resultado.cenarios)
+    n_resultados = len([p for p in propostas if p.calculo_realizado])
+
+    mensagem: str | None = None
+    consistente = True
+
+    if n_cenarios == n_propostas and n_propostas > 1:
+        if n_resultados_motor != n_cenarios:
+            consistente = False
+            mensagem = (
+                f"Esperados {n_propostas} resultados calculados (um por proposta), "
+                f"mas o motor retornou {n_resultados_motor}."
+            )
+        elif n_resultados != n_propostas:
+            consistente = False
+            mensagem = (
+                f"Esperadas {n_propostas} propostas apresentadas, "
+                f"mas apenas {n_resultados} pôde(m) ser montada(s)."
+            )
+    elif n_cenarios == 1:
+        if n_resultados_motor != 1:
+            consistente = False
+            mensagem = (
+                "O cenário configurado não produziu resultado — "
+                "revise atribuições e pendências bloqueantes."
+            )
+        elif len(propostas) != 1:
+            consistente = False
+            mensagem = "Não foi possível montar o resultado do cenário principal."
+    elif n_cenarios < n_propostas:
+        consistente = False
+        mensagem = (
+            f"Há {n_propostas} proposta(s) no comparativo, mas apenas {n_cenarios} "
+            "cenário(s) configurado(s). Volte à etapa «Planos selecionados» e salve as comparações."
+        )
+    elif n_resultados_motor != n_cenarios:
+        consistente = False
+        mensagem = (
+            f"Configurados {n_cenarios} cenário(s), mas o motor retornou "
+            f"{n_resultados_motor} resultado(s)."
+        )
+
+    return ConsistenciaComparativo(
+        propostas_selecionadas=n_propostas,
+        cenarios_configurados=n_cenarios,
+        resultados_apresentados=n_resultados,
+        consistente=consistente,
+        mensagem=mensagem,
+    )
+
+
 def _validade_proposta(rascunho: RascunhoEstudo) -> str | None:
     for op in rascunho.opcoes_proposta:
         if op.validade_oficial:
             return op.validade_oficial.isoformat()
     return None
-
-
-def _formatar_reais(centavos: int) -> str:
-    sinal = "-" if centavos < 0 else ""
-    valor = abs(centavos)
-    reais, cents = divmod(valor, 100)
-    inteiro = f"{reais:,}".replace(",", ".")
-    return f"{sinal}R$ {inteiro},{cents:02d}"
 
 
 def _traduzir_validacao(
@@ -238,8 +448,16 @@ def motor_result_para_comparativo(
             SeveridadeValidacao.BLOQUEANTE,
             SeveridadeValidacao.ALERTA,
         ):
+            trad = _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
             pendencias.append(
-                _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
+                PendenciaItem(
+                    tipo=trad.tipo,
+                    titulo=trad.titulo,
+                    descricao=trad.descricao,
+                    acao_sugerida=trad.acao_sugerida,
+                    codigo=val.codigo,
+                    alvo=val.alvo_ref,
+                )
             )
 
     auditoria = [
@@ -252,51 +470,42 @@ def motor_result_para_comparativo(
         for v in resultado.validacoes
     ]
 
-    totais: TotaisComparativo | None = None
-    secoes, beneficiarios_calculados = _montar_secoes(rascunho, resultado)
-    if resultado.cenarios:
-        cenario = resultado.cenarios[0]
-        atual = cenario.total_atual_baseline_centavos
-        proposta = cenario.total_proposta_centavos
-        diff_m = cenario.diff_mes_centavos
-        diff_a = cenario.diff_ano_centavos
-        if atual and proposta and diff_m and diff_a:
-            baseline = (
-                "Contrato reajustado"
-                if rascunho.escolhas.baseline_escolhido.valor == "reajustado"
-                else "Contrato vigente"
-            )
-            semantica, rotulo_mes, rotulo_ano = rotulos_diferenca(
-                diff_m.centavos,
-                diff_a.centavos,
-            )
-            if semantica == "empate":
-                diff_mes_exib = 0
-                diff_ano_exib = 0
-            elif semantica == "economia":
-                diff_mes_exib = abs(diff_m.centavos)
-                diff_ano_exib = abs(diff_a.centavos)
-            else:
-                diff_mes_exib = diff_m.centavos
-                diff_ano_exib = diff_a.centavos
-            totais = TotaisComparativo(
-                atual_mensal_reais=_formatar_reais(atual.centavos),
-                proposta_mensal_reais=_formatar_reais(proposta.centavos),
-                diferenca_mensal_reais=_formatar_reais(diff_mes_exib),
-                diferenca_anual_reais=_formatar_reais(diff_ano_exib),
-                diferenca_semantica=semantica,
-                rotulo_diferenca_mensal=rotulo_mes,
-                rotulo_diferenca_anual=rotulo_ano,
-                baseline_rotulo=baseline,
-            )
+    propostas = _montar_propostas(rascunho, resultado)
+    consistencia = _avaliar_consistencia(rascunho, propostas, resultado)
+    if not consistencia.consistente and consistencia.mensagem:
+        pendencias.insert(
+            0,
+            PendenciaItem(
+                tipo="bloqueio",
+                titulo="Comparativo incompleto",
+                descricao=consistencia.mensagem,
+                acao_sugerida="Revise as etapas «Planos selecionados» e «Cotações» antes de aprovar.",
+                codigo="APP-CMP-001",
+                etapa=5,
+            ),
+        )
+
+    primeira = propostas[0] if propostas else None
+    totais = primeira.totais if primeira else None
+    secoes = primeira.secoes if primeira else []
+    beneficiarios_calculados = len(secoes[0].vidas) if secoes and secoes[0].vidas else 0
+    if propostas:
+        beneficiarios_calculados = max(
+            (len(s.vidas) for p in propostas for s in p.secoes if s.vidas),
+            default=beneficiarios_calculados,
+        )
+
+    calculo_realizado = bool(resultado.cenarios) and consistencia.consistente
 
     return ComparativoResponse(
         estudo_id=rascunho.id,
         titulo=rascunho.titulo,
         beneficiarios_calculados=beneficiarios_calculados,
-        calculo_realizado=bool(resultado.cenarios),
+        calculo_realizado=calculo_realizado,
         totais=totais,
         secoes=secoes,
+        propostas=propostas,
+        consistencia=consistencia,
         validade_proposta=_validade_proposta(rascunho),
         pendencias=pendencias,
         auditoria=auditoria,

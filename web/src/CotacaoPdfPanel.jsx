@@ -6,8 +6,10 @@ import {
   importarCotacaoPdf,
   listarExtracoesCotacao,
   obterExtracaoCotacao,
+  obterRascunho,
   obterResumoPlanoAtual,
   removerExtracaoCotacao,
+  salvarRascunho,
   selecionarOpcaoExtracao,
   urlPdfCotacao,
 } from "./api";
@@ -43,7 +45,9 @@ function BadgeSituacao({ situacao }) {
   const cls =
     situacao.codigo === "pronto" || situacao.codigo === "adicionado"
       ? "badge--ok"
-      : situacao.codigo === "revisao" || situacao.codigo === "selecionado"
+      : situacao.codigo === "revisao" ||
+          situacao.codigo === "selecionado" ||
+          situacao.codigo === "remover"
         ? "badge--alerta"
         : "badge--muted";
   return <span className={`badge ${cls}`}>{situacao.rotulo}</span>;
@@ -54,13 +58,202 @@ function opcaoJaNoComparativo(op, opcoesComparativo) {
 }
 
 function estadoExibicaoOpcao(op, opcoesComparativo) {
-  if (opcaoJaNoComparativo(op, opcoesComparativo)) {
-    return { codigo: "adicionado", rotulo: "Adicionado ao comparativo" };
+  const adicionado = opcaoJaNoComparativo(op, opcoesComparativo);
+  if (adicionado && op.selecionada_para_comparativo) {
+    return { codigo: "adicionado", rotulo: "No comparativo" };
+  }
+  if (adicionado && !op.selecionada_para_comparativo) {
+    return { codigo: "remover", rotulo: "Será removido" };
   }
   if (op.selecionada_para_comparativo) {
     return { codigo: "selecionado", rotulo: "Selecionado" };
   }
   return { codigo: "disponivel", rotulo: "Disponível" };
+}
+
+function metaGrupoComparativo(extracaoId, opcoes, extracoes, documentosCotacao) {
+  const extracao = extracoes.find((e) => e.id === extracaoId);
+  if (extracao) {
+    const doc = extracao.documento;
+    return {
+      titulo: doc?.nome_arquivo || doc?.operadora_detectada || "Cotação PDF",
+      estado: "ativo",
+      extracao,
+      doc,
+    };
+  }
+  const docId = opcoes[0]?.documento_cotacao_id;
+  const docRasc = (documentosCotacao || []).find((d) => d.id === docId);
+  if (docRasc) {
+    return {
+      titulo: docRasc.operadora || "Cotação PDF",
+      estado: "aplicado",
+      extracao: null,
+      doc: docRasc,
+    };
+  }
+  return {
+    titulo: "Cotação PDF",
+    estado: "orfao",
+    extracao: null,
+    doc: null,
+  };
+}
+
+function ComparativoResumo({
+  opcoesComparativo,
+  extracoes,
+  documentosCotacao = [],
+  onEditarSelecao,
+  onRemoverPlano,
+  onRemoverPdf,
+  onRemoverGrupoOrfao,
+  carregando,
+}) {
+  const opcoesPdf = opcoesComparativo.filter((o) => o.extracao_id);
+  if (!opcoesPdf.length) return null;
+
+  const porExtracao = new Map();
+  for (const op of opcoesPdf) {
+    const chave = op.extracao_id;
+    if (!porExtracao.has(chave)) porExtracao.set(chave, []);
+    porExtracao.get(chave).push(op);
+  }
+
+  return (
+    <section className="comparativo-resumo" aria-label="Planos já no comparativo">
+      <header className="comparativo-resumo-cabecalho">
+        <h3>No comparativo</h3>
+        <p className="muted">
+          Use <strong>Editar seleção</strong> para marcar ou desmarcar planos desta cotação. Para
+          alterar valores, revise a tabela na etapa seguinte. Para excluir tudo de uma vez, use{" "}
+          <strong>Remover PDF</strong> ou os botões abaixo.
+        </p>
+      </header>
+      {[...porExtracao.entries()].map(([extracaoId, opcoes]) => {
+        const meta = metaGrupoComparativo(extracaoId, opcoes, extracoes, documentosCotacao);
+        const { titulo, estado, extracao } = meta;
+        const subtituloExtra =
+          estado === "ativo"
+            ? ""
+            : estado === "aplicado"
+              ? " · cotação aplicada ao comparativo — revisões preservadas (documento registrado no estudo)"
+              : " · cotação PDF não está mais vinculada — remova estes planos ou reimporte o arquivo";
+        return (
+          <article key={extracaoId} className="comparativo-resumo-grupo cartao cartao--interno">
+            <header className="comparativo-resumo-grupo-cabecalho">
+              <div>
+                <strong>{titulo}</strong>
+                <p className="muted">
+                  {opcoes.length} plano{opcoes.length !== 1 ? "s" : ""} no comparativo
+                  {subtituloExtra}
+                </p>
+              </div>
+              {estado === "ativo" ? (
+                <div className="comparativo-resumo-grupo-acoes">
+                  <button
+                    type="button"
+                    className="secundario btn-compacto"
+                    disabled={carregando}
+                    onClick={() => onEditarSelecao(extracao)}
+                  >
+                    Editar seleção
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-remover"
+                    disabled={carregando}
+                    onClick={() => onRemoverPdf(extracao)}
+                  >
+                    Remover PDF
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-remover"
+                  disabled={carregando}
+                  onClick={() => onRemoverGrupoOrfao(opcoes)}
+                >
+                  Remover planos
+                </button>
+              )}
+            </header>
+            <ul className="comparativo-resumo-lista">
+              {opcoes.map((op) => (
+                <li key={op.id} className="comparativo-resumo-item">
+                  <span>{op.plano_nome || "Plano sem nome"}</span>
+                  <button
+                    type="button"
+                    className="link comparativo-resumo-remover"
+                    disabled={carregando}
+                    onClick={() => onRemoverPlano(op)}
+                    title="Remover só este plano do comparativo"
+                  >
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+function UploadZona({ carregando, dragAtivo, setDragAtivo, compacto, onUpload }) {
+  return (
+    <div
+      className={[
+        "upload-zona",
+        compacto ? "upload-zona--compacto" : "",
+        dragAtivo ? "upload-zona--ativa" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragAtivo(true);
+      }}
+      onDragLeave={() => setDragAtivo(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragAtivo(false);
+        const pdfs = Array.from(e.dataTransfer.files || []).filter(
+          (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
+        );
+        onUpload(pdfs);
+      }}
+    >
+      <div className="upload-zona-conteudo">
+        {!compacto && (
+          <span className="upload-zona-icone" aria-hidden="true">
+            ↑
+          </span>
+        )}
+        <div className="upload-zona-texto">
+          <FilePickerButton
+            accept="application/pdf"
+            multiple
+            disabled={carregando}
+            onFiles={onUpload}
+          >
+            {carregando
+              ? "Processando PDF…"
+              : compacto
+                ? "Enviar outro PDF"
+                : "Adicionar cotação em PDF"}
+          </FilePickerButton>
+          <p className="upload-dica muted">
+            {compacto
+              ? "Arraste um PDF ou use o botão."
+              : "Arraste um ou mais PDFs ou use o botão acima."}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function PainelAuditoria({ op, onSalvarCampo }) {
@@ -174,46 +367,70 @@ function TabelaSelecaoCompacta({
         <div key={titulo || "geral"} className="grupo-planos">
           {titulo && <h4 className="grupo-planos-titulo">{titulo}</h4>}
           <div className="lista-planos-selecao">
+            <div className="linha-plano-selecao linha-plano-selecao--cabecalho" aria-hidden="true">
+              <span className="linha-plano-check" />
+              <span>Plano</span>
+              <span>Acom.</span>
+              <span>Copart.</span>
+              <span>Mensal est.</span>
+              <span>Δ R$</span>
+              <span>Δ %</span>
+              <span>Status</span>
+            </div>
             {opsGrupo.map((op) => {
               const estado = estadoExibicaoOpcao(op, opcoesComparativo);
-              const adicionado = estado.codigo === "adicionado";
               const est = formatarEstimativaSiscor(op, quantidades, siscorCtx);
               const estimado = calcularEstimadoCentavos(op, quantidades);
               const diff = formatarDiferencaReferencia(estimado, referenciaCentavos);
+              const estimativaTitulo = est.destacarGrupo
+                ? "Estimativa indisponível até selecionar o grupo de beneficiários"
+                : undefined;
+              const estimativaTexto = est.destacarGrupo ? "Selecione o grupo" : est.texto;
               return (
                 <div
                   key={op.id}
-                  className={`linha-plano-selecao${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${adicionado ? " linha-plano-selecao--adicionada" : ""}`}
+                  className={`linha-plano-selecao${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${estado.codigo === "adicionado" ? " linha-plano-selecao--adicionada" : ""}${estado.codigo === "remover" ? " linha-plano-selecao--remover" : ""}`}
                 >
                   <label className="linha-plano-check">
                     <input
                       type="checkbox"
-                      checked={Boolean(op.selecionada_para_comparativo || adicionado)}
-                      disabled={adicionado}
+                      checked={Boolean(op.selecionada_para_comparativo)}
                       onChange={(e) => onToggle(op.id, e.target.checked)}
                       aria-label={`Selecionar ${nomePlanoExibicao(op)}`}
                     />
                   </label>
-                  <span className="linha-plano-nome">{nomePlanoExibicao(op)}</span>
-                  <span className="linha-plano-meta">{inferirAcomodacao(op)}</span>
-                  <span className="linha-plano-meta">{rotuloRegime(op)}</span>
-                  <span className={`linha-plano-meta${est.destacarGrupo ? " estimativa-indisponivel" : ""}`}>
-                    {est.texto}
+                  <span className="linha-plano-nome" title={nomePlanoExibicao(op)}>
+                    {nomePlanoExibicao(op)}
                   </span>
-                  <span className="linha-plano-meta">
+                  <span className="linha-plano-meta">{inferirAcomodacao(op)}</span>
+                  <span className="linha-plano-meta linha-plano-meta--copart">{rotuloRegime(op)}</span>
+                  <span
+                    className={`linha-plano-meta linha-plano-meta--valor${est.destacarGrupo ? " estimativa-indisponivel" : ""}`}
+                    title={estimativaTitulo}
+                  >
+                    {estimativaTexto}
+                  </span>
+                  <span className="linha-plano-meta linha-plano-meta--valor">
                     {diff.indisponivel ? "—" : diff.textoDiff}
                   </span>
-                  <span className="linha-plano-meta">
-                    {diff.indisponivel ? "—" : (
+                  <span className="linha-plano-meta linha-plano-meta--valor">
+                    {diff.indisponivel ? (
+                      "—"
+                    ) : (
                       <>
                         {diff.textoPct}
                         {diff.rotuloSemantica && (
-                          <span className="muted"> · {diff.rotuloSemantica}</span>
+                          <span className="linha-plano-diff-hint" title={diff.rotuloSemantica}>
+                            {" "}
+                            {diff.semantica === "economia" ? "↓" : diff.semantica === "acrescimo" ? "↑" : "•"}
+                          </span>
                         )}
                       </>
                     )}
                   </span>
-                  <BadgeSituacao situacao={estado} />
+                  <span className="linha-plano-status">
+                    <BadgeSituacao situacao={estado} />
+                  </span>
                 </div>
               );
             })}
@@ -227,7 +444,7 @@ function TabelaSelecaoCompacta({
   );
 }
 
-function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTabela }) {
+function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTabela, confirmando }) {
   const faixasPorIndice = Object.fromEntries((op.tabela || []).map((fx) => [fx.faixa, fx]));
   let subtotal = 0;
   const sit = situacaoOpcao(op);
@@ -238,24 +455,46 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
 
   return (
     <div className="cartao cartao--interno revisao-plano">
-      <h4>Revisão do plano</h4>
+      <div className="revisao-plano-cabecalho">
+        <span className="revisao-plano-rotulo">Revisão do plano</span>
+        <strong className="revisao-plano-nome">{nomePlanoExibicao(op)}</strong>
+      </div>
 
       <div className="campos-revisao-grid">
-        <label>
-          Nome do plano
-          <input
-            type="text"
-            defaultValue={op.plano_nome?.texto || ""}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v && v !== op.plano_nome?.texto) {
-                onSalvarCampo(op.plano_nome.id, { texto: v, confirmado: true });
-              }
-            }}
-          />
+        <label className="campo-revisao campo-revisao--nome">
+          <span>Nome</span>
+          <div className="campo-revisao-nome-linha">
+            <input
+              type="text"
+              defaultValue={op.plano_nome?.texto || ""}
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (!v || !op.plano_nome?.id) return;
+                const patch = { confirmado: true };
+                if (v !== op.plano_nome?.texto) patch.texto = v;
+                if (!op.plano_nome.confirmado || patch.texto) {
+                  onSalvarCampo(op.plano_nome.id, patch);
+                }
+              }}
+            />
+            {op.plano_nome?.estado === "revisar" && !op.plano_nome?.confirmado && (
+              <button
+                type="button"
+                className="secundario btn-compacto"
+                onClick={() =>
+                  onSalvarCampo(op.plano_nome.id, {
+                    texto: op.plano_nome.texto,
+                    confirmado: true,
+                  })
+                }
+              >
+                Confirmar nome
+              </button>
+            )}
+          </div>
         </label>
-        <label>
-          Acomodação
+        <label className="campo-revisao">
+          <span>Acomodação</span>
           <select
             defaultValue={inferirAcomodacao(op)}
             onChange={(e) => {
@@ -268,8 +507,8 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
             <option value="Apartamento">Apartamento</option>
           </select>
         </label>
-        <label>
-          Tipo fiscal
+        <label className="campo-revisao">
+          <span>Tipo fiscal</span>
           <select
             defaultValue={op.tipo_fiscal?.texto || "seguradora"}
             onChange={(e) => {
@@ -282,8 +521,8 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
             <option value="operadora">Operadora</option>
           </select>
         </label>
-        <label>
-          Regime de coparticipação
+        <label className="campo-revisao">
+          <span>Coparticipação</span>
           <select
             defaultValue={regimeAtual}
             onChange={(e) => {
@@ -297,12 +536,13 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
             <option value="a_confirmar">A confirmar</option>
           </select>
         </label>
-        <label>
-          Percentual de coparticipação
+        <label className="campo-revisao">
+          <span>% copart.</span>
           <input
             type="number"
             min="0"
             max="100"
+            placeholder="—"
             defaultValue={pctAtual}
             onBlur={(e) => {
               if (op.copart_percentual?.id) {
@@ -315,8 +555,8 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
             }}
           />
         </label>
-        <label>
-          Validade
+        <label className="campo-revisao">
+          <span>Validade</span>
           <input
             type="date"
             defaultValue={op.validade_oficial?.data || ""}
@@ -329,116 +569,145 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
         </label>
       </div>
 
-      <p className="muted">
-        {inferirAcomodacao(op)} · {rotuloRegime(op)}
-      </p>
-
-      <table className="tabela-conferencia tabela-faixas">
-        <thead>
-          <tr>
-            <th>Faixa</th>
-            <th>Valor unitário</th>
-            <th>Qtd (SISCOR)</th>
-            <th>Subtotal linha</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {ROTULOS_FAIXA.map((rotulo, idx) => {
-            const fx = faixasPorIndice[idx];
-            const qtd = quantidades?.[idx] ?? fx?.quantidade?.inteiro ?? 0;
-            const val = fx?.valor?.centavos;
-            const linha = val != null && qtd > 0 ? val * qtd : null;
-            if (linha) subtotal += linha;
-            return (
-              <tr key={idx}>
-                <td>{rotulo}</td>
-                <td>
-                  {val != null ? centavosParaReaisExibicao(val) : "—"}
-                  {fx?.valor && !fx.valor.confirmado && fx.valor.estado !== "ausente" && (
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() =>
-                        onSalvarCampo(fx.valor.id, { confirmado: true })
-                      }
-                    >
-                      Confirmar
-                    </button>
-                  )}
-                </td>
-                <td>{qtd || "—"}</td>
-                <td>{linha != null ? centavosParaReaisExibicao(linha) : "—"}</td>
-                <td>
-                  {fx?.valor && (
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() => {
-                        const v = prompt(
-                          "Corrigir valor (R$):",
-                          val != null ? centavosParaReaisTexto(val) : ""
-                        );
-                        if (v == null) return;
-                        const conv = reaisTextoParaCentavos(v);
-                        if (conv.ok) onSalvarCampo(fx.valor.id, { centavos: conv.centavos });
-                      }}
-                    >
-                      Corrigir faixa
-                    </button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <p>
-        <strong>Subtotal estimado:</strong>{" "}
-        {estimativaIndisponivel
-          ? siscorCtx?.exigeEscolha
-            ? "Estimativa indisponível até selecionar o grupo"
-            : "—"
-          : centavosParaReaisExibicao(subtotal)}
-      </p>
-
-      <div className="resumo-financeiro-plano">
-        <span>Prêmio: {op.premio_saude?.centavos != null ? centavosParaReaisExibicao(op.premio_saude.centavos) : "—"}</span>
-        <span>IOF: {op.iof?.centavos != null ? centavosParaReaisExibicao(op.iof.centavos) : "—"}</span>
-        <span>Total: {resumoFinanceiroOpcao(op)}</span>
+      <div className="revisao-plano-tabela-wrap">
+        <span className="revisao-plano-secao-rotulo">Tabela tarifária (10 faixas)</span>
+        <table className="tabela-conferencia tabela-faixas">
+          <thead>
+            <tr>
+              <th className="col-faixa">Faixa</th>
+              <th className="col-num">Unitário</th>
+              <th className="col-num">Qtd</th>
+              <th className="col-num">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ROTULOS_FAIXA.map((rotulo, idx) => {
+              const fx = faixasPorIndice[idx];
+              const qtd = quantidades?.[idx] ?? fx?.quantidade?.inteiro ?? 0;
+              const val = fx?.valor?.centavos;
+              const linha = val != null && qtd > 0 ? val * qtd : null;
+              if (linha) subtotal += linha;
+              const pendente = fx?.valor && !fx.valor.confirmado && fx.valor.estado !== "ausente";
+              return (
+                <tr
+                  key={idx}
+                  className={qtd > 0 ? "tabela-faixas-linha--ativa" : "tabela-faixas-linha--vazia"}
+                >
+                  <td className="col-faixa">{rotulo}</td>
+                  <td className="col-num">
+                    <div className="tabela-faixas-valor-linha">
+                      <span>{val != null ? centavosParaReaisExibicao(val) : "—"}</span>
+                      <span className="tabela-faixas-acoes">
+                        {pendente && (
+                          <button
+                            type="button"
+                            className="tabela-faixas-acao"
+                            onClick={() => onSalvarCampo(fx.valor.id, { confirmado: true })}
+                          >
+                            Confirmar
+                          </button>
+                        )}
+                        {fx?.valor && (
+                          <button
+                            type="button"
+                            className="tabela-faixas-acao"
+                            onClick={() => {
+                              const v = prompt(
+                                "Corrigir valor (R$):",
+                                val != null ? centavosParaReaisTexto(val) : ""
+                              );
+                              if (v == null) return;
+                              const conv = reaisTextoParaCentavos(v);
+                              if (conv.ok) onSalvarCampo(fx.valor.id, { centavos: conv.centavos });
+                            }}
+                          >
+                            Corrigir
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="col-num">{qtd > 0 ? qtd : "—"}</td>
+                  <td className="col-num">
+                    {linha != null ? centavosParaReaisExibicao(linha) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
-      <p className={op.reconciliacao?.status === "reconciliado" ? "reconciliacao ok" : op.reconciliacao?.status === "nao_conferivel" ? "reconciliacao info" : "muted"}>
-        {rotuloReconciliacao(op)}
-      </p>
+      <div className="revisao-plano-rodape">
+        <dl className="revisao-plano-totais">
+          <div className="revisao-plano-total--destaque">
+            <dt>Subtotal est.</dt>
+            <dd>
+              {estimativaIndisponivel
+                ? siscorCtx?.exigeEscolha
+                  ? "Selecione o grupo"
+                  : "—"
+                : centavosParaReaisExibicao(subtotal)}
+            </dd>
+          </div>
+          <div>
+            <dt>Prêmio</dt>
+            <dd>
+              {op.premio_saude?.centavos != null
+                ? centavosParaReaisExibicao(op.premio_saude.centavos)
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt>IOF</dt>
+            <dd>{op.iof?.centavos != null ? centavosParaReaisExibicao(op.iof.centavos) : "—"}</dd>
+          </div>
+          <div>
+            <dt>Total PDF</dt>
+            <dd>{resumoFinanceiroOpcao(op)}</dd>
+          </div>
+        </dl>
 
-      {op.reconciliacao?.status === "divergente" && op.reconciliacao?.divergencias?.length > 0 && (
-        <div className="pendencias-box">
-          <strong>Divergências</strong>
-          <ul>
-            {(op.reconciliacao.divergencias || []).map((d, i) => (
-              <li key={i}>{d.descricao}</li>
-            ))}
-          </ul>
+        <div className="revisao-plano-status">
+          <div className="revisao-plano-status-texto">
+            <p
+              className={`revisao-plano-reconciliacao${
+                op.reconciliacao?.status === "reconciliado"
+                  ? " revisao-plano-reconciliacao--ok"
+                  : op.reconciliacao?.status === "nao_conferivel"
+                    ? " revisao-plano-reconciliacao--info"
+                    : op.reconciliacao?.status === "divergente"
+                      ? " revisao-plano-reconciliacao--erro"
+                      : ""
+              }`}
+            >
+              {rotuloReconciliacao(op)}
+            </p>
+            {op.reconciliacao?.status === "divergente" && op.reconciliacao?.divergencias?.length > 0 && (
+              <ul className="revisao-plano-divergencias">
+                {(op.reconciliacao.divergencias || []).map((d, i) => (
+                  <li key={i}>{d.descricao}</li>
+                ))}
+              </ul>
+            )}
+            {sit.bloqueiaConfirmacao && (
+              <p className="revisao-plano-alerta">{sit.motivos.join(" · ")}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="secundario btn-compacto revisao-plano-btn-confirmar"
+            disabled={sit.bloqueiaConfirmacao || confirmando}
+            onClick={() => onConfirmarTabela(op)}
+          >
+            {confirmando ? "Confirmando…" : "Confirmar tabela"}
+          </button>
         </div>
-      )}
+      </div>
 
-      <button
-        type="button"
-        className="secundario"
-        disabled={sit.bloqueiaConfirmacao}
-        onClick={() => onConfirmarTabela(op)}
-      >
-        Confirmar tabela completa
-      </button>
-      {sit.bloqueiaConfirmacao && (
-        <p className="alerta">
-          Confirmação bloqueada: {sit.motivos.join("; ")}. Corrija ou confira no PDF antes de confirmar.
-        </p>
-      )}
-
-      <PainelAuditoria op={op} onSalvarCampo={onSalvarCampo} />
+      <div className="revisao-plano-auditoria">
+        <PainelAuditoria op={op} onSalvarCampo={onSalvarCampo} />
+      </div>
     </div>
   );
 }
@@ -449,6 +718,7 @@ export default function CotacaoPdfPanel({
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
+  documentosCotacao = [],
 }) {
   const [extracoes, setExtracoes] = useState([]);
   const [fase, setFase] = useState("lista");
@@ -467,6 +737,7 @@ export default function CotacaoPdfPanel({
   const [carregando, setCarregando] = useState(false);
   const [bloqueios, setBloqueios] = useState([]);
   const [dragAtivo, setDragAtivo] = useState(false);
+  const [confirmandoOpcaoId, setConfirmandoOpcaoId] = useState(null);
 
   const recarregar = useCallback(() => {
     listarExtracoesCotacao(estudoId)
@@ -523,8 +794,12 @@ export default function CotacaoPdfPanel({
     [detalhe]
   );
   const selecionadas = useMemo(
-    () => opcoesAtivas.filter((o) => o.selecionada_para_comparativo && !opcaoJaNoComparativo(o, opcoesComparativo)),
-    [opcoesAtivas, opcoesComparativo]
+    () => opcoesAtivas.filter((o) => o.selecionada_para_comparativo),
+    [opcoesAtivas]
+  );
+  const noComparativoDestaExtracao = useMemo(
+    () => opcoesComparativo.filter((o) => o.extracao_id === extracaoId),
+    [opcoesComparativo, extracaoId]
   );
 
   function sincronizarCesta(idExtracao, opcoes, doc) {
@@ -532,7 +807,7 @@ export default function CotacaoPdfPanel({
     setCestaGlobal((prev) => {
       const restantes = prev.filter((x) => x.extracaoId !== idExtracao);
       const novos = opcoes
-        .filter((o) => o.selecionada_para_comparativo && !opcaoJaNoComparativo(o, opcoesComparativo))
+        .filter((o) => o.selecionada_para_comparativo)
         .map((o) => ({
           extracaoId: idExtracao,
           opcaoId: o.id,
@@ -557,6 +832,32 @@ export default function CotacaoPdfPanel({
     });
   }
 
+  async function handleEditarSelecao(ex) {
+    setCarregando(true);
+    setErro(null);
+    setMsg(null);
+    try {
+      const d = await obterExtracaoCotacao(estudoId, ex.id);
+      const idsNoComparativo = new Set(
+        opcoesComparativo
+          .filter((o) => o.extracao_id === ex.id && o.extracao_opcao_id)
+          .map((o) => o.extracao_opcao_id)
+      );
+      for (const op of (d.opcoes || []).filter((o) => !o.excluida)) {
+        const deveriaEstar = idsNoComparativo.has(op.id);
+        if (Boolean(op.selecionada_para_comparativo) !== deveriaEstar) {
+          await selecionarOpcaoExtracao(estudoId, ex.id, op.id, deveriaEstar);
+        }
+      }
+      abrirDocumento(ex.id);
+      setMsg("Marque ou desmarque os planos e clique em Revisar para atualizar o comparativo.");
+    } catch (err) {
+      setErro(err.message || "Não foi possível abrir a edição da seleção.");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
   function voltarLista() {
     setFase("lista");
     setExtracaoId(null);
@@ -579,6 +880,7 @@ export default function CotacaoPdfPanel({
         );
       }
       recarregar();
+      onAplicado?.();
       if (ultimoId) abrirDocumento(ultimoId);
     } catch (err) {
       setErro(err.message);
@@ -589,9 +891,9 @@ export default function CotacaoPdfPanel({
 
   async function handleRemoverExtracao(ex) {
     const aplicados = opcoesComparativo.filter((o) => o.extracao_id === ex.id);
-    let texto = "Remover esta cotação do estudo?";
+    let texto = `Remover o PDF «${ex.documento?.nome_arquivo || "cotação"}»?`;
     if (aplicados.length) {
-      texto = `Esta cotação já gerou ${aplicados.length} plano(s) no comparativo. Os planos e associações derivados também serão removidos. Deseja continuar?`;
+      texto = `Este PDF gerou ${aplicados.length} plano(s) no comparativo. Remover o PDF também excluirá esses planos. Deseja continuar?`;
     }
     if (!window.confirm(texto)) return;
     setCarregando(true);
@@ -601,7 +903,7 @@ export default function CotacaoPdfPanel({
       if (res.aprovacao_invalidada) {
         setMsg("Cotação removida. A aprovação anterior foi invalidada — revise o estudo.");
       } else {
-        setMsg(res.mensagem || "Cotação removida.");
+        setMsg(res.mensagem || "PDF removido do estudo.");
       }
       if (extracaoId === ex.id) voltarLista();
       if (setCestaGlobal) {
@@ -616,10 +918,114 @@ export default function CotacaoPdfPanel({
     }
   }
 
-  async function salvarCampo(campoId, patch) {
+  async function handleRemoverPlanoComparativo(opcao) {
+    if (
+      !window.confirm(
+        `Remover «${opcao.plano_nome || "este plano"}» do comparativo? O PDF permanece importado.`
+      )
+    ) {
+      return;
+    }
+    setCarregando(true);
+    setErro(null);
+    try {
+      const rascunho = await obterRascunho(estudoId);
+      const copia = structuredClone(rascunho);
+      copia.opcoes_proposta = copia.opcoes_proposta.filter((o) => o.id !== opcao.id);
+      for (const cenario of copia.cenarios) {
+        cenario.atribuicoes = cenario.atribuicoes.filter((a) => a.opcao_plano_id !== opcao.id);
+      }
+      await salvarRascunho(estudoId, copia);
+      setMsg(`Plano «${opcao.plano_nome || "sem nome"}» removido do comparativo.`);
+      onAplicado?.();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function handleRemoverGrupoOrfao(opcoes) {
+    if (
+      !window.confirm(
+        `Remover ${opcoes.length} plano(s) do comparativo? O PDF original não está mais listado.`
+      )
+    ) {
+      return;
+    }
+    setCarregando(true);
+    setErro(null);
+    try {
+      const ids = new Set(opcoes.map((o) => o.id));
+      const rascunho = await obterRascunho(estudoId);
+      const copia = structuredClone(rascunho);
+      copia.opcoes_proposta = copia.opcoes_proposta.filter((o) => !ids.has(o.id));
+      for (const cenario of copia.cenarios) {
+        cenario.atribuicoes = cenario.atribuicoes.filter((a) => !ids.has(a.opcao_plano_id));
+      }
+      await salvarRascunho(estudoId, copia);
+      setMsg(`${opcoes.length} plano(s) removido(s) do comparativo.`);
+      onAplicado?.();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function salvarCampo(campoId, patch, { recarregar = true } = {}) {
     if (!extracaoId || !campoId) return;
     await atualizarCampoExtracao(estudoId, extracaoId, campoId, patch);
-    await recarregarDetalhe();
+    if (recarregar) await recarregarDetalhe();
+  }
+
+  async function confirmarCampoOpcao(campo, patch = { confirmado: true }) {
+    if (!campo?.id || campo.confirmado || campo.estado === "ausente") return;
+    await salvarCampo(campo.id, patch, { recarregar: false });
+  }
+
+  async function handleConfirmarTabela(op) {
+    if (confirmandoOpcaoId) return;
+    const sit = situacaoOpcao(op);
+    if (sit.bloqueiaConfirmacao) {
+      setErro(`Não é possível confirmar «${nomePlanoExibicao(op)}»: ${sit.motivos.join("; ")}.`);
+      return;
+    }
+    setConfirmandoOpcaoId(op.id);
+    setErro(null);
+    try {
+      for (const fx of op.tabela || []) {
+        if (fx.quantidade?.id && !fx.quantidade.confirmado) {
+          const qtd = quantidades[fx.faixa] ?? fx.quantidade.inteiro ?? 0;
+          await salvarCampo(
+            fx.quantidade.id,
+            { inteiro: qtd, confirmado: true },
+            { recarregar: false }
+          );
+        }
+        if (fx.valor?.id && fx.valor.estado !== "ausente" && !fx.valor.confirmado && fx.valor.centavos != null) {
+          await confirmarCampoOpcao(fx.valor);
+        }
+      }
+      await confirmarCampoOpcao(op.plano_nome);
+      await confirmarCampoOpcao(op.operadora);
+      await confirmarCampoOpcao(op.regime_copart);
+      await confirmarCampoOpcao(op.tipo_fiscal);
+      await confirmarCampoOpcao(op.acomodacao);
+      if (op.copart_percentual?.id && op.copart_percentual.inteiro != null) {
+        await confirmarCampoOpcao(op.copart_percentual);
+      }
+      for (const nome of ["premio_saude", "iof", "total_recorrente", "subtotal_impresso", "total_primeira_parcela"]) {
+        await confirmarCampoOpcao(op[nome]);
+      }
+      await recarregarDetalhe();
+      setMsg(`Tabela de «${nomePlanoExibicao(op)}» confirmada.`);
+    } catch (err) {
+      setErro(err.message || "Não foi possível confirmar a tabela.");
+      await recarregarDetalhe();
+    } finally {
+      setConfirmandoOpcaoId(null);
+    }
   }
 
   async function handleToggle(opcaoId, selecionada) {
@@ -630,47 +1036,27 @@ export default function CotacaoPdfPanel({
     sincronizarCesta(extracaoId, ativas, d.documento);
   }
 
-  async function handleConfirmarTipoFiscalDocumento() {
+  async function handleConfirmarDocumentoSelecionados() {
     if (!detalhe || selecionadas.length === 0) return;
-    for (const op of selecionadas) {
-      if (op.tipo_fiscal?.id && !op.tipo_fiscal.confirmado) {
-        await salvarCampo(op.tipo_fiscal.id, { confirmado: true });
+    setErro(null);
+    try {
+      if (detalhe.validade_oficial?.id && !detalhe.validade_oficial.confirmado) {
+        await salvarCampo(detalhe.validade_oficial.id, { confirmado: true }, { recarregar: false });
       }
+      for (const op of selecionadas) {
+        await confirmarCampoOpcao(op.operadora);
+        await confirmarCampoOpcao(op.tipo_fiscal);
+      }
+      await recarregarDetalhe();
+      setMsg("Dados do documento confirmados para os planos selecionados.");
+    } catch (err) {
+      setErro(err.message || "Não foi possível confirmar os dados do documento.");
+      await recarregarDetalhe();
     }
-    setMsg("Tipo fiscal confirmado para os planos selecionados.");
   }
 
-  async function handleConfirmarTabela(op) {
-    const sit = situacaoOpcao(op);
-    if (sit.bloqueiaConfirmacao) {
-      setErro(`Não é possível confirmar «${nomePlanoExibicao(op)}»: ${sit.motivos.join("; ")}.`);
-      return;
-    }
-    for (const fx of op.tabela || []) {
-      const qtdSiscor = quantidades[fx.faixa];
-      if (fx.valor?.centavos != null && !fx.valor.confirmado) {
-        await salvarCampo(fx.valor.id, { confirmado: true });
-      }
-      if (fx.quantidade && qtdSiscor > 0) {
-        await salvarCampo(fx.quantidade.id, {
-          inteiro: qtdSiscor,
-          confirmado: true,
-        });
-      }
-    }
-    if (op.plano_nome?.id && !op.plano_nome.confirmado) {
-      await salvarCampo(op.plano_nome.id, { confirmado: true });
-    }
-    if (op.regime_copart?.id && !op.regime_copart.confirmado) {
-      await salvarCampo(op.regime_copart.id, { confirmado: true });
-    }
-    if (op.copart_percentual?.id && op.copart_percentual.inteiro != null && !op.copart_percentual.confirmado) {
-      await salvarCampo(op.copart_percentual.id, { confirmado: true });
-    }
-    if (op.tipo_fiscal?.id && !op.tipo_fiscal.confirmado) {
-      await salvarCampo(op.tipo_fiscal.id, { confirmado: true });
-    }
-    setMsg(`Tabela de «${nomePlanoExibicao(op)}» confirmada.`);
+  async function handleConfirmarTipoFiscalDocumento() {
+    await handleConfirmarDocumentoSelecionados();
   }
 
   async function handleConfirmarLote() {
@@ -682,17 +1068,22 @@ export default function CotacaoPdfPanel({
   async function handleAdicionarComparativo() {
     setErro(null);
     setBloqueios([]);
-    if (selecionadas.length === 0) {
+    const podeAplicar = selecionadas.length > 0 || noComparativoDestaExtracao.length > 0;
+    if (!podeAplicar) {
       setErro("Selecione ao menos um plano antes de adicionar ao comparativo.");
       return;
     }
     try {
       const res = await aplicarExtracaoCotacao(estudoId, extracaoId);
-      setMsg(
-        res.opcoes_adicionadas || res.opcoes_atualizadas
-          ? `${res.opcoes_adicionadas || 0} plano(s) adicionado(s) ao comparativo.`
-          : "Nenhuma alteração."
-      );
+      if (selecionadas.length === 0) {
+        setMsg("Planos desta cotação removidos do comparativo.");
+      } else if (res.opcoes_adicionadas || res.opcoes_atualizadas) {
+        setMsg(
+          `${res.opcoes_adicionadas || 0} adicionado(s), ${res.opcoes_atualizadas || 0} atualizado(s). Agora você pode ir para a próxima etapa.`
+        );
+      } else {
+        setMsg("Comparativo atualizado.");
+      }
       if (res.bloqueios?.length) setBloqueios(res.bloqueios);
       if (setCestaGlobal) {
         setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
@@ -710,91 +1101,100 @@ export default function CotacaoPdfPanel({
   }
 
   const docAberto = detalhe?.documento;
+  const extracaoAberta = extracoes.find((e) => e.id === extracaoId);
+  const temPdfs = extracoes.length > 0;
+  const temNoComparativo = opcoesComparativo.some((o) => o.extracao_id);
 
   return (
     <div className="cotacao-pdf-panel">
-      <div
-        className={`upload-zona${dragAtivo ? " upload-zona--ativa" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragAtivo(true);
-        }}
-        onDragLeave={() => setDragAtivo(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragAtivo(false);
-          const pdfs = Array.from(e.dataTransfer.files || []).filter(
-            (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
-          );
-          processarUploads(pdfs);
-        }}
-      >
-        <FilePickerButton
-          accept="application/pdf"
-          multiple
-          disabled={carregando}
-          onFiles={processarUploads}
-        >
-          {carregando ? "Processando PDF…" : "Adicionar cotação em PDF"}
-        </FilePickerButton>
-        <p className="muted upload-dica">Arraste um ou mais PDFs ou use o botão acima.</p>
-      </div>
-
       {fase === "lista" && (
-        <div className="documentos-pdf-grid">
-          {extracoes.length === 0 && (
-            <p className="muted">Nenhuma cotação importada ainda.</p>
+        <>
+          <ComparativoResumo
+            opcoesComparativo={opcoesComparativo}
+            extracoes={extracoes}
+            documentosCotacao={documentosCotacao}
+            carregando={carregando}
+            onEditarSelecao={handleEditarSelecao}
+            onRemoverPlano={handleRemoverPlanoComparativo}
+            onRemoverPdf={handleRemoverExtracao}
+            onRemoverGrupoOrfao={handleRemoverGrupoOrfao}
+          />
+
+          {temPdfs && (
+            <section className="documentos-pdf-secao" aria-label="PDFs importados">
+              <header className="documentos-pdf-secao-cabecalho">
+                <h3>PDFs importados</h3>
+                <p className="muted">Escolha planos, revise valores ou remova o arquivo.</p>
+              </header>
+              <div className="documentos-pdf-grid">
+                {extracoes.map((ex) => {
+                  const qtd = ex.opcoes?.filter((o) => !o.excluida).length ?? 0;
+                  const noComparativo = opcoesComparativo.filter((o) => o.extracao_id === ex.id).length;
+                  const doc = ex.documento;
+                  return (
+                    <article key={ex.id} className="documento-pdf-card">
+                      <header>
+                        <strong>{doc?.operadora_detectada || "Operadora"}</strong>
+                        <BadgeSituacao
+                          situacao={{
+                            codigo: ex.estado === "extraido" ? "pronto" : "revisao",
+                            rotulo: rotuloEstado(ex.estado),
+                          }}
+                        />
+                      </header>
+                      <ul className="documento-pdf-meta">
+                        <li>{doc?.nome_arquivo || "arquivo.pdf"}</li>
+                        <li>Enviado: {formatarDataUpload(ex.criado_em)}</li>
+                        <li>{qtd} opção(ões) encontrada(s)</li>
+                        {noComparativo > 0 && (
+                          <li>
+                            {noComparativo} no comparativo
+                          </li>
+                        )}
+                      </ul>
+                      <div className="documento-pdf-acoes">
+                        <button type="button" onClick={() => abrirDocumento(ex.id)}>
+                          Escolher planos
+                        </button>
+                        {doc?.id && (
+                          <a
+                            className="btn-link secundario btn-compacto"
+                            href={urlPdfCotacao(estudoId, doc.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Ver PDF
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-remover documento-pdf-remover"
+                        onClick={() => handleRemoverExtracao(ex)}
+                        disabled={carregando}
+                      >
+                        Remover PDF
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
           )}
-          {extracoes.map((ex) => {
-            const qtd = ex.opcoes?.filter((o) => !o.excluida).length ?? 0;
-            const selCount =
-              ex.opcoes?.filter((o) => o.selecionada_para_comparativo && !o.excluida).length ?? 0;
-            const doc = ex.documento;
-            return (
-              <article key={ex.id} className="documento-pdf-card">
-                <header>
-                  <strong>{doc?.operadora_detectada || "Operadora"}</strong>
-                  <BadgeSituacao
-                    situacao={{
-                      codigo: ex.estado === "extraido" ? "pronto" : "revisao",
-                      rotulo: rotuloEstado(ex.estado),
-                    }}
-                  />
-                </header>
-                <ul className="documento-pdf-meta">
-                  <li>{doc?.nome_arquivo || "arquivo.pdf"}</li>
-                  <li>Enviado: {formatarDataUpload(ex.criado_em)}</li>
-                  <li>{qtd} opção(ões) encontrada(s)</li>
-                  {selCount > 0 && <li>{selCount} selecionada(s)</li>}
-                </ul>
-                <div className="documento-pdf-acoes">
-                  <button type="button" onClick={() => abrirDocumento(ex.id)}>
-                    Escolher planos
-                  </button>
-                  {doc?.id && (
-                    <a
-                      className="btn-link secundario btn-compacto"
-                      href={urlPdfCotacao(estudoId, doc.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Ver PDF
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    className="secundario btn-compacto"
-                    onClick={() => handleRemoverExtracao(ex)}
-                    disabled={carregando}
-                  >
-                    Remover do estudo
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+
+          {!temPdfs && !temNoComparativo && (
+            <p className="muted cotacao-estado-vazio">Nenhuma cotação importada ainda.</p>
+          )}
+        </>
       )}
+
+      <UploadZona
+        carregando={carregando}
+        dragAtivo={dragAtivo}
+        setDragAtivo={setDragAtivo}
+        compacto={fase === "lista" && temPdfs}
+        onUpload={processarUploads}
+      />
 
       {fase !== "lista" && detalhe && (
         <div className="documento-pdf-aberto">
@@ -807,9 +1207,21 @@ export default function CotacaoPdfPanel({
                 {opcoesAtivas.length} opções · enviado {formatarDataUpload(detalhe.criado_em)}
               </p>
             </div>
-            <button type="button" className="secundario" onClick={voltarLista}>
-              ← Voltar aos documentos
-            </button>
+            <div className="documento-pdf-aberto-acoes">
+              <button type="button" className="secundario" onClick={voltarLista}>
+                ← Voltar aos documentos
+              </button>
+              {extracaoAberta && (
+                <button
+                  type="button"
+                  className="btn-remover"
+                  disabled={carregando}
+                  onClick={() => handleRemoverExtracao(extracaoAberta)}
+                >
+                  Remover PDF
+                </button>
+              )}
+            </div>
           </div>
 
           {detalhe.alertas?.length > 0 && (
@@ -851,36 +1263,40 @@ export default function CotacaoPdfPanel({
 
           {planoSiscor && (
             <div className="cartao cartao--interno referencia-plano-atual">
-              <h4>Referência do plano atual — {planoSiscor.plano_nome}</h4>
-              <div className="referencia-plano-grid">
+              <div className="referencia-plano-cabecalho">
                 <div>
-                  <span className="muted">Beneficiários</span>
-                  <p>{planoSiscor.quantidade_beneficiarios ?? "—"}</p>
+                  <span className="referencia-plano-rotulo">Referência do plano atual</span>
+                  <strong className="referencia-plano-nome">{planoSiscor.plano_nome}</strong>
                 </div>
-                <div>
-                  <span className="muted">Valor mensal vigente</span>
-                  <p>{planoSiscor.valor_mensal_vigente_reais || "—"}</p>
-                </div>
-                <div>
-                  <span className="muted">Reajuste</span>
-                  <p>{planoSiscor.reajuste_percentual_exibicao || "—"}</p>
-                </div>
-                <div>
-                  <span className="muted">Valor mensal reajustado</span>
-                  <p>{planoSiscor.valor_mensal_reajustado_reais || "—"}</p>
-                </div>
-                <div>
-                  <span className="muted">Referência do comparativo</span>
-                  <p>
-                    {planoSiscor.referencia_comparativo === "reajustada"
-                      ? "Reajustada"
-                      : "Vigente"}
-                    {planoSiscor.referencia_comparativo_reais
-                      ? ` (${planoSiscor.referencia_comparativo_reais})`
-                      : ""}
-                  </p>
-                </div>
+                <span
+                  className={`referencia-plano-badge${planoSiscor.referencia_comparativo === "reajustada" ? " referencia-plano-badge--reajustada" : ""}`}
+                >
+                  Comparativo:{" "}
+                  {planoSiscor.referencia_comparativo === "reajustada" ? "reajustada" : "vigente"}
+                </span>
               </div>
+              <dl className="referencia-plano-metricas">
+                <div>
+                  <dt>Beneficiários</dt>
+                  <dd>{planoSiscor.quantidade_beneficiarios ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt>Vigente</dt>
+                  <dd>{planoSiscor.valor_mensal_vigente_reais || "—"}</dd>
+                </div>
+                <div>
+                  <dt>Reajuste</dt>
+                  <dd>{planoSiscor.reajuste_percentual_exibicao || "—"}</dd>
+                </div>
+                <div>
+                  <dt>Reajustado</dt>
+                  <dd>{planoSiscor.valor_mensal_reajustado_reais || "—"}</dd>
+                </div>
+                <div className="referencia-plano-metrica--destaque">
+                  <dt>Base do comparativo</dt>
+                  <dd>{planoSiscor.referencia_comparativo_reais || "—"}</dd>
+                </div>
+              </dl>
             </div>
           )}
 
@@ -926,13 +1342,15 @@ export default function CotacaoPdfPanel({
                 onToggle={handleToggle}
               />
 
-              <div className="acoes-lote">
+              <div className="selecao-fluxo-rodape">
                 <button
                   type="button"
-                  disabled={selecionadas.length === 0}
+                  disabled={selecionadas.length === 0 && noComparativoDestaExtracao.length === 0}
                   onClick={() => setFase("revisao")}
                 >
-                  Revisar {selecionadas.length} plano(s) selecionado(s)
+                  {noComparativoDestaExtracao.length > 0
+                    ? `Revisar alterações (${selecionadas.length} selecionado(s))`
+                    : `Revisar ${selecionadas.length} plano(s) selecionado(s)`}
                 </button>
               </div>
             </>
@@ -941,41 +1359,46 @@ export default function CotacaoPdfPanel({
           {fase === "revisao" && (
             <>
               <div className="campos-documento-comuns cartao cartao--interno">
-                <h4>Confirmações do documento</h4>
-                <div className="campos-comuns-grid">
+                <span className="doc-confirmacoes-rotulo">Confirmações do documento</span>
+                <dl className="doc-confirmacoes-metricas">
                   <div>
-                    <span className="muted">Operadora</span>
-                    <p>{docAberto?.operadora_detectada || "—"}</p>
+                    <dt>Operadora</dt>
+                    <dd>{docAberto?.operadora_detectada || "—"}</dd>
                   </div>
                   <div>
-                    <span className="muted">Validade</span>
-                    <p>
+                    <dt>Validade</dt>
+                    <dd>
                       {detalhe.validade_oficial?.data ||
                         selecionadas[0]?.validade_oficial?.data ||
                         "—"}
-                    </p>
-                    {detalhe.validade_oficial && !detalhe.validade_oficial.confirmado && (
-                      <button
-                        type="button"
-                        className="link"
-                        onClick={() =>
-                          salvarCampo(detalhe.validade_oficial.id, { confirmado: true })
-                        }
-                      >
-                        Confirmar validade
-                      </button>
-                    )}
+                    </dd>
                   </div>
                   <div>
-                    <span className="muted">Tipo fiscal</span>
-                    <p>Porto Seguro — seguradora (extraído do documento)</p>
-                    {selecionadas.some((op) => op.tipo_fiscal && !op.tipo_fiscal.confirmado) && (
-                      <button type="button" className="link" onClick={handleConfirmarTipoFiscalDocumento}>
-                        Confirmar tipo fiscal para os planos selecionados
-                      </button>
+                    <dt>Tipo fiscal</dt>
+                    <dd>Seguradora</dd>
+                  </div>
+                </dl>
+                {(detalhe.validade_oficial && !detalhe.validade_oficial.confirmado) ||
+                selecionadas.some(
+                  (op) =>
+                    (op.tipo_fiscal && !op.tipo_fiscal.confirmado) ||
+                    (op.operadora && !op.operadora.confirmado)
+                ) ? (
+                  <div className="doc-confirmacoes-acoes">
+                    <button
+                      type="button"
+                      className="secundario btn-compacto"
+                      onClick={handleConfirmarDocumentoSelecionados}
+                    >
+                      Confirmar dados do documento
+                    </button>
+                    {detalhe.validade_oficial && !detalhe.validade_oficial.confirmado && (
+                      <span className="muted doc-confirmacoes-dica">
+                        Inclui validade, operadora e tipo fiscal.
+                      </span>
                     )}
                   </div>
-                </div>
+                ) : null}
               </div>
 
               {selecionadas.map((op) => (
@@ -986,18 +1409,28 @@ export default function CotacaoPdfPanel({
                   siscorCtx={siscorCtx}
                   onSalvarCampo={salvarCampo}
                   onConfirmarTabela={handleConfirmarTabela}
+                  confirmando={confirmandoOpcaoId === op.id}
                 />
               ))}
 
-              <div className="acoes-lote">
-                <button type="button" className="secundario" onClick={() => setFase("selecao")}>
-                  ← Ajustar seleção
-                </button>
-                <button type="button" className="secundario" onClick={handleConfirmarLote}>
-                  Confirmar lote (campos prontos)
-                </button>
-                <button type="button" onClick={handleAdicionarComparativo}>
-                  Adicionar {selecionadas.length} plano(s) ao comparativo
+              <div className="revisao-fluxo-rodape">
+                <div className="revisao-fluxo-secundarias">
+                  <button type="button" className="link revisao-fluxo-voltar" onClick={() => setFase("selecao")}>
+                    ← Ajustar seleção
+                  </button>
+                  <span className="revisao-fluxo-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <button type="button" className="link" onClick={handleConfirmarLote}>
+                    Confirmar campos prontos
+                  </button>
+                </div>
+                <button type="button" className="revisao-fluxo-principal" onClick={handleAdicionarComparativo}>
+                  {selecionadas.length === 0 && noComparativoDestaExtracao.length > 0
+                    ? "Remover planos desta cotação do comparativo"
+                    : noComparativoDestaExtracao.length > 0
+                      ? `Atualizar ${selecionadas.length} plano(s) no comparativo`
+                      : `Adicionar ${selecionadas.length} plano(s) ao comparativo`}
                 </button>
               </div>
             </>
