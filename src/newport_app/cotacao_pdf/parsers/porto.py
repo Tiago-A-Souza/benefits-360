@@ -6,6 +6,7 @@ import re
 import uuid
 
 from newport_app.cotacao_pdf.coords_extract import (
+    classificar_regime_plano_porto,
     extrair_quantidades_faixa_porto,
     extrair_tabelas_pagina,
     localizar_paginas_tabela_geral,
@@ -23,7 +24,7 @@ from newport_app.cotacao_pdf.text_utils import (
 from newport_app.models.cotacao_pdf import AlertaExtracaoCotacao, OpcaoCotacaoCandidata
 from newport_app.models.draft import PriceBasisRascunho
 
-PARSER_VERSAO = "porto@2.0.0"
+PARSER_VERSAO = "porto@2.0.1"
 OPERADORA = "Porto Seguro"
 TEMPLATE_ID = "porto-orcamento-v2"
 
@@ -92,6 +93,15 @@ def _extrair_resumo_financeiro(doc: PdfDocumento) -> tuple[int | None, int | Non
     return premio, iof, total, meta
 
 
+def _inferir_acomodacao_porto(nome: str) -> str | None:
+    n = nome.upper()
+    if re.search(r"\bQ\b", n) or n.endswith(" Q"):
+        return "Apartamento"
+    if re.search(r"\bE\b", n) or n.endswith(" E"):
+        return "Enfermaria"
+    return None
+
+
 def _montar_opcao(
     linha,
     secao,
@@ -105,7 +115,19 @@ def _montar_opcao(
     pagina_resumo: int,
     associacao_confirmada: bool,
 ) -> OpcaoCotacaoCandidata:
-    regime_tipo = secao.regime_tipo if secao.regime_tipo != "ambíguo" else "sem"
+    regime_tipo, copart_pct, regime_rotulo = classificar_regime_plano_porto(
+        linha.plano_nome,
+        secao.contexto_pagina or secao.cabecalho,
+    )
+    if regime_tipo == "a_confirmar":
+        regime_estado = "revisar"
+        copart_estado = "ausente"
+    else:
+        regime_estado = "confirmar"
+        copart_estado = "confirmar" if copart_pct is not None else "ausente"
+
+    acomodacao = _inferir_acomodacao_porto(linha.plano_nome)
+
     tabela = []
     for idx, centavos in enumerate(linha.valores):
         qtd, trecho_qtd = qtds.get(idx, (None, None))
@@ -143,21 +165,39 @@ def _montar_opcao(
             parser_versao=PARSER_VERSAO,
             documento_hash=documento_hash,
         ),
+        tipo_fiscal=novo_campo(
+            "Tipo fiscal",
+            texto="seguradora",
+            pagina=pagina_resumo,
+            trecho="Porto Seguro — seguradora (extraído do documento)",
+            estado="confirmar",
+            parser_versao=PARSER_VERSAO,
+            documento_hash=documento_hash,
+        ),
+        acomodacao=novo_campo(
+            "Acomodação",
+            texto=acomodacao,
+            pagina=linha.pagina,
+            trecho=linha.trecho,
+            estado="confirmar" if acomodacao else "revisar",
+            parser_versao=PARSER_VERSAO,
+            documento_hash=documento_hash,
+        ) if acomodacao else None,
         regime_copart=novo_campo(
             "Regime de coparticipação",
             texto=regime_tipo,
             pagina=secao.pagina,
-            trecho=secao.cabecalho,
-            estado="revisar",
+            trecho=secao.cabecalho or regime_rotulo,
+            estado=regime_estado,
             parser_versao=PARSER_VERSAO,
             documento_hash=documento_hash,
         ),
         copart_percentual=novo_campo(
             "Percentual de coparticipação",
-            inteiro=secao.copart_percentual,
+            inteiro=copart_pct,
             pagina=secao.pagina,
-            trecho=secao.cabecalho,
-            estado="confirmar" if secao.copart_percentual else "ausente",
+            trecho=secao.cabecalho or regime_rotulo,
+            estado=copart_estado,
             parser_versao=PARSER_VERSAO,
             documento_hash=documento_hash,
         ),
@@ -251,13 +291,12 @@ def parse(
                     codigo="PDF-PORTO-003",
                     mensagem=(
                         f"Regime de coparticipação ambíguo na página {secao.pagina} — "
-                        "confirme pelo título da tabela."
+                        "confirme pelo título da tabela ou pelo nome do plano."
                     ),
                     severidade="alerta",
                     pagina=secao.pagina,
                 )
             )
-            continue
         secoes.append(secao)
 
     if not secoes:
@@ -313,7 +352,7 @@ def parse(
         )
 
     for op in opcoes:
-        if op.reconciliacao and not op.reconciliacao.ok:
+        if op.reconciliacao and op.reconciliacao.status == "divergente":
             alertas.append(
                 AlertaExtracaoCotacao(
                     codigo="PDF-REC",

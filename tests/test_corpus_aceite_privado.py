@@ -110,10 +110,21 @@ def test_aceite_porto_27_tabela_geral():
     assert not any(a.codigo in _CODIGOS_TABELA_AUSENTE for a in ext.alertas)
     assert "Tabela não encontrada" not in " ".join(a.mensagem for a in ext.alertas)
 
-    assert len(ext.opcoes) >= 1
+    assert len(ext.opcoes) == 22
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
     assert mat["exige_selecao_consciente"]
     assert not mat["extracao_financeira_homologada"]
+    sem = sum(1 for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "sem")
+    parcial = sum(
+        1
+        for op in ext.opcoes
+        if op.regime_copart
+        and op.regime_copart.texto == "parcial"
+        and op.copart_percentual
+        and op.copart_percentual.inteiro == 30
+    )
+    assert sem == 11
+    assert parcial == 11
 
 
 def test_maturidade_distingue_estagios_sintetico():

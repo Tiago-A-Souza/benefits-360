@@ -25,6 +25,9 @@ _RE_PLANO_PORTO = re.compile(
 )
 _RE_PCT_COPART = re.compile(r"(\d{1,2})\s*%\s*de\s+copart", re.IGNORECASE)
 _RE_DECIMAL_LINHA = re.compile(r"(?<!\d)([\d]{1,3}(?:\.\d{3})*,\d{2})(?!\d)")
+_RE_PRECO_TOKEN = re.compile(r"^[\d.,]+$")
+_RE_COPAR_NOME = re.compile(r"COPAR(?:\s*(\d{1,2}))?", re.IGNORECASE)
+_RE_PCODE = re.compile(r"^P\d{3}\s*[EQ](?:\s+COPAR(?:\s+\d{1,2})?)?$", re.IGNORECASE)
 
 
 @dataclass
@@ -44,6 +47,7 @@ class SecaoTabelaPagina:
     regime_rotulo: str
     linhas: list[LinhaPlanoExtraida]
     cabecalho: str
+    contexto_pagina: str = ""
 
 
 def _ascii_lower(texto: str) -> str:
@@ -83,6 +87,54 @@ def _coordenadas_linha(words: list[tuple[float, float, float, float, str]]) -> s
     x1 = max(w[2] for w in words)
     y1 = max(w[3] for w in words)
     return f"{x0:.1f},{y0:.1f},{x1:.1f},{y1:.1f}"
+
+
+def _x_limite_nome_colunas(header_ws: list[tuple[float, float, float, float, str]]) -> float | None:
+    for w in header_ws:
+        if re.search(r"0\s*[-–]?\s*18|00-18", w[4], re.IGNORECASE):
+            return w[0] - 5
+    return None
+
+
+def _valores_coluna_preco(words: list[tuple[float, float, float, float, str]], x_limite: float) -> list[int]:
+    tokens = [w[4] for w in words if w[0] >= x_limite and _RE_PRECO_TOKEN.match(w[4])]
+    if not tokens:
+        return []
+    texto = " ".join(tokens)
+    vals = extrair_decimais(texto)
+    if len(vals) >= 10:
+        return vals[:10]
+    vals = extrair_valores_reais(texto)
+    return vals[:10] if len(vals) >= 10 else vals
+
+
+def _nome_coluna_plano(words: list[tuple[float, float, float, float, str]], x_limite: float) -> str:
+    return normalizar_espacos(" ".join(w[4] for w in words if w[0] < x_limite)).strip()
+
+
+def classificar_regime_plano_porto(nome_plano: str, cabecalho: str) -> tuple[str, int | None, str]:
+    """Classifica regime pelo nome do plano (COPAR 30) e, se necessário, pelo cabeçalho."""
+    nome_u = nome_plano.upper()
+    match = _RE_COPAR_NOME.search(nome_u)
+    if match:
+        pct = int(match.group(1)) if match.group(1) else 30
+        return "parcial", pct, f"Coparticipação {pct}%"
+
+    regime_tipo, copart_pct, rotulo = classificar_regime_cabecalho(cabecalho)
+    if regime_tipo == "ambíguo":
+        return "a_confirmar", None, "A confirmar"
+    return regime_tipo, copart_pct, rotulo
+
+
+def _deduplicar_codigos_p(linhas: list[LinhaPlanoExtraida]) -> list[LinhaPlanoExtraida]:
+    """Remove linhas P220/P320 quando a mesma página já traz nomes comerciais."""
+    tem_nomeado = any(
+        re.search(r"\b(BRONZE|PRATA|OURO|DIAMANTE)\b", ln.plano_nome, re.IGNORECASE)
+        for ln in linhas
+    )
+    if not tem_nomeado:
+        return linhas
+    return [ln for ln in linhas if not _RE_PCODE.match(ln.plano_nome.strip())]
 
 
 def _valores_monetarios(texto: str) -> list[int]:
@@ -182,7 +234,7 @@ def classificar_regime_cabecalho(texto_cabecalho: str) -> tuple[str, int | None,
         return "parcial", pct, f"Coparticipação {pct}%"
     if "coparticip" in t and "sem" not in t and "valores apresentados com" not in t:
         return "ambíguo", None, "Regime de coparticipação ambíguo"
-    return "sem", None, "Sem coparticipação"
+    return "a_confirmar", None, "A confirmar"
 
 
 def _regime_da_pagina(linhas_topo: list[str]) -> tuple[str, int | None, str]:
@@ -193,12 +245,14 @@ def _regime_da_pagina(linhas_topo: list[str]) -> tuple[str, int | None, str]:
 def _parear_linhas_plano(
     linhas_ordenadas: list[tuple[float, list[tuple[float, float, float, float, str]]]],
     header_y: float,
+    header_ws: list[tuple[float, float, float, float, str]] | None,
     pagina: int,
 ) -> list[LinhaPlanoExtraida]:
     resultado: list[LinhaPlanoExtraida] = []
     vistos: set[tuple[str, tuple[int, ...]]] = set()
     items = [(y, ws) for y, ws in linhas_ordenadas if y > header_y]
     acomodacao = ""
+    x_limite = _x_limite_nome_colunas(header_ws) if header_ws else None
 
     for idx, (y, ws) in enumerate(items):
         texto = _texto_linha(ws)
@@ -208,50 +262,55 @@ def _parear_linhas_plano(
         if _linha_cabecalho_faixas(texto):
             continue
 
-        vals = _valores_monetarios(texto)
-        nome = _nome_plano_de_texto(texto, vals)
+        if x_limite is not None:
+            nome = _nome_coluna_plano(ws, x_limite)
+            vals = _valores_coluna_preco(ws, x_limite)
+            trecho = texto[:240]
+        else:
+            vals = _valores_monetarios(texto)
+            nome = _nome_plano_de_texto(texto, vals)
+            trecho = texto[:240]
 
-        if 8 <= len(vals) < 10 and idx + 1 < len(items):
-            _, ws_next = items[idx + 1]
-            vals = (vals + _valores_monetarios(_texto_linha(ws_next)))[:10]
+            if 8 <= len(vals) < 10 and idx + 1 < len(items):
+                _, ws_next = items[idx + 1]
+                vals = (vals + _valores_monetarios(_texto_linha(ws_next)))[:10]
 
-        if len(vals) >= 10:
-            vals = vals[:10]
-            if not _eh_nome_plano_valido(nome):
-                if idx + 1 < len(items):
-                    _, ws_next = items[idx + 1]
-                    candidato = _texto_linha(ws_next).strip()
-                    if _eh_nome_plano_valido(candidato) and len(_valores_monetarios(candidato)) < 10:
-                        nome = candidato
-                        texto = f"{_texto_linha(ws)} | {candidato}"
-                if not _eh_nome_plano_valido(nome) and idx > 0:
-                    _, ws_prev = items[idx - 1]
-                    candidato = _texto_linha(ws_prev).strip()
-                    if _eh_nome_plano_valido(candidato) and len(_valores_monetarios(candidato)) < 10:
-                        nome = candidato
-                        texto = f"{candidato} | {_texto_linha(ws)}"
-        elif len(vals) < 10:
-            if _eh_nome_plano_valido(texto):
-                prox_vals: list[int] = []
-                prox_y = None
-                prox_ws = None
-                if idx + 1 < len(items):
-                    prox_y, prox_ws = items[idx + 1]
-                    prox_vals = _valores_monetarios(_texto_linha(prox_ws))
-                if len(prox_vals) >= 10:
-                    vals = prox_vals[:10]
-                    nome = texto.strip()
-                    ws = prox_ws or ws
-                    y = prox_y or y
-                    texto = f"{nome} | {_texto_linha(ws)}"
+            if len(vals) >= 10:
+                vals = vals[:10]
+                if not _eh_nome_plano_valido(nome):
+                    if idx + 1 < len(items):
+                        _, ws_next = items[idx + 1]
+                        candidato = _texto_linha(ws_next).strip()
+                        if _eh_nome_plano_valido(candidato) and len(_valores_monetarios(candidato)) < 10:
+                            nome = candidato
+                            trecho = f"{_texto_linha(ws)} | {candidato}"
+                    if not _eh_nome_plano_valido(nome) and idx > 0:
+                        _, ws_prev = items[idx - 1]
+                        candidato = _texto_linha(ws_prev).strip()
+                        if _eh_nome_plano_valido(candidato) and len(_valores_monetarios(candidato)) < 10:
+                            nome = candidato
+                            trecho = f"{candidato} | {_texto_linha(ws)}"
+            elif len(vals) < 10:
+                if _eh_nome_plano_valido(texto):
+                    prox_vals: list[int] = []
+                    prox_ws = None
+                    if idx + 1 < len(items):
+                        _, prox_ws = items[idx + 1]
+                        prox_vals = _valores_monetarios(_texto_linha(prox_ws))
+                    if len(prox_vals) >= 10:
+                        vals = prox_vals[:10]
+                        nome = texto.strip()
+                        ws = prox_ws or ws
+                        trecho = f"{nome} | {_texto_linha(ws)}"
+                    else:
+                        continue
                 else:
                     continue
-            else:
-                continue
 
         if len(vals) < 10:
             continue
 
+        nome = normalizar_espacos(nome.upper().replace("  ", " ")).strip()
         if not _eh_nome_plano_valido(nome):
             continue
 
@@ -269,7 +328,7 @@ def _parear_linhas_plano(
                 plano_nome=nome,
                 valores=vals,
                 pagina=pagina + 1,
-                trecho=texto[:240],
+                trecho=trecho,
                 coordenadas=_coordenadas_linha(ws),
             )
         )
@@ -291,18 +350,21 @@ def extrair_tabelas_pagina(
     regime_tipo, copart_pct, regime_rotulo = _regime_da_pagina(linhas_topo)
 
     header_y: float | None = None
+    header_ws: list[tuple[float, float, float, float, str]] | None = None
     cabecalho_faixas = ""
     for y, ws in linhas_ordenadas:
         texto = _texto_linha(ws)
         if _linha_cabecalho_faixas(texto):
             header_y = y
+            header_ws = ws
             cabecalho_faixas = texto
             break
 
     if header_y is None:
         return None
 
-    linhas_extraidas = _parear_linhas_plano(linhas_ordenadas, header_y, pagina)
+    linhas_extraidas = _parear_linhas_plano(linhas_ordenadas, header_y, header_ws, pagina)
+    linhas_extraidas = _deduplicar_codigos_p(linhas_extraidas)
     if codigo_plano_filtro:
         base = codigo_plano_filtro.split()[0].upper()
         filtradas = [ln for ln in linhas_extraidas if base in ln.plano_nome.upper()]
@@ -319,6 +381,7 @@ def extrair_tabelas_pagina(
         regime_rotulo=regime_rotulo,
         linhas=linhas_extraidas,
         cabecalho=cabecalho_faixas or "\n".join(linhas_topo[:5]),
+        contexto_pagina="\n".join(linhas_topo[:12]),
     )
 
 

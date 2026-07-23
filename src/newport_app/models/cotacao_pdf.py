@@ -66,6 +66,7 @@ class ReconciliacaoOpcao(BaseModel):
     primeira_parcela_informada_centavos: int | None = None
     divergencias: list[DivergenciaReconciliacao] = Field(default_factory=list)
     ok: bool = False
+    status: Literal["reconciliado", "divergente", "nao_conferivel", "pendente"] = "pendente"
     mensagem: str | None = None
 
 

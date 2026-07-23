@@ -24,6 +24,8 @@ import {
   exigeSelecaoConsciente,
   filtrarOpcoes,
   formatarDataUpload,
+  calcularEstimadoCentavos,
+  formatarDiferencaReferencia,
   formatarEstimativaSiscor,
   inferirAcomodacao,
   inferirRegiao,
@@ -107,6 +109,7 @@ function TabelaSelecaoCompacta({
   templateId,
   quantidades,
   siscorCtx,
+  referenciaCentavos,
   selecionados,
   opcoesComparativo,
   onToggle,
@@ -175,6 +178,8 @@ function TabelaSelecaoCompacta({
               const estado = estadoExibicaoOpcao(op, opcoesComparativo);
               const adicionado = estado.codigo === "adicionado";
               const est = formatarEstimativaSiscor(op, quantidades, siscorCtx);
+              const estimado = calcularEstimadoCentavos(op, quantidades);
+              const diff = formatarDiferencaReferencia(estimado, referenciaCentavos);
               return (
                 <div
                   key={op.id}
@@ -194,6 +199,19 @@ function TabelaSelecaoCompacta({
                   <span className="linha-plano-meta">{rotuloRegime(op)}</span>
                   <span className={`linha-plano-meta${est.destacarGrupo ? " estimativa-indisponivel" : ""}`}>
                     {est.texto}
+                  </span>
+                  <span className="linha-plano-meta">
+                    {diff.indisponivel ? "—" : diff.textoDiff}
+                  </span>
+                  <span className="linha-plano-meta">
+                    {diff.indisponivel ? "—" : (
+                      <>
+                        {diff.textoPct}
+                        {diff.rotuloSemantica && (
+                          <span className="muted"> · {diff.rotuloSemantica}</span>
+                        )}
+                      </>
+                    )}
                   </span>
                   <BadgeSituacao situacao={estado} />
                 </div>
@@ -215,10 +233,102 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
   const sit = situacaoOpcao(op);
   const temPop = quantidades && Object.values(quantidades).some((q) => q > 0);
   const estimativaIndisponivel = siscorCtx?.exigeEscolha || !temPop;
+  const regimeAtual = op.regime_copart?.texto || "sem";
+  const pctAtual = op.copart_percentual?.inteiro ?? "";
 
   return (
     <div className="cartao cartao--interno revisao-plano">
-      <h4>{nomePlanoExibicao(op)}</h4>
+      <h4>Revisão do plano</h4>
+
+      <div className="campos-revisao-grid">
+        <label>
+          Nome do plano
+          <input
+            type="text"
+            defaultValue={op.plano_nome?.texto || ""}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v && v !== op.plano_nome?.texto) {
+                onSalvarCampo(op.plano_nome.id, { texto: v, confirmado: true });
+              }
+            }}
+          />
+        </label>
+        <label>
+          Acomodação
+          <select
+            defaultValue={inferirAcomodacao(op)}
+            onChange={(e) => {
+              if (op.acomodacao?.id) {
+                onSalvarCampo(op.acomodacao.id, { texto: e.target.value, confirmado: true });
+              }
+            }}
+          >
+            <option value="Enfermaria">Enfermaria</option>
+            <option value="Apartamento">Apartamento</option>
+          </select>
+        </label>
+        <label>
+          Tipo fiscal
+          <select
+            defaultValue={op.tipo_fiscal?.texto || "seguradora"}
+            onChange={(e) => {
+              if (op.tipo_fiscal?.id) {
+                onSalvarCampo(op.tipo_fiscal.id, { texto: e.target.value, confirmado: true });
+              }
+            }}
+          >
+            <option value="seguradora">Seguradora</option>
+            <option value="operadora">Operadora</option>
+          </select>
+        </label>
+        <label>
+          Regime de coparticipação
+          <select
+            defaultValue={regimeAtual}
+            onChange={(e) => {
+              if (op.regime_copart?.id) {
+                onSalvarCampo(op.regime_copart.id, { texto: e.target.value, confirmado: true });
+              }
+            }}
+          >
+            <option value="sem">Sem coparticipação</option>
+            <option value="parcial">Coparticipação parcial</option>
+            <option value="a_confirmar">A confirmar</option>
+          </select>
+        </label>
+        <label>
+          Percentual de coparticipação
+          <input
+            type="number"
+            min="0"
+            max="100"
+            defaultValue={pctAtual}
+            onBlur={(e) => {
+              if (op.copart_percentual?.id) {
+                const n = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                onSalvarCampo(op.copart_percentual.id, {
+                  inteiro: Number.isNaN(n) ? null : n,
+                  confirmado: n != null,
+                });
+              }
+            }}
+          />
+        </label>
+        <label>
+          Validade
+          <input
+            type="date"
+            defaultValue={op.validade_oficial?.data || ""}
+            onBlur={(e) => {
+              if (op.validade_oficial?.id && e.target.value) {
+                onSalvarCampo(op.validade_oficial.id, { data: e.target.value, confirmado: true });
+              }
+            }}
+          />
+        </label>
+      </div>
+
       <p className="muted">
         {inferirAcomodacao(op)} · {rotuloRegime(op)}
       </p>
@@ -299,11 +409,11 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
         <span>Total: {resumoFinanceiroOpcao(op)}</span>
       </div>
 
-      <p className={op.reconciliacao?.ok ? "reconciliacao ok" : "muted"}>
+      <p className={op.reconciliacao?.status === "reconciliado" ? "reconciliacao ok" : op.reconciliacao?.status === "nao_conferivel" ? "reconciliacao info" : "muted"}>
         {rotuloReconciliacao(op)}
       </p>
 
-      {op.reconciliacao?.divergencias?.length > 0 && (
+      {op.reconciliacao?.status === "divergente" && op.reconciliacao?.divergencias?.length > 0 && (
         <div className="pendencias-box">
           <strong>Divergências</strong>
           <ul>
@@ -520,6 +630,16 @@ export default function CotacaoPdfPanel({
     sincronizarCesta(extracaoId, ativas, d.documento);
   }
 
+  async function handleConfirmarTipoFiscalDocumento() {
+    if (!detalhe || selecionadas.length === 0) return;
+    for (const op of selecionadas) {
+      if (op.tipo_fiscal?.id && !op.tipo_fiscal.confirmado) {
+        await salvarCampo(op.tipo_fiscal.id, { confirmado: true });
+      }
+    }
+    setMsg("Tipo fiscal confirmado para os planos selecionados.");
+  }
+
   async function handleConfirmarTabela(op) {
     const sit = situacaoOpcao(op);
     if (sit.bloqueiaConfirmacao) {
@@ -537,6 +657,18 @@ export default function CotacaoPdfPanel({
           confirmado: true,
         });
       }
+    }
+    if (op.plano_nome?.id && !op.plano_nome.confirmado) {
+      await salvarCampo(op.plano_nome.id, { confirmado: true });
+    }
+    if (op.regime_copart?.id && !op.regime_copart.confirmado) {
+      await salvarCampo(op.regime_copart.id, { confirmado: true });
+    }
+    if (op.copart_percentual?.id && op.copart_percentual.inteiro != null && !op.copart_percentual.confirmado) {
+      await salvarCampo(op.copart_percentual.id, { confirmado: true });
+    }
+    if (op.tipo_fiscal?.id && !op.tipo_fiscal.confirmado) {
+      await salvarCampo(op.tipo_fiscal.id, { confirmado: true });
     }
     setMsg(`Tabela de «${nomePlanoExibicao(op)}» confirmada.`);
   }
@@ -717,6 +849,41 @@ export default function CotacaoPdfPanel({
             <p className="alerta">Estimativa indisponível até selecionar o grupo de beneficiários.</p>
           )}
 
+          {planoSiscor && (
+            <div className="cartao cartao--interno referencia-plano-atual">
+              <h4>Referência do plano atual — {planoSiscor.plano_nome}</h4>
+              <div className="referencia-plano-grid">
+                <div>
+                  <span className="muted">Beneficiários</span>
+                  <p>{planoSiscor.quantidade_beneficiarios ?? "—"}</p>
+                </div>
+                <div>
+                  <span className="muted">Valor mensal vigente</span>
+                  <p>{planoSiscor.valor_mensal_vigente_reais || "—"}</p>
+                </div>
+                <div>
+                  <span className="muted">Reajuste</span>
+                  <p>{planoSiscor.reajuste_percentual_exibicao || "—"}</p>
+                </div>
+                <div>
+                  <span className="muted">Valor mensal reajustado</span>
+                  <p>{planoSiscor.valor_mensal_reajustado_reais || "—"}</p>
+                </div>
+                <div>
+                  <span className="muted">Referência do comparativo</span>
+                  <p>
+                    {planoSiscor.referencia_comparativo === "reajustada"
+                      ? "Reajustada"
+                      : "Vigente"}
+                    {planoSiscor.referencia_comparativo_reais
+                      ? ` (${planoSiscor.referencia_comparativo_reais})`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {fase === "selecao" && (
             <>
               <div className="selecao-resumo-bar">
@@ -753,6 +920,7 @@ export default function CotacaoPdfPanel({
                 templateId={docAberto?.template_id}
                 quantidades={quantidades}
                 siscorCtx={siscorCtx}
+                referenciaCentavos={planoSiscor?.referencia_comparativo_centavos}
                 selecionados={{ filtros, setFiltro }}
                 opcoesComparativo={opcoesComparativo}
                 onToggle={handleToggle}
@@ -765,13 +933,6 @@ export default function CotacaoPdfPanel({
                   onClick={() => setFase("revisao")}
                 >
                   Revisar {selecionadas.length} plano(s) selecionado(s)
-                </button>
-                <button
-                  type="button"
-                  disabled={selecionadas.length === 0}
-                  onClick={handleAdicionarComparativo}
-                >
-                  Adicionar {selecionadas.length} plano(s) ao comparativo
                 </button>
               </div>
             </>
@@ -806,8 +967,13 @@ export default function CotacaoPdfPanel({
                     )}
                   </div>
                   <div>
-                    <span className="muted">Tipo fiscal (confirme em cada plano se diferir)</span>
-                    <p className="muted">Seguradora ou operadora — revise na tabela abaixo.</p>
+                    <span className="muted">Tipo fiscal</span>
+                    <p>Porto Seguro — seguradora (extraído do documento)</p>
+                    {selecionadas.some((op) => op.tipo_fiscal && !op.tipo_fiscal.confirmado) && (
+                      <button type="button" className="link" onClick={handleConfirmarTipoFiscalDocumento}>
+                        Confirmar tipo fiscal para os planos selecionados
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

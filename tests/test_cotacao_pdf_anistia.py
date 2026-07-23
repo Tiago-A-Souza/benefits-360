@@ -88,8 +88,11 @@ def test_sintetico_porto_27_duas_tabelas():
     )
     assert len(ext.opcoes) >= 2
     regimes = {op.regime_copart.texto for op in ext.opcoes}
-    assert "sem" in regimes
     assert "parcial" in regimes
+    # Plano com COPAR no nome prevalece sobre cabeçalho "sem coparticipação" do sintético.
+    for op in ext.opcoes:
+        if "COPAR" in (op.plano_nome.texto or "").upper():
+            assert op.regime_copart.texto == "parcial"
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
 
 

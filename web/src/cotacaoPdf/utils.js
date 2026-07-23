@@ -71,6 +71,7 @@ export function inferirRegiao(op) {
 export function rotuloRegime(op) {
   const regime = op.regime_copart?.texto;
   const pct = op.copart_percentual?.inteiro;
+  if (regime === "a_confirmar") return "A confirmar";
   if (regime === "sem") return REGIME_LABELS.sem;
   if (pct != null) return `Coparticipação ${pct}%`;
   return REGIME_LABELS[regime] || regime || "—";
@@ -79,6 +80,7 @@ export function rotuloRegime(op) {
 export function grupoCopart(op) {
   const regime = op.regime_copart?.texto;
   const pct = op.copart_percentual?.inteiro;
+  if (regime === "a_confirmar") return "A confirmar";
   if (regime === "sem") return "Sem coparticipação";
   if (pct === 30 || regime === "parcial") return "Coparticipação 30%";
   if (pct != null) return `Coparticipação ${pct}%`;
@@ -107,7 +109,7 @@ export function situacaoOpcao(op) {
   if (faixasOk < 10) {
     motivos.push("Faixas incompletas");
   }
-  if (op.reconciliacao?.divergencias?.length) {
+  if (op.reconciliacao?.status === "divergente") {
     motivos.push("Reconciliação com divergências");
   }
   if (motivos.length) {
@@ -160,9 +162,38 @@ export function formatarEstimativaSiscor(op, quantidades, ctx) {
 export function rotuloReconciliacao(op) {
   const rec = op.reconciliacao;
   if (!rec) return "Reconciliação ainda não realizada — faltam população ou total de referência.";
+  if (rec.status === "divergente") return "Reconciliação com divergências";
   if (rec.mensagem) return rec.mensagem;
-  if (rec.divergencias?.length) return "Reconciliação com divergências";
   return "Reconciliação ainda não realizada — faltam população ou total de referência.";
+}
+
+export function formatarDiferencaReferencia(estimadoCentavos, referenciaCentavos) {
+  if (estimadoCentavos == null || referenciaCentavos == null || referenciaCentavos === 0) {
+    return {
+      indisponivel: true,
+      diffCentavos: null,
+      textoDiff: "—",
+      textoPct: "—",
+      semantica: null,
+      rotuloSemantica: null,
+    };
+  }
+  const diff = estimadoCentavos - referenciaCentavos;
+  const pct = Math.round((diff * 10000) / referenciaCentavos) / 100;
+  const semantica = diff < 0 ? "economia" : diff > 0 ? "acrescimo" : "empate";
+  const rotuloSemantica =
+    semantica === "economia" ? "Economia estimada" : semantica === "acrescimo" ? "Acréscimo estimado" : "Sem diferença";
+  const sinal = diff > 0 ? "+" : diff < 0 ? "-" : "";
+  const textoDiff =
+    diff === 0 ? "R$ 0,00" : `${sinal}${centavosParaReaisExibicao(Math.abs(diff))}`;
+  return {
+    indisponivel: false,
+    diffCentavos: diff,
+    textoDiff,
+    textoPct: `${sinal}${pct.toFixed(2).replace(".", ",")}%`,
+    semantica,
+    rotuloSemantica,
+  };
 }
 
 export function mapaQuantidadesFaixa(planoSiscor) {
@@ -227,7 +258,7 @@ export function filtrarOpcoes(opcoes, filtros) {
 }
 
 export function agruparOpcoes(opcoes, templateId) {
-  if (!templateId?.startsWith("sulamerica")) {
+  if (!templateId?.startsWith("sulamerica") && !templateId?.startsWith("porto")) {
     return [{ titulo: null, opcoes }];
   }
   const grupos = new Map();
@@ -236,7 +267,7 @@ export function agruparOpcoes(opcoes, templateId) {
     if (!grupos.has(g)) grupos.set(g, []);
     grupos.get(g).push(op);
   }
-  const ordem = ["Sem coparticipação", "Coparticipação 30%", "Outros regimes"];
+  const ordem = ["Sem coparticipação", "Coparticipação 30%", "A confirmar", "Outros regimes"];
   return ordem
     .filter((t) => grupos.has(t))
     .map((titulo) => ({ titulo, opcoes: grupos.get(titulo) }))

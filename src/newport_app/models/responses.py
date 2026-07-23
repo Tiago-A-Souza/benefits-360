@@ -58,6 +58,16 @@ class ResumoPlanoAtualItem(BaseModel):
     subgrupo_id: str
     operadora: str
     plano_nome: str
+    quantidade_beneficiarios: int = 0
+    valor_mensal_vigente_centavos: int | None = None
+    valor_mensal_vigente_reais: str | None = None
+    reajuste_bps: int | None = None
+    reajuste_percentual_exibicao: str | None = None
+    valor_mensal_reajustado_centavos: int | None = None
+    valor_mensal_reajustado_reais: str | None = None
+    referencia_comparativo: str | None = None
+    referencia_comparativo_centavos: int | None = None
+    referencia_comparativo_reais: str | None = None
     faixas: list[ResumoFaixaPlanoAtual] = Field(default_factory=list)
     subtotal_calculado_reais: str | None = None
     observacao: str | None = None

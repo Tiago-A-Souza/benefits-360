@@ -8,10 +8,14 @@ from newport_app.models.cotacao_pdf import (
     ReconciliacaoOpcao,
 )
 
+_MSG_OK = "Valores reconciliados"
+_MSG_NAO_CONFERIVEL = (
+    "Total estimado calculado com a população do SISCOR; "
+    "o documento não possui total específico para conferência."
+)
 _MSG_PENDENTE = (
     "Reconciliação ainda não realizada — faltam população ou total de referência."
 )
-_MSG_OK = "Valores reconciliados"
 
 
 def _centavos(campo) -> int | None:
@@ -34,8 +38,6 @@ def reconciliar_opcao(opcao: OpcaoCotacaoCandidata) -> ReconciliacaoOpcao:
         if qtd and valor is not None:
             tem_faixa = True
             subtotal_calc += qtd * valor
-        elif valor is not None and qtd == 0:
-            continue
 
     subtotal_inf = _centavos(opcao.subtotal_impresso) or _centavos(opcao.premio_saude)
     premio = _centavos(opcao.premio_saude)
@@ -91,24 +93,38 @@ def reconciliar_opcao(opcao: OpcaoCotacaoCandidata) -> ReconciliacaoOpcao:
                 )
             )
 
-    identidade_verificada = False
-    if divergencias:
-        identidade_verificada = False
-    elif tem_faixa and subtotal_inf is not None:
-        identidade_verificada = True
-    elif tem_faixa and premio is not None:
-        identidade_verificada = True
-    elif premio is not None and iof is not None and total_inf is not None:
-        identidade_verificada = True
+    tem_total_impresso = subtotal_inf is not None or (
+        premio is not None and total_inf is not None
+    )
 
-    if identidade_verificada:
-        ok = True
-        mensagem = _MSG_OK
-    elif divergencias:
+    identidade_verificada = False
+    if not divergencias:
+        if tem_faixa and subtotal_inf is not None:
+            identidade_verificada = True
+        elif tem_faixa and premio is not None:
+            identidade_verificada = True
+        elif premio is not None and iof is not None and total_inf is not None:
+            identidade_verificada = True
+
+    if divergencias:
         ok = False
+        status = "divergente"
         mensagem = None
+    elif identidade_verificada:
+        ok = True
+        status = "reconciliado"
+        mensagem = _MSG_OK
+    elif tem_faixa and not tem_total_impresso:
+        ok = True
+        status = "nao_conferivel"
+        mensagem = _MSG_NAO_CONFERIVEL
+    elif tem_faixa:
+        ok = True
+        status = "nao_conferivel"
+        mensagem = _MSG_NAO_CONFERIVEL
     else:
         ok = False
+        status = "pendente"
         mensagem = _MSG_PENDENTE
 
     rec = ReconciliacaoOpcao(
@@ -124,6 +140,7 @@ def reconciliar_opcao(opcao: OpcaoCotacaoCandidata) -> ReconciliacaoOpcao:
         primeira_parcela_informada_centavos=primeira_inf,
         divergencias=divergencias,
         ok=ok,
+        status=status,
         mensagem=mensagem,
     )
     opcao.reconciliacao = rec

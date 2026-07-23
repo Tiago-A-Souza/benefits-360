@@ -75,7 +75,7 @@ def pendencias_opcao(op: OpcaoCotacaoCandidata) -> list[str]:
     if faixas_confirmadas == 0:
         msgs.append("Confirme ao menos uma faixa etária com valor.")
 
-    if op.reconciliacao is not None and not op.reconciliacao.ok:
+    if op.reconciliacao is not None and op.reconciliacao.status == "divergente":
         msgs.append("Divergência financeira não resolvida — ajuste valores ou quantidades.")
 
     return msgs
