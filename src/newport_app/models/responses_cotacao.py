@@ -21,9 +21,17 @@ class ConfirmacaoExtracaoResponse(BaseModel):
     confirmados: int
 
 
+class BloqueioOpcaoExtracao(BaseModel):
+    opcao_id: str
+    plano: str
+    motivos: list[str] = Field(default_factory=list)
+
+
 class AplicarExtracaoResponse(BaseModel):
     opcoes_adicionadas: int
+    opcoes_atualizadas: int = 0
     total_opcoes: int
+    bloqueios: list[BloqueioOpcaoExtracao] = Field(default_factory=list)
 
 
 class ListaExtracaoCotacaoResponse(BaseModel):

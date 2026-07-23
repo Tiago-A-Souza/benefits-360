@@ -6,6 +6,7 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 
+from newport_app.cotacao_pdf.conferencia import normalizar_extracao
 from newport_app.cotacao_pdf.extract import PdfDocumento
 from newport_app.cotacao_pdf.parsers import amil, bradesco, omint, porto, sulamerica
 from newport_app.cotacao_pdf.parsers.base import novo_campo
@@ -75,6 +76,10 @@ def parse_cotacao_pdf(
                 if not identificar(doc):
                     continue
                 opcoes, alertas, meta = parse_fn(doc, documento_hash=doc_hash)
+                for op in opcoes:
+                    from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
+
+                    reconciliar_opcao(op)
                 documento.operadora_detectada = operadora
                 documento.template_id = template_id
                 documento.parser_versao = parser_versao
@@ -135,7 +140,7 @@ def parse_cotacao_pdf(
                     criado_por=criado_por,
                     versoes_anteriores=versoes_anteriores or [],
                 )
-                return extracao
+                return normalizar_extracao(extracao)
     except Exception:
         return ExtracaoCotacaoCandidata(
             id=str(uuid.uuid4()),

@@ -28,7 +28,7 @@ from newport_app.config.runtime import (
     modo_execucao,
 )
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
-from newport_app.models.draft import RascunhoEstudo
+from newport_app.models.draft import PriceBasisRascunho, RascunhoEstudo
 from newport_app.models.responses import ComparativoResponse, EstudoResumo, PendenciaItem, ResumoPlanoAtualResponse
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
@@ -54,6 +54,7 @@ from newport_app.services.calculo import (
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
     EstudoNaoEncontradoError as EstudoCotacaoNaoEncontradoError,
+    AplicacaoExtracaoError,
     ExtracaoCotacaoService,
     ExtracaoNaoEncontradaError,
 )
@@ -111,6 +112,8 @@ class AtualizarCampoExtracaoRequest(BaseModel):
     centavos: int | None = None
     texto: str | None = None
     inteiro: int | None = None
+    data: str | None = None
+    price_basis: PriceBasisRascunho | None = None
     confirmado: bool | None = None
 
 
@@ -375,6 +378,14 @@ def create_app(
         campo_id: str,
         body: AtualizarCampoExtracaoRequest,
     ):
+        from datetime import date as date_type
+
+        data_campo = None
+        if body.data:
+            try:
+                data_campo = date_type.fromisoformat(body.data)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Data inválida.") from exc
         try:
             campo = cotacao.atualizar_campo(
                 extracao_id,
@@ -382,6 +393,8 @@ def create_app(
                 centavos=body.centavos,
                 texto=body.texto,
                 inteiro=body.inteiro,
+                data=data_campo,
+                price_basis=body.price_basis,
                 confirmado=body.confirmado,
             )
             return {"campo": campo.model_dump(mode="json")}
@@ -389,6 +402,19 @@ def create_app(
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
         except CampoNaoEncontradoError:
             raise HTTPException(status_code=404, detail="Campo não encontrado") from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/opcoes/{opcao_id}/excluir",
+    )
+    def excluir_opcao_extracao(estudo_id: str, extracao_id: str, opcao_id: str):
+        try:
+            ext = cotacao.obter_extracao(extracao_id)
+            if ext.estudo_id != estudo_id:
+                raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+            cotacao.excluir_opcao(extracao_id, opcao_id)
+            return {"ok": True}
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
 
     @app.post(
         "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/confirmar-lote",
@@ -415,6 +441,14 @@ def create_app(
             return cotacao.aplicar_ao_rascunho(extracao_id)
         except ExtracaoNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        except AplicacaoExtracaoError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "mensagem": str(exc),
+                    "bloqueios": [b.model_dump(mode="json") for b in exc.bloqueios],
+                },
+            ) from None
 
     @app.get("/api/estudos/{estudo_id}/documentos-cotacao/{documento_id}/pdf")
     def baixar_pdf_cotacao(estudo_id: str, documento_id: str):

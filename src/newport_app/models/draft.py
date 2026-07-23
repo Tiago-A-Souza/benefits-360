@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Literal
 
@@ -42,6 +42,7 @@ class OrigemValorRascunho(str, Enum):
 class ProvenienciaRascunho(BaseModel):
     origem: OrigemValorRascunho = OrigemValorRascunho.MANUAL
     documento_id: str | None = None
+    documento_hash: str | None = None
     extrator_versao: str = "manual"
     linha_origem: int | None = None
     celula_origem: str | None = None
@@ -49,6 +50,8 @@ class ProvenienciaRascunho(BaseModel):
     evidencia: str | None = None
     coordenadas: str | None = None
     confirmado: bool = False
+    confirmado_por: str | None = None
+    confirmado_em: datetime | None = None
 
 
 class ComponenteFinanceiroRascunho(BaseModel):
@@ -198,6 +201,8 @@ class OpcaoPropostaRascunho(BaseModel):
     subtotal_impresso: ComponenteFinanceiroRascunho | None = None
     custos_unicos: list[CustoUnicoRascunho] = Field(default_factory=list)
     documento_cotacao_id: str | None = None
+    extracao_id: str | None = None
+    extracao_opcao_id: str | None = None
     validade_oficial: date | None = None
     observacoes: str | None = None
 

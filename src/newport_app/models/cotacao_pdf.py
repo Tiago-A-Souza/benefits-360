@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from newport_app.models.draft import PriceBasisRascunho
 
-PIPELINE_COTACAO_VERSAO = "cotacao-pdf@2.5.5"
+PIPELINE_COTACAO_VERSAO = "cotacao-pdf@2.5.6"
 
 
 class AlertaExtracaoCotacao(BaseModel):
