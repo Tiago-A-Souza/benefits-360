@@ -184,6 +184,106 @@ def migrar_estudos_db(db_path: Path) -> None:
                 ("2.6.0", datetime.now(timezone.utc).isoformat()),
             )
 
+        _migrar_281(conn)
+
+
+def _migrar_281(conn: sqlite3.Connection) -> None:
+    row = conn.execute(
+        "SELECT versao FROM schema_migrations WHERE versao = ?", ("2.8.1",)
+    ).fetchone()
+    if row is not None:
+        return
+
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS clientes (
+            id TEXT PRIMARY KEY,
+            nome TEXT NOT NULL,
+            criado_em TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ciclos_renovacao (
+            id TEXT PRIMARY KEY,
+            cliente_id TEXT NOT NULL,
+            numero INTEGER NOT NULL,
+            vigencia_inicio TEXT,
+            vigencia_fim TEXT,
+            criado_em TEXT NOT NULL,
+            UNIQUE(cliente_id, numero)
+        );
+
+        CREATE TABLE IF NOT EXISTS beneficiarios (
+            id TEXT PRIMARY KEY,
+            cliente_id TEXT NOT NULL,
+            nome TEXT NOT NULL,
+            nascimento TEXT NOT NULL,
+            parentesco TEXT,
+            sexo TEXT,
+            criado_em TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_benef_cliente ON beneficiarios(cliente_id);
+        CREATE INDEX IF NOT EXISTS idx_ciclo_cliente ON ciclos_renovacao(cliente_id);
+        """
+    )
+    _ensure_column(conn, "estudos_meta", "cliente_id", "TEXT")
+    _ensure_column(conn, "estudos_meta", "ciclo_id", "TEXT")
+    _ensure_column(conn, "beneficiario_participacao", "beneficiario_id", "TEXT")
+    _ensure_column(
+        conn,
+        "beneficiario_participacao",
+        "vinculo_status",
+        "TEXT NOT NULL DEFAULT 'pendente'",
+    )
+    _ensure_column(conn, "planos_contratados", "ciclo_id", "TEXT")
+
+    # Recria participação sem beneficiario_logico_id obrigatório (legado 2.6)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(beneficiario_participacao)").fetchall()}
+    if "beneficiario_logico_id" in cols:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS beneficiario_participacao_new (
+                id TEXT PRIMARY KEY,
+                estudo_id TEXT NOT NULL,
+                posicao_versao_id TEXT NOT NULL,
+                beneficiario_id TEXT,
+                vida_rascunho_id TEXT NOT NULL,
+                nome TEXT NOT NULL,
+                nascimento TEXT NOT NULL,
+                parentesco TEXT,
+                sexo TEXT,
+                status TEXT NOT NULL,
+                subgrupo_id TEXT,
+                plano_nome TEXT,
+                faixa INTEGER,
+                valor_centavos INTEGER,
+                motivo_alteracao TEXT,
+                sugestao_vinculo TEXT,
+                vinculo_status TEXT NOT NULL DEFAULT 'pendente'
+            );
+            INSERT INTO beneficiario_participacao_new (
+                id, estudo_id, posicao_versao_id, beneficiario_id, vida_rascunho_id,
+                nome, nascimento, parentesco, sexo, status, subgrupo_id, plano_nome,
+                faixa, valor_centavos, motivo_alteracao, sugestao_vinculo, vinculo_status
+            )
+            SELECT
+                id, estudo_id, posicao_versao_id,
+                beneficiario_id, vida_rascunho_id, nome, nascimento, parentesco, sexo,
+                status, subgrupo_id, plano_nome, faixa, valor_centavos,
+                motivo_alteracao, sugestao_vinculo,
+                COALESCE(vinculo_status, 'pendente')
+            FROM beneficiario_participacao;
+            DROP TABLE beneficiario_participacao;
+            ALTER TABLE beneficiario_participacao_new RENAME TO beneficiario_participacao;
+            CREATE INDEX IF NOT EXISTS idx_benef_estudo ON beneficiario_participacao(estudo_id);
+            """
+        )
+
+    conn.execute(
+        "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+        ("2.8.1", datetime.now(timezone.utc).isoformat()),
+    )
+
 
 def _ensure_column(conn: sqlite3.Connection, tabela: str, coluna: str, definicao: str) -> None:
     cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})").fetchall()}

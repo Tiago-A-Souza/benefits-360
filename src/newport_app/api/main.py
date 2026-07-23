@@ -31,9 +31,16 @@ from newport_app.config.runtime import (
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import PriceBasisRascunho, RascunhoEstudo
 from newport_app.models.historico import (
+    BeneficiarioParticipacao,
+    CicloRenovacao,
+    Cliente,
+    ConfirmarVinculoLoteRequest,
+    ConfirmarVinculoRequest,
+    HistoricoEstudoResponse,
     PlanoContratadoVersao,
     PosicaoCadastralVersao,
     RegistrarPlanoContratadoRequest,
+    VincularEstudoRequest,
 )
 from newport_app.models.presentation import PresentationViewModel
 from newport_app.models.snapshot import (
@@ -93,10 +100,10 @@ from newport_app.services.snapshot import (
     SnapshotService,
 )
 from newport_app.presentation.builder import construir_view_model
-from newport_app.presentation.html_renderer import RENDERER_VERSAO
+from newport_app.presentation.motor_por_proposta import PropostaNaoCalculavelError
 from newport_app.siscor_mapper.apply import rascunho_vazio
 
-API_VERSAO = "2.8.0"
+API_VERSAO = "2.8.1"
 
 ROOT = Path(__file__).resolve().parents[3]
 WEB_DIST = ROOT / "web" / "dist"
@@ -623,7 +630,6 @@ def create_app(
             propostas_selecionadas=body.propostas_selecionadas,
             ressalvas=body.ressalvas,
             titulo=body.titulo,
-            renderer_versao=RENDERER_VERSAO,
         )
 
     @app.post(
@@ -639,6 +645,56 @@ def create_app(
             return apresentacao.gerar_html(estudo_id, snapshot_id, body)
         except AprovacaoInvalidaError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
+        except PropostaNaoCalculavelError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Propostas não calculáveis: {', '.join(exc.opcoes_invalidas)}",
+            ) from None
+
+    @app.get(
+        "/api/estudos/{estudo_id}/historico",
+        response_model=HistoricoEstudoResponse,
+    )
+    def obter_historico_estudo(estudo_id: str) -> HistoricoEstudoResponse:
+        try:
+            return historico.obter_historico_estudo(estudo_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from None
+
+    @app.post("/api/estudos/{estudo_id}/historico/vincular")
+    def vincular_estudo_cliente(estudo_id: str, body: VincularEstudoRequest):
+        try:
+            return historico.vincular_estudo(estudo_id, body).model_dump(mode="json")
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+
+    @app.post("/api/estudos/{estudo_id}/historico/vinculos/confirmar")
+    def confirmar_vinculo_beneficiario(estudo_id: str, body: ConfirmarVinculoRequest):
+        try:
+            p = historico.confirmar_vinculo(body)
+            return p.model_dump(mode="json")
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+
+    @app.post("/api/estudos/{estudo_id}/historico/vinculos/confirmar-lote")
+    def confirmar_vinculo_lote(estudo_id: str, body: ConfirmarVinculoLoteRequest):
+        n = historico.confirmar_vinculos_coerentes(body.participacao_ids)
+        return {"confirmados": n}
+
+    @app.get("/api/clientes", response_model=list[Cliente])
+    def listar_clientes() -> list[Cliente]:
+        return historico.listar_clientes()
+
+    @app.post("/api/clientes", response_model=Cliente)
+    def criar_cliente(body: dict):
+        nome = body.get("nome", "").strip()
+        if not nome:
+            raise HTTPException(status_code=400, detail="Informe o nome do cliente.")
+        return historico.criar_cliente(nome)
+
+    @app.get("/api/clientes/{cliente_id}/ciclos", response_model=list[CicloRenovacao])
+    def listar_ciclos_cliente(cliente_id: str) -> list[CicloRenovacao]:
+        return historico.listar_ciclos(cliente_id)
 
     @app.get("/api/estudos/{estudo_id}/entregaveis/{entregavel_id}/html")
     def baixar_entregavel_html(estudo_id: str, entregavel_id: str):

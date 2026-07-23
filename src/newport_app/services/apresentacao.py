@@ -14,6 +14,7 @@ from newport_app.models.snapshot import (
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.delivery_storage import LocalFileDeliveryStorage
 from newport_app.presentation.html_renderer import RENDERER_VERSAO, render_html
+from newport_app.presentation.motor_por_proposta import PropostaNaoCalculavelError
 from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.services.snapshot import AprovacaoInvalidaError, SnapshotService
 from newport_app.snapshot.hashing import hash_sha256_objeto
@@ -54,7 +55,6 @@ class ApresentacaoService:
             propostas_selecionadas=req.propostas_selecionadas,
             ressalvas=req.ressalvas,
             titulo=req.titulo,
-            renderer_versao=RENDERER_VERSAO,
         )
         html_content = render_html(vm)
         digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})

@@ -27,6 +27,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
   const [modo, setModo] = useState("faixas");
   const [revisor, setRevisor] = useState("");
   const [justificativa, setJustificativa] = useState("");
+  const [autoAprovacao, setAutoAprovacao] = useState(false);
   const [confirmo, setConfirmo] = useState(false);
   const [preview, setPreview] = useState(null);
   const [entregavel, setEntregavel] = useState(null);
@@ -88,6 +89,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
         revisor_nome: revisor,
         justificativa: justificativa || null,
         confirmo_conteudo: confirmo,
+        auto_aprovacao: autoAprovacao,
       });
       await recarregar();
     } catch (e) {
@@ -226,6 +228,14 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
               onChange={(e) => setJustificativa(e.target.value)}
               rows={2}
             />
+          </label>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={autoAprovacao}
+              onChange={(e) => setAutoAprovacao(e.target.checked)}
+            />
+            Estou aprovando meu próprio estudo (autoaprovação provisória)
           </label>
           <label className="checkbox">
             <input

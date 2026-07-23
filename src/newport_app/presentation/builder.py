@@ -1,4 +1,4 @@
-"""Constrói PresentationViewModel a partir de snapshot aprovado."""
+"""Constrói PresentationViewModel a partir de snapshot aprovado — ETAPA 2.8.1."""
 
 from __future__ import annotations
 
@@ -8,34 +8,167 @@ from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.presentation import (
     BeneficiarioApresentacao,
+    BeneficiarioPropostaColuna,
     FaixaApresentacao,
+    PaginaFaixasApresentacao,
     PlanoAtualApresentacao,
     PresentationViewModel,
     PropostaApresentacao,
+    PropostaFaixaColuna,
     SecaoRegimeApresentacao,
+    TotaisGeraisApresentacao,
+    TotaisSecaoApresentacao,
 )
-from newport_app.models.responses import ComparativoResponse
 from newport_app.models.snapshot import SnapshotCalculo
+from newport_app.presentation.motor_por_proposta import (
+    CalculoProposta,
+    VidaCalculoProposta,
+    calcular_atual_do_snapshot,
+    calcular_propostas_do_snapshot,
+)
+
+MAX_PROPOSTAS_POR_PAGINA = 3
 
 
-def _formatar_reais(centavos: int | None) -> str | None:
-    if centavos is None:
+def _rotulo_regime(tipo: str) -> str:
+    mapa = {
+        "sem": "Sem coparticipação",
+        "parcial": "Coparticipação parcial",
+        "percentual": "Coparticipação percentual",
+        "customizada": "Coparticipação customizada",
+    }
+    return mapa.get(tipo, tipo)
+
+
+def _copart_descricao(rascunho: RascunhoEstudo, regime_id: str | None) -> str | None:
+    if not regime_id:
         return None
-    sinal = "-" if centavos < 0 else ""
-    valor = abs(centavos)
-    reais, cents = divmod(valor, 100)
-    inteiro = f"{reais:,}".replace(",", ".")
-    return f"{sinal}R$ {inteiro},{cents:02d}"
+    regime = next((r for r in rascunho.regimes_copart if r.id == regime_id), None)
+    if regime is None:
+        return None
+    return _rotulo_regime(regime.tipo)
 
 
-def _parse_reais(texto: str | None) -> int | None:
-    if not texto:
+def _agregar_unitario_e_total(valores: list[int]) -> tuple[int | None, int | None, str | None]:
+    if not valores:
+        return None, None, None
+    total = sum(valores)
+    unicos = set(valores)
+    if len(unicos) == 1:
+        return next(iter(unicos)), total, None
+    return None, total, "Valores individuais diferentes — total observado exibido."
+
+
+def _montar_faixas_plano(
+    subgrupo_id: str,
+    vidas_rascunho: dict[str, object],
+    atual_por_vida: dict[str, VidaCalculoProposta],
+    calculos_proposta: dict[str, CalculoProposta],
+    propostas_ids: list[str],
+    regime_tipo: str,
+) -> list[FaixaApresentacao]:
+    faixas: dict[int, FaixaApresentacao] = {
+        i: FaixaApresentacao(faixa=i, rotulo=ROTULOS_FAIXA[i]) for i in range(10)
+    }
+    vigentes_por_faixa: dict[int, list[int]] = {i: [] for i in range(10)}
+    reajustados_por_faixa: dict[int, list[int]] = {i: [] for i in range(10)}
+    proposta_vals: dict[int, dict[str, list[int]]] = {
+        i: {op: [] for op in propostas_ids} for i in range(10)
+    }
+
+    for vida_id, dados in atual_por_vida.items():
+        if dados.subgrupo_id != subgrupo_id or dados.regime_tipo != regime_tipo:
+            continue
+        fx = dados.faixa
+        if fx is None or fx < 0 or fx > 9:
+            continue
+        vida = vidas_rascunho.get(vida_id)
+        ag = faixas[fx]
+        ag.qtd_total += 1
+        parentesco = getattr(vida, "parentesco", None)
+        if parentesco and getattr(parentesco, "value", parentesco) == "titular":
+            ag.qtd_titulares += 1
+        else:
+            ag.qtd_dependentes += 1
+        if dados.vigente_centavos is not None:
+            vigentes_por_faixa[fx].append(dados.vigente_centavos)
+        if dados.reajustado_centavos is not None:
+            reajustados_por_faixa[fx].append(dados.reajustado_centavos)
+        for op_id in propostas_ids:
+            calc = calculos_proposta.get(op_id)
+            if calc is None:
+                continue
+            for sec in calc.secoes:
+                if sec.regime_tipo != regime_tipo:
+                    continue
+                vd = sec.vidas.get(vida_id)
+                if vd and vd.proposta_centavos is not None:
+                    proposta_vals[fx][op_id].append(vd.proposta_centavos)
+
+    for fx in range(10):
+        ag = faixas[fx]
+        unit_v, tot_v, obs_v = _agregar_unitario_e_total(vigentes_por_faixa[fx])
+        unit_r, tot_r, obs_r = _agregar_unitario_e_total(reajustados_por_faixa[fx])
+        ag.atual_vigente_unitario_centavos = unit_v
+        ag.atual_vigente_total_centavos = tot_v
+        ag.atual_reajustado_unitario_centavos = unit_r
+        ag.atual_reajustado_total_centavos = tot_r
+        obs = obs_v or obs_r
+        ag.observacao_valor = obs
+        for op_id in propostas_ids:
+            unit_p, sub_p, _ = _agregar_unitario_e_total(proposta_vals[fx][op_id])
+            ag.propostas.append(
+                PropostaFaixaColuna(
+                    opcao_id=op_id,
+                    valor_unitario_centavos=unit_p,
+                    quantidade=len(proposta_vals[fx][op_id]),
+                    subtotal_centavos=sub_p,
+                )
+            )
+    return [faixas[i] for i in range(10)]
+
+
+def _paginar_propostas(propostas_ids: list[str]) -> list[PaginaFaixasApresentacao]:
+    paginas: list[PaginaFaixasApresentacao] = []
+    for i in range(0, len(propostas_ids), MAX_PROPOSTAS_POR_PAGINA):
+        paginas.append(
+            PaginaFaixasApresentacao(
+                indice=len(paginas),
+                propostas_ids=propostas_ids[i : i + MAX_PROPOSTAS_POR_PAGINA],
+            )
+        )
+    return paginas or [PaginaFaixasApresentacao(indice=0, propostas_ids=[])]
+
+
+def _montar_proposta_meta(
+    rascunho: RascunhoEstudo,
+    op_id: str,
+    calc: CalculoProposta,
+    regime_tipo: str,
+) -> PropostaApresentacao | None:
+    op = next((o for o in rascunho.opcoes_proposta if o.id == op_id), None)
+    if op is None:
         return None
-    bruto = texto.replace("R$", "").replace(".", "").replace(",", ".").strip()
-    try:
-        return int(round(float(bruto) * 100))
-    except ValueError:
-        return None
+    secao = next((s for s in calc.secoes if s.regime_tipo == regime_tipo), None)
+    return PropostaApresentacao(
+        opcao_id=op.id,
+        operadora=op.operadora,
+        plano_nome=op.plano_nome,
+        regime_rotulo=_rotulo_regime(regime_tipo),
+        regime_tipo=regime_tipo,
+        acomodacao=op.acomodacao,
+        modalidade=op.modalidade.value if op.modalidade else None,
+        copart_descricao=_copart_descricao(rascunho, op.regime_copart_id),
+        validade=op.validade_oficial.isoformat() if op.validade_oficial else None,
+        premio_centavos=op.premio_saude.centavos if op.premio_saude else None,
+        iof_centavos=op.iof.centavos if op.iof else None,
+        total_recorrente_centavos=(
+            op.total_recorrente.centavos if op.total_recorrente else None
+        ),
+        total_mensal_centavos=secao.total_proposta_centavos if secao else None,
+        diff_mensal_centavos=secao.diff_mes_centavos if secao else None,
+        diff_anual_centavos=secao.diff_ano_centavos if secao else None,
+    )
 
 
 def construir_view_model(
@@ -45,137 +178,160 @@ def construir_view_model(
     propostas_selecionadas: list[str],
     ressalvas: list[str] | None = None,
     titulo: str | None = None,
-    renderer_versao: str = "html@2.8.0",
 ) -> PresentationViewModel:
     rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
-    comparativo = ComparativoResponse.model_validate(snap.payload["comparativo"])
-    opcoes = {o.id: o for o in rascunho.opcoes_proposta if o.id in propostas_selecionadas}
-    secoes_vm: list[SecaoRegimeApresentacao] = []
+    calculo_atual = calcular_atual_do_snapshot(snap)
+    calculos = calcular_propostas_do_snapshot(snap, propostas_selecionadas)
 
-    for secao in comparativo.secoes:
-        propostas_secao: list[PropostaApresentacao] = []
-        for op_id in propostas_selecionadas:
-            op = opcoes.get(op_id)
-            if op is None:
-                continue
-            regime = next(
-                (r for r in rascunho.regimes_copart if r.id == op.regime_copart_id),
-                None,
+    vidas_map = {v.id: v for v in rascunho.vidas if v.incluida}
+    subgrupos_map = {s.id: s for s in rascunho.subgrupos_atuais}
+
+    atual_por_vida: dict[str, VidaCalculoProposta] = {}
+    regimes_ordem: list[tuple[str, str]] = []
+    for sec in calculo_atual.secoes:
+        regimes_ordem.append((sec.regime_tipo, sec.rotulo))
+        atual_por_vida.update(sec.vidas)
+
+    secoes_vm: list[SecaoRegimeApresentacao] = []
+    for regime_tipo, rotulo in regimes_ordem:
+        planos_vm: list[PlanoAtualApresentacao] = []
+        for sg in rascunho.subgrupos_atuais:
+            faixas = _montar_faixas_plano(
+                sg.id,
+                vidas_map,
+                atual_por_vida,
+                calculos,
+                propostas_selecionadas,
+                regime_tipo,
             )
-            propostas_secao.append(
-                PropostaApresentacao(
-                    opcao_id=op.id,
-                    operadora=op.operadora,
-                    plano_nome=op.plano_nome,
-                    regime_rotulo=secao.rotulo,
-                    acomodacao=op.acomodacao,
-                    modalidade=op.modalidade.value if op.modalidade else None,
-                    validade=op.validade_oficial.isoformat() if op.validade_oficial else comparativo.validade_proposta,
-                    total_mensal_reais=secao.proposta_mensal_reais,
-                    diff_mensal_reais=secao.diferenca_mensal_reais,
-                    diff_anual_reais=secao.diferenca_anual_reais,
+            vigentes = [
+                d.vigente_centavos
+                for d in atual_por_vida.values()
+                if d.subgrupo_id == sg.id
+                and d.regime_tipo == regime_tipo
+                and d.vigente_centavos is not None
+            ]
+            reajustados = [
+                d.reajustado_centavos
+                for d in atual_por_vida.values()
+                if d.subgrupo_id == sg.id
+                and d.regime_tipo == regime_tipo
+                and d.reajustado_centavos is not None
+            ]
+            planos_vm.append(
+                PlanoAtualApresentacao(
+                    subgrupo_id=sg.id,
+                    operadora=sg.operadora,
+                    plano_nome=sg.plano_nome,
+                    acomodacao=getattr(sg, "acomodacao", None),
+                    modalidade=None,
+                    copart_descricao=_copart_descricao(rascunho, sg.regime_copart_id),
+                    faixas=faixas,
+                    subtotal_vigente_centavos=sum(vigentes) if vigentes else None,
+                    subtotal_reajustado_centavos=sum(reajustados) if reajustados else None,
                 )
             )
-        planos_atuais = [
-            PlanoAtualApresentacao(
-                subgrupo_id=sg.id,
-                operadora=sg.operadora,
-                plano_nome=sg.plano_nome,
-                subtotal_reais=_formatar_reais(
-                    sg.subtotal_atual_impresso.centavos if sg.subtotal_atual_impresso else None
-                ),
-            )
-            for sg in rascunho.subgrupos_atuais
+
+        propostas_vm = [
+            p
+            for op_id in propostas_selecionadas
+            if (p := _montar_proposta_meta(rascunho, op_id, calculos[op_id], regime_tipo))
         ]
+
+        secao_atual = next((s for s in calculo_atual.secoes if s.regime_tipo == regime_tipo), None)
+        totais_sec = TotaisSecaoApresentacao(
+            atual_centavos=secao_atual.total_atual_baseline_centavos if secao_atual else None,
+        )
+        for op_id in propostas_selecionadas:
+            sec_calc = next(
+                (s for s in calculos[op_id].secoes if s.regime_tipo == regime_tipo),
+                None,
+            )
+            totais_sec.propostas[op_id] = (
+                sec_calc.total_proposta_centavos if sec_calc else None
+            )
+            totais_sec.diff_mensal[op_id] = sec_calc.diff_mes_centavos if sec_calc else None
+            totais_sec.diff_anual[op_id] = sec_calc.diff_ano_centavos if sec_calc else None
+
         secoes_vm.append(
             SecaoRegimeApresentacao(
-                regime_rotulo=secao.rotulo,
-                regime_tipo=secao.regime_tipo,
-                propostas=propostas_secao,
-                planos_atuais=planos_atuais,
-                totais_atual_reais=secao.atual_mensal_reais,
-                totais_proposta_reais=secao.proposta_mensal_reais,
-                diff_mensal_reais=secao.diferenca_mensal_reais,
-                diff_anual_reais=secao.diferenca_anual_reais,
+                regime_rotulo=rotulo,
+                regime_tipo=regime_tipo,
+                propostas=propostas_vm,
+                planos_atuais=planos_vm,
+                totais=totais_sec,
+                paginas_faixas=_paginar_propostas(propostas_selecionadas),
             )
         )
 
     beneficiarios: list[BeneficiarioApresentacao] = []
     if modo == "beneficiario":
-        for secao in comparativo.secoes:
-            for vida in secao.vidas:
-                propostas_map: dict[str, str] = {}
-                diff_map: dict[str, str | None] = {}
-                for op_id in propostas_selecionadas:
-                    propostas_map[op_id] = vida.proposta_reais or "—"
-                    diff_map[op_id] = vida.diff_mes_reais
-                beneficiarios.append(
-                    BeneficiarioApresentacao(
-                        vida_id=vida.vida_id,
-                        nome=vida.nome,
-                        idade=vida.idade,
-                        faixa=vida.faixa,
-                        faixa_rotulo=ROTULOS_FAIXA[vida.faixa] if vida.faixa is not None and vida.faixa < 10 else None,
-                        parentesco=vida.parentesco,
-                        plano_atual=vida.plano_atual,
-                        atual_vigente_reais=vida.atual_reais,
-                        atual_reajustado_reais=vida.atual_reais,
-                        propostas=propostas_map,
-                        diff_reais=diff_map,
+        vistos: set[str] = set()
+        for vida_id, dados in sorted(
+            atual_por_vida.items(),
+            key=lambda x: (x[1].regime_tipo, vidas_map.get(x[0]).nome if x[0] in vidas_map else x[0]),
+        ):
+            if vida_id in vistos:
+                continue
+            vistos.add(vida_id)
+            vida = vidas_map.get(vida_id)
+            if vida is None:
+                continue
+            cols: list[BeneficiarioPropostaColuna] = []
+            for op_id in propostas_selecionadas:
+                sec = next(
+                    (s for s in calculos[op_id].secoes if s.regime_tipo == dados.regime_tipo),
+                    None,
+                )
+                vd = sec.vidas.get(vida_id) if sec else None
+                cols.append(
+                    BeneficiarioPropostaColuna(
+                        opcao_id=op_id,
+                        valor_centavos=vd.proposta_centavos if vd else None,
+                        diff_centavos=vd.diff_mes_centavos if vd else None,
                     )
                 )
+            sg = subgrupos_map.get(dados.subgrupo_id)
+            beneficiarios.append(
+                BeneficiarioApresentacao(
+                    vida_id=vida_id,
+                    nome=vida.nome,
+                    idade=dados.idade,
+                    faixa=dados.faixa,
+                    faixa_rotulo=(
+                        ROTULOS_FAIXA[dados.faixa]
+                        if dados.faixa is not None and 0 <= dados.faixa < 10
+                        else None
+                    ),
+                    parentesco=vida.parentesco.value if vida.parentesco else None,
+                    plano_atual=sg.plano_nome if sg else None,
+                    subgrupo_id=dados.subgrupo_id,
+                    atual_vigente_centavos=dados.vigente_centavos,
+                    atual_reajustado_centavos=dados.reajustado_centavos,
+                    propostas=cols,
+                )
+            )
 
-    if modo == "faixas":
-        for secao in comparativo.secoes:
-            agregado: dict[int, FaixaApresentacao] = {
-                i: FaixaApresentacao(faixa=i, rotulo=ROTULOS_FAIXA[i]) for i in range(10)
-            }
-            valores_por_faixa: dict[int, set[int]] = {i: set() for i in range(10)}
-            for vida in secao.vidas:
-                fx = vida.faixa
-                if fx is None or fx < 0 or fx > 9:
-                    continue
-                ag = agregado[fx]
-                ag.qtd_total += 1
-                if vida.parentesco == "titular":
-                    ag.qtd_titulares += 1
-                else:
-                    ag.qtd_dependentes += 1
-                atual_c = _parse_reais(vida.atual_reais)
-                if atual_c is not None:
-                    valores_por_faixa[fx].add(atual_c)
-                for op_id in propostas_selecionadas:
-                    propostas_map = ag.propostas
-                    propostas_map[op_id] = vida.proposta_reais or "—"
-            for fx, ag in agregado.items():
-                vals = valores_por_faixa[fx]
-                if len(vals) == 1:
-                    ag.atual_vigente_reais = _formatar_reais(next(iter(vals)))
-                elif len(vals) > 1:
-                    total = sum(vals)
-                    ag.observacao_valor = (
-                        "Valores individuais diferentes nesta faixa — total observado exibido."
-                    )
-                    ag.atual_vigente_reais = _formatar_reais(total)
-            for sec in secoes_vm:
-                if sec.regime_tipo == secao.regime_tipo:
-                    for pa in sec.planos_atuais:
-                        pa.faixas = [agregado[i] for i in range(10) if agregado[i].qtd_total > 0]
-
-    totais_gerais = {}
-    if comparativo.totais:
-        totais_gerais = comparativo.totais.model_dump()
+    totais_gerais = TotaisGeraisApresentacao(
+        atual_centavos=calculo_atual.total_atual_centavos,
+        baseline_rotulo=(
+            "Contrato reajustado"
+            if rascunho.escolhas.baseline_escolhido.valor == "reajustado"
+            else "Contrato vigente"
+        ),
+    )
+    for op_id in propostas_selecionadas:
+        calc = calculos[op_id]
+        totais_gerais.propostas[op_id] = calc.total_proposta_centavos
+        totais_gerais.diff_mensal[op_id] = calc.diff_mes_centavos
+        totais_gerais.diff_anual[op_id] = calc.diff_ano_centavos
 
     return PresentationViewModel(
-        titulo=titulo or comparativo.titulo,
+        titulo=titulo or rascunho.titulo,
         subtitulo=rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None,
         data_apresentacao=datetime.now(timezone.utc).strftime("%d/%m/%Y"),
         estudo_id=snap.estudo_id,
         modo=modo,
-        snapshot_id=snap.id,
-        snapshot_hash=snap.hash_sha256,
-        renderer_versao=renderer_versao,
-        gerado_em=datetime.now(timezone.utc).isoformat(),
         propostas_selecionadas=propostas_selecionadas,
         ressalvas=ressalvas or [],
         totais_gerais=totais_gerais,

@@ -62,6 +62,7 @@ class AprovarSnapshotRequest(BaseModel):
     revisor_nome: str
     justificativa: str | None = None
     confirmo_conteudo: bool = False
+    auto_aprovacao: bool = False
 
 
 class AprovarSnapshotResponse(BaseModel):

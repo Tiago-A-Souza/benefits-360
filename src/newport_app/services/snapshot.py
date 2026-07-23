@@ -23,7 +23,7 @@ from newport_app.repository.base import StudyRepository
 from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.services.calculo import RascunhoNaoCompilavelError
-from newport_app.snapshot.hashing import hash_sha256_objeto
+from newport_app.snapshot.hashing import extrair_payload_canonico, hash_snapshot_canonico
 from newport_motor.engine import calcular
 
 
@@ -54,7 +54,7 @@ class SnapshotService:
 
     def _compilar_e_calcular(
         self, rascunho: RascunhoEstudo
-    ) -> tuple[ComparativoResponse, dict, bool]:
+    ) -> tuple[ComparativoResponse, dict, dict, bool]:
         resultado = compile(rascunho, policy_registry=self._policy_registry)
         if not resultado.compilavel:
             raise RascunhoNaoCompilavelError(resultado)
@@ -80,20 +80,23 @@ class SnapshotService:
                 "siscor": [d.model_dump(mode="json") for d in rascunho.documentos_siscor],
                 "cotacao": [d.model_dump(mode="json") for d in rascunho.documentos_cotacao],
             },
+        }
+        payload = {
+            **payload_nucleo,
             "gerado_em": datetime.now(timezone.utc).isoformat(),
         }
-        return comparativo, payload_nucleo, tem_bloqueio
+        return comparativo, payload, payload_nucleo, tem_bloqueio
 
     def gerar_snapshot_candidato(self, estudo_id: str) -> GerarSnapshotResponse:
         rascunho = self._estudos.obter_rascunho(estudo_id)
         if rascunho is None:
             raise ValueError("Estudo não encontrado")
-        comparativo, payload, tem_bloqueio = self._compilar_e_calcular(rascunho)
+        comparativo, payload, payload_nucleo, tem_bloqueio = self._compilar_e_calcular(rascunho)
         if tem_bloqueio:
             raise SnapshotBloqueadoError(
                 "O comparativo possui bloqueios — resolva pendências antes do snapshot."
             )
-        digest = hash_sha256_objeto(payload)
+        digest = hash_snapshot_canonico(payload_nucleo)
         snap = SnapshotCalculo(
             id=str(uuid.uuid4()),
             estudo_id=estudo_id,
@@ -153,8 +156,7 @@ class SnapshotService:
             raise SnapshotNaoEncontradoError(snapshot_id)
         if snap.estado != "candidato":
             raise AprovacaoInvalidaError("Somente snapshots candidatos podem ser aprovados.")
-        auto = req.revisor_nome.strip().lower() in {"auto", "eu", "mesmo"}
-        if auto and not req.justificativa:
+        if req.auto_aprovacao and not req.justificativa:
             raise AprovacaoInvalidaError(
                 "Justificativa obrigatória para autoaprovação provisória."
             )
@@ -164,7 +166,7 @@ class SnapshotService:
             revisor_nome=req.revisor_nome.strip(),
             aprovado_em=datetime.now(timezone.utc),
             justificativa=req.justificativa,
-            auto_aprovacao=auto,
+            auto_aprovacao=req.auto_aprovacao,
         )
         self._snapshots.salvar_aprovacao(aprov)
         self._snapshots.marcar_aprovado(snapshot_id)

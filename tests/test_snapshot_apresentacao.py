@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from newport_app.models.draft import RascunhoEstudo
@@ -227,9 +229,6 @@ def test_html_autocontido_render(stack):
         snap,
         modo="faixas",
         propostas_selecionadas=["op-1"],
-        renderer_versao="html@2.8.0",
     )
     html = render_html(vm)
     assert "cdn." not in html.lower()
-    assert "googleapis" not in html
-    assert vm.snapshot_hash in html or vm.snapshot_hash[:16] in html

@@ -247,3 +247,63 @@ export async function gerarApresentacaoHtml(estudoId, snapshotId, body) {
   );
   return tratarResposta(res, "Não foi possível gerar o HTML.");
 }
+
+export async function obterHistoricoEstudo(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/historico`);
+  return tratarResposta(res, "Não foi possível carregar o histórico.");
+}
+
+export async function listarClientes() {
+  const res = await fetch(`${API}/clientes`);
+  return tratarResposta(res, "Não foi possível listar clientes.");
+}
+
+export async function criarCliente(nome) {
+  const res = await fetch(`${API}/clientes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nome }),
+  });
+  return tratarResposta(res, "Não foi possível criar cliente.");
+}
+
+export async function listarCiclosCliente(clienteId) {
+  const res = await fetch(`${API}/clientes/${clienteId}/ciclos`);
+  return tratarResposta(res, "Não foi possível listar ciclos.");
+}
+
+export async function vincularEstudoCliente(estudoId, body) {
+  const res = await fetch(`${API}/estudos/${estudoId}/historico/vincular`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return tratarResposta(res, "Não foi possível vincular estudo.");
+}
+
+export async function confirmarVinculo(estudoId, body) {
+  const res = await fetch(`${API}/estudos/${estudoId}/historico/vinculos/confirmar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return tratarResposta(res, "Não foi possível confirmar vínculo.");
+}
+
+export async function confirmarVinculoLote(estudoId, body) {
+  const res = await fetch(`${API}/estudos/${estudoId}/historico/vinculos/confirmar-lote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return tratarResposta(res, "Não foi possível confirmar lote.");
+}
+
+export async function registrarPlanoContratado(estudoId, body) {
+  const res = await fetch(`${API}/estudos/${estudoId}/plano-contratado`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return tratarResposta(res, "Não foi possível registrar plano contratado.");
+}

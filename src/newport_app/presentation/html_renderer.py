@@ -1,133 +1,299 @@
-"""Renderer HTML autocontido — ETAPA 2.8."""
+"""Renderer HTML autocontido — ETAPA 2.8.1 (sem metadados técnicos no material do cliente)."""
 
 from __future__ import annotations
 
 import html
 
-from newport_app.models.presentation import PresentationViewModel
-from newport_app.snapshot.hashing import hash_sha256_objeto
+from newport_app.models.presentation import (
+    FaixaApresentacao,
+    PlanoAtualApresentacao,
+    PresentationViewModel,
+    PropostaApresentacao,
+    SecaoRegimeApresentacao,
+)
+from newport_app.presentation.formatacao import formatar_reais
 
-RENDERER_VERSAO = "html@2.8.0"
+RENDERER_VERSAO = "html@2.8.1"
+PROPOSTAS_POR_PAGINA = 3
+
+
+def _cel(valor: int | None) -> str:
+    return html.escape(formatar_reais(valor))
+
+
+def _meta_proposta(prop: PropostaApresentacao) -> str:
+    partes = [
+        f"<strong>{html.escape(prop.operadora)} — {html.escape(prop.plano_nome)}</strong>",
+    ]
+    if prop.acomodacao:
+        partes.append(f"Acomodação: {html.escape(prop.acomodacao)}")
+    if prop.modalidade:
+        partes.append(f"Modalidade: {html.escape(prop.modalidade)}")
+    if prop.copart_descricao:
+        partes.append(f"Coparticipação: {html.escape(prop.copart_descricao)}")
+    if prop.validade:
+        partes.append(f"Validade: {html.escape(prop.validade)}")
+    if prop.premio_centavos is not None:
+        partes.append(f"Prêmio: {_cel(prop.premio_centavos)}")
+    if prop.iof_centavos is not None:
+        partes.append(f"IOF: {_cel(prop.iof_centavos)}")
+    if prop.total_recorrente_centavos is not None:
+        partes.append(f"Total recorrente: {_cel(prop.total_recorrente_centavos)}")
+    return " · ".join(partes)
+
+
+def _render_cabecalho_propostas_pagina(
+    propostas: list[PropostaApresentacao],
+    op_ids: list[str],
+) -> str:
+    linhas = []
+    for op_id in op_ids:
+        prop = next((p for p in propostas if p.opcao_id == op_id), None)
+        if prop:
+            linhas.append(f"<p class='proposta-meta'>{_meta_proposta(prop)}</p>")
+    return "".join(linhas)
+
+
+def _render_tabela_faixas(
+    plano: PlanoAtualApresentacao,
+    propostas: list[PropostaApresentacao],
+    op_ids: list[str],
+) -> str:
+    partes = [
+        f"<h3>Plano atual — {html.escape(plano.operadora)} · {html.escape(plano.plano_nome)}</h3>",
+    ]
+    if plano.acomodacao or plano.copart_descricao:
+        meta = []
+        if plano.acomodacao:
+            meta.append(f"Acomodação: {html.escape(plano.acomodacao)}")
+        if plano.copart_descricao:
+            meta.append(f"Coparticipação: {html.escape(plano.copart_descricao)}")
+        partes.append(f"<p class='plano-meta'>{' · '.join(meta)}</p>")
+
+    partes.append("<table><thead><tr>")
+    partes.append(
+        "<th>Faixa</th><th>Tit.</th><th>Dep.</th><th>Vidas</th>"
+        "<th>Atual vigente</th><th>Atual reajustado</th>"
+    )
+    for op_id in op_ids:
+        prop = next((p for p in propostas if p.opcao_id == op_id), None)
+        rotulo = prop.plano_nome if prop else op_id
+        partes.append(
+            f"<th colspan='3'>{html.escape(rotulo)}<br><small>Unit. · Qtd · Subtotal</small></th>"
+        )
+    partes.append("<th>Obs.</th></tr></thead><tbody>")
+
+    for fx in plano.faixas:
+        partes.append(_render_linha_faixa(fx, op_ids))
+    partes.append("</tbody>")
+
+    partes.append("<tfoot><tr><td colspan='4'><strong>Totais do plano</strong></td>")
+    partes.append(f"<td>{_cel(plano.subtotal_vigente_centavos)}</td>")
+    partes.append(f"<td>{_cel(plano.subtotal_reajustado_centavos)}</td>")
+    for op_id in op_ids:
+        subtotal = sum(
+            col.subtotal_centavos or 0
+            for fx in plano.faixas
+            for col in fx.propostas
+            if col.opcao_id == op_id
+        )
+        partes.append(f"<td colspan='3'>{_cel(subtotal if subtotal else None)}</td>")
+    partes.append("<td></td></tr></tfoot></table>")
+    return "".join(partes)
+
+
+def _render_linha_faixa(fx: FaixaApresentacao, op_ids: list[str]) -> str:
+    vigente = fx.atual_vigente_total_centavos
+    if fx.atual_vigente_unitario_centavos is not None and fx.qtd_total > 0:
+        cel_vig = (
+            f"{_cel(fx.atual_vigente_unitario_centavos)}"
+            f"<br><small>total {_cel(vigente)}</small>"
+        )
+    else:
+        cel_vig = _cel(vigente)
+
+    reaj = fx.atual_reajustado_total_centavos
+    if fx.atual_reajustado_unitario_centavos is not None and fx.qtd_total > 0:
+        cel_reaj = (
+            f"{_cel(fx.atual_reajustado_unitario_centavos)}"
+            f"<br><small>total {_cel(reaj)}</small>"
+        )
+    else:
+        cel_reaj = _cel(reaj)
+
+    partes = [
+        f"<tr><td>{html.escape(fx.rotulo)}</td>",
+        f"<td>{fx.qtd_titulares}</td><td>{fx.qtd_dependentes}</td><td>{fx.qtd_total}</td>",
+        f"<td>{cel_vig}</td><td>{cel_reaj}</td>",
+    ]
+    for op_id in op_ids:
+        col = next((c for c in fx.propostas if c.opcao_id == op_id), None)
+        if col is None or col.quantidade == 0:
+            partes.append("<td>—</td><td>0</td><td>—</td>")
+            continue
+        unit = _cel(col.valor_unitario_centavos) if col.valor_unitario_centavos else "—"
+        partes.append(
+            f"<td>{unit}</td><td>{col.quantidade}</td><td>{_cel(col.subtotal_centavos)}</td>"
+        )
+    partes.append(f"<td>{html.escape(fx.observacao_valor or '')}</td></tr>")
+    return "".join(partes)
+
+
+def _render_totais_secao(secao: SecaoRegimeApresentacao, op_ids: list[str]) -> str:
+    partes = ["<div class='totais-secao'><h4>Totais mensais</h4><table><thead><tr>"]
+    partes.append("<th></th><th>Plano atual</th>")
+    for op_id in op_ids:
+        prop = next((p for p in secao.propostas if p.opcao_id == op_id), None)
+        rotulo = prop.plano_nome if prop else op_id
+        partes.append(f"<th>{html.escape(rotulo)}</th>")
+    partes.append("</tr></thead><tbody>")
+
+    partes.append("<tr><td>Total mensal</td>")
+    partes.append(f"<td>{_cel(secao.totais.atual_centavos)}</td>")
+    for op_id in op_ids:
+        partes.append(f"<td>{_cel(secao.totais.propostas.get(op_id))}</td>")
+    partes.append("</tr><tr><td>Diferença mensal</td><td>—</td>")
+    for op_id in op_ids:
+        partes.append(f"<td>{_cel(secao.totais.diff_mensal.get(op_id))}</td>")
+    partes.append("</tr><tr><td>Diferença anual</td><td>—</td>")
+    for op_id in op_ids:
+        partes.append(f"<td>{_cel(secao.totais.diff_anual.get(op_id))}</td>")
+    partes.append("</tr></tbody></table></div>")
+    return "".join(partes)
 
 
 def render_html(model: PresentationViewModel) -> str:
-    meta_hash = hash_sha256_objeto(model.model_dump(mode="json"))
     css = """
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; color: #1a1a1a; background: #f4f6f8; }
-    .page { max-width: 1200px; margin: 0 auto; padding: 24px; background: #fff; min-height: 100vh; }
+    .page { max-width: 1400px; margin: 0 auto; padding: 24px; background: #fff; min-height: 100vh; }
+    @page { size: landscape; margin: 12mm; }
     @media print {
       body { background: #fff; }
-      .page { page-break-after: always; max-width: none; padding: 16px; }
+      .page { page-break-after: always; max-width: none; padding: 12px; }
       .no-print { display: none; }
+      .secao-regime { page-break-inside: avoid; }
     }
     header { border-bottom: 3px solid #0b5cab; padding-bottom: 12px; margin-bottom: 20px; }
     h1 { color: #0b5cab; margin: 0 0 4px; font-size: 1.6rem; }
+    h2 { font-size: 1.15rem; color: #0b5cab; border-left: 4px solid #0b5cab; padding-left: 8px; }
+    h3 { font-size: 1rem; color: #333; margin-top: 16px; }
     .sub { color: #555; margin: 0; }
     .rascunho { background: #fff3e0; border: 1px solid #ffb74d; padding: 8px 12px; margin: 12px 0; font-weight: 600; color: #e65100; }
     .aviso-pii { background: #fdecea; border: 1px solid #f5c2c0; padding: 8px 12px; margin: 12px 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 12px 0 24px; }
-    th, td { border: 1px solid #dde2e8; padding: 6px 8px; text-align: left; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin: 12px 0 20px; }
+    th, td { border: 1px solid #dde2e8; padding: 5px 6px; text-align: left; vertical-align: top; }
     th { background: #e8f0fa; color: #0b5cab; }
-    .secao-regime { margin-top: 28px; page-break-inside: avoid; }
-    .secao-regime h2 { font-size: 1.1rem; color: #0b5cab; border-left: 4px solid #0b5cab; padding-left: 8px; }
-    .totais { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; }
-    .totais div { background: #f4f6f8; padding: 10px 14px; border-radius: 6px; min-width: 180px; }
-    .totais strong { display: block; font-size: 0.75rem; color: #555; }
-    .ressalvas { font-size: 0.9rem; color: #444; }
-    footer.meta { margin-top: 32px; font-size: 0.7rem; color: #888; border-top: 1px solid #eee; padding-top: 8px; }
+    tfoot td { background: #f4f6f8; font-weight: 600; }
+    .secao-regime { margin-top: 28px; }
+    .proposta-meta, .plano-meta { font-size: 0.85rem; color: #444; margin: 6px 0; }
+    .totais-gerais { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+    .totais-gerais div { background: #f4f6f8; padding: 10px 14px; border-radius: 6px; min-width: 160px; }
+    .totais-gerais strong { display: block; font-size: 0.72rem; color: #555; }
+    .totais-secao { margin-top: 12px; }
+    .ressalvas { font-size: 0.9rem; color: #444; margin-top: 20px; }
+    .pagina-faixas { margin-bottom: 24px; page-break-inside: avoid; }
     """
 
     partes = [
         "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='utf-8'>",
         f"<title>{html.escape(model.titulo)}</title>",
-        f"<style>{css}</style></head><body><div class='page'>",
+        f"<style>{css}</style></head><body>",
+    ]
+
+    pagina_idx = 0
+
+    def nova_pagina(conteudo: list[str]) -> None:
+        nonlocal pagina_idx
+        partes.append(f"<div class='page'>")
+        partes.extend(conteudo)
+        partes.append("</div>")
+        pagina_idx += 1
+
+    cabecalho = [
         "<header>",
         f"<h1>{html.escape(model.titulo)}</h1>",
         f"<p class='sub'>{html.escape(model.subtitulo or '')} · {html.escape(model.data_apresentacao)}</p>",
         "</header>",
         f"<div class='rascunho'>{html.escape(model.aviso_rascunho_interno)}</div>",
     ]
-
     if model.modo == "beneficiario":
-        partes.append(
+        cabecalho.append(
             "<div class='aviso-pii'>Este material contém nomes de beneficiários. "
             "Mantenha em armazenamento privado.</div>"
         )
 
-    if model.totais_gerais:
-        partes.append("<div class='totais'>")
-        for chave, valor in model.totais_gerais.items():
-            if valor and isinstance(valor, str):
-                rotulo = chave.replace("_", " ").title()
-                partes.append(f"<div><strong>{html.escape(rotulo)}</strong>{html.escape(valor)}</div>")
-        partes.append("</div>")
+    tg = model.totais_gerais
+    if tg.atual_centavos is not None or tg.propostas:
+        cabecalho.append("<div class='totais-gerais'>")
+        if tg.baseline_rotulo:
+            cabecalho.append(f"<div><strong>Referência atual</strong>{html.escape(tg.baseline_rotulo)}</div>")
+        if tg.atual_centavos is not None:
+            cabecalho.append(f"<div><strong>Total atual</strong>{_cel(tg.atual_centavos)}</div>")
+        for op_id, total in tg.propostas.items():
+            cabecalho.append(f"<div><strong>Proposta {html.escape(op_id)}</strong>{_cel(total)}</div>")
+        for op_id, diff in tg.diff_mensal.items():
+            if diff is not None:
+                cabecalho.append(f"<div><strong>Δ mensal {html.escape(op_id)}</strong>{_cel(diff)}</div>")
+        cabecalho.append("</div>")
+
+    nova_pagina(cabecalho)
 
     for secao in model.secoes_regime:
-        partes.append(f"<section class='secao-regime'><h2>{html.escape(secao.regime_rotulo)}</h2>")
-        for prop in secao.propostas:
-            partes.append(
-                f"<p><strong>{html.escape(prop.operadora)} — {html.escape(prop.plano_nome)}</strong>"
-                f" · Total: {html.escape(prop.total_mensal_reais or '—')}</p>"
-            )
-        if model.modo == "faixas":
+        for pagina in secao.paginas_faixas:
+            if model.modo != "faixas":
+                continue
+            bloco = [
+                f"<section class='secao-regime'>",
+                f"<h2>{html.escape(secao.regime_rotulo)}</h2>",
+                _render_cabecalho_propostas_pagina(secao.propostas, pagina.propostas_ids),
+            ]
             for plano in secao.planos_atuais:
-                if not plano.faixas:
-                    continue
-                partes.append(
-                    f"<h3>{html.escape(plano.operadora)} — {html.escape(plano.plano_nome)}</h3>"
+                bloco.append(
+                    f"<div class='pagina-faixas'>{_render_tabela_faixas(plano, secao.propostas, pagina.propostas_ids)}</div>"
                 )
-                partes.append("<table><thead><tr><th>Faixa</th><th>Tit.</th><th>Dep.</th>"
-                              "<th>Total vidas</th><th>Atual</th><th>Obs.</th></tr></thead><tbody>")
-                for fx in plano.faixas:
-                    if fx.qtd_total == 0:
-                        continue
-                    partes.append(
-                        f"<tr><td>{html.escape(fx.rotulo)}</td>"
-                        f"<td>{fx.qtd_titulares}</td><td>{fx.qtd_dependentes}</td>"
-                        f"<td>{fx.qtd_total}</td>"
-                        f"<td>{html.escape(fx.atual_vigente_reais or '—')}</td>"
-                        f"<td>{html.escape(fx.observacao_valor or '')}</td></tr>"
-                    )
-                partes.append("</tbody></table>")
-        partes.append("</section>")
+            bloco.append(_render_totais_secao(secao, pagina.propostas_ids))
+            bloco.append("</section>")
+            nova_pagina(bloco)
 
     if model.modo == "beneficiario" and model.beneficiarios:
-        partes.append("<section class='secao-regime'><h2>Detalhamento por beneficiário</h2>")
-        partes.append(
-            "<table><thead><tr><th>Nome</th><th>Idade</th><th>Faixa</th>"
-            "<th>Parentesco</th><th>Plano atual</th><th>Atual</th>"
-        )
-        for op_id in model.propostas_selecionadas:
-            partes.append(f"<th>Proposta {html.escape(op_id[:8])}</th>")
-        partes.append("</tr></thead><tbody>")
-        for b in model.beneficiarios:
-            partes.append(
-                f"<tr><td>{html.escape(b.nome)}</td>"
-                f"<td>{b.idade if b.idade is not None else '—'}</td>"
-                f"<td>{html.escape(b.faixa_rotulo or '—')}</td>"
-                f"<td>{html.escape(b.parentesco or '—')}</td>"
-                f"<td>{html.escape(b.plano_atual or '—')}</td>"
-                f"<td>{html.escape(b.atual_vigente_reais or '—')}</td>"
+        op_ids = model.propostas_selecionadas
+        for i in range(0, len(op_ids), PROPOSTAS_POR_PAGINA):
+            chunk = op_ids[i : i + PROPOSTAS_POR_PAGINA]
+            bloco = ["<section class='secao-regime'><h2>Detalhamento por beneficiário</h2>"]
+            bloco.append("<table><thead><tr>")
+            bloco.append(
+                "<th>Nome</th><th>Idade</th><th>Faixa</th><th>Parentesco</th>"
+                "<th>Plano atual</th><th>Vigente</th><th>Reajustado</th>"
             )
-            for op_id in model.propostas_selecionadas:
-                partes.append(f"<td>{html.escape(b.propostas.get(op_id, '—'))}</td>")
-            partes.append("</tr>")
-        partes.append("</tbody></table></section>")
+            for op_id in chunk:
+                bloco.append(f"<th>Proposta<br><small>{html.escape(op_id)}</small></th><th>Δ</th>")
+            bloco.append("</tr></thead><tbody>")
+            for b in model.beneficiarios:
+                bloco.append(
+                    f"<tr><td>{html.escape(b.nome)}</td>"
+                    f"<td>{b.idade if b.idade is not None else '—'}</td>"
+                    f"<td>{html.escape(b.faixa_rotulo or '—')}</td>"
+                    f"<td>{html.escape(b.parentesco or '—')}</td>"
+                    f"<td>{html.escape(b.plano_atual or '—')}</td>"
+                    f"<td>{_cel(b.atual_vigente_centavos)}</td>"
+                    f"<td>{_cel(b.atual_reajustado_centavos)}</td>"
+                )
+                for op_id in chunk:
+                    col = next((c for c in b.propostas if c.opcao_id == op_id), None)
+                    bloco.append(
+                        f"<td>{_cel(col.valor_centavos if col else None)}</td>"
+                        f"<td>{_cel(col.diff_centavos if col else None)}</td>"
+                    )
+                bloco.append("</tr>")
+            bloco.append("</tbody></table></section>")
+            nova_pagina(bloco)
 
     if model.ressalvas:
-        partes.append("<section class='ressalvas'><h3>Ressalvas</h3><ul>")
+        partes.append("<div class='page'><section class='ressalvas'><h3>Ressalvas comerciais</h3><ul>")
         for r in model.ressalvas:
             partes.append(f"<li>{html.escape(r)}</li>")
-        partes.append("</ul></section>")
+        partes.append("</ul></section></div>")
 
-    partes.extend([
-        "<footer class='meta'>",
-        f"Modo: {html.escape(model.modo)} · Snapshot: {html.escape(model.snapshot_id[:12])}… · ",
-        f"Hash snapshot: {html.escape(model.snapshot_hash[:16])}… · ",
-        f"Hash conteúdo: {html.escape(meta_hash[:16])}… · ",
-        f"Renderer: {html.escape(model.renderer_versao)} · ",
-        f"Gerado: {html.escape(model.gerado_em)}",
-        "</footer></div></body></html>",
-    ])
+    partes.append("</body></html>")
     return "".join(partes)

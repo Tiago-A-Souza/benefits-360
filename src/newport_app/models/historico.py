@@ -1,4 +1,4 @@
-"""Entidades de persistência histórica — ETAPA 2.6."""
+"""Entidades de persistência histórica — ETAPA 2.6 + 2.8.1."""
 
 from __future__ import annotations
 
@@ -8,10 +8,37 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class Cliente(BaseModel):
+    id: str
+    nome: str
+    criado_em: datetime
+
+
+class CicloRenovacao(BaseModel):
+    id: str
+    cliente_id: str
+    numero: int
+    vigencia_inicio: date | None = None
+    vigencia_fim: date | None = None
+    criado_em: datetime
+
+
+class BeneficiarioLogico(BaseModel):
+    id: str
+    cliente_id: str
+    nome: str
+    nascimento: date
+    parentesco: str | None = None
+    sexo: str | None = None
+    criado_em: datetime
+
+
 class EstudoMeta(BaseModel):
     id: str
     titulo: str
     formato: Literal["renovacao", "novo"] = "renovacao"
+    cliente_id: str | None = None
+    ciclo_id: str | None = None
     cliente_nome: str | None = None
     ciclo_numero: int = 1
     estado_workflow: Literal[
@@ -36,7 +63,7 @@ class BeneficiarioParticipacao(BaseModel):
     id: str
     estudo_id: str
     posicao_versao_id: str
-    beneficiario_logico_id: str
+    beneficiario_id: str | None = None
     vida_rascunho_id: str
     nome: str
     nascimento: date
@@ -49,11 +76,39 @@ class BeneficiarioParticipacao(BaseModel):
     valor_centavos: int | None = None
     motivo_alteracao: str | None = None
     sugestao_vinculo: str | None = None
+    vinculo_status: Literal["pendente", "confirmado", "novo", "rejeitado"] = "pendente"
+
+
+class SugestaoVinculoBeneficiario(BaseModel):
+    participacao_id: str
+    sugestao_hash: str
+    beneficiario_candidato_id: str | None = None
+    confianca: str = "baixa"
+    motivo: str
+
+
+class ConfirmarVinculoRequest(BaseModel):
+    participacao_id: str
+    acao: Literal["confirmar", "novo", "rejeitar"]
+    beneficiario_id: str | None = None
+
+
+class ConfirmarVinculoLoteRequest(BaseModel):
+    participacao_ids: list[str]
+    acao: Literal["confirmar_coerentes"]
+
+
+class VincularEstudoRequest(BaseModel):
+    cliente_id: str
+    ciclo_id: str | None = None
+    criar_ciclo: bool = False
+    ciclo_numero: int | None = None
 
 
 class PlanoContratadoVersao(BaseModel):
     id: str
     estudo_id: str
+    ciclo_id: str | None = None
     opcao_proposta_id: str
     operadora: str
     plano_nome: str
@@ -92,3 +147,12 @@ class AuditoriaEvento(BaseModel):
     detalhe: str | None = None
     criado_em: datetime
     criado_por: str = "analista-local"
+
+
+class HistoricoEstudoResponse(BaseModel):
+    estudo: EstudoMeta
+    posicoes: list[PosicaoCadastralVersao] = Field(default_factory=list)
+    participacoes: list[BeneficiarioParticipacao] = Field(default_factory=list)
+    planos_contratados: list[PlanoContratadoVersao] = Field(default_factory=list)
+    ultimo_plano_contratado: PlanoContratadoVersao | None = None
+    sugestoes_vinculo: list[SugestaoVinculoBeneficiario] = Field(default_factory=list)
