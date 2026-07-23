@@ -30,6 +30,15 @@ class TotaisComparativo(BaseModel):
     baseline_rotulo: str
 
 
+class TotaisComparativoNumerico(BaseModel):
+    atual_mensal_centavos: int | None = None
+    proposta_mensal_centavos: int | None = None
+    diff_mes_centavos: int | None = None
+    diff_ano_centavos: int | None = None
+    diff_bps: int | None = None
+    diferenca_semantica: str | None = None
+
+
 class PendenciaItem(BaseModel):
     tipo: str  # bloqueio | alerta | info
     titulo: str
@@ -90,6 +99,25 @@ class DetalheVidaComparativo(BaseModel):
     atual_reais: str | None = None
     proposta_reais: str | None = None
     diff_mes_reais: str | None = None
+    atual_centavos: int | None = None
+    proposta_centavos: int | None = None
+    diff_mes_centavos: int | None = None
+
+
+class FaixaComparativo(BaseModel):
+    faixa: int
+    quantidade: int
+    atual_centavos: int | None = None
+    proposta_centavos: int | None = None
+    diff_centavos: int | None = None
+
+
+class PlanoAtualComparativo(BaseModel):
+    plano_nome: str
+    operadora: str
+    acomodacao: str | None = None
+    mensal_centavos: int | None = None
+    mensal_reais: str | None = None
 
 
 class SecaoComparativo(BaseModel):
@@ -116,14 +144,29 @@ class ResultadoPropostaComparativo(BaseModel):
     opcao_id: str
     cenario_id: str
     plano_nome: str
+    operadora: str = ""
+    acomodacao: str | None = None
     regime_coparticipacao: str
     regime_tipo: str
     grupo_regime: str  # sem_copart | com_copart
+    validade_oficial: str | None = None
     totais: TotaisComparativo | None = None
+    numerico: TotaisComparativoNumerico | None = None
     diferenca_percentual: str | None = None
+    faixas: list[FaixaComparativo] = Field(default_factory=list)
+    destaques: list[str] = Field(default_factory=list)
     secoes: list[SecaoComparativo] = Field(default_factory=list)
     pendencias: list[PendenciaItem] = Field(default_factory=list)
     calculo_realizado: bool = True
+
+
+class SalvarSelecaoApresentacaoRequest(BaseModel):
+    opcao_ids: list[str] = Field(default_factory=list)
+
+
+class SalvarSelecaoApresentacaoResponse(BaseModel):
+    opcao_ids: list[str] = Field(default_factory=list)
+    ordem: list[str] = Field(default_factory=list)
 
 
 class ComparativoResponse(BaseModel):
@@ -134,6 +177,8 @@ class ComparativoResponse(BaseModel):
     totais: TotaisComparativo | None = None
     secoes: list[SecaoComparativo] = Field(default_factory=list)
     propostas: list[ResultadoPropostaComparativo] = Field(default_factory=list)
+    plano_atual: PlanoAtualComparativo | None = None
+    propostas_apresentacao: list[str] = Field(default_factory=list)
     consistencia: ConsistenciaComparativo | None = None
     validade_proposta: str | None = None
     pendencias: list[PendenciaItem] = Field(default_factory=list)

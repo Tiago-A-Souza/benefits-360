@@ -136,6 +136,13 @@ class EscolhasEstudo(BaseModel):
     )
 
 
+class SelecaoApresentacaoRascunho(BaseModel):
+    """Propostas escolhidas para apresentação ao cliente (ordem preservada)."""
+
+    opcao_ids: list[str] = Field(default_factory=list)
+    ordem: list[str] = Field(default_factory=list)
+
+
 class VidaRascunho(BaseModel):
     id: str
     nome: str
@@ -240,6 +247,7 @@ class RascunhoEstudo(BaseModel):
     documentos_cotacao: list[DocumentoCotacaoRascunho] = Field(default_factory=list)
     documentos_siscor: list[DocumentoSiscorRascunho] = Field(default_factory=list)
     escolhas: EscolhasEstudo = Field(default_factory=EscolhasEstudo)
+    selecao_apresentacao: SelecaoApresentacaoRascunho | None = None
     observacoes: ObservacoesRascunho | None = None
     metadados_pptx: MetadadosPptxRascunho | None = None
 

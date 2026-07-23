@@ -63,6 +63,15 @@ export async function calcularEstudo(estudoId) {
   return res.json();
 }
 
+export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
+  const res = await fetch(`${API}/estudos/${estudoId}/comparativo/selecao-apresentacao`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ opcao_ids: opcaoIds }),
+  });
+  return tratarResposta(res, "Não foi possível salvar a seleção para apresentação.");
+}
+
 export async function listarEstudos() {
   const res = await fetch(`${API}/estudos`);
   return tratarResposta(res, "Não foi possível listar estudos.");

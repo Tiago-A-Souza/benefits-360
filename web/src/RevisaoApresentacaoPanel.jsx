@@ -47,16 +47,29 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
       setAprovado(status);
       const ops = rascunho.opcoes_proposta || [];
       setPropostas(ops);
-      if (!propostasSel.length && ops.length) {
-        setPropostasSel(ops.map((o) => o.id));
-      }
       const candidato = lista.find((s) => s.estado === "candidato");
       const snapId = status.aprovado ? status.snapshot_id : candidato?.id;
       if (snapId) {
         const snap = await obterSnapshot(estudoId, snapId);
         setSnapshotAtual(snap);
+        const ordemSnap =
+          snap.payload?.propostas_apresentacao ||
+          snap.payload?.comparativo?.propostas_apresentacao ||
+          rascunho.selecao_apresentacao?.ordem ||
+          [];
+        if (ordemSnap.length) {
+          setPropostasSel(ordemSnap);
+        } else if (!propostasSel.length && ops.length) {
+          setPropostasSel(ops.map((o) => o.id));
+        }
       } else {
         setSnapshotAtual(null);
+        const ordemRascunho = rascunho.selecao_apresentacao?.ordem || [];
+        if (ordemRascunho.length) {
+          setPropostasSel(ordemRascunho);
+        } else if (!propostasSel.length && ops.length) {
+          setPropostasSel(ops.map((o) => o.id));
+        }
       }
     } catch (e) {
       setErro(e.message);
@@ -110,7 +123,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
     try {
       const vm = await previewApresentacao(estudoId, snapId, {
         modo,
-        propostas_selecionadas: propostasSel,
+        propostas_selecionadas: [],
         ressalvas: [],
       });
       setPreview(vm);
@@ -138,7 +151,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
     try {
       const res = await gerarApresentacaoHtml(estudoId, snapId, {
         modo,
-        propostas_selecionadas: propostasSel,
+        propostas_selecionadas: [],
         ressalvas: [],
       });
       setEntregavel(res);
@@ -280,19 +293,24 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
 
           <fieldset>
             <legend>Propostas no material</legend>
-            {propostas.map((op) => (
-              <label key={op.id} className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={propostasSel.includes(op.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) setPropostasSel([...propostasSel, op.id]);
-                    else setPropostasSel(propostasSel.filter((id) => id !== op.id));
-                  }}
-                />
-                {op.operadora} — {op.plano_nome}
-              </label>
-            ))}
+            <p className="muted cmp-previa-lead">
+              Seleção definida na tela 5 (Comparativo). Para alterar planos ou ordem, volte ao
+              comparativo financeiro.
+            </p>
+            {propostasSel.length ? (
+              <ol className="cmp-lista-apresentacao">
+                {propostasSel.map((id) => {
+                  const op = propostas.find((o) => o.id === id);
+                  return (
+                    <li key={id}>
+                      {op ? `${op.operadora} — ${op.plano_nome}` : id}
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <p className="erro">Nenhuma proposta selecionada na tela 5.</p>
+            )}
           </fieldset>
 
           <div className="acoes-linha">

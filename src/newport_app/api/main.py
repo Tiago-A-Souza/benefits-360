@@ -51,7 +51,14 @@ from newport_app.models.snapshot import (
     GerarSnapshotResponse,
     SnapshotCalculo,
 )
-from newport_app.models.responses import ComparativoResponse, EstudoResumo, PendenciaItem, ResumoPlanoAtualResponse
+from newport_app.models.responses import (
+    ComparativoResponse,
+    EstudoResumo,
+    PendenciaItem,
+    ResumoPlanoAtualResponse,
+    SalvarSelecaoApresentacaoRequest,
+    SalvarSelecaoApresentacaoResponse,
+)
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     ConfirmacaoExtracaoResponse,
@@ -76,6 +83,11 @@ from newport_app.services.calculo import (
     CalculoService,
     EstudoNaoEncontradoError,
     RascunhoNaoCompilavelError,
+)
+from newport_app.services.comparativo_ui import (
+    SelecaoApresentacaoInvalidaError,
+    resolver_propostas_apresentacao_snapshot,
+    salvar_selecao_apresentacao,
 )
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
@@ -603,6 +615,24 @@ def create_app(
                 },
             ) from None
 
+    @app.put(
+        "/api/estudos/{estudo_id}/comparativo/selecao-apresentacao",
+        response_model=SalvarSelecaoApresentacaoResponse,
+    )
+    def salvar_selecao_apresentacao_estudo(
+        estudo_id: str,
+        body: SalvarSelecaoApresentacaoRequest,
+    ) -> SalvarSelecaoApresentacaoResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        try:
+            resp = salvar_selecao_apresentacao(rascunho, body.opcao_ids)
+        except SelecaoApresentacaoInvalidaError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        repository.salvar_rascunho(rascunho)
+        return resp
+
     @app.post(
         "/api/estudos/{estudo_id}/snapshot",
         response_model=GerarSnapshotResponse,
@@ -695,10 +725,14 @@ def create_app(
                 status_code=422,
                 detail="Pré-visualização disponível somente para snapshot aprovado.",
             ) from None
+        propostas = resolver_propostas_apresentacao_snapshot(
+            snap.payload,
+            body.propostas_selecionadas or None,
+        )
         return construir_view_model(
             snap,
             modo=body.modo,
-            propostas_selecionadas=body.propostas_selecionadas,
+            propostas_selecionadas=propostas,
             ressalvas=body.ressalvas,
             titulo=body.titulo,
         )

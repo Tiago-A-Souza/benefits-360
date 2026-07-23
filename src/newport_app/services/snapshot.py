@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from newport_app.adapters.motor_out import motor_result_para_comparativo
+from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
 from newport_app.draft_compiler import compile
 from newport_app.models.compilation import COMPILER_VERSAO
 from newport_app.models.draft import RascunhoEstudo
@@ -73,6 +74,7 @@ class SnapshotService:
             "effective_policy": resultado.compilado.effective_policy.model_dump(mode="json"),
             "motor_result": motor_result.model_dump(mode="json"),
             "comparativo": comparativo.model_dump(mode="json"),
+            "propostas_apresentacao": ordem_apresentacao_rascunho(rascunho),
             "compiler_versao": COMPILER_VERSAO,
             "motor_versao": MOTOR_VERSAO,
             "policy_set_versao": rascunho.policy_set_versao,

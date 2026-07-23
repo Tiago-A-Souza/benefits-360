@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 from newport_app.models.draft import RascunhoEstudo
+from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
 from newport_app.models.responses import (
     AuditoriaItem,
     ComparativoResponse,
     ConsistenciaComparativo,
     DetalheVidaComparativo,
     EstudoResumo,
+    FaixaComparativo,
     PendenciaItem,
+    PlanoAtualComparativo,
     ResultadoPropostaComparativo,
     SecaoComparativo,
     TotaisComparativo,
+    TotaisComparativoNumerico,
 )
 from newport_app.presentation.textos import (
     descricao_estudo,
@@ -115,6 +119,130 @@ def _formatar_percentual(atual_centavos: int, proposta_centavos: int) -> str | N
     return f"{sinal}{texto}%"
 
 
+def _centavos_valor(valor) -> int | None:
+    if valor is None:
+        return None
+    return valor.centavos
+
+
+def _calcular_diff_bps(atual_centavos: int, proposta_centavos: int) -> int | None:
+    if atual_centavos == 0:
+        return None
+    return round(((proposta_centavos - atual_centavos) / atual_centavos) * 10_000)
+
+
+def _montar_numerico_cenario(
+    cenario: ScenarioResult,
+) -> TotaisComparativoNumerico | None:
+    atual = cenario.total_atual_baseline_centavos
+    proposta = cenario.total_proposta_centavos
+    diff_m = cenario.diff_mes_centavos
+    diff_a = cenario.diff_ano_centavos
+    if not (atual and proposta and diff_m and diff_a):
+        return None
+    semantica, _, _ = rotulos_diferenca(diff_m.centavos, diff_a.centavos)
+    return TotaisComparativoNumerico(
+        atual_mensal_centavos=atual.centavos,
+        proposta_mensal_centavos=proposta.centavos,
+        diff_mes_centavos=diff_m.centavos,
+        diff_ano_centavos=diff_a.centavos,
+        diff_bps=_calcular_diff_bps(atual.centavos, proposta.centavos),
+        diferenca_semantica=semantica,
+    )
+
+
+def _montar_faixas(secoes: list[SecaoComparativo]) -> list[FaixaComparativo]:
+    agregado: dict[int, dict[str, int]] = {}
+    for sec in secoes:
+        for vida in sec.vidas:
+            if vida.faixa is None:
+                continue
+            slot = agregado.setdefault(
+                vida.faixa,
+                {"qtd": 0, "atual": 0, "proposta": 0, "diff": 0},
+            )
+            slot["qtd"] += 1
+            slot["atual"] += vida.atual_centavos or 0
+            slot["proposta"] += vida.proposta_centavos or 0
+            slot["diff"] += vida.diff_mes_centavos or 0
+    return [
+        FaixaComparativo(
+            faixa=faixa,
+            quantidade=vals["qtd"],
+            atual_centavos=vals["atual"] or None,
+            proposta_centavos=vals["proposta"] or None,
+            diff_centavos=vals["diff"] or None,
+        )
+        for faixa, vals in sorted(agregado.items())
+    ]
+
+
+def _montar_plano_atual(
+    rascunho: RascunhoEstudo,
+    propostas: list[ResultadoPropostaComparativo],
+) -> PlanoAtualComparativo | None:
+    if not rascunho.subgrupos_atuais:
+        return None
+    sg = rascunho.subgrupos_atuais[0]
+    mensal = None
+    if propostas and propostas[0].numerico:
+        mensal = propostas[0].numerico.atual_mensal_centavos
+    return PlanoAtualComparativo(
+        plano_nome=sg.plano_nome,
+        operadora=sg.operadora,
+        acomodacao=sg.acomodacao,
+        mensal_centavos=mensal,
+        mensal_reais=_formatar_reais(mensal) if mensal is not None else None,
+    )
+
+
+def _calcular_destaques(propostas: list[ResultadoPropostaComparativo]) -> None:
+    ok = [p for p in propostas if p.calculo_realizado and p.numerico]
+    if len(ok) < 2:
+        return
+
+    def _prop_centavos(p: ResultadoPropostaComparativo) -> int:
+        assert p.numerico and p.numerico.proposta_mensal_centavos is not None
+        return p.numerico.proposta_mensal_centavos
+
+    menor_mensal = min(ok, key=_prop_centavos)
+    menor_mensal.destaques.append("menor_mensalidade")
+
+    aumentos = [
+        p
+        for p in ok
+        if p.numerico
+        and p.numerico.diff_mes_centavos is not None
+        and p.numerico.diff_mes_centavos > 0
+    ]
+    if aumentos:
+        menor_aumento = min(
+            aumentos,
+            key=lambda p: p.numerico.diff_mes_centavos if p.numerico else 0,
+        )
+        menor_aumento.destaques.append("menor_aumento")
+
+    economias = [
+        p
+        for p in ok
+        if p.numerico
+        and p.numerico.diff_mes_centavos is not None
+        and p.numerico.diff_mes_centavos < 0
+    ]
+    if economias:
+        maior_economia = min(
+            economias,
+            key=lambda p: p.numerico.diff_mes_centavos if p.numerico else 0,
+        )
+        maior_economia.destaques.append("maior_economia")
+
+    mais_proximo = min(
+        ok,
+        key=lambda p: abs(p.numerico.diff_mes_centavos or 0) if p.numerico else 0,
+    )
+    mais_proximo.destaques.append("mais_proximo_atual")
+
+
 def _diff_exibicao_centavos(diff_centavos: int, semantica: str) -> int:
     if semantica == "empate":
         return 0
@@ -167,6 +295,9 @@ def _montar_secoes_cenario(
             for rv in sg.vidas:
                 vida = vidas_por_id.get(rv.vida_id)
                 baseline_val = rv.atual_reajustado_centavos or rv.atual_vigente_centavos
+                atual_c = _centavos_valor(baseline_val)
+                proposta_c = _centavos_valor(rv.proposta_centavos)
+                diff_c = _centavos_valor(rv.diff_mes_centavos)
                 detalhes.append(
                     DetalheVidaComparativo(
                         vida_id=rv.vida_id,
@@ -178,6 +309,9 @@ def _montar_secoes_cenario(
                         atual_reais=_formatar_reais_opcional(baseline_val),
                         proposta_reais=_formatar_reais_opcional(rv.proposta_centavos),
                         diff_mes_reais=_formatar_reais_opcional(rv.diff_mes_centavos),
+                        atual_centavos=atual_c,
+                        proposta_centavos=proposta_c,
+                        diff_mes_centavos=diff_c,
                     )
                 )
         total_benef += len(detalhes)
@@ -271,11 +405,21 @@ def _montar_propostas(
                     opcao_id=opcao_id,
                     cenario_id=cenario_rasc.id,
                     plano_nome=plano_nome or "Proposta sem nome",
+                    operadora=op.operadora if op else "",
+                    acomodacao=op.acomodacao if op else None,
+                    validade_oficial=(
+                        op.validade_oficial.isoformat()
+                        if op and op.validade_oficial
+                        else None
+                    ),
                     regime_coparticipacao=_rotulo_regime(regime_tipo),
                     regime_tipo=regime_tipo,
                     grupo_regime=_grupo_regime(regime_tipo),
                     totais=None,
+                    numerico=None,
                     diferenca_percentual=None,
+                    faixas=[],
+                    destaques=[],
                     secoes=[],
                     pendencias=_pendencias_proposta(calculo_realizado=False),
                     calculo_realizado=False,
@@ -285,15 +429,13 @@ def _montar_propostas(
 
         secoes, _ = _montar_secoes_cenario(rascunho, cenario_motor)
         totais = _montar_totais_cenario(cenario_motor, rascunho)
+        numerico = _montar_numerico_cenario(cenario_motor)
+        faixas = _montar_faixas(secoes)
         diff_pct = None
-        if (
-            totais
-            and cenario_motor.total_atual_baseline_centavos
-            and cenario_motor.total_proposta_centavos
-        ):
+        if numerico and numerico.atual_mensal_centavos is not None:
             diff_pct = _formatar_percentual(
-                cenario_motor.total_atual_baseline_centavos.centavos,
-                cenario_motor.total_proposta_centavos.centavos,
+                numerico.atual_mensal_centavos,
+                numerico.proposta_mensal_centavos or 0,
             )
 
         propostas.append(
@@ -301,17 +443,26 @@ def _montar_propostas(
                 opcao_id=opcao_id,
                 cenario_id=cenario_rasc.id,
                 plano_nome=plano_nome or "Proposta sem nome",
+                operadora=op.operadora if op else "",
+                acomodacao=op.acomodacao if op else None,
+                validade_oficial=(
+                    op.validade_oficial.isoformat() if op and op.validade_oficial else None
+                ),
                 regime_coparticipacao=_rotulo_regime(regime_tipo),
                 regime_tipo=regime_tipo,
                 grupo_regime=_grupo_regime(regime_tipo),
                 totais=totais,
+                numerico=numerico,
                 diferenca_percentual=diff_pct,
+                faixas=faixas,
+                destaques=[],
                 secoes=secoes,
                 pendencias=_pendencias_proposta(calculo_realizado=True),
                 calculo_realizado=True,
             )
         )
 
+    _calcular_destaques(propostas)
     return propostas
 
 
@@ -505,6 +656,8 @@ def motor_result_para_comparativo(
         totais=totais,
         secoes=secoes,
         propostas=propostas,
+        plano_atual=_montar_plano_atual(rascunho, propostas),
+        propostas_apresentacao=ordem_apresentacao_rascunho(rascunho),
         consistencia=consistencia,
         validade_proposta=_validade_proposta(rascunho),
         pendencias=pendencias,
