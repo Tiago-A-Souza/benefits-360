@@ -1,0 +1,25 @@
+{
+  "porto": {
+    "premio_centavos": 150082,
+    "faixas": 10,
+    "reconciliacao_ok": false
+  },
+  "sulamerica": {
+    "premio_centavos": 221576,
+    "faixas": 10,
+    "reconciliacao_ok": true
+  },
+  "amil": {
+    "opcoes_min": 2,
+    "faixas_por_opcao": 10
+  },
+  "bradesco": {
+    "opcoes": 2,
+    "faixas_primeira": 10,
+    "reconciliacao_ok": false
+  },
+  "omint": {
+    "estado": "ocr_pendente",
+    "faixas": 0
+  }
+}

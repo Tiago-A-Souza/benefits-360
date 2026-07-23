@@ -174,13 +174,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -191,13 +194,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -208,13 +214,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -225,13 +234,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -242,13 +254,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -259,13 +274,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -276,13 +294,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -293,13 +314,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -310,13 +334,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -327,13 +354,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         }
       ]
@@ -357,13 +387,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -374,13 +407,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -391,13 +427,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -408,13 +447,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -425,13 +467,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -442,13 +487,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -459,13 +507,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -476,13 +527,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -493,13 +547,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         },
         {
@@ -510,13 +567,16 @@
           "proveniencia": {
             "origem": "manual",
             "documento_id": null,
+            "documento_hash": null,
             "extrator_versao": "manual",
             "linha_origem": null,
             "celula_origem": null,
             "pagina": null,
             "evidencia": null,
             "coordenadas": null,
-            "confirmado": true
+            "confirmado": true,
+            "confirmado_por": null,
+            "confirmado_em": null
           }
         }
       ],
@@ -527,6 +587,8 @@
       "subtotal_impresso": null,
       "custos_unicos": [],
       "documento_cotacao_id": null,
+      "extracao_id": null,
+      "extracao_opcao_id": null,
       "validade_oficial": null,
       "observacoes": null
     }
