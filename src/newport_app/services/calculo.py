@@ -82,7 +82,7 @@ class CalculoService:
     def confirmar_comparativo(
         self,
         estudo_id: str,
-        hash_informado: str,
+        hash_informado: str | None,
         opcao_ids: list[str],
     ):
         rascunho = self._repo.obter_rascunho(estudo_id)

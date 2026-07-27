@@ -64,10 +64,12 @@ export async function calcularEstudo(estudoId) {
 }
 
 export async function confirmarComparativo(estudoId, hashComparativo, opcaoIds) {
+  const body = { opcao_ids: opcaoIds };
+  if (hashComparativo) body.hash_comparativo = hashComparativo;
   const res = await fetch(`${API}/estudos/${estudoId}/comparativo/confirmar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ hash_comparativo: hashComparativo, opcao_ids: opcaoIds }),
+    body: JSON.stringify(body),
   });
   return tratarResposta(res, "Não foi possível confirmar o comparativo.");
 }

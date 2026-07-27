@@ -4,6 +4,7 @@ import {
   confirmarComparativo,
   obterPendencias,
   obterRascunho,
+  salvarSelecaoApresentacao,
 } from "./api";
 import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
 import { comparativoConfirmado } from "./fluxo/stepStatus";
@@ -53,10 +54,18 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
       const data = await calcularEstudo(estudoId);
       const r = await obterRascunho(estudoId);
       setRascunho(r);
-      if (r?.selecao_apresentacao?.ordem?.length) {
-        data.propostas_apresentacao = r.selecao_apresentacao.ordem;
+      const idsCalculados = (data.propostas || []).map((p) => p.opcao_id).filter(Boolean);
+      const ordemSalva = r?.selecao_apresentacao?.ordem || [];
+      if (data.calculo_realizado && idsCalculados.length && !ordemSalva.length) {
+        await salvarSelecaoApresentacao(estudoId, idsCalculados);
+        data.propostas_apresentacao = idsCalculados;
+        const r2 = await obterRascunho(estudoId);
+        setRascunho(r2);
+      } else if (ordemSalva.length) {
+        data.propostas_apresentacao = ordemSalva;
       }
       setResultado(data);
+      onAtualizado?.();
       if (data.consistencia && !data.consistencia.consistente) {
         setErro(data.consistencia.mensagem);
       }
@@ -68,11 +77,15 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
   }
 
   async function handleConfirmar(opcaoIds) {
-    if (!resultado?.hash_comparativo || !opcaoIds?.length) return;
+    if (!opcaoIds?.length) return;
     setConfirmando(true);
     setErro(null);
     try {
-      await confirmarComparativo(estudoId, resultado.hash_comparativo, opcaoIds);
+      await confirmarComparativo(
+        estudoId,
+        resultado?.hash_comparativo || null,
+        opcaoIds
+      );
       await recarregarContextoLocal();
       onAtualizado?.();
     } catch (e) {
@@ -149,6 +162,12 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
       {resultado && !resultado.calculo_realizado && (
         <p className="erro cmp-erro-global">
           O comparativo não está completo — corrija a inconsistência antes de avançar.
+        </p>
+      )}
+
+      {jaConfirmado && !resultado?.calculo_realizado && (
+        <p className="ok cmp-confirmacao-banner">
+          Comparativo confirmado — use «Próxima etapa» para ir à Apresentação.
         </p>
       )}
 

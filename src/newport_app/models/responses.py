@@ -171,7 +171,7 @@ class SalvarSelecaoApresentacaoResponse(BaseModel):
 
 
 class ConfirmarComparativoRequest(BaseModel):
-    hash_comparativo: str
+    hash_comparativo: str | None = None
     opcao_ids: list[str] = Field(default_factory=list)
 
 

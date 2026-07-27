@@ -98,12 +98,12 @@ def invalidar_confirmacao_por_selecao(rascunho: RascunhoEstudo) -> None:
 
 def confirmar_comparativo_revisao(
     rascunho: RascunhoEstudo,
-    hash_informado: str,
+    hash_informado: str | None,
     opcao_ids: list[str],
     policy_registry: PolicySetRegistry | None = None,
 ) -> ConfirmarComparativoResponse:
     hash_atual, comparativo = hash_comparativo_atual(rascunho, policy_registry)
-    if hash_informado != hash_atual:
+    if hash_informado and hash_informado != hash_atual:
         raise ConfirmacaoComparativoInvalidaError(
             "O comparativo foi alterado — recalcule antes de confirmar."
         )

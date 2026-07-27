@@ -327,10 +327,10 @@ export default function ComparativoExperiencia({
   const [auditoriaAberta, setAuditoriaAberta] = useState(false);
 
   useEffect(() => {
-    if (resultado?.propostas_apresentacao) {
+    if (Array.isArray(resultado?.propostas_apresentacao)) {
       setSelecao(resultado.propostas_apresentacao);
     }
-  }, [resultado]);
+  }, [resultado?.propostas_apresentacao]);
 
   const filtrosNum = useMemo(
     () => ({
@@ -393,6 +393,13 @@ export default function ComparativoExperiencia({
       semantica: "",
     });
   }
+
+  const podeConfirmar =
+    !confirmado &&
+    !confirmando &&
+    selecao.length > 0 &&
+    Boolean(resultado?.calculo_realizado) &&
+    resultado?.consistencia?.consistente !== false;
 
   return (
     <div className="cmp-experiencia">
@@ -695,6 +702,40 @@ export default function ComparativoExperiencia({
         />
       </section>
 
+      {resultado?.calculo_realizado && onConfirmar && (
+        <section className="cmp-confirmacao-secao">
+          <h3 className="cmp-secao-titulo">Confirmar revisão</h3>
+          {!resultado.consistencia?.consistente && (
+            <p className="erro">
+              {resultado.consistencia?.mensagem ||
+                "O comparativo está inconsistente — corrija pendências antes de confirmar."}
+            </p>
+          )}
+          {!resultado.hash_comparativo && (
+            <p className="muted">
+              A versão do comparativo será validada no servidor ao confirmar.
+            </p>
+          )}
+          <p className="cmp-secao-sub muted">
+            {selecao.length === 0
+              ? "Adicione ao menos uma proposta na matriz (botão «Adicionar» nos cards)."
+              : confirmado
+                ? "Comparativo confirmado. Use «Próxima etapa» para ir à Apresentação."
+                : `${selecao.length} proposta(s) selecionada(s) para o material ao cliente.`}
+          </p>
+          <button
+            type="button"
+            className="cmp-btn-principal"
+            disabled={!podeConfirmar}
+            onClick={() => onConfirmar(selecao)}
+          >
+            {confirmando
+              ? "Confirmando…"
+              : "Confirmar comparativo e continuar para apresentação"}
+          </button>
+        </section>
+      )}
+
       {modo === "analise" && (
         <>
           <section className="cmp-detalhes-tecnicos">
@@ -811,36 +852,6 @@ export default function ComparativoExperiencia({
           </section>
         </>
       )}
-
-      {resultado?.calculo_realizado &&
-        resultado.consistencia?.consistente &&
-        onConfirmar && (
-          <section className="cmp-confirmacao-secao">
-            <h3 className="cmp-secao-titulo">Revisão concluída</h3>
-            <p className="cmp-secao-sub muted">
-              {selecionadas.length === 0
-                ? "Selecione ao menos uma proposta na matriz antes de confirmar."
-                : confirmado
-                  ? "Comparativo confirmado. Use «Próxima etapa» para ir à Apresentação."
-                  : "Confirme a revisão para liberar a etapa Apresentação."}
-            </p>
-            <button
-              type="button"
-              className="cmp-btn-principal"
-              disabled={
-                confirmado ||
-                confirmando ||
-                selecionadas.length === 0 ||
-                !resultado.hash_comparativo
-              }
-              onClick={() => onConfirmar(selecao)}
-            >
-              {confirmando
-                ? "Confirmando…"
-                : "Confirmar comparativo e continuar para apresentação"}
-            </button>
-          </section>
-        )}
     </div>
   );
 }
