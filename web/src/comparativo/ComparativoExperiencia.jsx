@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { salvarSelecaoApresentacao } from "../api";
+import BloqueiosComparativo from "./BloqueiosComparativo";
 import { FAIXAS_ROTULOS, classeVariacao, formatBps, formatCentavos } from "./format";
 import {
   filtrarPropostas,
@@ -298,6 +299,7 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
 export default function ComparativoExperiencia({
   estudoId,
   resultado,
+  rascunho = null,
   rotuloEtapa = "Comparativo",
   confirmado = false,
   confirmando = false,
@@ -706,10 +708,18 @@ export default function ComparativoExperiencia({
         <section className="cmp-confirmacao-secao">
           <h3 className="cmp-secao-titulo">Confirmar revisão</h3>
           {!resultado.consistencia?.consistente && (
-            <p className="erro">
-              {resultado.consistencia?.mensagem ||
-                "O comparativo está inconsistente — corrija pendências antes de confirmar."}
-            </p>
+            <>
+              <BloqueiosComparativo
+                consistencia={resultado.consistencia}
+                rascunho={rascunho}
+              />
+              {!resultado.consistencia?.bloqueios?.length && (
+                <p className="erro">
+                  {resultado.consistencia?.mensagem ||
+                    "O comparativo está inconsistente — corrija pendências antes de confirmar."}
+                </p>
+              )}
+            </>
           )}
           {!resultado.hash_comparativo && (
             <p className="muted">

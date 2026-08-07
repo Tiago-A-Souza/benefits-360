@@ -7,6 +7,7 @@ import {
   salvarSelecaoApresentacao,
 } from "./api";
 import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
+import BloqueiosComparativo from "./comparativo/BloqueiosComparativo";
 import { comparativoConfirmado } from "./fluxo/stepStatus";
 import { tituloPasso } from "./fluxo/passos";
 
@@ -67,7 +68,9 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
       setResultado(data);
       onAtualizado?.();
       if (data.consistencia && !data.consistencia.consistente) {
-        setErro(data.consistencia.mensagem);
+        if (!data.consistencia.bloqueios?.length) {
+          setErro(data.consistencia.mensagem);
+        }
       }
     } catch (e) {
       setErro(e.message);
@@ -159,7 +162,11 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
 
       {erro && <p className="erro cmp-erro-global">{erro}</p>}
 
-      {resultado && !resultado.calculo_realizado && (
+      {resultado?.consistencia && !resultado.calculo_realizado && (
+        <BloqueiosComparativo consistencia={resultado.consistencia} rascunho={rascunho} />
+      )}
+
+      {resultado && !resultado.calculo_realizado && !resultado.consistencia?.bloqueios?.length && (
         <p className="erro cmp-erro-global">
           O comparativo não está completo — corrija a inconsistência antes de avançar.
         </p>
@@ -175,6 +182,7 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
         <ComparativoExperiencia
           estudoId={estudoId}
           resultado={resultado}
+          rascunho={rascunho}
           rotuloEtapa={rotuloEtapa}
           confirmado={jaConfirmado}
           confirmando={confirmando}

@@ -6,6 +6,7 @@ from newport_app.models.draft import RascunhoEstudo
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
 from newport_app.models.responses import (
     AuditoriaItem,
+    BloqueioComparativo,
     ComparativoResponse,
     ConsistenciaComparativo,
     DetalheVidaComparativo,
@@ -476,6 +477,131 @@ def _montar_propostas(
     return propostas
 
 
+_ROTULOS_POLICY: dict[str, str] = {
+    "policy.data_referencia_idade": "Data de referência para idade",
+    "policy.baseline_escolhido": "Baseline do plano atual",
+    "policy.estrategia_arredondamento": "Estratégia de arredondamento",
+    "policy.precedencia_atual_vida": "Precedência do valor atual",
+}
+
+
+def _etapa_sugerida_bloqueio(codigo: str, alvo_ref: str | None) -> int | None:
+    if codigo == "B-06":
+        return 4
+    if codigo == "B-07":
+        if alvo_ref and alvo_ref.startswith("policy."):
+            return 1
+        return 2
+    if codigo in ("B-02", "B-03", "B-05"):
+        if alvo_ref and alvo_ref.startswith("opcao:"):
+            return 3
+        if alvo_ref and alvo_ref.startswith("subgrupo:"):
+            return 2
+        return 3
+    if codigo == "B-04":
+        return 2
+    if codigo == "B-08":
+        return 1
+    return None
+
+
+def _resolver_alvo_ref(rascunho: RascunhoEstudo, alvo_ref: str | None) -> str | None:
+    if not alvo_ref:
+        return None
+    if alvo_ref in ("estudo", "estudo:cenarios", "estudo:opcoes_plano"):
+        return {
+            "estudo": "Estudo",
+            "estudo:cenarios": "Cenários do estudo",
+            "estudo:opcoes_plano": "Opções de plano",
+        }[alvo_ref]
+    if alvo_ref.startswith("policy."):
+        return _ROTULOS_POLICY.get(alvo_ref, alvo_ref.replace("policy.", "Política: "))
+    if alvo_ref.startswith("subgrupo:"):
+        partes = alvo_ref.split(":")
+        sg_id = partes[1]
+        for sg in rascunho.subgrupos_atuais:
+            if sg.id == sg_id:
+                return sg.plano_nome or sg.id
+        return sg_id
+    if alvo_ref.startswith("opcao:"):
+        partes = alvo_ref.split(":")
+        op_id = partes[1]
+        for op in rascunho.opcoes_proposta:
+            if op.id == op_id:
+                if len(partes) > 2:
+                    return f"{op.plano_nome} ({partes[2]})"
+                return op.plano_nome
+        return op_id
+    if alvo_ref.startswith("cenario:") and ":alvo:" in alvo_ref:
+        alvo_id = alvo_ref.split(":alvo:", 1)[1]
+        for sg in rascunho.subgrupos_atuais:
+            if sg.id == alvo_id:
+                return sg.plano_nome or sg.id
+        for vida in rascunho.vidas:
+            if vida.id == alvo_id:
+                return vida.nome or vida.id
+        return alvo_id
+    if alvo_ref.startswith("cenario:"):
+        c_id = alvo_ref.split(":")[1]
+        for cenario in rascunho.cenarios:
+            if cenario.id == c_id:
+                return cenario.rotulo or c_id
+        return c_id
+    if alvo_ref.startswith("vida:"):
+        v_id = alvo_ref.split(":")[1]
+        for vida in rascunho.vidas:
+            if vida.id == v_id:
+                return vida.nome or v_id
+        return v_id
+    if alvo_ref.startswith("atribuicao:"):
+        atr_id = alvo_ref.split(":")[1]
+        for cenario in rascunho.cenarios:
+            for atr in cenario.atribuicoes:
+                if atr.id == atr_id:
+                    rotulo = _resolver_alvo_ref(
+                        rascunho, f"{atr.alvo_tipo}:{atr.alvo_id}"
+                    )
+                    return rotulo or atr_id
+        return atr_id
+    return alvo_ref
+
+
+def _extrair_bloqueios_comparativo(
+    rascunho: RascunhoEstudo,
+    resultado: MotorResult,
+) -> list[BloqueioComparativo]:
+    bloqueios: list[BloqueioComparativo] = []
+    vistos: set[tuple[str, str | None]] = set()
+    for val in resultado.validacoes:
+        if val.severidade != SeveridadeValidacao.BLOQUEANTE:
+            continue
+        chave = (val.codigo, val.alvo_ref)
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        trad = _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
+        bloqueios.append(
+            BloqueioComparativo(
+                codigo=val.codigo,
+                mensagem=val.mensagem,
+                severidade=val.severidade.value,
+                alvo_ref=val.alvo_ref,
+                alvo_rotulo=_resolver_alvo_ref(rascunho, val.alvo_ref),
+                etapa_sugerida=_etapa_sugerida_bloqueio(val.codigo, val.alvo_ref),
+                acao_sugerida=trad.acao_sugerida,
+            )
+        )
+    return bloqueios
+
+
+def _montar_mensagem_bloqueios(bloqueios: list[BloqueioComparativo]) -> str:
+    linhas: list[str] = []
+    for bloqueio in bloqueios:
+        alvo = f" ({bloqueio.alvo_rotulo})" if bloqueio.alvo_rotulo else ""
+        linhas.append(f"{bloqueio.codigo}{alvo}: {bloqueio.mensagem}")
+    return "\n".join(linhas)
+
+
 def _avaliar_consistencia(
     rascunho: RascunhoEstudo,
     propostas: list[ResultadoPropostaComparativo],
@@ -525,12 +651,20 @@ def _avaliar_consistencia(
             f"{n_resultados_motor} resultado(s)."
         )
 
+    bloqueios = _extrair_bloqueios_comparativo(rascunho, resultado)
+    mensagem_contagem: str | None = None
+    if n_resultados_motor == 0 and bloqueios:
+        mensagem_contagem = mensagem
+        mensagem = _montar_mensagem_bloqueios(bloqueios)
+
     return ConsistenciaComparativo(
         propostas_selecionadas=n_propostas,
         cenarios_configurados=n_cenarios,
         resultados_apresentados=n_resultados,
         consistente=consistente,
         mensagem=mensagem,
+        mensagem_contagem=mensagem_contagem,
+        bloqueios=bloqueios,
     )
 
 
@@ -634,17 +768,20 @@ def motor_result_para_comparativo(
     propostas = _montar_propostas(rascunho, resultado)
     consistencia = _avaliar_consistencia(rascunho, propostas, resultado)
     if not consistencia.consistente and consistencia.mensagem:
-        pendencias.insert(
-            0,
-            PendenciaItem(
-                tipo="bloqueio",
-                titulo="Comparativo incompleto",
-                descricao=consistencia.mensagem,
-                acao_sugerida="Revise as etapas «Planos selecionados» e «Cotações» antes de aprovar.",
-                codigo="APP-CMP-001",
-                etapa=5,
-            ),
-        )
+        if not (consistencia.bloqueios and len(resultado.cenarios) == 0):
+            pendencias.insert(
+                0,
+                PendenciaItem(
+                    tipo="bloqueio",
+                    titulo="Comparativo incompleto",
+                    descricao=consistencia.mensagem,
+                    acao_sugerida=(
+                        "Revise as etapas «Planos selecionados» e «Cotações» antes de aprovar."
+                    ),
+                    codigo="APP-CMP-001",
+                    etapa=5,
+                ),
+            )
 
     primeira = propostas[0] if propostas else None
     totais = primeira.totais if primeira else None

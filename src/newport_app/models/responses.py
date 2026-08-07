@@ -133,12 +133,24 @@ class SecaoComparativo(BaseModel):
     vidas: list[DetalheVidaComparativo] = Field(default_factory=list)
 
 
+class BloqueioComparativo(BaseModel):
+    codigo: str
+    mensagem: str
+    severidade: str
+    alvo_ref: str | None = None
+    alvo_rotulo: str | None = None
+    etapa_sugerida: int | None = None
+    acao_sugerida: str | None = None
+
+
 class ConsistenciaComparativo(BaseModel):
     propostas_selecionadas: int
     cenarios_configurados: int
     resultados_apresentados: int
     consistente: bool
     mensagem: str | None = None
+    mensagem_contagem: str | None = None
+    bloqueios: list[BloqueioComparativo] = Field(default_factory=list)
 
 
 class ResultadoPropostaComparativo(BaseModel):

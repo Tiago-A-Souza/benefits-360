@@ -2632,6 +2632,52 @@ a.btn-link {
   border-color: #ef9a9a;
 }
 
+.cmp-bloqueios-painel {
+  margin: 1rem 0;
+}
+
+.cmp-bloqueios-titulo {
+  margin: 0 0 0.75rem;
+}
+
+.cmp-bloqueios-lista {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.cmp-bloqueio-item {
+  margin-bottom: 0.75rem;
+}
+
+.cmp-bloqueio-item:last-child {
+  margin-bottom: 0;
+}
+
+.cmp-bloqueio-codigo {
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+
+.cmp-bloqueio-alvo {
+  font-weight: 600;
+}
+
+.cmp-bloqueio-msg {
+  margin: 0.25rem 0 0;
+}
+
+.cmp-bloqueio-acao {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+}
+
+.cmp-bloqueio-contagem {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+}
+
 .comparativo-detalhes-secao {
   margin-top: 1.5rem;
 }
