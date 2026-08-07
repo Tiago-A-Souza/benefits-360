@@ -152,6 +152,8 @@ def _montar_opcao(
             "Operadora",
             texto=OPERADORA,
             pagina=pagina_resumo,
+            trecho=f"Operadora: {OPERADORA}",
+            estado="confirmar",
             parser_versao=PARSER_VERSAO,
             documento_hash=documento_hash,
         ),

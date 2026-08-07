@@ -101,7 +101,7 @@ class ExtracaoCotacaoRepository:
                 """,
                 (estudo_id,),
             ).fetchall()
-        return [ExtracaoCotacaoCandidata.model_validate_json(row["payload"]) for r in rows]
+        return [ExtracaoCotacaoCandidata.model_validate_json(r["payload"]) for r in rows]
 
     def desativar_por_documento(self, estudo_id: str, documento_id: str) -> None:
         with self._connect() as conn:

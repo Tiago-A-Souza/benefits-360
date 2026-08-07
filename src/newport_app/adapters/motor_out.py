@@ -177,6 +177,15 @@ def _montar_faixas(secoes: list[SecaoComparativo]) -> list[FaixaComparativo]:
     ]
 
 
+def _regime_label_rascunho(rascunho: RascunhoEstudo, regime_id: str | None) -> str | None:
+    if not regime_id:
+        return None
+    for reg in rascunho.regimes_copart:
+        if reg.id == regime_id:
+            return _rotulo_regime(reg.tipo)
+    return None
+
+
 def _montar_plano_atual(
     rascunho: RascunhoEstudo,
     propostas: list[ResultadoPropostaComparativo],
@@ -191,6 +200,7 @@ def _montar_plano_atual(
         plano_nome=sg.plano_nome,
         operadora=sg.operadora,
         acomodacao=sg.acomodacao,
+        regime_coparticipacao=_regime_label_rascunho(rascunho, sg.regime_copart_id),
         mensal_centavos=mensal,
         mensal_reais=_formatar_reais(mensal) if mensal is not None else None,
     )
