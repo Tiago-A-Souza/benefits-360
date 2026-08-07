@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from newport_app.agregacao_faixa import agregar_valores_faixa
 from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.presentation import (
@@ -83,16 +84,6 @@ def _propostas_do_regime(
     ]
 
 
-def _agregar_unitario_e_total(valores: list[int]) -> tuple[int | None, int | None, str | None]:
-    if not valores:
-        return None, None, None
-    total = sum(valores)
-    unicos = set(valores)
-    if len(unicos) == 1:
-        return next(iter(unicos)), total, None
-    return None, total, "Valores individuais diferentes — total observado exibido."
-
-
 def _montar_faixas_plano(
     subgrupo_id: str,
     vidas_rascunho: dict[str, object],
@@ -141,8 +132,8 @@ def _montar_faixas_plano(
 
     for fx in range(10):
         ag = faixas[fx]
-        unit_v, tot_v, obs_v = _agregar_unitario_e_total(vigentes_por_faixa[fx])
-        unit_r, tot_r, obs_r = _agregar_unitario_e_total(reajustados_por_faixa[fx])
+        unit_v, tot_v, obs_v = agregar_valores_faixa(vigentes_por_faixa[fx])
+        unit_r, tot_r, obs_r = agregar_valores_faixa(reajustados_por_faixa[fx])
         ag.atual_vigente_unitario_centavos = unit_v
         ag.atual_vigente_total_centavos = tot_v
         ag.atual_reajustado_unitario_centavos = unit_r
@@ -150,7 +141,7 @@ def _montar_faixas_plano(
         obs = obs_v or obs_r
         ag.observacao_valor = obs
         for op_id in propostas_ids:
-            unit_p, sub_p, _ = _agregar_unitario_e_total(proposta_vals[fx][op_id])
+            unit_p, sub_p, _ = agregar_valores_faixa(proposta_vals[fx][op_id])
             ag.propostas.append(
                 PropostaFaixaColuna(
                     opcao_id=op_id,

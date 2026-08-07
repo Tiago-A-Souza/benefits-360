@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from newport_app.agregacao_faixa import agregar_valores_faixa
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import (
     ResumoFaixaPlanoAtual,
@@ -12,6 +13,8 @@ from newport_app.models.responses import (
 )
 from newport_motor.faixa import faixa_em
 from newport_motor.money import apply_rate_bps
+
+_OBS_BASE = "Valores observados por fatura/vida — não substituem tabela oficial."
 
 
 def _formatar_reais(centavos: int | None) -> str | None:
@@ -35,6 +38,25 @@ def _formatar_percentual_bps(bps: int | None) -> str | None:
     return f"{sinal}{inteiro},{dec:02d}%"
 
 
+def _montar_observacao(
+    *,
+    qtd_benef: int,
+    vidas_com_valor: int,
+    tem_faixas: bool,
+) -> str | None:
+    partes: list[str] = []
+    sem_valor = qtd_benef - vidas_com_valor
+    if sem_valor > 0:
+        partes.append(f"{sem_valor} de {qtd_benef} beneficiários sem valor informado.")
+    elif qtd_benef > 0 and vidas_com_valor == 0:
+        partes.append("Nenhum beneficiário com valor informado.")
+    if tem_faixas and vidas_com_valor > 0:
+        partes.append(_OBS_BASE)
+    if not partes:
+        return None
+    return " ".join(partes)
+
+
 def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualResponse:
     data_ref = rascunho.escolhas.data_referencia_idade
     baseline = rascunho.escolhas.baseline_escolhido.valor
@@ -45,6 +67,7 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
         por_faixa: dict[int, list[int]] = defaultdict(list)
         vidas_por_faixa: dict[int, int] = defaultdict(int)
         qtd_benef = 0
+        vidas_com_valor = 0
         for vida in rascunho.vidas_incluidas():
             if vida.subgrupo_atual_id != sg.id:
                 continue
@@ -60,6 +83,7 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
                 cent = vida.valor_conferencia.centavos
             if cent is not None:
                 por_faixa[faixa].append(cent)
+                vidas_com_valor += 1
 
         faixas_resumo: list[ResumoFaixaPlanoAtual] = []
         subtotal = 0
@@ -68,15 +92,15 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
             if qtd == 0:
                 continue
             valores = por_faixa.get(faixa, [])
-            valor_obs = None
-            alerta = None
-            if valores:
-                unicos = set(valores)
-                if len(unicos) == 1:
-                    valor_obs = valores[0]
-                    subtotal += valor_obs * qtd
-                else:
-                    alerta = "Valores diferentes na mesma faixa — revise antes de usar como referência."
+            valor_obs, total_faixa, alerta = agregar_valores_faixa(valores)
+            if total_faixa is not None:
+                subtotal += total_faixa
+            if len(valores) < qtd:
+                falta = qtd - len(valores)
+                aviso_faixa = (
+                    f"{falta} de {qtd} vidas nesta faixa sem valor informado."
+                )
+                alerta = f"{alerta} {aviso_faixa}".strip() if alerta else aviso_faixa
             faixas_resumo.append(
                 ResumoFaixaPlanoAtual(
                     faixa=faixa,
@@ -86,7 +110,7 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
                 )
             )
 
-        vigente = subtotal if subtotal else None
+        vigente = subtotal if vidas_com_valor > 0 else None
         reajustado = None
         if vigente is not None and sg.reajuste_bps is not None:
             reajustado = apply_rate_bps(vigente, sg.reajuste_bps)
@@ -116,10 +140,10 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
                 referencia_comparativo_reais=_formatar_reais(referencia_centavos),
                 faixas=faixas_resumo,
                 subtotal_calculado_reais=_formatar_reais(vigente),
-                observacao=(
-                    "Valores observados por fatura/vida — não substituem tabela oficial."
-                    if faixas_resumo
-                    else None
+                observacao=_montar_observacao(
+                    qtd_benef=qtd_benef,
+                    vidas_com_valor=vidas_com_valor,
+                    tem_faixas=bool(faixas_resumo),
                 ),
             )
         )

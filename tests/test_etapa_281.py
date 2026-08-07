@@ -203,9 +203,9 @@ def test_soma_duas_vidas_mesmo_valor(stack):
 
 
 def test_duas_vidas_valores_diferentes_mesma_faixa(stack):
-    from newport_app.presentation.builder import _agregar_unitario_e_total
+    from newport_app.agregacao_faixa import agregar_valores_faixa
 
-    unit, total, obs = _agregar_unitario_e_total([80_000, 95_000])
+    unit, total, obs = agregar_valores_faixa([80_000, 95_000])
     assert unit is None
     assert total == 175_000
     assert obs is not None

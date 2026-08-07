@@ -1,0 +1,187 @@
+{
+  "data_referencia": "2026-07-24",
+  "total_esperado_centavos": 2623822,
+  "total_bug_centavos": 1705499,
+  "vidas": [
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1996-01-19"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1995-04-04"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1989-08-18"
+    },
+    {
+      "faixa": 2,
+      "centavos": 58493,
+      "nascimento": "1997-11-06"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1996-01-29"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1990-04-24"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1993-08-01"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1991-12-01"
+    },
+    {
+      "faixa": 5,
+      "centavos": 81072,
+      "nascimento": "1984-07-12"
+    },
+    {
+      "faixa": 0,
+      "centavos": 40978,
+      "nascimento": "2018-09-12"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1992-04-16"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1987-12-04"
+    },
+    {
+      "faixa": 6,
+      "centavos": 101339,
+      "nascimento": "1980-07-01"
+    },
+    {
+      "faixa": 8,
+      "centavos": 139342,
+      "nascimento": "1970-03-13"
+    },
+    {
+      "faixa": 9,
+      "centavos": 243848,
+      "nascimento": "1966-11-24"
+    },
+    {
+      "faixa": 1,
+      "centavos": 40978,
+      "nascimento": "2007-06-04"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1988-10-26"
+    },
+    {
+      "faixa": 2,
+      "centavos": 58493,
+      "nascimento": "1998-03-10"
+    },
+    {
+      "faixa": 4,
+      "centavos": 70192,
+      "nascimento": "1992-05-22"
+    },
+    {
+      "faixa": 1,
+      "centavos": 47945,
+      "nascimento": "2005-05-18"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1993-02-24"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1993-10-23"
+    },
+    {
+      "faixa": 5,
+      "centavos": 81072,
+      "nascimento": "1984-04-20"
+    },
+    {
+      "faixa": 0,
+      "centavos": 40978,
+      "nascimento": "2018-02-17"
+    },
+    {
+      "faixa": 1,
+      "centavos": 47945,
+      "nascimento": "2004-02-24"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1997-04-11"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1996-01-18"
+    },
+    {
+      "faixa": 2,
+      "centavos": 58493,
+      "nascimento": "1998-02-26"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1991-06-05"
+    },
+    {
+      "faixa": 0,
+      "centavos": 40978,
+      "nascimento": "2017-05-19"
+    },
+    {
+      "faixa": 1,
+      "centavos": 47945,
+      "nascimento": "2002-12-07"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1988-11-15"
+    },
+    {
+      "faixa": 4,
+      "centavos": 73702,
+      "nascimento": "1992-01-09"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1996-04-27"
+    },
+    {
+      "faixa": 2,
+      "centavos": 58493,
+      "nascimento": "1998-04-28"
+    },
+    {
+      "faixa": 3,
+      "centavos": 70192,
+      "nascimento": "1996-06-26"
+    }
+  ]
+}
