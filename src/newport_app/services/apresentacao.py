@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from newport_app.diagnostico import registrar_evento
 from newport_app.models.snapshot import (
     EntregavelApresentacao,
     GerarApresentacaoRequest,
@@ -43,6 +44,12 @@ class ApresentacaoService:
         if snap.estudo_id != estudo_id:
             raise AprovacaoInvalidaError("Snapshot não pertence ao estudo.")
         if snap.estado != "aprovado":
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="apresentacao",
+                evento="apresentacao_recusada",
+                detalhe={"motivo": "snapshot_nao_aprovado", "snapshot_id": snapshot_id},
+            )
             raise AprovacaoInvalidaError(
                 "Somente snapshots aprovados podem gerar apresentação."
             )

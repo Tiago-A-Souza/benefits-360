@@ -14,6 +14,7 @@ import MeusEstudos from "./MeusEstudos";
 import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import PropostaPanel from "./PropostaPanel";
 import RevisaoApresentacaoPanel from "./RevisaoApresentacaoPanel";
+import DiagnosticoPanel from "./DiagnosticoPanel";
 import SiscorPanel from "./SiscorPanel";
 import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
@@ -106,6 +107,7 @@ export default function App() {
     return (
       <div className="pagina pagina--larga pagina--lista">
         <MeusEstudos onContinuar={entrarEstudo} />
+        <DiagnosticoPanel />
       </div>
     );
   }
@@ -205,6 +207,7 @@ export default function App() {
             )}
           </div>
         </div>
+        <DiagnosticoPanel />
       </div>
     </div>
   );

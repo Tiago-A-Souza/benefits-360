@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from newport_app.adapters.motor_out import rascunho_para_resumo
+from newport_app.diagnostico import registrar_evento
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.compilation import ResultadoCompilacao
 from newport_app.models.draft import RascunhoEstudo
@@ -65,9 +66,33 @@ class CalculoService:
         if rascunho is None:
             raise EstudoNaoEncontradoError(estudo_id)
 
-        digest, comparativo = hash_comparativo_atual(
-            rascunho, policy_registry=self._policy_registry
-        )
+        try:
+            digest, comparativo = hash_comparativo_atual(
+                rascunho, policy_registry=self._policy_registry
+            )
+        except RascunhoNaoCompilavelError as exc:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="calculo",
+                evento="calculo_compilacao_falhou",
+                detalhe={
+                    "erros": [e.codigo for e in exc.resultado.erros],
+                },
+            )
+            raise
+        bloqueios = [p for p in comparativo.pendencias if p.tipo == "bloqueio"]
+        if bloqueios:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="calculo",
+                evento="calculo_bloqueios",
+                detalhe={
+                    "bloqueios": [
+                        {"codigo": p.codigo, "mensagem": p.titulo}
+                        for p in bloqueios
+                    ],
+                },
+            )
         if rascunho.confirmacao_comparativo:
             if rascunho.confirmacao_comparativo.hash_comparativo != digest:
                 rascunho.confirmacao_comparativo = None

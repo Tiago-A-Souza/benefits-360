@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from newport_app.adapters.motor_out import motor_result_para_comparativo
+from newport_app.diagnostico import registrar_evento
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
 from newport_app.draft_compiler import compile
 from newport_app.models.compilation import COMPILER_VERSAO
@@ -95,6 +96,16 @@ class SnapshotService:
             raise ValueError("Estudo não encontrado")
         comparativo, payload, payload_nucleo, tem_bloqueio = self._compilar_e_calcular(rascunho)
         if tem_bloqueio:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="snapshot",
+                evento="snapshot_recusado_bloqueio",
+                detalhe={
+                    "bloqueios": [
+                        p.codigo for p in comparativo.pendencias if p.tipo == "bloqueio"
+                    ],
+                },
+            )
             raise SnapshotBloqueadoError(
                 "O comparativo possui bloqueios — resolva pendências antes do snapshot."
             )
@@ -150,8 +161,20 @@ class SnapshotService:
         req: AprovarSnapshotRequest,
     ) -> AprovarSnapshotResponse:
         if not req.confirmo_conteudo:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="apresentacao",
+                evento="aprovacao_recusada",
+                detalhe={"motivo": "confirmo_conteudo_ausente", "snapshot_id": snapshot_id},
+            )
             raise AprovacaoInvalidaError("Confirme que revisou o conteúdo do snapshot.")
         if not req.revisor_nome.strip():
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="apresentacao",
+                evento="aprovacao_recusada",
+                detalhe={"motivo": "revisor_ausente", "snapshot_id": snapshot_id},
+            )
             raise AprovacaoInvalidaError("Informe o nome do revisor.")
         snap = self.obter_snapshot(snapshot_id)
         if snap.estudo_id != estudo_id:

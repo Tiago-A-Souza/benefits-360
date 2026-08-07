@@ -11,6 +11,7 @@ from typing import Any
 from collections.abc import Callable
 
 from newport_app.config.paths import diretorio_uploads
+from newport_app.diagnostico import registrar_evento
 from newport_app.draft_compiler.structural import validar_estrutura
 from newport_app.models.draft import (
     ComponenteFinanceiroRascunho,
@@ -304,6 +305,14 @@ class ImportacaoSiscorService:
             criado_por=criado_por,
         )
         if not resultado.sucesso or resultado.candidata is None:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="siscor",
+                evento="importacao_arquivo_erro",
+                detalhe={
+                    "erros": [e.codigo for e in resultado.erros_arquivo],
+                },
+            )
             return ResultadoImportacaoSiscorResponse(
                 sucesso=False,
                 erros_arquivo=resultado.erros_arquivo,
@@ -407,6 +416,16 @@ class ImportacaoSiscorService:
             self._on_rascunho_alterado(rascunho.id, "Confirmação em lote SISCOR")
 
         excecoes = sum(1 for l in candidata.linhas if l.tem_excecao and not l.excluida)
+        if excecoes:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="siscor",
+                evento="siscor_linhas_excecao",
+                detalhe={
+                    "importacao_id": candidata.id,
+                    "quantidade": excecoes,
+                },
+            )
         participacoes = 0
         posicoes = 0
         if self._historico:

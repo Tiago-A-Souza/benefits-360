@@ -54,6 +54,16 @@ def diretorio_entregaveis(modo: ModoExecucao | None = None) -> Path:
     return diretorio_dados_demo() / "entregaveis_demo"
 
 
+def diretorio_dados(modo: ModoExecucao | None = None) -> Path:
+    if (modo or modo_execucao()) == ModoExecucao.REAL:
+        return diretorio_runtime_privado()
+    return diretorio_dados_demo()
+
+
+def caminho_diagnostico_jsonl(modo: ModoExecucao | None = None) -> Path:
+    return diretorio_dados(modo) / "diagnostico.jsonl"
+
+
 def diretorio_corpus_cotacoes() -> Path:
     """Corpus privado de cotações (PDFs reais — nunca versionados)."""
     env = os.environ.get("NEWPORT_CORPUS_COTACOES")

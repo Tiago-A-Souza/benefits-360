@@ -253,6 +253,12 @@ def create_app(
             "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
         }
 
+    @app.get("/api/diagnostico")
+    def listar_diagnostico(limite: int = Query(default=200, ge=1, le=1000)) -> dict:
+        from newport_app.diagnostico import listar_eventos
+
+        return {"eventos": listar_eventos(limite=limite)}
+
     @app.get("/api/estudos", response_model=list[EstudoResumo])
     def listar_estudos() -> list[EstudoResumo]:
         resumos = service.listar_resumos()
@@ -592,15 +598,19 @@ def create_app(
 
     @app.get("/api/estudos/{estudo_id}/documentos-cotacao/{documento_id}/pdf")
     def baixar_pdf_cotacao(estudo_id: str, documento_id: str):
-        from fastapi.responses import FileResponse
+        from fastapi.responses import Response
 
         caminho = cotacao.caminho_pdf(documento_id)
         if caminho is None:
             raise HTTPException(status_code=404, detail="PDF não encontrado") from None
-        return FileResponse(
-            caminho,
+        return Response(
+            content=caminho.read_bytes(),
             media_type="application/pdf",
-            filename="cotacao.pdf",
+            headers={
+                "Content-Disposition": 'inline; filename="cotacao.pdf"',
+                "Cache-Control": "private, max-age=3600",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
 
     @app.post("/api/estudos/{estudo_id}/calcular", response_model=ComparativoResponse)
