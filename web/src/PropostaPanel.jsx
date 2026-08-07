@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { obterRascunho, salvarRascunho } from "./api";
 import CotacaoPdfPanel from "./CotacaoPdfPanel";
+import { buildPrefillManualFromExtracao } from "./cotacaoPdf/prefillManual";
 import {
   BASES_IOF,
   MODALIDADES,
@@ -130,14 +131,37 @@ export default function PropostaPanel({
     setRascunho((prev) => patchCompFinanceiro(prev, campo, texto));
   }
 
-  function adicionarOpcao() {
+  function adicionarOpcao(prefill) {
     setManualAberto(true);
     setRascunho((prev) => {
       const copia = structuredClone(prev);
-      copia.opcoes_proposta.push(novaOpcao());
+      const opcao = { ...novaOpcao(), ...(prefill || {}) };
+      copia.opcoes_proposta.push(opcao);
+      if (prefill?.documento_cotacao_id) {
+        const docs = copia.documentos_cotacao || [];
+        const jaExiste = docs.some((d) => d.id === prefill.documento_cotacao_id);
+        if (!jaExiste && prefill._documento_meta) {
+          copia.documentos_cotacao = [...docs, prefill._documento_meta];
+        }
+      }
+      setSel(copia.opcoes_proposta.length - 1);
       return copia;
     });
-    setSel(rascunho.opcoes_proposta.length);
+  }
+
+  function abrirManualDesdeExtracao(detalhe, doc) {
+    const prefill = buildPrefillManualFromExtracao(detalhe, doc);
+    if (doc?.id) {
+      prefill._documento_meta = {
+        id: doc.id,
+        nome_arquivo: doc.nome_arquivo || "cotação.pdf",
+        hash_sha256: doc.hash_sha256 || null,
+        template_id: doc.template_id || null,
+        operadora_detectada: doc.operadora_detectada || null,
+      };
+    }
+    adicionarOpcao(prefill);
+    setMsg("Formulário manual aberto com os dados lidos do PDF. Complete as tarifas e salve.");
   }
 
   async function handleSalvar() {
@@ -172,6 +196,7 @@ export default function PropostaPanel({
           recarregar();
           onSalvo?.();
         }}
+        onPreencherManualmente={abrirManualDesdeExtracao}
         cestaGlobal={cestaGlobal}
         setCestaGlobal={setCestaGlobal}
         opcoesComparativo={opcoesComparativo}
@@ -211,7 +236,7 @@ export default function PropostaPanel({
                   {o.plano_nome || o.operadora || `Cotação ${i + 1}`}
                 </button>
               ))}
-            <button type="button" className="secundario btn-compacto" onClick={adicionarOpcao}>
+            <button type="button" className="secundario btn-compacto" onClick={() => adicionarOpcao()}>
               + Nova cotação manual
             </button>
           </div>

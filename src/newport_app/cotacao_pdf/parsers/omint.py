@@ -19,6 +19,26 @@ def identificar(doc: PdfDocumento) -> bool:
     return "OMINT" in amostra
 
 
+def _opcao_esqueleto(documento_hash: str) -> OpcaoCotacaoCandidata:
+    return OpcaoCotacaoCandidata(
+        id=str(uuid.uuid4()),
+        operadora=novo_campo(
+            "Operadora",
+            texto=OPERADORA,
+            estado="confirmar",
+            parser_versao=PARSER_VERSAO,
+            documento_hash=documento_hash,
+        ),
+        plano_nome=novo_campo(
+            "Nome do plano",
+            texto="Omint — revisão manual",
+            estado="revisar",
+            parser_versao=PARSER_VERSAO,
+            documento_hash=documento_hash,
+        ),
+    )
+
+
 def parse(
     doc: PdfDocumento,
     *,
@@ -46,24 +66,7 @@ def parse(
                 severidade="alerta",
             )
         )
-        opcao_esqueleto = OpcaoCotacaoCandidata(
-            id=str(uuid.uuid4()),
-            operadora=novo_campo(
-                "Operadora",
-                texto=OPERADORA,
-                estado="confirmar",
-                parser_versao=PARSER_VERSAO,
-                documento_hash=documento_hash,
-            ),
-            plano_nome=novo_campo(
-                "Nome do plano",
-                texto="Omint — revisão manual",
-                estado="revisar",
-                parser_versao=PARSER_VERSAO,
-                documento_hash=documento_hash,
-            ),
-        )
-        return [opcao_esqueleto], alertas, meta
+        return [_opcao_esqueleto(documento_hash)], alertas, meta
 
     alertas.append(
         AlertaExtracaoCotacao(
@@ -72,4 +75,4 @@ def parse(
             severidade="alerta",
         )
     )
-    return [], alertas, meta
+    return [_opcao_esqueleto(documento_hash)], alertas, meta

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   aplicarExtracaoCotacao,
   atualizarCampoExtracao,
-  confirmarLoteExtracao,
   importarCotacaoPdf,
   listarExtracoesCotacao,
   obterExtracaoCotacao,
@@ -11,7 +10,7 @@ import {
   removerExtracaoCotacao,
   salvarRascunho,
   selecionarOpcaoExtracao,
-  urlPdfCotacao,
+  carregarPdfCotacaoBlob,
 } from "./api";
 import FilePickerButton from "./components/FilePickerButton";
 import {
@@ -37,9 +36,15 @@ import {
   rotuloEstado,
   rotuloReconciliacao,
   rotuloRegime,
+  resumirMotivosBloqueio,
   situacaoOpcao,
   traduzirAlerta,
 } from "./cotacaoPdf/utils";
+import {
+  executarUploadLote,
+  formatarResumoUploads,
+  primeiroUploadComSucesso,
+} from "./cotacaoPdf/uploadLote";
 
 function BadgeSituacao({ situacao }) {
   const cls =
@@ -389,16 +394,26 @@ function TabelaSelecaoCompacta({
               return (
                 <div
                   key={op.id}
-                  className={`linha-plano-selecao${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${estado.codigo === "adicionado" ? " linha-plano-selecao--adicionada" : ""}${estado.codigo === "remover" ? " linha-plano-selecao--remover" : ""}`}
+                  role="checkbox"
+                  aria-checked={Boolean(op.selecionada_para_comparativo)}
+                  tabIndex={0}
+                  className={`linha-plano-selecao linha-plano-selecao--clicavel${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${estado.codigo === "adicionado" ? " linha-plano-selecao--adicionada" : ""}${estado.codigo === "remover" ? " linha-plano-selecao--remover" : ""}`}
+                  onClick={() => onToggle(op.id, !op.selecionada_para_comparativo)}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      onToggle(op.id, !op.selecionada_para_comparativo);
+                    }
+                  }}
                 >
-                  <label className="linha-plano-check">
+                  <span className="linha-plano-check" aria-hidden="true">
                     <input
                       type="checkbox"
+                      readOnly
+                      tabIndex={-1}
                       checked={Boolean(op.selecionada_para_comparativo)}
-                      onChange={(e) => onToggle(op.id, e.target.checked)}
-                      aria-label={`Selecionar ${nomePlanoExibicao(op)}`}
                     />
-                  </label>
+                  </span>
                   <span className="linha-plano-nome" title={nomePlanoExibicao(op)}>
                     {nomePlanoExibicao(op)}
                   </span>
@@ -444,130 +459,68 @@ function TabelaSelecaoCompacta({
   );
 }
 
-function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTabela, confirmando }) {
+function RevisaoPlano({ op, quantidades, siscorCtx, validadeDocumento, onSalvarCampo }) {
   const faixasPorIndice = Object.fromEntries((op.tabela || []).map((fx) => [fx.faixa, fx]));
   let subtotal = 0;
   const sit = situacaoOpcao(op);
   const temPop = quantidades && Object.values(quantidades).some((q) => q > 0);
   const estimativaIndisponivel = siscorCtx?.exigeEscolha || !temPop;
-  const regimeAtual = op.regime_copart?.texto || "sem";
-  const pctAtual = op.copart_percentual?.inteiro ?? "";
+  const validadeAtual = op.validade_oficial?.data || validadeDocumento || "";
+  const validadePendente = !validadeAtual;
 
   return (
     <div className="cartao cartao--interno revisao-plano">
       <div className="revisao-plano-cabecalho">
-        <span className="revisao-plano-rotulo">Revisão do plano</span>
+        <span className="revisao-plano-rotulo">Plano selecionado</span>
         <strong className="revisao-plano-nome">{nomePlanoExibicao(op)}</strong>
       </div>
 
-      <div className="campos-revisao-grid">
-        <label className="campo-revisao campo-revisao--nome">
-          <span>Nome</span>
-          <div className="campo-revisao-nome-linha">
-            <input
-              type="text"
-              defaultValue={op.plano_nome?.texto || ""}
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (!v || !op.plano_nome?.id) return;
-                const patch = { confirmado: true };
-                if (v !== op.plano_nome?.texto) patch.texto = v;
-                if (!op.plano_nome.confirmado || patch.texto) {
-                  onSalvarCampo(op.plano_nome.id, patch);
-                }
-              }}
-            />
-            {op.plano_nome?.estado === "revisar" && !op.plano_nome?.confirmado && (
-              <button
-                type="button"
-                className="secundario btn-compacto"
-                onClick={() =>
-                  onSalvarCampo(op.plano_nome.id, {
-                    texto: op.plano_nome.texto,
-                    confirmado: true,
-                  })
-                }
-              >
-                Confirmar nome
-              </button>
-            )}
-          </div>
-        </label>
-        <label className="campo-revisao">
-          <span>Acomodação</span>
-          <select
-            defaultValue={inferirAcomodacao(op)}
-            onChange={(e) => {
-              if (op.acomodacao?.id) {
-                onSalvarCampo(op.acomodacao.id, { texto: e.target.value, confirmado: true });
-              }
-            }}
-          >
-            <option value="Enfermaria">Enfermaria</option>
-            <option value="Apartamento">Apartamento</option>
-          </select>
-        </label>
-        <label className="campo-revisao">
-          <span>Tipo fiscal</span>
-          <select
-            defaultValue={op.tipo_fiscal?.texto || "seguradora"}
-            onChange={(e) => {
-              if (op.tipo_fiscal?.id) {
-                onSalvarCampo(op.tipo_fiscal.id, { texto: e.target.value, confirmado: true });
-              }
-            }}
-          >
-            <option value="seguradora">Seguradora</option>
-            <option value="operadora">Operadora</option>
-          </select>
-        </label>
-        <label className="campo-revisao">
-          <span>Coparticipação</span>
-          <select
-            defaultValue={regimeAtual}
-            onChange={(e) => {
-              if (op.regime_copart?.id) {
-                onSalvarCampo(op.regime_copart.id, { texto: e.target.value, confirmado: true });
-              }
-            }}
-          >
-            <option value="sem">Sem coparticipação</option>
-            <option value="parcial">Coparticipação parcial</option>
-            <option value="a_confirmar">A confirmar</option>
-          </select>
-        </label>
-        <label className="campo-revisao">
-          <span>% copart.</span>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            placeholder="—"
-            defaultValue={pctAtual}
-            onBlur={(e) => {
-              if (op.copart_percentual?.id) {
-                const n = e.target.value === "" ? null : parseInt(e.target.value, 10);
-                onSalvarCampo(op.copart_percentual.id, {
-                  inteiro: Number.isNaN(n) ? null : n,
-                  confirmado: n != null,
-                });
-              }
-            }}
-          />
-        </label>
-        <label className="campo-revisao">
-          <span>Validade</span>
+      <dl className="revisao-plano-resumo">
+        <div>
+          <dt>Operadora</dt>
+          <dd>{op.operadora?.texto || "—"}</dd>
+        </div>
+        <div>
+          <dt>Acomodação</dt>
+          <dd>{inferirAcomodacao(op)}</dd>
+        </div>
+        <div>
+          <dt>Tipo fiscal</dt>
+          <dd>{op.tipo_fiscal?.texto === "operadora" ? "Operadora" : "Seguradora"}</dd>
+        </div>
+        <div>
+          <dt>Coparticipação</dt>
+          <dd>{rotuloRegime(op)}</dd>
+        </div>
+        <div>
+          <dt>Validade</dt>
+          <dd>{validadeAtual || "—"}</dd>
+        </div>
+      </dl>
+
+      {validadePendente && (
+        <label className="campo-revisao campo-revisao--validade">
+          <span>Validade da cotação</span>
           <input
             type="date"
-            defaultValue={op.validade_oficial?.data || ""}
+            defaultValue=""
             onBlur={(e) => {
               if (op.validade_oficial?.id && e.target.value) {
                 onSalvarCampo(op.validade_oficial.id, { data: e.target.value, confirmado: true });
               }
             }}
           />
+          <span className="muted revisao-plano-dica">
+            Não encontrada no PDF — informe para concluir a proposta.
+          </span>
         </label>
-      </div>
+      )}
+
+      {!validadePendente && (
+        <p className="muted revisao-plano-dica">
+          Dados extraídos do PDF. Use <strong>Corrigir</strong> na tabela apenas se algum valor estiver errado.
+        </p>
+      )}
 
       <div className="revisao-plano-tabela-wrap">
         <span className="revisao-plano-secao-rotulo">Tabela tarifária (10 faixas)</span>
@@ -587,7 +540,6 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
               const val = fx?.valor?.centavos;
               const linha = val != null && qtd > 0 ? val * qtd : null;
               if (linha) subtotal += linha;
-              const pendente = fx?.valor && !fx.valor.confirmado && fx.valor.estado !== "ausente";
               return (
                 <tr
                   key={idx}
@@ -598,15 +550,6 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
                     <div className="tabela-faixas-valor-linha">
                       <span>{val != null ? centavosParaReaisExibicao(val) : "—"}</span>
                       <span className="tabela-faixas-acoes">
-                        {pendente && (
-                          <button
-                            type="button"
-                            className="tabela-faixas-acao"
-                            onClick={() => onSalvarCampo(fx.valor.id, { confirmado: true })}
-                          >
-                            Confirmar
-                          </button>
-                        )}
                         {fx?.valor && (
                           <button
                             type="button"
@@ -618,7 +561,12 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
                               );
                               if (v == null) return;
                               const conv = reaisTextoParaCentavos(v);
-                              if (conv.ok) onSalvarCampo(fx.valor.id, { centavos: conv.centavos });
+                              if (conv.ok) {
+                                onSalvarCampo(fx.valor.id, {
+                                  centavos: conv.centavos,
+                                  confirmado: true,
+                                });
+                              }
                             }}
                           >
                             Corrigir
@@ -694,14 +642,6 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
               <p className="revisao-plano-alerta">{sit.motivos.join(" · ")}</p>
             )}
           </div>
-          <button
-            type="button"
-            className="secundario btn-compacto revisao-plano-btn-confirmar"
-            disabled={sit.bloqueiaConfirmacao || confirmando}
-            onClick={() => onConfirmarTabela(op)}
-          >
-            {confirmando ? "Confirmando…" : "Confirmar tabela"}
-          </button>
         </div>
       </div>
 
@@ -712,9 +652,89 @@ function RevisaoPlano({ op, quantidades, siscorCtx, onSalvarCampo, onConfirmarTa
   );
 }
 
+function VisualizadorPdfInline({ estudoId, documentoId, titulo, onFechar }) {
+  const [src, setSrc] = useState(null);
+  const [erro, setErro] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    if (!documentoId) return undefined;
+    let ativo = true;
+    let blobUrl = null;
+
+    setCarregando(true);
+    setErro(null);
+    setSrc((anterior) => {
+      if (anterior) URL.revokeObjectURL(anterior);
+      return null;
+    });
+
+    carregarPdfCotacaoBlob(estudoId, documentoId)
+      .then((url) => {
+        if (!ativo) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        blobUrl = url;
+        setSrc(url);
+      })
+      .catch((e) => {
+        if (ativo) setErro(e.message || "Não foi possível carregar o PDF.");
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [estudoId, documentoId]);
+
+  function abrirNovaAba() {
+    if (!src) return;
+    window.open(src, "_blank", "noopener,noreferrer");
+  }
+
+  if (!documentoId) return null;
+  return (
+    <aside className="pdf-inline-panel" aria-label="Visualização do PDF">
+      <header className="pdf-inline-cabecalho">
+        <div>
+          <span className="pdf-inline-rotulo">Documento original</span>
+          <strong className="pdf-inline-titulo">{titulo || "Cotação PDF"}</strong>
+        </div>
+        <div className="pdf-inline-acoes">
+          <button
+            type="button"
+            className="link btn-compacto"
+            disabled={!src || carregando}
+            onClick={abrirNovaAba}
+          >
+            Abrir em nova aba
+          </button>
+          <button type="button" className="secundario btn-compacto" onClick={onFechar}>
+            Ocultar PDF
+          </button>
+        </div>
+      </header>
+      {carregando && <p className="pdf-inline-estado muted">Carregando PDF…</p>}
+      {erro && <p className="pdf-inline-estado erro">{erro}</p>}
+      {src && !erro && (
+        <iframe
+          className="pdf-inline-frame"
+          title={`PDF: ${titulo || "cotação"}`}
+          src={`${src}#toolbar=1&navpanes=0`}
+        />
+      )}
+    </aside>
+  );
+}
+
 export default function CotacaoPdfPanel({
   estudoId,
   onAplicado,
+  onPreencherManualmente,
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
@@ -737,7 +757,9 @@ export default function CotacaoPdfPanel({
   const [carregando, setCarregando] = useState(false);
   const [bloqueios, setBloqueios] = useState([]);
   const [dragAtivo, setDragAtivo] = useState(false);
-  const [confirmandoOpcaoId, setConfirmandoOpcaoId] = useState(null);
+  const [pdfInlineDocumentoId, setPdfInlineDocumentoId] = useState(null);
+  const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
+  const [alternandoOpcao, setAlternandoOpcao] = useState(null);
 
   const recarregar = useCallback(() => {
     listarExtracoesCotacao(estudoId)
@@ -818,6 +840,11 @@ export default function CotacaoPdfPanel({
     });
   }
 
+  function togglePdfInline(documentoId) {
+    if (!documentoId) return;
+    setPdfInlineDocumentoId((atual) => (atual === documentoId ? null : documentoId));
+  }
+
   function abrirDocumento(id) {
     setExtracaoId(id);
     setFase("selecao");
@@ -825,11 +852,21 @@ export default function CotacaoPdfPanel({
     setErro(null);
     setMsg(null);
     setBloqueios([]);
-    obterExtracaoCotacao(estudoId, id).then((d) => {
-      setDetalhe(d);
-      const ativas = (d.opcoes || []).filter((o) => !o.excluida);
-      sincronizarCesta(id, ativas, d.documento);
-    });
+    setPdfInlineDocumentoId(null);
+    setCarregandoDetalhe(true);
+    obterExtracaoCotacao(estudoId, id)
+      .then((d) => {
+        setDetalhe(d);
+        const ativas = (d.opcoes || []).filter((o) => !o.excluida);
+        sincronizarCesta(id, ativas, d.documento);
+      })
+      .catch((err) => {
+        setErro(err.message || "Não foi possível abrir a cotação.");
+        setFase("lista");
+        setExtracaoId(null);
+        setDetalhe(null);
+      })
+      .finally(() => setCarregandoDetalhe(false));
   }
 
   async function handleEditarSelecao(ex) {
@@ -862,30 +899,32 @@ export default function CotacaoPdfPanel({
     setFase("lista");
     setExtracaoId(null);
     setDetalhe(null);
+    setPdfInlineDocumentoId(null);
   }
 
   async function processarUploads(files) {
     if (!files.length) return;
     setCarregando(true);
     setErro(null);
-    let ultimoId = null;
+    let primeiroSucessoId = null;
     try {
-      for (const file of files) {
-        const res = await importarCotacaoPdf(estudoId, file);
-        ultimoId = res.extracao_id;
-        setMsg(
-          res.sucesso
-            ? `${file.name}: ${res.opcoes_encontradas} opção(ões) encontrada(s).`
-            : `${file.name} recebido (${res.estado}).`
-        );
+      const resultados = await executarUploadLote(files, (file) =>
+        importarCotacaoPdf(estudoId, file)
+      );
+      primeiroSucessoId = primeiroUploadComSucesso(resultados);
+      const resumo = formatarResumoUploads(resultados);
+      setMsg(resumo);
+      const falhas = resultados.filter((r) => !r.ok);
+      if (falhas.length) {
+        setErro(formatarResumoUploads(falhas));
       }
+    } catch (err) {
+      setErro(err.message || "Falha ao importar cotações.");
+    } finally {
       recarregar();
       onAplicado?.();
-      if (ultimoId) abrirDocumento(ultimoId);
-    } catch (err) {
-      setErro(err.message);
-    } finally {
       setCarregando(false);
+      if (primeiroSucessoId) abrirDocumento(primeiroSucessoId);
     }
   }
 
@@ -906,6 +945,7 @@ export default function CotacaoPdfPanel({
         setMsg(res.mensagem || "PDF removido do estudo.");
       }
       if (extracaoId === ex.id) voltarLista();
+      else if (ex.documento?.id === pdfInlineDocumentoId) setPdfInlineDocumentoId(null);
       if (setCestaGlobal) {
         setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== ex.id));
       }
@@ -979,90 +1019,21 @@ export default function CotacaoPdfPanel({
     if (recarregar) await recarregarDetalhe();
   }
 
-  async function confirmarCampoOpcao(campo, patch = { confirmado: true }) {
-    if (!campo?.id || campo.confirmado || campo.estado === "ausente") return;
-    await salvarCampo(campo.id, patch, { recarregar: false });
-  }
-
-  async function handleConfirmarTabela(op) {
-    if (confirmandoOpcaoId) return;
-    const sit = situacaoOpcao(op);
-    if (sit.bloqueiaConfirmacao) {
-      setErro(`Não é possível confirmar «${nomePlanoExibicao(op)}»: ${sit.motivos.join("; ")}.`);
-      return;
-    }
-    setConfirmandoOpcaoId(op.id);
-    setErro(null);
-    try {
-      for (const fx of op.tabela || []) {
-        if (fx.quantidade?.id && !fx.quantidade.confirmado) {
-          const qtd = quantidades[fx.faixa] ?? fx.quantidade.inteiro ?? 0;
-          await salvarCampo(
-            fx.quantidade.id,
-            { inteiro: qtd, confirmado: true },
-            { recarregar: false }
-          );
-        }
-        if (fx.valor?.id && fx.valor.estado !== "ausente" && !fx.valor.confirmado && fx.valor.centavos != null) {
-          await confirmarCampoOpcao(fx.valor);
-        }
-      }
-      await confirmarCampoOpcao(op.plano_nome);
-      await confirmarCampoOpcao(op.operadora);
-      await confirmarCampoOpcao(op.regime_copart);
-      await confirmarCampoOpcao(op.tipo_fiscal);
-      await confirmarCampoOpcao(op.acomodacao);
-      if (op.copart_percentual?.id && op.copart_percentual.inteiro != null) {
-        await confirmarCampoOpcao(op.copart_percentual);
-      }
-      for (const nome of ["premio_saude", "iof", "total_recorrente", "subtotal_impresso", "total_primeira_parcela"]) {
-        await confirmarCampoOpcao(op[nome]);
-      }
-      await recarregarDetalhe();
-      setMsg(`Tabela de «${nomePlanoExibicao(op)}» confirmada.`);
-    } catch (err) {
-      setErro(err.message || "Não foi possível confirmar a tabela.");
-      await recarregarDetalhe();
-    } finally {
-      setConfirmandoOpcaoId(null);
-    }
-  }
-
   async function handleToggle(opcaoId, selecionada) {
-    await selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, selecionada);
-    const d = await obterExtracaoCotacao(estudoId, extracaoId);
-    setDetalhe(d);
-    const ativas = (d.opcoes || []).filter((o) => !o.excluida);
-    sincronizarCesta(extracaoId, ativas, d.documento);
-  }
-
-  async function handleConfirmarDocumentoSelecionados() {
-    if (!detalhe || selecionadas.length === 0) return;
+    if (!extracaoId || alternandoOpcao) return;
+    setAlternandoOpcao(opcaoId);
     setErro(null);
     try {
-      if (detalhe.validade_oficial?.id && !detalhe.validade_oficial.confirmado) {
-        await salvarCampo(detalhe.validade_oficial.id, { confirmado: true }, { recarregar: false });
-      }
-      for (const op of selecionadas) {
-        await confirmarCampoOpcao(op.operadora);
-        await confirmarCampoOpcao(op.tipo_fiscal);
-      }
-      await recarregarDetalhe();
-      setMsg("Dados do documento confirmados para os planos selecionados.");
+      await selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, selecionada);
+      const d = await obterExtracaoCotacao(estudoId, extracaoId);
+      setDetalhe(d);
+      const ativas = (d.opcoes || []).filter((o) => !o.excluida);
+      sincronizarCesta(extracaoId, ativas, d.documento);
     } catch (err) {
-      setErro(err.message || "Não foi possível confirmar os dados do documento.");
-      await recarregarDetalhe();
+      setErro(err.message || "Não foi possível selecionar o plano.");
+    } finally {
+      setAlternandoOpcao(null);
     }
-  }
-
-  async function handleConfirmarTipoFiscalDocumento() {
-    await handleConfirmarDocumentoSelecionados();
-  }
-
-  async function handleConfirmarLote() {
-    await confirmarLoteExtracao(estudoId, extracaoId);
-    await recarregarDetalhe();
-    setMsg("Campos prontos confirmados em lote.");
   }
 
   async function handleAdicionarComparativo() {
@@ -1102,6 +1073,25 @@ export default function CotacaoPdfPanel({
 
   const docAberto = detalhe?.documento;
   const extracaoAberta = extracoes.find((e) => e.id === extracaoId);
+  const pdfInlineMeta = useMemo(() => {
+    if (!pdfInlineDocumentoId) return null;
+    const ext = extracoes.find((e) => e.documento?.id === pdfInlineDocumentoId);
+    if (ext?.documento) {
+      return {
+        titulo: ext.documento.nome_arquivo || ext.documento.operadora_detectada || "Cotação PDF",
+      };
+    }
+    const docRasc = (documentosCotacao || []).find((d) => d.id === pdfInlineDocumentoId);
+    if (docRasc) {
+      return { titulo: docRasc.operadora || "Cotação PDF" };
+    }
+    if (docAberto?.id === pdfInlineDocumentoId) {
+      return {
+        titulo: docAberto.nome_arquivo || docAberto.operadora_detectada || "Cotação PDF",
+      };
+    }
+    return { titulo: "Cotação PDF" };
+  }, [pdfInlineDocumentoId, extracoes, documentosCotacao, docAberto]);
   const temPdfs = extracoes.length > 0;
   const temNoComparativo = opcoesComparativo.some((o) => o.extracao_id);
 
@@ -1157,14 +1147,13 @@ export default function CotacaoPdfPanel({
                           Escolher planos
                         </button>
                         {doc?.id && (
-                          <a
-                            className="btn-link secundario btn-compacto"
-                            href={urlPdfCotacao(estudoId, doc.id)}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            className={`btn-link secundario btn-compacto${pdfInlineDocumentoId === doc.id ? " ativo" : ""}`}
+                            onClick={() => togglePdfInline(doc.id)}
                           >
-                            Ver PDF
-                          </a>
+                            {pdfInlineDocumentoId === doc.id ? "Ocultar PDF" : "Ver PDF"}
+                          </button>
                         )}
                       </div>
                       <button
@@ -1179,6 +1168,14 @@ export default function CotacaoPdfPanel({
                   );
                 })}
               </div>
+              {pdfInlineDocumentoId && fase === "lista" && (
+                <VisualizadorPdfInline
+                  estudoId={estudoId}
+                  documentoId={pdfInlineDocumentoId}
+                  titulo={pdfInlineMeta?.titulo}
+                  onFechar={() => setPdfInlineDocumentoId(null)}
+                />
+              )}
             </section>
           )}
 
@@ -1196,8 +1193,23 @@ export default function CotacaoPdfPanel({
         onUpload={processarUploads}
       />
 
+      {fase !== "lista" && !detalhe && carregandoDetalhe && (
+        <p className="muted cotacao-estado-vazio">Carregando planos da cotação…</p>
+      )}
+
       {fase !== "lista" && detalhe && (
-        <div className="documento-pdf-aberto">
+        <div
+          className={`documento-pdf-aberto${pdfInlineDocumentoId ? " documento-pdf-aberto--com-pdf" : ""}`}
+        >
+          {pdfInlineDocumentoId && (
+            <VisualizadorPdfInline
+              estudoId={estudoId}
+              documentoId={pdfInlineDocumentoId}
+              titulo={pdfInlineMeta?.titulo}
+              onFechar={() => setPdfInlineDocumentoId(null)}
+            />
+          )}
+          <div className="documento-pdf-conteudo">
           <div className="documento-pdf-aberto-cabecalho">
             <div>
               <p className="muted">Documento aberto</p>
@@ -1208,6 +1220,15 @@ export default function CotacaoPdfPanel({
               </p>
             </div>
             <div className="documento-pdf-aberto-acoes">
+              {docAberto?.id && (
+                <button
+                  type="button"
+                  className={`secundario btn-compacto${pdfInlineDocumentoId === docAberto.id ? " ativo" : ""}`}
+                  onClick={() => togglePdfInline(docAberto.id)}
+                >
+                  {pdfInlineDocumentoId === docAberto.id ? "Ocultar PDF" : "Ver PDF"}
+                </button>
+              )}
               <button type="button" className="secundario" onClick={voltarLista}>
                 ← Voltar aos documentos
               </button>
@@ -1300,7 +1321,33 @@ export default function CotacaoPdfPanel({
             </div>
           )}
 
-          {fase === "selecao" && (
+          {opcoesAtivas.length === 0 && (
+            <div className="recuperacao-extracao-vazia cartao cartao--interno">
+              <h4>Nenhum plano extraído deste PDF</h4>
+              <p className="muted">
+                O parser não localizou tabelas de preço utilizáveis. Você pode conferir o PDF e
+                digitar os valores manualmente — a cotação continuará vinculada a este documento.
+              </p>
+              {detalhe.alertas?.length > 0 && (
+                <ul className="recuperacao-alertas">
+                  {detalhe.alertas.map((a, i) => (
+                    <li key={i}>{traduzirAlerta(a)}</li>
+                  ))}
+                </ul>
+              )}
+              {onPreencherManualmente && (
+                <button
+                  type="button"
+                  className="recuperacao-manual-btn"
+                  onClick={() => onPreencherManualmente(detalhe, docAberto)}
+                >
+                  Preencher este plano manualmente
+                </button>
+              )}
+            </div>
+          )}
+
+          {opcoesAtivas.length > 0 && fase === "selecao" && (
             <>
               <div className="selecao-resumo-bar">
                 <strong>
@@ -1359,7 +1406,7 @@ export default function CotacaoPdfPanel({
           {fase === "revisao" && (
             <>
               <div className="campos-documento-comuns cartao cartao--interno">
-                <span className="doc-confirmacoes-rotulo">Confirmações do documento</span>
+                <span className="doc-confirmacoes-rotulo">Dados do documento</span>
                 <dl className="doc-confirmacoes-metricas">
                   <div>
                     <dt>Operadora</dt>
@@ -1378,27 +1425,6 @@ export default function CotacaoPdfPanel({
                     <dd>Seguradora</dd>
                   </div>
                 </dl>
-                {(detalhe.validade_oficial && !detalhe.validade_oficial.confirmado) ||
-                selecionadas.some(
-                  (op) =>
-                    (op.tipo_fiscal && !op.tipo_fiscal.confirmado) ||
-                    (op.operadora && !op.operadora.confirmado)
-                ) ? (
-                  <div className="doc-confirmacoes-acoes">
-                    <button
-                      type="button"
-                      className="secundario btn-compacto"
-                      onClick={handleConfirmarDocumentoSelecionados}
-                    >
-                      Confirmar dados do documento
-                    </button>
-                    {detalhe.validade_oficial && !detalhe.validade_oficial.confirmado && (
-                      <span className="muted doc-confirmacoes-dica">
-                        Inclui validade, operadora e tipo fiscal.
-                      </span>
-                    )}
-                  </div>
-                ) : null}
               </div>
 
               {selecionadas.map((op) => (
@@ -1407,24 +1433,18 @@ export default function CotacaoPdfPanel({
                   op={op}
                   quantidades={quantidades}
                   siscorCtx={siscorCtx}
+                  validadeDocumento={
+                    detalhe.validade_oficial?.data ||
+                    selecionadas.find((o) => o.validade_oficial?.data)?.validade_oficial?.data
+                  }
                   onSalvarCampo={salvarCampo}
-                  onConfirmarTabela={handleConfirmarTabela}
-                  confirmando={confirmandoOpcaoId === op.id}
                 />
               ))}
 
               <div className="revisao-fluxo-rodape">
-                <div className="revisao-fluxo-secundarias">
-                  <button type="button" className="link revisao-fluxo-voltar" onClick={() => setFase("selecao")}>
-                    ← Ajustar seleção
-                  </button>
-                  <span className="revisao-fluxo-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  <button type="button" className="link" onClick={handleConfirmarLote}>
-                    Confirmar campos prontos
-                  </button>
-                </div>
+                <button type="button" className="link revisao-fluxo-voltar" onClick={() => setFase("selecao")}>
+                  ← Ajustar seleção
+                </button>
                 <button type="button" className="revisao-fluxo-principal" onClick={handleAdicionarComparativo}>
                   {selecionadas.length === 0 && noComparativoDestaExtracao.length > 0
                     ? "Remover planos desta cotação do comparativo"
@@ -1435,23 +1455,27 @@ export default function CotacaoPdfPanel({
               </div>
             </>
           )}
+          </div>
         </div>
       )}
 
       {bloqueios.length > 0 && (
         <div className="pendencias-box">
-          <strong>Planos não aplicados</strong>
-          <ul>
-            {bloqueios.map((b) => (
-              <li key={b.opcao_id || b.plano}>
-                <strong>{b.plano}</strong>
-                <ul>
-                  {b.motivos.map((m, i) => (
-                    <li key={i}>{m}</li>
-                  ))}
-                </ul>
-              </li>
-            ))}
+          <strong>Planos que não puderam ser adicionados</strong>
+          <ul className="bloqueios-resumo">
+            {bloqueios.map((b) => {
+              const motivos = resumirMotivosBloqueio(b.motivos);
+              return (
+                <li key={b.opcao_id || b.plano}>
+                  <strong>{b.plano}</strong>
+                  <ul>
+                    {motivos.map((m, i) => (
+                      <li key={i}>{m}</li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

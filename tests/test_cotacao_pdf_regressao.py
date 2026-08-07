@@ -116,7 +116,11 @@ def test_regressao_bradesco_dois_perfis_sintetico():
     assert len(linhas) == 10
 
 
-def test_regressao_omint_ocr_pendente():
+def test_regressao_omint_ocr_pendente(monkeypatch):
+    monkeypatch.setattr(
+        "newport_app.cotacao_pdf.ocr.tesseract_disponivel",
+        lambda: False,
+    )
     import pymupdf
 
     doc = pymupdf.open()
@@ -131,6 +135,39 @@ def test_regressao_omint_ocr_pendente():
     )
     assert ext.estado == "ocr_pendente"
     assert ext.documento.template_id == "omint-ocr-v1"
+    assert len([o for o in ext.opcoes if not o.excluida]) == 1
+
+
+def test_regressao_omint_ocr_parcial_com_tesseract(monkeypatch):
+    monkeypatch.setattr(
+        "newport_app.cotacao_pdf.ocr.tesseract_disponivel",
+        lambda: True,
+    )
+
+    def _ocr_ok(doc, pagina):
+        return "OMINT texto extraido via OCR simulado", True
+
+    monkeypatch.setattr(
+        "newport_app.cotacao_pdf.parsers.omint.tentar_ocr_pagina",
+        _ocr_ok,
+    )
+    import pymupdf
+
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), "OMINT")
+    conteudo = doc.tobytes()
+    doc.close()
+    ext = parse_cotacao_pdf(
+        conteudo,
+        estudo_id="t",
+        documento_id="d-omint-ocr",
+        nome_arquivo="omint.pdf",
+    )
+    assert ext.estado == "extraido"
+    assert ext.documento.template_id == "omint-ocr-v1"
+    assert len([o for o in ext.opcoes if not o.excluida]) == 1
+    assert ext.opcoes[0].plano_nome.texto == "Omint — revisão manual"
+    assert any(a.codigo == "PDF-OMINT-PARCIAL" for a in ext.alertas)
 
 
 def test_apply_nao_inventa_defaults():
@@ -254,6 +291,78 @@ def test_apply_atualiza_sem_duplicar():
     assert not b2
     assert len(rascunho.opcoes_proposta) == 1
     assert rascunho.opcoes_proposta[0].extracao_opcao_id == "op-canonica"
+
+
+def _opcao_pronta_para_apply(opcao_id: str, nome: str) -> OpcaoCotacaoCandidata:
+    op = OpcaoCotacaoCandidata(id=opcao_id)
+    normalizar_opcao(op, parser_versao="t", documento_hash="h")
+    for campo in (op.operadora, op.plano_nome, op.tipo_fiscal, op.regime_copart):
+        assert campo
+        if campo.rotulo == "Tipo fiscal":
+            campo.texto = "seguradora"
+        if campo.rotulo == "Regime de coparticipação":
+            campo.texto = "sem"
+        if campo.rotulo == "Operadora":
+            campo.texto = "Porto Seguro"
+        if campo.rotulo == "Nome do plano":
+            campo.texto = nome
+        campo.confirmado = True
+        campo.estado = "confirmar"
+    op.tabela = [
+        faixa_extraida(
+            0,
+            valor_centavos=10000,
+            quantidade=1,
+            price_basis=PriceBasisRascunho.EXCLUI_IOF,
+            pagina=1,
+            trecho_valor="x",
+            trecho_qtd="1",
+            parser_versao="t",
+            documento_hash="h",
+        )
+    ]
+    op.tabela[0].valor.confirmado = True
+    op.tabela[0].quantidade.confirmado = True
+    op.premio_saude = novo_campo("Prêmio saúde", centavos=10000, parser_versao="t", documento_hash="h")
+    op.premio_saude.confirmado = True
+    reconciliar_opcao(op)
+    op.selecionada_para_comparativo = True
+    return op
+
+
+def test_apply_remove_deselected():
+    op1 = _opcao_pronta_para_apply("op-1", "Plano A")
+    op2 = _opcao_pronta_para_apply("op-2", "Plano B")
+    extracao = ExtracaoCotacaoCandidata(
+        id="ext-1",
+        estudo_id="demo",
+        versao=1,
+        documento=DocumentoCotacaoPDF(
+            id="doc-1",
+            nome_arquivo="x.pdf",
+            hash_sha256="h",
+            parser_versao="porto@1",
+            template_id="porto-v1",
+        ),
+        estado="extraido",
+        opcoes=[op1, op2],
+        criado_em=datetime.now(timezone.utc),
+    )
+    rascunho = rascunho_vazio("demo", "Demo")
+    rascunho, b1 = aplicar_extracao_confirmada(rascunho, extracao)
+    assert not b1
+    assert len(rascunho.opcoes_proposta) == 2
+
+    op2.selecionada_para_comparativo = False
+    rascunho, b2 = aplicar_extracao_confirmada(rascunho, extracao)
+    assert not b2
+    assert len(rascunho.opcoes_proposta) == 1
+    assert rascunho.opcoes_proposta[0].extracao_opcao_id == "op-1"
+
+    op1.selecionada_para_comparativo = False
+    rascunho, b3 = aplicar_extracao_confirmada(rascunho, extracao)
+    assert not b3
+    assert len(rascunho.opcoes_proposta) == 0
 
 
 def test_esperado_versionado_alinhado():
