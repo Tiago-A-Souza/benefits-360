@@ -142,6 +142,9 @@ class BloqueioComparativo(BaseModel):
     etapa_sugerida: int | None = None
     acao_sugerida: str | None = None
     origem: str = "motor"  # compilacao | motor
+    mensagem_motor: str | None = None
+    quantidade: int = 1
+    detalhe_tecnico: str | None = None
 
 
 class ConsistenciaComparativo(BaseModel):

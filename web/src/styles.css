@@ -2692,6 +2692,29 @@ a.btn-link {
   font-weight: 600;
 }
 
+.cmp-bloqueio-qtd {
+  font-size: 0.85rem;
+}
+
+.cmp-bloqueio-detalhe {
+  margin-top: 0.35rem;
+}
+
+.cmp-bloqueio-detalhe-sum {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.cmp-bloqueio-detalhe-corpo {
+  margin: 0.35rem 0 0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
 .comparativo-detalhes-secao {
   margin-top: 1.5rem;
 }

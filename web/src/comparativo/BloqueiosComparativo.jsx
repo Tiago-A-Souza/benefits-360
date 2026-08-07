@@ -12,6 +12,7 @@ function ListaBloqueios({ bloqueios, rascunho }) {
     <ul className="cmp-bloqueios-lista">
       {bloqueios.map((b, i) => {
         const etapaTitulo = rotuloEtapaSugerida(rascunho, b.etapa_sugerida);
+        const mostrarDetalhe = Boolean(b.detalhe_tecnico);
         return (
           <li key={`${b.origem}-${b.codigo}-${b.alvo_ref || i}`} className="cmp-bloqueio-item">
             <div className="cmp-bloqueio-cabecalho">
@@ -19,8 +20,17 @@ function ListaBloqueios({ bloqueios, rascunho }) {
               {b.alvo_rotulo && (
                 <span className="cmp-bloqueio-alvo"> · {b.alvo_rotulo}</span>
               )}
+              {b.quantidade > 1 && (
+                <span className="cmp-bloqueio-qtd muted"> · {b.quantidade}×</span>
+              )}
             </div>
             <p className="cmp-bloqueio-msg">{b.mensagem}</p>
+            {mostrarDetalhe && (
+              <details className="cmp-bloqueio-detalhe">
+                <summary className="cmp-bloqueio-detalhe-sum muted">Detalhe técnico</summary>
+                <pre className="cmp-bloqueio-detalhe-corpo">{b.detalhe_tecnico}</pre>
+              </details>
+            )}
             {(etapaTitulo || b.acao_sugerida) && (
               <p className="cmp-bloqueio-acao muted">
                 {etapaTitulo && <>Revise «{etapaTitulo}»</>}

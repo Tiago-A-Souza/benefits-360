@@ -219,6 +219,7 @@ def bloqueios_comparativo_de_erros(
             BloqueioComparativo(
                 codigo=erro.codigo,
                 mensagem=erro.mensagem,
+                mensagem_motor=erro.mensagem,
                 severidade=erro.severidade,
                 alvo_ref=erro.caminho,
                 alvo_rotulo=resolver_caminho_compilacao(rascunho, erro.caminho),

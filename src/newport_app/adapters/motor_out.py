@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+from collections import defaultdict
+
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.compilation import ErroCompilacao
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
@@ -568,24 +571,130 @@ def _resolver_alvo_ref(rascunho: RascunhoEstudo, alvo_ref: str | None) -> str | 
     return alvo_ref
 
 
+_UUID_RE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+    re.I,
+)
+
+
+def _extrair_alvo_id_para_agrupamento(alvo_ref: str | None) -> str | None:
+    if not alvo_ref:
+        return None
+    if ":alvo:" in alvo_ref:
+        return alvo_ref.split(":alvo:", 1)[1]
+    if alvo_ref.startswith(("subgrupo:", "vida:", "opcao:", "cenario:", "atribuicao:")):
+        return alvo_ref.split(":", 1)[1].split(":")[0]
+    return alvo_ref
+
+
+def _humanizar_mensagem_bloqueio(
+    mensagem: str,
+    alvo_ref: str | None,
+    alvo_rotulo: str | None,
+) -> str:
+    if not mensagem:
+        return mensagem
+    texto = mensagem
+    alvo_id = _extrair_alvo_id_para_agrupamento(alvo_ref)
+    if alvo_rotulo and alvo_id and alvo_id in texto:
+        texto = texto.replace(alvo_id, f"«{alvo_rotulo}»")
+    if alvo_ref and ":alvo:" in alvo_ref and alvo_rotulo and alvo_id:
+        texto = re.sub(
+            rf"Alvo\s+«{re.escape(alvo_rotulo)}»\s+sem atribuição no cenário\s+\S+\.",
+            "Sem atribuição no cenário configurado.",
+            texto,
+        )
+    return texto
+
+
+def _mensagem_agrupada(codigo: str, quantidade: int, mensagem_base: str) -> str:
+    if codigo == "B-06" and quantidade > 1:
+        return f"Sem atribuição em {quantidade} cenários."
+    if quantidade > 1:
+        return f"{mensagem_base} ({quantidade} ocorrências)."
+    return mensagem_base
+
+
+def _detalhe_tecnico_bloqueio(items: list[BloqueioComparativo]) -> str | None:
+    linhas: list[str] = []
+    if len(items) == 1:
+        item = items[0]
+        bruto = item.mensagem_motor or item.mensagem
+        alvo_id = _extrair_alvo_id_para_agrupamento(item.alvo_ref)
+        if alvo_id and (not item.alvo_rotulo or alvo_id != item.alvo_rotulo):
+            linhas.append(f"id: {alvo_id}")
+        elif item.alvo_ref:
+            linhas.append(f"alvo_ref: {item.alvo_ref}")
+        if bruto and (bruto != item.mensagem or (alvo_id and alvo_id in bruto)):
+            linhas.append(f"motor: {bruto}")
+        return "\n".join(linhas) if linhas else None
+
+    vistos: set[str] = set()
+    for item in items:
+        if item.alvo_ref and item.alvo_ref not in vistos:
+            linhas.append(f"alvo_ref: {item.alvo_ref}")
+            vistos.add(item.alvo_ref)
+        bruto = item.mensagem_motor or item.mensagem
+        if bruto and bruto not in vistos:
+            linhas.append(f"motor: {bruto}")
+            vistos.add(bruto)
+    return "\n".join(linhas) if linhas else None
+
+
+def _agrupar_bloqueios_comparativo(
+    bloqueios: list[BloqueioComparativo],
+) -> list[BloqueioComparativo]:
+    if not bloqueios:
+        return []
+    grupos: dict[tuple[str, str | None, str], list[BloqueioComparativo]] = defaultdict(list)
+    for bloqueio in bloqueios:
+        alvo_chave = _extrair_alvo_id_para_agrupamento(bloqueio.alvo_ref)
+        grupos[(bloqueio.codigo, alvo_chave, bloqueio.origem)].append(bloqueio)
+
+    agrupados: list[BloqueioComparativo] = []
+    for (_codigo, _alvo, _origem), items in sorted(
+        grupos.items(),
+        key=lambda par: (par[0][2], par[0][0], par[0][1] or ""),
+    ):
+        primeiro = items[0]
+        quantidade = len(items)
+        bruto = primeiro.mensagem_motor or primeiro.mensagem
+        mensagem_base = _humanizar_mensagem_bloqueio(
+            bruto,
+            primeiro.alvo_ref,
+            primeiro.alvo_rotulo,
+        )
+        agrupados.append(
+            primeiro.model_copy(
+                update={
+                    "mensagem": _mensagem_agrupada(
+                        primeiro.codigo,
+                        quantidade,
+                        mensagem_base,
+                    ),
+                    "mensagem_motor": bruto,
+                    "quantidade": quantidade,
+                    "detalhe_tecnico": _detalhe_tecnico_bloqueio(items),
+                }
+            )
+        )
+    return agrupados
+
+
 def _extrair_bloqueios_comparativo(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
 ) -> list[BloqueioComparativo]:
     bloqueios: list[BloqueioComparativo] = []
-    vistos: set[tuple[str, str | None]] = set()
     for val in resultado.validacoes:
         if val.severidade != SeveridadeValidacao.BLOQUEANTE:
             continue
-        chave = (val.codigo, val.alvo_ref)
-        if chave in vistos:
-            continue
-        vistos.add(chave)
         trad = _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
         bloqueios.append(
             BloqueioComparativo(
                 codigo=val.codigo,
                 mensagem=val.mensagem,
+                mensagem_motor=val.mensagem,
                 severidade=val.severidade.value,
                 alvo_ref=val.alvo_ref,
                 alvo_rotulo=_resolver_alvo_ref(rascunho, val.alvo_ref),
@@ -594,7 +703,7 @@ def _extrair_bloqueios_comparativo(
                 origem="motor",
             )
         )
-    return bloqueios
+    return _agrupar_bloqueios_comparativo(bloqueios)
 
 
 def _montar_mensagem_bloqueios(bloqueios: list[BloqueioComparativo]) -> str:
@@ -664,7 +773,9 @@ def _avaliar_consistencia(
             f"{n_resultados_motor} resultado(s)."
         )
 
-    bloqueios_compilacao = bloqueios_comparativo_de_erros(rascunho, erros_compilacao)
+    bloqueios_compilacao = _agrupar_bloqueios_comparativo(
+        bloqueios_comparativo_de_erros(rascunho, erros_compilacao)
+    )
     bloqueios_motor = _extrair_bloqueios_comparativo(rascunho, resultado)
     bloqueios = bloqueios_compilacao + bloqueios_motor
     mensagem_contagem: str | None = None
