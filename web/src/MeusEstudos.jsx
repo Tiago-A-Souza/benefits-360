@@ -58,65 +58,104 @@ export default function MeusEstudos({ onContinuar }) {
     }
   }
 
+  const emAndamento = estudos.filter((e) => (e.status || "em_andamento") === "em_andamento").length;
+
   return (
-    <div className="meus-estudos">
-      <header className="meus-estudos-cabecalho">
-        <div>
-          <h1>Meus estudos</h1>
-          <p className="muted">Renovações e comparativos de planos de saúde empresariais.</p>
-        </div>
-        <button type="button" onClick={() => setModal(true)}>
-          Criar novo estudo
-        </button>
-      </header>
+    <div className="estudos-pagina">
+      <section className="estudos-shell">
+        <header className="estudos-topo">
+          <div>
+            <h1>Meus estudos</h1>
+            <p>
+              Renovações e comparativos de planos de saúde empresariais
+              {!carregando && estudos.length > 0 && (
+                <>
+                  {" "}
+                  · {estudos.length} {estudos.length === 1 ? "estudo" : "estudos"}
+                  {emAndamento > 0 && ` · ${emAndamento} em andamento`}
+                </>
+              )}
+            </p>
+          </div>
+          <button type="button" onClick={() => setModal(true)}>
+            Criar novo estudo
+          </button>
+        </header>
 
-      {carregando && <p className="muted">Carregando estudos…</p>}
-      {!carregando && estudos.length === 0 && (
-        <p className="muted">Nenhum estudo ainda. Crie o primeiro para começar.</p>
-      )}
+        {carregando && (
+          <div className="estudos-estado">
+            <p className="muted">Carregando estudos…</p>
+          </div>
+        )}
 
-      {!carregando && estudos.length > 0 && (
-        <table className="tabela-estudos">
-          <thead>
-            <tr>
-              <th>Empresa</th>
-              <th>Estudo</th>
-              <th>Tipo</th>
-              <th>Vidas</th>
-              <th>Status</th>
-              <th>Última alteração</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {estudos.map((e) => (
-              <tr key={e.id}>
-                <td>{e.empresa || "—"}</td>
-                <td>{e.titulo}</td>
-                <td>{e.formato_exibicao || "Renovação"}</td>
-                <td>{e.beneficiarios_rotulo || e.beneficiarios_incluidos || "—"}</td>
-                <td>
-                  <span className={`status-pill status-pill--${e.status || "em_andamento"}`}>
-                    {e.status_exibicao || "Em andamento"}
-                  </span>
-                </td>
-                <td>{formatarData(e.ultima_alteracao)}</td>
-                <td>
-                  <button type="button" className="secundario btn-compacto" onClick={() => onContinuar(e.id)}>
-                    Continuar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+        {!carregando && estudos.length === 0 && (
+          <div className="estudos-estado estudos-vazio">
+            <h2>Nenhum estudo ainda</h2>
+            <p className="muted">Crie o primeiro comparativo para começar a análise financeira.</p>
+            <button type="button" onClick={() => setModal(true)}>
+              Criar novo estudo
+            </button>
+          </div>
+        )}
 
-      <p className="muted tipo-em-breve">Seguro novo — em breve</p>
+        {!carregando && estudos.length > 0 && (
+          <ul className="estudos-lista">
+            {estudos.map((e) => {
+              const empresa = (e.empresa || "").trim();
+              const tipo = e.formato_exibicao || "Renovação";
+              const vidas = e.beneficiarios_rotulo || e.beneficiarios_incluidos || "—";
+              const status = e.status || "em_andamento";
+
+              return (
+                <li key={e.id}>
+                  <article className="estudos-item">
+                    <div className="estudos-item-identidade">
+                      {empresa ? (
+                        <p className="estudos-item-empresa">{empresa}</p>
+                      ) : (
+                        <p className="estudos-item-empresa estudos-item-empresa--vazio">
+                          Empresa não informada
+                        </p>
+                      )}
+                      <p className="estudos-item-estudo">{e.titulo}</p>
+                      <p className="estudos-item-meta">
+                        <span>{tipo}</span>
+                        <span>{vidas}</span>
+                        <span>
+                          <time dateTime={e.ultima_alteracao}>
+                            {formatarData(e.ultima_alteracao)}
+                          </time>
+                        </span>
+                      </p>
+                    </div>
+                    <div className="estudos-item-acoes">
+                      <span className={`status-pill status-pill--${status}`}>
+                        {e.status_exibicao || "Em andamento"}
+                      </span>
+                      <button
+                        type="button"
+                        className="secundario btn-compacto"
+                        onClick={() => onContinuar(e.id)}
+                      >
+                        Continuar
+                      </button>
+                    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <footer className="estudos-rodape">
+          <span className="estudos-rodape-tag">Seguro novo</span>
+          <span>Disponível em breve</span>
+        </footer>
+      </section>
 
       {modal && (
         <div className="modal-overlay" role="dialog" aria-modal="true">
-          <form className="modal-cartao" onSubmit={handleCriar}>
+          <form className="modal-cartao estudos-modal" onSubmit={handleCriar}>
             <h2>Novo estudo</h2>
             <p className="muted">Renovação de plano de saúde empresarial.</p>
             <label>
@@ -149,7 +188,7 @@ export default function MeusEstudos({ onContinuar }) {
         </div>
       )}
 
-      {erro && <p className="erro">{erro}</p>}
+      {erro && <p className="erro estudos-erro">{erro}</p>}
     </div>
   );
 }

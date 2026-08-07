@@ -25,6 +25,12 @@ export const DESTAQUE_LABELS = {
   mais_proximo_atual: "Mais próximo do contrato atual",
 };
 
+/** Classe visual para variação numérica (centavos ou bps). */
+export function classeVariacao(valor) {
+  if (valor == null || valor === 0) return "cmp-valor--neutro";
+  return valor < 0 ? "cmp-valor--economia" : "cmp-valor--aumento";
+}
+
 export const FAIXAS_ROTULOS = [
   "0–18",
   "19–23",
