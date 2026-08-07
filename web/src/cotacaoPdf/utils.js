@@ -94,18 +94,6 @@ export function situacaoOpcao(op) {
     return { codigo: "incompleto", rotulo: "Incompleto", motivos: ["Faixas incompletas"] };
   }
   const motivos = [];
-  if (op.plano_nome?.estado === "revisar") {
-    motivos.push("Nome possivelmente fragmentado");
-  }
-  if (op.tabela?.some((fx) => fx.valor?.estado === "revisar")) {
-    motivos.push("Valor de faixa suspeito");
-  }
-  if (op.tipo_fiscal?.estado === "revisar") {
-    motivos.push("Tipo fiscal pendente");
-  }
-  if (op.regime_copart?.estado === "revisar") {
-    motivos.push("Regime de coparticipação pendente");
-  }
   if (faixasOk < 10) {
     motivos.push("Faixas incompletas");
   }
@@ -118,17 +106,29 @@ export function situacaoOpcao(op) {
       rotulo: motivos[0],
       motivos,
       bloqueiaConfirmacao: motivos.some(
-        (m) =>
-          m === "Nome possivelmente fragmentado" ||
-          m === "Valor de faixa suspeito" ||
-          m === "Faixas incompletas"
+        (m) => m === "Faixas incompletas" || m === "Reconciliação com divergências"
       ),
     };
   }
   if (faixasOk >= 10) {
-    return { codigo: "pronto", rotulo: "Pronto para revisar", motivos: [] };
+    return { codigo: "pronto", rotulo: "Pronto", motivos: [] };
   }
   return { codigo: "incompleto", rotulo: "Incompleto", motivos: ["Faixas incompletas"] };
+}
+
+/** Motivos acionáveis para exibição — orienta seleção consciente do plano. */
+export function resumirMotivosBloqueio(motivos = []) {
+  const limpos = motivos.filter(
+    (m) => m && !/confirme após revisar/i.test(m) && !/confirme ao menos/i.test(m)
+  );
+  if (limpos.length > 0) return limpos;
+  if (motivos.some((m) => /divergência/i.test(m))) {
+    return ["Divergência financeira — use Corrigir na tabela ou escolha outro plano."];
+  }
+  if (motivos.some((m) => /confirme/i.test(m))) {
+    return ["Selecione este plano para confirmar os valores extraídos."];
+  }
+  return ["Revise os dados do plano ou escolha outra opção na lista."];
 }
 
 export function contextoSiscorSimulacao(resumoSiscor, subgrupoSelecionado) {

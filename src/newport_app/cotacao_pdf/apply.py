@@ -22,6 +22,15 @@ from newport_app.models.draft import (
 )
 
 
+def _validade_documento(extracao: ExtracaoCotacaoCandidata):
+    if extracao.validade_oficial and extracao.validade_oficial.data:
+        return extracao.validade_oficial.data
+    for op in extracao.opcoes:
+        if op.validade_oficial and op.validade_oficial.data:
+            return op.validade_oficial.data
+    return None
+
+
 def _prov_extraida(
     campo: ValorExtraido | None,
     documento_id: str,
@@ -88,6 +97,15 @@ def _modalidade(campo: ValorExtraido | None) -> ModalidadeRascunho | None:
         return None
 
 
+def _quantidade_cotada_faixa(fx) -> int | None:
+    """Quantidade explícita para o motor — None só se a faixa não entra na tabela."""
+    if fx.quantidade.confirmado and fx.quantidade.inteiro is not None:
+        return fx.quantidade.inteiro
+    if fx.quantidade.inteiro is not None:
+        return fx.quantidade.inteiro
+    return 0
+
+
 def opcao_candidata_para_rascunho(
     op: OpcaoCotacaoCandidata,
     *,
@@ -103,9 +121,7 @@ def opcao_candidata_para_rascunho(
         return None
 
     regime_id = _regime_id(op.regime_copart)
-    tipo_fiscal = (
-        op.tipo_fiscal.texto if op.tipo_fiscal and op.tipo_fiscal.confirmado else None
-    )
+    tipo_fiscal = op.tipo_fiscal.texto if op.tipo_fiscal and op.tipo_fiscal.texto else None
     if regime_id is None or tipo_fiscal is None:
         return None
 
@@ -117,9 +133,7 @@ def opcao_candidata_para_rascunho(
             TabelaFaixaRascunho(
                 faixa=fx.faixa,
                 valor_centavos=fx.valor.centavos,
-                quantidade_cotada=(
-                    fx.quantidade.inteiro if fx.quantidade.confirmado else None
-                ),
+                quantidade_cotada=_quantidade_cotada_faixa(fx),
                 price_basis=fx.valor.price_basis or PriceBasisRascunho.DESCONHECIDO,
                 proveniencia=_prov_extraida(fx.valor, documento_id, parser_versao, documento_hash),
             )
@@ -142,11 +156,11 @@ def opcao_candidata_para_rascunho(
 
     return OpcaoPropostaRascunho(
         id=opcao_existente_id or str(uuid.uuid4()),
-        operadora=op.operadora.texto if op.operadora and op.operadora.confirmado else "",
+        operadora=op.operadora.texto if op.operadora and op.operadora.texto else "",
         plano_nome=op.plano_nome.texto or "",
         regime_copart_id=regime_id,
         tipo_fiscal=tipo_fiscal,  # type: ignore[arg-type]
-        acomodacao=op.acomodacao.texto if op.acomodacao and op.acomodacao.confirmado else None,
+        acomodacao=op.acomodacao.texto if op.acomodacao and op.acomodacao.texto else None,
         modalidade=_modalidade(op.modalidade),
         tabela=tabela,
         premio_saude=_comp(op.premio_saude, documento_id, parser_versao, documento_hash),
@@ -161,11 +175,9 @@ def opcao_candidata_para_rascunho(
         extracao_id=extracao_id,
         extracao_opcao_id=op.id,
         validade_oficial=(
-            op.validade_oficial.data
-            if op.validade_oficial and op.validade_oficial.confirmado
-            else None
+            op.validade_oficial.data if op.validade_oficial and op.validade_oficial.data else None
         ),
-        observacoes=op.observacoes.texto if op.observacoes and op.observacoes.confirmado else None,
+        observacoes=op.observacoes.texto if op.observacoes and op.observacoes.texto else None,
     )
 
 
@@ -185,14 +197,10 @@ def aplicar_extracao_confirmada(
                 hash=doc.hash_sha256,
                 parser_versao=parser_versao,
                 estado_extracao="extraido",
-                validade_oficial=(
-                    extracao.validade_oficial.data
-                    if extracao.validade_oficial and extracao.validade_oficial.confirmado
-                    else None
-                ),
+                validade_oficial=_validade_documento(extracao),
                 data_emissao=(
                     extracao.data_emissao.data
-                    if extracao.data_emissao and extracao.data_emissao.confirmado
+                    if extracao.data_emissao and extracao.data_emissao.data
                     else None
                 ),
             )
@@ -210,23 +218,48 @@ def aplicar_extracao_confirmada(
     ]
 
     ativas = opcoes_ativas(extracao)
+    ja_no_rascunho = any(op.extracao_id == extracao.id for op in rascunho.opcoes_proposta)
+    selecionadas_explicitas = [o for o in ativas if o.selecionada_para_comparativo]
+
     if exige_selecao_consciente(extracao):
-        selecionadas = [o for o in ativas if o.selecionada_para_comparativo]
-        if not selecionadas:
-            bloqueios.append(
-                {
-                    "opcao_id": "",
-                    "plano": "Seleção de planos",
-                    "motivos": [
-                        "Selecione conscientemente quais planos levar ao comparativo "
-                        "(documento com tabela geral extensa)."
-                    ],
-                }
-            )
-            return rascunho, bloqueios
-        ids_aplicaveis = {o.id for o in selecionadas}
+        if not selecionadas_explicitas:
+            if ja_no_rascunho:
+                ids_aplicaveis: set[str] = set()
+            else:
+                bloqueios.append(
+                    {
+                        "opcao_id": "",
+                        "plano": "Seleção de planos",
+                        "motivos": [
+                            "Selecione conscientemente quais planos levar ao comparativo "
+                            "(documento com tabela geral extensa)."
+                        ],
+                    }
+                )
+                return rascunho, bloqueios
+        else:
+            ids_aplicaveis = {o.id for o in selecionadas_explicitas}
+    elif selecionadas_explicitas:
+        ids_aplicaveis = {o.id for o in selecionadas_explicitas}
     else:
         ids_aplicaveis = {o.id for o in ativas}
+
+    ids_removidos = {
+        op.id
+        for op in rascunho.opcoes_proposta
+        if op.extracao_id == extracao.id
+        and op.extracao_opcao_id
+        and op.extracao_opcao_id not in ids_aplicaveis
+    }
+    if ids_removidos:
+        rascunho.opcoes_proposta = [
+            op for op in rascunho.opcoes_proposta if op.id not in ids_removidos
+        ]
+        opcoes_validas = {op.id for op in rascunho.opcoes_proposta}
+        for cenario in rascunho.cenarios:
+            cenario.atribuicoes = [
+                atr for atr in cenario.atribuicoes if atr.opcao_plano_id in opcoes_validas
+            ]
 
     for op_c in extracao.opcoes:
         if op_c.excluida or op_c.id not in ids_aplicaveis:

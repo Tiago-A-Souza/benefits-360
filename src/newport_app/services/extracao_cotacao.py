@@ -9,6 +9,8 @@ from pathlib import Path
 from collections.abc import Callable
 
 from newport_app.config.paths import diretorio_uploads_cotacao
+from newport_app.diagnostico import registrar_evento
+from newport_app.cotacao_pdf.confirmacao import confirmar_extracao_selecionadas, confirmar_opcao_implicita
 from newport_app.cotacao_pdf.maturidade import avaliar_maturidade
 from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
@@ -99,6 +101,20 @@ class ExtracaoCotacaoService:
             versoes_anteriores=versoes,
         )
         self._extracoes.salvar(extracao)
+        ativas = [o for o in extracao.opcoes if not o.excluida]
+        detalhe_log = {
+            "estado": extracao.estado,
+            "template_id": extracao.documento.template_id,
+            "quantidade_opcoes": len(ativas),
+            "alertas": [a.codigo for a in extracao.alertas],
+            "arquivo": nome_arquivo,
+        }
+        registrar_evento(
+            estudo_id=estudo_id,
+            etapa="cotacao_pdf",
+            evento="extracao_zero_opcoes" if not ativas else "extracao_pdf",
+            detalhe=detalhe_log,
+        )
         return ResultadoImportacaoCotacaoResponse(
             sucesso=extracao.estado not in ("erro", "nao_reconhecido"),
             extracao_id=extracao.id,
@@ -219,9 +235,10 @@ class ExtracaoCotacaoService:
                     campo.confirmado_por = None
                     campo.confirmado_em = None
             elif any(v is not None for v in (centavos, texto, inteiro, data, price_basis)):
-                campo.confirmado = False
-                campo.confirmado_por = None
-                campo.confirmado_em = None
+                campo.confirmado = True
+                campo.confirmado_por = editado_por
+                campo.confirmado_em = datetime.now(timezone.utc)
+                campo.estado = "confirmar"
             if opcao is not None:
                 self._reconciliar_se_financeiro(opcao, campo)
             self._extracoes.salvar(extracao)
@@ -274,12 +291,16 @@ class ExtracaoCotacaoService:
                 if op.excluida:
                     raise OpcaoNaoEncontradaError(opcao_id)
                 op.selecionada_para_comparativo = selecionada
+                if selecionada:
+                    confirmar_opcao_implicita(op, confirmado_por="selecao")
                 self._extracoes.salvar(extracao)
                 return op
         raise OpcaoNaoEncontradaError(opcao_id)
 
     def aplicar_ao_rascunho(self, extracao_id: str) -> AplicarExtracaoResponse:
         extracao = self.obter_extracao(extracao_id)
+        confirmar_extracao_selecionadas(extracao, confirmado_por="aplicacao")
+        self._extracoes.salvar(extracao)
         rascunho = self._estudos.obter_rascunho(extracao.estudo_id)
         if rascunho is None:
             rascunho = rascunho_vazio(extracao.estudo_id, f"Estudo {extracao.estudo_id}")
@@ -336,15 +357,22 @@ class ExtracaoCotacaoService:
         planos_removidos = 0
         if rascunho is not None:
             antes = len(rascunho.opcoes_proposta)
+            doc_id = extracao.documento.id
             rascunho.opcoes_proposta = [
                 op for op in rascunho.opcoes_proposta if op.extracao_id != extracao.id
             ]
             planos_removidos = antes - len(rascunho.opcoes_proposta)
             opcoes_validas = {op.id for op in rascunho.opcoes_proposta}
             for cenario in rascunho.cenarios:
-                for atr in cenario.atribuicoes:
-                    if atr.opcao_plano_id and atr.opcao_plano_id not in opcoes_validas:
-                        atr.opcao_plano_id = ""
+                cenario.atribuicoes = [
+                    atr
+                    for atr in cenario.atribuicoes
+                    if atr.opcao_plano_id in opcoes_validas
+                ]
+            if not any(op.documento_cotacao_id == doc_id for op in rascunho.opcoes_proposta):
+                rascunho.documentos_cotacao = [
+                    doc for doc in rascunho.documentos_cotacao if doc.id != doc_id
+                ]
             self._estudos.salvar_rascunho(rascunho)
 
         self._extracoes.desativar_por_documento(estudo_id, extracao.documento.id)
