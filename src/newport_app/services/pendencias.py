@@ -7,7 +7,7 @@ from collections import defaultdict
 from newport_app.draft_compiler import compile
 from newport_app.models.compilation import ErroCompilacao
 from newport_app.models.draft import RascunhoEstudo
-from newport_app.models.responses import PendenciaItem
+from newport_app.models.responses import BloqueioComparativo, PendenciaItem
 from newport_app.policy.registry import default_registry
 from newport_app.rascunho.cenarios_sync import cenarios_sincronizados
 
@@ -78,6 +78,156 @@ _TRADUCOES: dict[str, tuple[str, str, str]] = {
         "Defina com qual plano atual comparar cada opção selecionada.",
     ),
 }
+
+
+_ROTULOS_CAMINHO_FIXOS: dict[str, str] = {
+    "/escolhas/data_referencia_idade": "Data de referência para idades",
+    "/escolhas/baseline_escolhido/confirmado": "Comparação do plano atual",
+    "/escolhas/precedencia_atual_vida/confirmado": "Fonte do valor atual",
+    "/policy_set_versao": "Versão das políticas do estudo",
+}
+
+_ROTULOS_SEGMENTO_CAMINHO: dict[str, str] = {
+    "price_basis": "base IOF",
+    "valor_centavos": "valor",
+    "quantidade_cotada": "quantidade cotada",
+    "regime_copart_id": "regime de coparticipação",
+    "tipo_fiscal": "tipo fiscal",
+    "documento_cotacao_id": "documento de cotação",
+    "premio_saude": "prêmio saúde",
+    "iof": "IOF",
+    "total_recorrente": "total recorrente",
+    "total_primeira_parcela": "total da primeira parcela",
+    "subtotal_impresso": "subtotal impresso",
+    "tabela": "tabela de preços",
+    "confirmado": "confirmação",
+}
+
+
+def _opcao_por_referencia(rascunho: RascunhoEstudo, referencia: str):
+    try:
+        indice = int(referencia)
+        if 0 <= indice < len(rascunho.opcoes_proposta):
+            return rascunho.opcoes_proposta[indice]
+    except ValueError:
+        pass
+    for opcao in rascunho.opcoes_proposta:
+        if opcao.id == referencia:
+            return opcao
+    return None
+
+
+def _subgrupo_por_referencia(rascunho: RascunhoEstudo, referencia: str):
+    try:
+        indice = int(referencia)
+        if 0 <= indice < len(rascunho.subgrupos_atuais):
+            return rascunho.subgrupos_atuais[indice]
+    except ValueError:
+        pass
+    for subgrupo in rascunho.subgrupos_atuais:
+        if subgrupo.id == referencia:
+            return subgrupo
+    return None
+
+
+def _rotulo_segmentos_caminho(segmentos: list[str]) -> str | None:
+    if not segmentos:
+        return None
+    partes: list[str] = []
+    i = 0
+    while i < len(segmentos):
+        seg = segmentos[i]
+        if seg == "tabela" and i + 1 < len(segmentos) and segmentos[i + 1].isdigit():
+            partes.append(f"faixa {segmentos[i + 1]}")
+            i += 2
+            if i < len(segmentos):
+                partes.append(_ROTULOS_SEGMENTO_CAMINHO.get(segmentos[i], segmentos[i]))
+                i += 1
+            continue
+        if seg == "custos_unicos" and i + 1 < len(segmentos) and segmentos[i + 1].isdigit():
+            partes.append(f"custo único {segmentos[i + 1]}")
+            i += 2
+            if i < len(segmentos):
+                partes.append(_ROTULOS_SEGMENTO_CAMINHO.get(segmentos[i], segmentos[i]))
+                i += 1
+            continue
+        partes.append(_ROTULOS_SEGMENTO_CAMINHO.get(seg, seg.replace("_", " ")))
+        i += 1
+    return " · ".join(partes)
+
+
+def resolver_caminho_compilacao(rascunho: RascunhoEstudo, caminho: str) -> str:
+    if caminho in _ROTULOS_CAMINHO_FIXOS:
+        return _ROTULOS_CAMINHO_FIXOS[caminho]
+
+    if caminho.startswith("/opcoes_proposta/"):
+        resto = caminho.removeprefix("/opcoes_proposta/").split("/")
+        opcao = _opcao_por_referencia(rascunho, resto[0])
+        nome_opcao = opcao.plano_nome if opcao else resto[0]
+        detalhe = _rotulo_segmentos_caminho(resto[1:])
+        return f"{nome_opcao} · {detalhe}" if detalhe else nome_opcao
+
+    if caminho.startswith("/subgrupos_atuais/"):
+        resto = caminho.removeprefix("/subgrupos_atuais/").split("/")
+        subgrupo = _subgrupo_por_referencia(rascunho, resto[0])
+        nome_sg = subgrupo.plano_nome if subgrupo else resto[0]
+        detalhe = _rotulo_segmentos_caminho(resto[1:])
+        return f"{nome_sg} · {detalhe}" if detalhe else nome_sg
+
+    if caminho.startswith("/vidas/"):
+        resto = caminho.removeprefix("/vidas/").split("/")
+        vida = next((v for v in rascunho.vidas if v.id == resto[0]), None)
+        nome_vida = vida.nome if vida else resto[0]
+        detalhe = _rotulo_segmentos_caminho(resto[1:])
+        return f"{nome_vida} · {detalhe}" if detalhe else nome_vida
+
+    if caminho.startswith("/cenarios/"):
+        resto = caminho.removeprefix("/cenarios/").split("/")
+        try:
+            cenario = rascunho.cenarios[int(resto[0])]
+            nome = cenario.rotulo or cenario.id
+        except (ValueError, IndexError):
+            nome = resto[0]
+        detalhe = _rotulo_segmentos_caminho(resto[1:])
+        return f"{nome} · {detalhe}" if detalhe else nome
+
+    return caminho
+
+
+def etapa_erro_compilacao(codigo: str, caminho: str) -> int:
+    return _etapa_erro(codigo, caminho)
+
+
+def acao_sugerida_compilacao(codigo: str) -> str | None:
+    if codigo in _TRADUCOES:
+        if codigo == "APP-QTD-001":
+            return (
+                "Na etapa Cotações, abra o PDF, confirme a tabela de cada plano "
+                "e clique em «Adicionar ao comparativo» novamente."
+            )
+        return "Complete a etapa correspondente no fluxo guiado."
+    return "Revise os dados nas etapas anteriores."
+
+
+def bloqueios_comparativo_de_erros(
+    rascunho: RascunhoEstudo,
+    erros: list[ErroCompilacao],
+) -> list[BloqueioComparativo]:
+    bloqueios: list[BloqueioComparativo] = []
+    for erro in erros:
+        bloqueios.append(
+            BloqueioComparativo(
+                codigo=erro.codigo,
+                mensagem=erro.mensagem,
+                severidade=erro.severidade,
+                alvo_ref=erro.caminho,
+                alvo_rotulo=resolver_caminho_compilacao(rascunho, erro.caminho),
+                etapa_sugerida=etapa_erro_compilacao(erro.codigo, erro.caminho),
+                acao_sugerida=acao_sugerida_compilacao(erro.codigo),
+                origem="compilacao",
+            )
+        )
+    return bloqueios
 
 
 def _etapa_erro(codigo: str, caminho: str) -> int:

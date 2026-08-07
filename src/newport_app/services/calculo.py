@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from newport_app.adapters.motor_out import rascunho_para_resumo
+from newport_app.adapters.motor_out import montar_comparativo, rascunho_para_resumo
 from newport_app.diagnostico import registrar_evento
+from newport_app.draft_compiler import compile
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.compilation import ResultadoCompilacao
 from newport_app.models.draft import RascunhoEstudo
@@ -17,6 +18,7 @@ from newport_app.services.comparativo_confirmacao import (
     hash_comparativo_atual,
 )
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
+from newport_motor.engine import calcular as calcular_motor
 
 
 class EstudoNaoEncontradoError(Exception):
@@ -66,20 +68,42 @@ class CalculoService:
         if rascunho is None:
             raise EstudoNaoEncontradoError(estudo_id)
 
-        try:
-            digest, comparativo = hash_comparativo_atual(
-                rascunho, policy_registry=self._policy_registry
+        resultado_compilacao = compile(
+            rascunho,
+            policy_registry=self._policy_registry,
+        )
+        if not resultado_compilacao.compilavel:
+            comparativo = montar_comparativo(
+                rascunho,
+                erros_compilacao=resultado_compilacao.erros,
             )
-        except RascunhoNaoCompilavelError as exc:
             registrar_evento(
                 estudo_id=estudo_id,
                 etapa="calculo",
                 evento="calculo_compilacao_falhou",
                 detalhe={
-                    "erros": [e.codigo for e in exc.resultado.erros],
+                    "erros": [e.codigo for e in resultado_compilacao.erros],
                 },
             )
-            raise
+            return comparativo.model_copy(
+                update={
+                    "propostas_apresentacao": ordem_apresentacao_rascunho(rascunho),
+                }
+            )
+
+        assert resultado_compilacao.compilado is not None
+        motor_result = calcular_motor(
+            resultado_compilacao.compilado.estudo_input,
+            resultado_compilacao.compilado.effective_policy,
+        )
+        comparativo = montar_comparativo(rascunho, motor_result=motor_result)
+
+        try:
+            digest, _ = hash_comparativo_atual(
+                rascunho, policy_registry=self._policy_registry
+            )
+        except RascunhoNaoCompilavelError:
+            digest = None
         bloqueios = [p for p in comparativo.pendencias if p.tipo == "bloqueio"]
         if bloqueios:
             registrar_evento(

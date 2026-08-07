@@ -141,6 +141,7 @@ class BloqueioComparativo(BaseModel):
     alvo_rotulo: str | None = None
     etapa_sugerida: int | None = None
     acao_sugerida: str | None = None
+    origem: str = "motor"  # compilacao | motor
 
 
 class ConsistenciaComparativo(BaseModel):

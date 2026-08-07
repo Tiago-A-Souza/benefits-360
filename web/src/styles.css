@@ -2678,6 +2678,20 @@ a.btn-link {
   font-size: 0.85rem;
 }
 
+.cmp-bloqueios-grupo {
+  margin-top: 0.75rem;
+}
+
+.cmp-bloqueios-grupo:first-of-type {
+  margin-top: 0;
+}
+
+.cmp-bloqueios-grupo-titulo {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 .comparativo-detalhes-secao {
   margin-top: 1.5rem;
 }

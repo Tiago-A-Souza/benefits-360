@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from newport_app.models.draft import RascunhoEstudo
+from newport_app.models.compilation import ErroCompilacao
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
+from newport_app.services.pendencias import bloqueios_comparativo_de_erros, pendencias_compilacao
 from newport_app.models.responses import (
     AuditoriaItem,
     BloqueioComparativo,
@@ -589,6 +591,7 @@ def _extrair_bloqueios_comparativo(
                 alvo_rotulo=_resolver_alvo_ref(rascunho, val.alvo_ref),
                 etapa_sugerida=_etapa_sugerida_bloqueio(val.codigo, val.alvo_ref),
                 acao_sugerida=trad.acao_sugerida,
+                origem="motor",
             )
         )
     return bloqueios
@@ -606,7 +609,9 @@ def _avaliar_consistencia(
     rascunho: RascunhoEstudo,
     propostas: list[ResultadoPropostaComparativo],
     resultado: MotorResult,
+    erros_compilacao: list[ErroCompilacao] | None = None,
 ) -> ConsistenciaComparativo:
+    erros_compilacao = erros_compilacao or []
     n_propostas = len(rascunho.opcoes_proposta)
     n_cenarios = len(rascunho.cenarios)
     n_resultados_motor = len(resultado.cenarios)
@@ -614,6 +619,14 @@ def _avaliar_consistencia(
 
     mensagem: str | None = None
     consistente = True
+
+    if erros_compilacao:
+        consistente = False
+        if not mensagem:
+            mensagem = (
+                "O rascunho não pôde ser compilado — "
+                "corrija os campos indicados antes de calcular."
+            )
 
     if n_cenarios == n_propostas and n_propostas > 1:
         if n_resultados_motor != n_cenarios:
@@ -651,7 +664,9 @@ def _avaliar_consistencia(
             f"{n_resultados_motor} resultado(s)."
         )
 
-    bloqueios = _extrair_bloqueios_comparativo(rascunho, resultado)
+    bloqueios_compilacao = bloqueios_comparativo_de_erros(rascunho, erros_compilacao)
+    bloqueios_motor = _extrair_bloqueios_comparativo(rascunho, resultado)
+    bloqueios = bloqueios_compilacao + bloqueios_motor
     mensagem_contagem: str | None = None
     if n_resultados_motor == 0 and bloqueios:
         mensagem_contagem = mensagem
@@ -729,31 +744,43 @@ def rascunho_para_resumo(
     )
 
 
-def motor_result_para_comparativo(
+def _motor_result_vazio(rascunho: RascunhoEstudo) -> MotorResult:
+    return MotorResult(estudo_id=rascunho.id)
+
+
+def montar_comparativo(
     rascunho: RascunhoEstudo,
-    resultado: MotorResult,
+    *,
+    motor_result: MotorResult | None = None,
+    erros_compilacao: list[ErroCompilacao] | None = None,
 ) -> ComparativoResponse:
+    erros_compilacao = erros_compilacao or []
+    resultado = motor_result or _motor_result_vazio(rascunho)
+
     pendencias: list[PendenciaItem] = []
-    vistos: set[str] = set()
-    for val in resultado.validacoes:
-        if val.codigo in vistos:
-            continue
-        vistos.add(val.codigo)
-        if val.severidade in (
-            SeveridadeValidacao.BLOQUEANTE,
-            SeveridadeValidacao.ALERTA,
-        ):
-            trad = _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
-            pendencias.append(
-                PendenciaItem(
-                    tipo=trad.tipo,
-                    titulo=trad.titulo,
-                    descricao=trad.descricao,
-                    acao_sugerida=trad.acao_sugerida,
-                    codigo=val.codigo,
-                    alvo=val.alvo_ref,
+    if erros_compilacao:
+        pendencias.extend(pendencias_compilacao(rascunho))
+    else:
+        vistos: set[str] = set()
+        for val in resultado.validacoes:
+            if val.codigo in vistos:
+                continue
+            vistos.add(val.codigo)
+            if val.severidade in (
+                SeveridadeValidacao.BLOQUEANTE,
+                SeveridadeValidacao.ALERTA,
+            ):
+                trad = _traduzir_validacao(val.codigo, val.mensagem, rascunho, resultado)
+                pendencias.append(
+                    PendenciaItem(
+                        tipo=trad.tipo,
+                        titulo=trad.titulo,
+                        descricao=trad.descricao,
+                        acao_sugerida=trad.acao_sugerida,
+                        codigo=val.codigo,
+                        alvo=val.alvo_ref,
+                    )
                 )
-            )
 
     auditoria = [
         AuditoriaItem(
@@ -765,10 +792,18 @@ def motor_result_para_comparativo(
         for v in resultado.validacoes
     ]
 
-    propostas = _montar_propostas(rascunho, resultado)
-    consistencia = _avaliar_consistencia(rascunho, propostas, resultado)
+    propostas = _montar_propostas(rascunho, resultado) if resultado.cenarios else []
+    consistencia = _avaliar_consistencia(
+        rascunho,
+        propostas,
+        resultado,
+        erros_compilacao=erros_compilacao,
+    )
     if not consistencia.consistente and consistencia.mensagem:
-        if not (consistencia.bloqueios and len(resultado.cenarios) == 0):
+        if not (
+            consistencia.bloqueios
+            and (len(resultado.cenarios) == 0 or erros_compilacao)
+        ):
             pendencias.insert(
                 0,
                 PendenciaItem(
@@ -793,7 +828,11 @@ def motor_result_para_comparativo(
             default=beneficiarios_calculados,
         )
 
-    calculo_realizado = bool(resultado.cenarios) and consistencia.consistente
+    calculo_realizado = (
+        not erros_compilacao
+        and bool(resultado.cenarios)
+        and consistencia.consistente
+    )
 
     return ComparativoResponse(
         estudo_id=rascunho.id,
@@ -810,3 +849,10 @@ def motor_result_para_comparativo(
         pendencias=pendencias,
         auditoria=auditoria,
     )
+
+
+def motor_result_para_comparativo(
+    rascunho: RascunhoEstudo,
+    resultado: MotorResult,
+) -> ComparativoResponse:
+    return montar_comparativo(rascunho, motor_result=resultado)

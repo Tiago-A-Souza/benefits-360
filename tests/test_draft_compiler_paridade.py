@@ -281,7 +281,7 @@ def test_p09_invariante_resultado_compilacao():
         ResultadoCompilacao(compilado=None, erros=[], avisos=[])
 
 
-def test_p10_api_calcular_incompleto_retorna_422(tmp_path: Path):
+def test_p10_api_calcular_incompleto_retorna_comparativo_com_bloqueios(tmp_path: Path):
     repo = SQLiteStudyRepository(tmp_path / "api422.db")
     app = create_app(repo=repo)
     service = app.state.calculo_service
@@ -290,8 +290,10 @@ def test_p10_api_calcular_incompleto_retorna_422(tmp_path: Path):
     service.salvar_rascunho(rascunho)
     client = TestClient(app)
     res = client.post("/api/estudos/demo-12/calcular")
-    assert res.status_code == 422
-    assert "compiler_versao" in res.json()["detail"]
+    assert res.status_code == 200
+    body = res.json()
+    assert body["calculo_realizado"] is False
+    assert any(b["codigo"] == "APP-ESC-002" for b in body["consistencia"]["bloqueios"])
 
 
 def test_p11_api_salvar_incompleto_retorna_200(tmp_path: Path):

@@ -57,7 +57,10 @@ def test_pendencias_orientam_antes_do_calculo(client: TestClient):
     assert any("idade" in p["titulo"].lower() or "idade" in p["descricao"].lower() for p in pend)
 
     calc = client.post("/api/estudos/demo-12/calcular")
-    assert calc.status_code == 422
+    assert calc.status_code == 200
+    body = calc.json()
+    assert body["calculo_realizado"] is False
+    assert any(b["codigo"] == "APP-ESC-001" for b in body["consistencia"]["bloqueios"])
 
 
 def test_renovacao_dois_planos_e_duas_propostas(client: TestClient):

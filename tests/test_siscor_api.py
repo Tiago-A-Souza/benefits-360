@@ -101,9 +101,10 @@ def test_pos_siscor_calcular_bloqueia_tipo_fiscal(client: TestClient):
     _importar(client, "calc", planilha_12_vidas())
     client.post("/api/estudos/calc/conferencia-siscor/confirmar-lote")
     res = client.post("/api/estudos/calc/calcular")
-    assert res.status_code == 422
-    erros = res.json()["detail"]["erros"]
-    codigos = {e["codigo"] for e in erros}
+    assert res.status_code == 200
+    body = res.json()
+    assert body["calculo_realizado"] is False
+    codigos = {b["codigo"] for b in body["consistencia"]["bloqueios"]}
     assert "APP-IMP-001" in codigos or "APP-IMP-002" in codigos
 
 
