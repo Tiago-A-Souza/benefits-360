@@ -74,8 +74,8 @@ _TRADUCOES: dict[str, tuple[str, str, str]] = {
     ),
     "APP-ET4-001": (
         "bloqueio",
-        "Comparação com plano atual pendente",
-        "Defina com qual plano atual comparar cada opção selecionada.",
+        "Atribuição de propostas pendente",
+        "Confirme qual proposta substitui cada plano atual em todos os cenários.",
     ),
 }
 
@@ -327,15 +327,15 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
     if rascunho.opcoes_proposta and not cenarios_sincronizados(rascunho):
         etapa = 4 if len(rascunho.subgrupos_atuais) > 1 else 3
         acao = (
-            "Use a etapa Correspondência com os planos atuais."
+            "Use a etapa de atribuição de propostas por cenário."
             if etapa == 4
             else "Aguarde a sincronização automática ou revise as cotações."
         )
         itens.append(
             PendenciaItem(
                 tipo="bloqueio",
-                titulo="Comparação com plano atual pendente",
-                descricao="Defina com qual plano atual comparar cada opção selecionada.",
+                titulo="Atribuição de propostas pendente",
+                descricao="Confirme qual proposta substitui cada plano atual em todos os cenários.",
                 acao_sugerida=acao,
                 codigo="APP-ET4-001",
                 etapa=etapa,

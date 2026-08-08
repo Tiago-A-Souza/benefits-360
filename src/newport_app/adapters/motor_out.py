@@ -92,6 +92,7 @@ def _rotulo_regime(tipo: str) -> str:
         "parcial": "Coparticipação parcial",
         "percentual": "Coparticipação percentual",
         "customizada": "Coparticipação customizada",
+        "misto": "Pacote misto",
     }
     return mapa.get(tipo, tipo)
 
@@ -372,14 +373,33 @@ def _regime_tipo_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
     return op.regime_copart_id.replace("regime-", "")
 
 
-def _opcao_principal_cenario(rascunho: RascunhoEstudo, cenario_id: str) -> str | None:
+def _regime_tipo_cenario(rascunho: RascunhoEstudo, cenario_id: str) -> str:
     cenario = next((c for c in rascunho.cenarios if c.id == cenario_id), None)
     if cenario is None:
-        return None
-    for atr in cenario.atribuicoes:
-        if atr.opcao_plano_id:
-            return atr.opcao_plano_id
-    return None
+        return "sem"
+    tipos = {
+        _regime_tipo_opcao(rascunho, atr.opcao_plano_id)
+        for atr in cenario.atribuicoes
+        if atr.opcao_plano_id
+    }
+    if len(tipos) == 1:
+        return tipos.pop()
+    return "misto"
+
+
+def _metadados_coluna_cenario(
+    rascunho: RascunhoEstudo,
+    cenario_id: str,
+) -> tuple[str | None, str, str]:
+    from newport_app.rascunho.cenarios_sync import opcao_referencia_cenario, rotulo_cenario
+
+    cenario = next((c for c in rascunho.cenarios if c.id == cenario_id), None)
+    if cenario is None:
+        return None, "", "sem"
+    opcao_id = opcao_referencia_cenario(cenario)
+    plano_nome = rotulo_cenario(rascunho, cenario)
+    regime_tipo = _regime_tipo_cenario(rascunho, cenario_id)
+    return opcao_id, plano_nome, regime_tipo
 
 
 def _pendencias_proposta(
@@ -406,12 +426,12 @@ def _montar_propostas(
     propostas: list[ResultadoPropostaComparativo] = []
 
     for cenario_rasc in rascunho.cenarios:
-        opcao_id = _opcao_principal_cenario(rascunho, cenario_rasc.id)
+        opcao_id, plano_nome, regime_tipo = _metadados_coluna_cenario(
+            rascunho, cenario_rasc.id
+        )
         if not opcao_id:
             continue
         op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
-        plano_nome = op.plano_nome if op and op.plano_nome else cenario_rasc.rotulo
-        regime_tipo = _regime_tipo_opcao(rascunho, opcao_id)
         cenario_motor = cenarios_motor.get(cenario_rasc.id)
         calculo_realizado = cenario_motor is not None
 

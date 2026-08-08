@@ -2,38 +2,49 @@
 
 import { chavePassoVisivel, exigeCorrespondenciaManual, passosVisiveis } from "./passos";
 
-function idsOpcoes(rascunho) {
-  return new Set((rascunho?.opcoes_proposta || []).map((op) => op.id));
-}
-
-function mapaOpcaoSubgrupo(rascunho) {
-  const mapa = new Map();
-  for (const c of rascunho?.cenarios || []) {
-    for (const a of c.atribuicoes || []) {
-      if (a.opcao_plano_id) mapa.set(a.opcao_plano_id, a.alvo_id);
-    }
+function subgruposComVidas(rascunho) {
+  const comVidas = new Set();
+  for (const v of rascunho?.vidas || []) {
+    if (v.incluida && v.subgrupo_atual_id) comVidas.add(v.subgrupo_atual_id);
   }
-  return mapa;
+  return (rascunho?.subgrupos_atuais || []).filter((sg) => comVidas.has(sg.id));
 }
 
 export function cenariosSincronizados(rascunho) {
   const ops = rascunho?.opcoes_proposta || [];
   if (!ops.length) return false;
-  const sgs = rascunho?.subgrupos_atuais || [];
+  const sgs = subgruposComVidas(rascunho);
   if (!sgs.length) return false;
 
-  const mapa = mapaOpcaoSubgrupo(rascunho);
   const cenarios = rascunho?.cenarios || [];
+  const opIds = new Set(ops.map((op) => op.id));
+  const sgObrigatorios = new Set(sgs.map((sg) => sg.id));
 
-  if (sgs.length === 1) {
+  if ((rascunho?.subgrupos_atuais?.length || 0) === 1) {
     const sgId = sgs[0].id;
     if (cenarios.length !== ops.length) return false;
-    return ops.every((op) => mapa.get(op.id) === sgId);
+    return cenarios.every(
+      (c) =>
+        c.atribuicoes?.length === 1 &&
+        c.atribuicoes[0].alvo_id === sgId &&
+        opIds.has(c.atribuicoes[0].opcao_plano_id)
+    );
   }
 
-  return ops.every((op) => {
-    const sgId = mapa.get(op.id);
-    return sgId && sgs.some((sg) => sg.id === sgId);
+  if (cenarios.length !== ops.length) return false;
+
+  return cenarios.every((cenario) => {
+    const atribPorSg = new Map();
+    for (const atr of cenario.atribuicoes || []) {
+      if (atr.alvo_tipo !== "subgrupo") return false;
+      if (!atr.opcao_plano_id || !opIds.has(atr.opcao_plano_id)) return false;
+      atribPorSg.set(atr.alvo_id, atr.opcao_plano_id);
+    }
+    if (atribPorSg.size !== sgObrigatorios.size) return false;
+    for (const sgId of sgObrigatorios) {
+      if (!atribPorSg.has(sgId)) return false;
+    }
+    return true;
   });
 }
 
@@ -100,7 +111,7 @@ export function statusEtapaPorChave(chave, ctx) {
       const ops = rascunho?.opcoes_proposta?.length || 0;
       if (!ops) return { concluida: false, pendencia: "Adicione planos ao comparativo" };
       if (!cenariosSincronizados(rascunho)) {
-        return { concluida: false, pendencia: "Defina a comparação com cada plano atual" };
+        return { concluida: false, pendencia: "Confirme a matriz de propostas por subgrupo" };
       }
       return { concluida: true, pendencia: null };
     }
@@ -108,7 +119,7 @@ export function statusEtapaPorChave(chave, ctx) {
       if (!cenariosSincronizados(rascunho)) {
         return {
           concluida: false,
-          pendencia: "Defina a correspondência de todas as propostas",
+          pendencia: "Confirme a matriz de propostas por subgrupo",
         };
       }
       if (!comparativoConfirmado(rascunho)) {

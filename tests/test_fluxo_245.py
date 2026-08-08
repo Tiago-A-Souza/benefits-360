@@ -82,28 +82,23 @@ def test_renovacao_dois_planos_e_duas_propostas(client: TestClient):
     if not any(r["id"] == "regime-parcial" for r in rascunho["regimes_copart"]):
         rascunho["regimes_copart"].append({"id": "regime-parcial", "tipo": "parcial"})
 
-    rascunho["cenarios"][0]["atribuicoes"] = [
-        {
-            "id": "a1",
-            "alvo_tipo": "subgrupo",
-            "alvo_id": "sg-1",
-            "opcao_plano_id": "op-1",
-        },
-        {
-            "id": "a2",
-            "alvo_tipo": "subgrupo",
-            "alvo_id": "sg-2",
-            "opcao_plano_id": "op-2",
-        },
-    ]
+    rascunho["cenarios"] = []
 
     put = client.put("/api/estudos/demo-12", json=rascunho)
     assert put.status_code == 200
+
+    get = client.get("/api/estudos/demo-12/rascunho")
+    body = get.json()
+    assert len(body["cenarios"]) == 2
+    for i, cenario in enumerate(body["cenarios"]):
+        assert len(cenario["atribuicoes"]) == 2
+        assert {a["alvo_id"] for a in cenario["atribuicoes"]} == {"sg-1", "sg-2"}
 
     calc = client.post("/api/estudos/demo-12/calcular")
     assert calc.status_code == 200
     data = calc.json()
     assert data["calculo_realizado"] is True
-    tipos = {s["regime_tipo"] for s in data["secoes"]}
-    assert "sem" in tipos
-    assert "parcial" in tipos
+    assert len(data["propostas"]) == 2
+    regimes = {p["regime_tipo"] for p in data["propostas"]}
+    assert "sem" in regimes
+    assert "parcial" in regimes
