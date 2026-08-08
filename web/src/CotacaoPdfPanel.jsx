@@ -523,7 +523,9 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
             }}
           />
           <span className="muted revisao-plano-dica">
-            Não encontrada no PDF — informe para concluir a proposta.
+            {op.validade_oficial?.evidencia?.trecho
+              ? `${op.validade_oficial.evidencia.trecho} Informe para concluir a proposta.`
+              : "Não encontrada no PDF — informe para concluir a proposta."}
           </span>
         </label>
       )}

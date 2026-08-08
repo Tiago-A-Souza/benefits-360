@@ -429,28 +429,60 @@ def extrair_quantidades_faixa_porto(
     doc: PdfDocumento,
     codigo: str,
 ) -> dict[int, tuple[int, str]]:
+    """Lê «Cotação por faixa etária»: rótulo da faixa e quantidade (às vezes na linha seguinte)."""
     resultado: dict[int, tuple[int, str]] = {}
-    codigo_base = codigo.split()[0].upper()
-    for pagina in range(doc.numero_paginas - 1, max(-1, doc.numero_paginas - 8), -1):
+    codigo_norm = re.sub(r"\s+", " ", codigo.upper()).strip()
+    codigo_base = codigo_norm.split()[0] if codigo_norm else ""
+
+    def _qtd_da_linha_faixa(linha: str, proxima: str | None) -> tuple[int | None, str]:
+        # Remove limites etários («19 a 23», «59+», «anos») — sobram só quantidades.
+        resto = re.sub(
+            r"\d{1,2}\s*[-–a]\s*\d{1,2}|\d{2}\s*\+|\banos?\b",
+            " ",
+            linha,
+            flags=re.IGNORECASE,
+        )
+        nums = [int(n) for n in re.findall(r"\b(\d+)\b", resto) if 0 < int(n) <= 99]
+        if nums:
+            return nums[-1], linha.strip()
+        if proxima is not None:
+            m = re.fullmatch(r"\s*(\d{1,2})\s*", proxima)
+            if m:
+                q = int(m.group(1))
+                if 0 < q <= 99:
+                    return q, f"{linha.strip()} | qtd={proxima.strip()}"
+        return None, linha.strip()
+
+    melhores: list[tuple[int, dict[int, tuple[int, str]]]] = []
+    for pagina in range(doc.numero_paginas - 1, max(-1, doc.numero_paginas - 10), -1):
         texto, _ = texto_pagina_enriquecido(doc, pagina)
         tl = _ascii_lower(texto)
-        if "faixa et" not in tl and "distribui" not in tl:
+        if "faixa et" not in tl and "distribui" not in tl and "cotacao por faixa" not in tl:
             continue
-        if codigo_base not in texto.upper() and "total" not in tl:
+        tu = texto.upper()
+        if codigo_base and codigo_base not in tu and "TOTAL" not in tu:
             continue
-        for linha in texto.splitlines():
+        parcial: dict[int, tuple[int, str]] = {}
+        linhas = texto.splitlines()
+        for i, linha in enumerate(linhas):
             faixa = faixa_de_rotulo(linha)
             if faixa is None:
                 continue
-            nums = re.findall(r"\b(\d+)\b", linha)
-            qtd = None
-            for n in reversed(nums):
-                v = int(n)
-                if 0 < v <= 99:
-                    qtd = v
-                    break
+            prox = linhas[i + 1] if i + 1 < len(linhas) else None
+            qtd, trecho = _qtd_da_linha_faixa(linha, prox)
             if qtd is not None:
-                resultado[faixa] = (qtd, linha.strip())
-        if resultado:
-            break
-    return resultado
+                parcial[faixa] = (qtd, trecho)
+        if not parcial:
+            continue
+        score = 0
+        if codigo_norm and codigo_norm in re.sub(r"\s+", " ", tu):
+            score += 5
+        elif codigo_base and codigo_base in tu:
+            score += 2
+        score += min(len(parcial), 5)
+        melhores.append((score, parcial))
+
+    if not melhores:
+        return resultado
+    melhores.sort(key=lambda x: -x[0])
+    return melhores[0][1]

@@ -96,7 +96,26 @@ def parse_cotacao_pdf(
 
             opcoes, alertas, meta = familia.extrator(doc, documento_hash=doc_hash)
             for op in opcoes:
+                msg_parser = op.reconciliacao.mensagem if op.reconciliacao else None
+                status_parser = op.reconciliacao.status if op.reconciliacao else None
                 reconciliar_opcao(op)
+                # Preservar mensagem contextual do parser (ex.: plano do resumo ≠ este plano).
+                if (
+                    msg_parser
+                    and op.reconciliacao
+                    and op.reconciliacao.status == status_parser
+                    and msg_parser
+                    not in {
+                        "Valores reconciliados",
+                        "Total estimado calculado com a população do SISCOR; "
+                        "o documento não possui total específico para conferência.",
+                        "Reconciliação ainda não realizada — faltam população ou total de referência.",
+                    }
+                    and not (op.reconciliacao.mensagem or "").startswith(
+                        "Confere com o total do documento"
+                    )
+                ):
+                    op.reconciliacao.mensagem = msg_parser
 
             documento.operadora_detectada = familia.operadora
             documento.template_id = familia.id

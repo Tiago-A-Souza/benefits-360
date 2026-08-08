@@ -18,6 +18,13 @@ _MSG_PENDENTE = (
 )
 
 
+def _formatar_reais(centavos: int) -> str:
+    reais = centavos // 100
+    cents = centavos % 100
+    corpo = f"{reais:,}".replace(",", ".")
+    return f"R$ {corpo},{cents:02d}"
+
+
 def _centavos(campo) -> int | None:
     return campo.centavos if campo is not None else None
 
@@ -113,7 +120,12 @@ def reconciliar_opcao(opcao: OpcaoCotacaoCandidata) -> ReconciliacaoOpcao:
     elif identidade_verificada:
         ok = True
         status = "reconciliado"
-        mensagem = _MSG_OK
+        if subtotal_inf is not None:
+            mensagem = (
+                f"Confere com o total do documento ({_formatar_reais(subtotal_inf)})."
+            )
+        else:
+            mensagem = _MSG_OK
     elif tem_faixa and not tem_total_impresso:
         ok = True
         status = "nao_conferivel"
