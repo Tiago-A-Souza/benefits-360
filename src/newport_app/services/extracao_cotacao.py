@@ -13,6 +13,10 @@ from newport_app.diagnostico import registrar_evento
 from newport_app.cotacao_pdf.estimativa import estimar_opcao_candidata
 from newport_app.cotacao_pdf.maturidade import avaliar_maturidade
 from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada
+from newport_app.cotacao_pdf.confirmacao import (
+    confirmar_extracao_selecionadas,
+    confirmar_opcao_implicita,
+)
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
 from newport_app.cotacao_pdf.conferencia import normalizar_extracao
 from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
@@ -286,6 +290,8 @@ class ExtracaoCotacaoService:
         *,
         selecionada: bool,
     ) -> OpcaoCotacaoCandidata:
+        if not self._extracoes.esta_ativa(extracao_id):
+            raise ExtracaoNaoEncontradaError(extracao_id)
         extracao = self.obter_extracao(extracao_id)
         for op in extracao.opcoes:
             if op.id == opcao_id:

@@ -261,6 +261,24 @@ def create_app(
 
         return {"eventos": listar_eventos(limite=limite)}
 
+    class RegistrarDiagnosticoRequest(BaseModel):
+        estudo_id: str | None = None
+        etapa: str
+        evento: str
+        detalhe: dict | None = None
+
+    @app.post("/api/diagnostico")
+    def registrar_diagnostico_api(body: RegistrarDiagnosticoRequest) -> dict:
+        from newport_app.diagnostico import registrar_evento
+
+        registrar_evento(
+            estudo_id=body.estudo_id,
+            etapa=body.etapa,
+            evento=body.evento,
+            detalhe=body.detalhe or {},
+        )
+        return {"ok": True}
+
     @app.get("/api/estudos", response_model=list[EstudoResumo])
     def listar_estudos() -> list[EstudoResumo]:
         resumos = service.listar_resumos()
@@ -550,20 +568,82 @@ def create_app(
         opcao_id: str,
         body: SelecionarOpcaoExtracaoRequest,
     ):
+        from newport_app.diagnostico import registrar_evento
+
+        def _falha(status: int, mensagem: str, *, codigo: str) -> None:
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="cotacao_pdf",
+                evento="selecao_opcao_falhou",
+                detalhe={
+                    "extracao_id": extracao_id,
+                    "opcao_id": opcao_id,
+                    "selecionada": body.selecionada,
+                    "status_http": status,
+                    "codigo": codigo,
+                    "mensagem": mensagem,
+                },
+            )
+            raise HTTPException(
+                status_code=status,
+                detail={"codigo": codigo, "mensagem": mensagem},
+            ) from None
+
         try:
             ext = cotacao.obter_extracao(extracao_id)
             if ext.estudo_id != estudo_id:
-                raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+                _falha(
+                    404,
+                    "Cotação não encontrada neste estudo. Recarregue a lista de PDFs.",
+                    codigo="PDF-SEL-001",
+                )
             opcao = cotacao.selecionar_opcao(
                 extracao_id,
                 opcao_id,
                 selecionada=body.selecionada,
             )
             return {"opcao": opcao.model_dump(mode="json")}
+        except HTTPException:
+            raise
         except ExtracaoNaoEncontradaError:
-            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+            _falha(
+                404,
+                "Cotação não encontrada (pode ter sido removida). Recarregue a lista de PDFs.",
+                codigo="PDF-SEL-001",
+            )
         except OpcaoNaoEncontradaError:
-            raise HTTPException(status_code=404, detail="Opção não encontrada") from None
+            _falha(
+                404,
+                (
+                    "Plano não encontrado nesta cotação — a extração pode ter sido "
+                    "removida ou o plano excluído. Recarregue a cotação."
+                ),
+                codigo="PDF-SEL-002",
+            )
+        except Exception as exc:  # noqa: BLE001 — devolver motivo legível ao operador
+            registrar_evento(
+                estudo_id=estudo_id,
+                etapa="cotacao_pdf",
+                evento="selecao_opcao_falhou",
+                detalhe={
+                    "extracao_id": extracao_id,
+                    "opcao_id": opcao_id,
+                    "selecionada": body.selecionada,
+                    "status_http": 500,
+                    "codigo": "PDF-SEL-500",
+                    "mensagem": f"{type(exc).__name__}: {exc}",
+                },
+            )
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "codigo": "PDF-SEL-500",
+                    "mensagem": (
+                        f"Falha ao atualizar a seleção ({type(exc).__name__}: {exc}). "
+                        "Consulte o diagnóstico ou tente novamente."
+                    ),
+                },
+            ) from None
 
     @app.post(
         "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/confirmar-lote",

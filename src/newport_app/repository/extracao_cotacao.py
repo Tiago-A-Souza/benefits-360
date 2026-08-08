@@ -134,3 +134,11 @@ class ExtracaoCotacaoRepository:
         if row is None:
             return None
         return ExtracaoCotacaoCandidata.model_validate_json(row["payload"])
+
+    def esta_ativa(self, extracao_id: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT ativa FROM extracoes_cotacao WHERE id = ?",
+                (extracao_id,),
+            ).fetchone()
+        return bool(row and row["ativa"])

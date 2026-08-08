@@ -1,22 +1,83 @@
 const API = "/api";
 
+function montarErroApi(res, body, mensagemPadrao) {
+  const detail = body?.detail;
+  let mensagem = mensagemPadrao;
+  let codigo = null;
+  if (typeof detail === "string" && detail.trim()) {
+    mensagem = detail;
+  } else if (detail && typeof detail === "object") {
+    if (detail.mensagem) mensagem = detail.mensagem;
+    else if (detail.message) mensagem = detail.message;
+    if (detail.codigo) codigo = detail.codigo;
+    if (detail.opcoes) {
+      const err = new Error(mensagem || mensagemPadrao);
+      err.opcoes = detail.opcoes;
+      err.status = res.status;
+      err.codigo = codigo;
+      err.body = body;
+      return err;
+    }
+  } else if (Array.isArray(detail) && detail.length) {
+    const primeiro = detail[0];
+    mensagem =
+      primeiro?.msg ||
+      primeiro?.mensagem ||
+      (typeof primeiro === "string" ? primeiro : mensagemPadrao);
+  } else if (typeof body === "string" && body.trim()) {
+    mensagem = body.trim().slice(0, 300);
+  }
+  const prefixo = codigo ? `${codigo}: ` : res.status ? `HTTP ${res.status}: ` : "";
+  const err = new Error(`${prefixo}${mensagem}`);
+  err.status = res.status;
+  err.codigo = codigo;
+  err.body = body;
+  return err;
+}
+
 async function tratarResposta(res, mensagemPadrao) {
   if (res.ok) return res.json();
-  let detalhe = mensagemPadrao;
+  const texto = await res.text();
+  let body = null;
   try {
-    const body = await res.json();
-    if (typeof body.detail === "string") detalhe = body.detail;
-    else if (body.detail?.mensagem) detalhe = body.detail.mensagem;
-    else if (body.detail?.opcoes) {
-      const err = new Error(body.detail.mensagem || mensagemPadrao);
-      err.opcoes = body.detail.opcoes;
-      err.status = res.status;
-      throw err;
-    }
-  } catch (e) {
-    if (e.status) throw e;
+    body = texto ? JSON.parse(texto) : null;
+  } catch {
+    body = texto || null;
   }
-  throw new Error(detalhe);
+  throw montarErroApi(res, body, mensagemPadrao);
+}
+
+/** Mensagem legível para o operador; rede/timeout têm texto próprio. */
+export function mensagemErroOperador(err, mensagemPadrao) {
+  if (!err) return mensagemPadrao;
+  const raw = String(err.message || "");
+  if (
+    err.name === "TypeError" ||
+    /failed to fetch|networkerror|load failed|fetch/i.test(raw)
+  ) {
+    return "Falha de rede ao falar com o servidor. Verifique se a API está no ar e tente novamente.";
+  }
+  if (/timeout|timed out|aborted/i.test(raw)) {
+    return "A requisição demorou demais (timeout). Tente novamente.";
+  }
+  return raw || mensagemPadrao;
+}
+
+export async function registrarDiagnostico({ estudoId, etapa, evento, detalhe } = {}) {
+  try {
+    await fetch(`${API}/diagnostico`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        estudo_id: estudoId || null,
+        etapa: etapa || "cotacao_pdf",
+        evento,
+        detalhe: detalhe || {},
+      }),
+    });
+  } catch {
+    /* diagnóstico nunca bloqueia o fluxo principal */
+  }
 }
 
 export async function obterConfig() {
@@ -210,15 +271,22 @@ export async function excluirOpcaoExtracao(estudoId, extracaoId, opcaoId) {
 }
 
 export async function selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, selecionada) {
-  const res = await fetch(
-    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/opcoes/${opcaoId}/selecionar`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ selecionada }),
-    }
-  );
-  return tratarResposta(res, "Não foi possível atualizar a seleção.");
+  let res;
+  try {
+    res = await fetch(
+      `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/opcoes/${opcaoId}/selecionar`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selecionada }),
+      }
+    );
+  } catch (err) {
+    const e = new Error(mensagemErroOperador(err, "Não foi possível atualizar a seleção."));
+    e.causaRede = true;
+    throw e;
+  }
+  return tratarResposta(res, "Não foi possível atualizar a seleção. Recarregue a cotação e tente de novo.");
 }
 
 export async function confirmarLoteExtracao(estudoId, extracaoId) {

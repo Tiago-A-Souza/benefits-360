@@ -12,6 +12,8 @@ import {
   salvarRascunho,
   selecionarOpcaoExtracao,
   carregarPdfCotacaoBlob,
+  mensagemErroOperador,
+  registrarDiagnostico,
 } from "./api";
 import FilePickerButton from "./components/FilePickerButton";
 import {
@@ -1058,7 +1060,26 @@ export default function CotacaoPdfPanel({
       const ativas = (d.opcoes || []).filter((o) => !o.excluida);
       sincronizarCesta(extracaoId, ativas, d.documento);
     } catch (err) {
-      setErro(err.message || "Não foi possível selecionar o plano.");
+      const mensagem = mensagemErroOperador(
+        err,
+        "Não foi possível atualizar a seleção. Recarregue a cotação e tente de novo."
+      );
+      setErro(mensagem);
+      registrarDiagnostico({
+        estudoId,
+        etapa: "cotacao_pdf",
+        evento: "selecao_opcao_falhou",
+        detalhe: {
+          extracao_id: extracaoId,
+          opcao_id: opcaoId,
+          selecionada,
+          status_http: err.status ?? null,
+          codigo: err.codigo ?? null,
+          mensagem,
+          corpo: err.body ?? null,
+          causa_rede: Boolean(err.causaRede),
+        },
+      });
     } finally {
       setAlternandoOpcao(null);
     }
