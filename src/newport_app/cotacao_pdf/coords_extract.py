@@ -37,6 +37,8 @@ class LinhaPlanoExtraida:
     pagina: int
     trecho: str
     coordenadas: str | None = None
+    quantidades: list[int | None] | None = None
+    acomodacao: str | None = None
 
 
 @dataclass

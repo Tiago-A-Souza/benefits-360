@@ -227,7 +227,10 @@ export function exigeSelecaoConsciente(detalhe) {
 }
 
 export function traduzirAlerta(alerta) {
-  if (alerta.codigo === "PDF-PORTO-006" && alerta.mensagem) {
+  if (
+    (alerta.codigo === "PDF-PORTO-006" || alerta.codigo === "PDF-SUL-007" || alerta.codigo === "PDF-SUL-001")
+    && alerta.mensagem
+  ) {
     return alerta.mensagem;
   }
   const mapa = {
@@ -240,6 +243,7 @@ export function traduzirAlerta(alerta) {
     "PDF-SUL-004": "Valor de faixa possivelmente fragmentado — confira a célula no PDF.",
     "PDF-SUL-005": "A opção não possui exatamente 10 faixas tarifárias.",
     "PDF-SUL-006": "Nome do plano possivelmente fragmentado ou genérico.",
+    "PDF-SUL-007": "Algumas linhas tarifárias da tabela SulAmérica não puderam ser montadas.",
     "PDF-TPL-001": "Reconhecemos a operadora, mas não a família de template deste layout.",
     "PDF-F02": "Documento não reconhecido — use entrada manual.",
   };

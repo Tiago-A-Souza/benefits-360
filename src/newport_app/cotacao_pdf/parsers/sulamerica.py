@@ -19,7 +19,7 @@ from newport_app.cotacao_pdf.text_utils import extrair_datas, extrair_valores_re
 from newport_app.models.cotacao_pdf import AlertaExtracaoCotacao, OpcaoCotacaoCandidata
 from newport_app.models.draft import PriceBasisRascunho
 
-PARSER_VERSAO = "sulamerica@2.1.0"
+PARSER_VERSAO = "sulamerica@2.2.0"
 OPERADORA = "SulAmérica"
 TEMPLATE_ID = "sulamerica-pme-v2"
 
@@ -34,26 +34,47 @@ def identificar(doc: PdfDocumento) -> bool:
 
 
 def _extrair_financeiro(texto: str) -> tuple[int | None, int | None, int | None]:
+    """Extrai Prêmio / IOF / Total. Valores podem vir em linhas abaixo dos rótulos."""
+    from newport_app.siscor_importer.money import valor_para_centavos
+
     match_total = re.search(
         r"Total de Pr[eê]mio Sa[uú]de:\s*R\$\s*([\d.,]+)",
         texto,
         re.IGNORECASE,
     )
-    total = None
-    if match_total:
-        from newport_app.siscor_importer.money import valor_para_centavos
+    total = valor_para_centavos(match_total.group(1)) if match_total else None
 
-        total = valor_para_centavos(match_total.group(1))
-
-    idx = re.search(r"Pr[eê]mio\s*Sa[uú]de", texto, re.IGNORECASE)
-    if idx:
-        chunk = texto[idx.start() : idx.start() + 400]
+    # Evitar casar «Total de Prêmio Saúde» como se fosse a linha de prêmio.
+    match_bloco = re.search(
+        r"(?<!Total de )Pr[eê]mio\s*Sa[uú]de:",
+        texto,
+        re.IGNORECASE,
+    )
+    if match_bloco:
+        chunk = texto[match_bloco.start() : match_bloco.start() + 400]
         vals = extrair_valores_reais(chunk)
         if len(vals) >= 2:
             premio, iof = vals[0], vals[1]
             if total is None and len(vals) >= 3:
                 total = vals[2]
             return premio, iof, total
+
+    match_premio = re.search(
+        r"(?<!Total de )Pr[eê]mio\s*Sa[uú]de:\s*R\$\s*([\d.,]+)",
+        texto,
+        re.IGNORECASE,
+    )
+    match_iof = re.search(
+        r"IOF\s*\([^)]*\):\s*R\$\s*([\d.,]+)",
+        texto,
+        re.IGNORECASE,
+    )
+    premio = valor_para_centavos(match_premio.group(1)) if match_premio else None
+    iof = valor_para_centavos(match_iof.group(1)) if match_iof else None
+    if premio is not None or iof is not None or total is not None:
+        if total is None and premio is not None and iof is not None:
+            total = premio + iof
+        return premio, iof, total
     return None, None, total
 
 
@@ -72,6 +93,8 @@ def parse(
 
     paginas_alvo = _paginas_tabela_sulamerica(doc)
     secoes_encontradas = []
+    paginas_com_cabecalho_sem_linha = 0
+    candidatas_descartadas = 0
 
     for pagina in paginas_alvo:
         _, ocr = texto_pagina_enriquecido(doc, pagina)
@@ -93,19 +116,67 @@ def parse(
                 )
             )
             continue
+        if not secao.linhas and secao.linhas_tarifarias_detectadas > 0:
+            paginas_com_cabecalho_sem_linha += 1
+            candidatas_descartadas += secao.linhas_tarifarias_detectadas
+            alertas.append(
+                AlertaExtracaoCotacao(
+                    codigo="PDF-SUL-007",
+                    mensagem=(
+                        f"Página {secao.pagina}: cabeçalho de faixas encontrado, mas "
+                        f"{secao.linhas_tarifarias_detectadas} linha(s) tarifária(s) "
+                        "candidata(s) não puderam ser montadas (nome fragmentado ou "
+                        "valores incompletos)."
+                    ),
+                    severidade="alerta",
+                    pagina=secao.pagina,
+                )
+            )
+            continue
+        if not secao.linhas:
+            continue
+        descartadas = max(0, secao.linhas_tarifarias_detectadas - len(secao.linhas))
+        if descartadas > 0:
+            candidatas_descartadas += descartadas
+            alertas.append(
+                AlertaExtracaoCotacao(
+                    codigo="PDF-SUL-007",
+                    mensagem=(
+                        f"Página {secao.pagina}: {descartadas} linha(s) tarifária(s) "
+                        f"detectada(s) não entraram na extração "
+                        f"({len(secao.linhas)} de {secao.linhas_tarifarias_detectadas} "
+                        "recuperadas)."
+                    ),
+                    severidade="alerta",
+                    pagina=secao.pagina,
+                )
+            )
         secoes_encontradas.append(secao)
 
     if not secoes_encontradas:
-        alertas.append(
-            AlertaExtracaoCotacao(
-                codigo="PDF-SUL-001",
-                mensagem=(
-                    "Nenhuma tabela tarifária localizada (esperado nas págs. 5–6 "
-                    "com cabeçalho de faixas etárias)."
-                ),
-                severidade="alerta",
+        if candidatas_descartadas > 0 or paginas_com_cabecalho_sem_linha > 0:
+            alertas.append(
+                AlertaExtracaoCotacao(
+                    codigo="PDF-SUL-001",
+                    mensagem=(
+                        "Nenhuma opção montada a partir da tabela tarifária — "
+                        f"{candidatas_descartadas} linha(s) candidata(s) vistas e "
+                        "descartadas. Revise o PDF ou use entrada manual."
+                    ),
+                    severidade="alerta",
+                )
             )
-        )
+        else:
+            alertas.append(
+                AlertaExtracaoCotacao(
+                    codigo="PDF-SUL-001",
+                    mensagem=(
+                        "Nenhuma tabela tarifária localizada (esperado nas págs. 5–6 "
+                        "com cabeçalho de faixas etárias)."
+                    ),
+                    severidade="alerta",
+                )
+            )
         return [], alertas, meta
 
     texto_todo = doc.texto_todo()
@@ -116,25 +187,29 @@ def parse(
         validade = datas[0] if datas else None
 
     premio, iof, total = _extrair_financeiro(texto_todo)
+    total_linhas = sum(len(s.linhas) for s in secoes_encontradas)
+    aplicar_financeiro = len(secoes_encontradas) == 1 and total_linhas == 1
 
     for secao in secoes_encontradas:
         for linha in secao.linhas:
             regime_tipo = secao.regime_tipo if secao.regime_tipo != "ambíguo" else "sem"
-            tabela = [
-                faixa_extraida(
-                    idx,
-                    valor_centavos=centavos,
-                    quantidade=None,
-                    price_basis=PriceBasisRascunho.EXCLUI_IOF,
-                    pagina=linha.pagina,
-                    trecho_valor=linha.trecho,
-                    trecho_qtd=None,
-                    parser_versao=PARSER_VERSAO,
-                    documento_hash=documento_hash,
+            qtds = linha.quantidades or [None] * 10
+            tabela = []
+            for idx, centavos in enumerate(linha.valores):
+                qtd = qtds[idx] if idx < len(qtds) else None
+                tabela.append(
+                    faixa_extraida(
+                        idx,
+                        valor_centavos=centavos,
+                        quantidade=qtd,
+                        price_basis=PriceBasisRascunho.EXCLUI_IOF,
+                        pagina=linha.pagina,
+                        trecho_valor=linha.trecho,
+                        trecho_qtd=f"{qtd} vida" if qtd is not None else None,
+                        parser_versao=PARSER_VERSAO,
+                        documento_hash=documento_hash,
+                    )
                 )
-                for idx, centavos in enumerate(linha.valores)
-            ]
-            rotulo_regime = secao.regime_rotulo
             opcao = OpcaoCotacaoCandidata(
                 id=str(uuid.uuid4()),
                 operadora=novo_campo(
@@ -152,6 +227,17 @@ def parse(
                     parser_versao=PARSER_VERSAO,
                     documento_hash=documento_hash,
                 ),
+                acomodacao=novo_campo(
+                    "Acomodação",
+                    texto=linha.acomodacao,
+                    pagina=linha.pagina,
+                    trecho=linha.trecho,
+                    estado="confirmar" if linha.acomodacao else "ausente",
+                    parser_versao=PARSER_VERSAO,
+                    documento_hash=documento_hash,
+                )
+                if linha.acomodacao
+                else None,
                 regime_copart=novo_campo(
                     "Regime de coparticipação",
                     texto=regime_tipo,
@@ -173,21 +259,21 @@ def parse(
                 tabela=tabela,
                 premio_saude=novo_campo(
                     "Prêmio saúde",
-                    centavos=premio if len(secoes_encontradas) == 1 and len(secao.linhas) == 1 else None,
+                    centavos=premio if aplicar_financeiro else None,
                     price_basis=PriceBasisRascunho.EXCLUI_IOF,
                     parser_versao=PARSER_VERSAO,
                     documento_hash=documento_hash,
                 ),
                 iof=novo_campo(
                     "IOF",
-                    centavos=iof if len(secoes_encontradas) == 1 and len(secao.linhas) == 1 else None,
+                    centavos=iof if aplicar_financeiro else None,
                     price_basis=PriceBasisRascunho.EXCLUI_IOF,
                     parser_versao=PARSER_VERSAO,
                     documento_hash=documento_hash,
                 ),
                 total_recorrente=novo_campo(
                     "Total mensal",
-                    centavos=total if len(secoes_encontradas) == 1 and len(secao.linhas) == 1 else None,
+                    centavos=total if aplicar_financeiro else None,
                     price_basis=PriceBasisRascunho.INCLUI_IOF,
                     parser_versao=PARSER_VERSAO,
                     documento_hash=documento_hash,
@@ -204,6 +290,10 @@ def parse(
             opcoes.append(opcao)
 
     meta["validade_oficial"] = validade
+    meta["linhas_tarifarias_detectadas"] = sum(
+        s.linhas_tarifarias_detectadas for s in secoes_encontradas
+    ) + candidatas_descartadas
+    meta["opcoes_montadas"] = len(opcoes)
     meta["planos_por_secao"] = [
         {
             "pagina": s.pagina,

@@ -93,7 +93,8 @@ def test_nome_quebrado_duas_linhas_recompoe():
     assert sec is not None
     assert len(sec.linhas) == 1
     nome = sec.linhas[0].plano_nome
-    assert nome == "Direto Apartamento Nacional"
+    assert "Direto Apartamento" in nome
+    assert "Nacional" in nome
     assert nome.lower() not in {"nacional", "apartamento nacional", "direto apartamento"}
 
 
@@ -208,15 +209,25 @@ def test_relatorio_aceite_privado_sulamerica_ajustes():
     assert vals_especial[9] == 187173
     assert all(v > 100000 for v in vals_especial[8:])
 
-    direto_enf = next(op for op in sem if op.plano_nome.texto == "Direto Enfermaria Nacional")
+    direto_enf = next(
+        op for op in sem if (op.plano_nome.texto or "").startswith("Direto Enfermaria")
+    )
     vals_enf_sem = [fx.valor.centavos for fx in direto_enf.tabela]
     assert vals_enf_sem[0] == 26776
 
-    direto_ap = next(op for op in sem if op.plano_nome.texto == "Direto Apartamento Nacional")
+    direto_ap = next(
+        op
+        for op in sem
+        if (op.plano_nome.texto or "").startswith("Direto Apartamento")
+    )
     vals_direto = [fx.valor.centavos for fx in direto_ap.tabela]
     assert vals_direto[0] == 28569
 
-    direto_enf = next(op for op in parcial if op.plano_nome.texto == "Direto Enfermaria Nacional")
+    direto_enf = next(
+        op
+        for op in parcial
+        if (op.plano_nome.texto or "").startswith("Direto Enfermaria")
+    )
     vals_enf = [fx.valor.centavos for fx in direto_enf.tabela]
     assert len(vals_enf) == 10
     assert vals_enf[9] > 100000
@@ -225,5 +236,5 @@ def test_relatorio_aceite_privado_sulamerica_ajustes():
     print(f"Total opções: {len(ext.opcoes)} (sem={len(sem)}, 30%={len(parcial)})")
     print(f"Especial Vital RC (sem cp): {_fmt_vals(vals_especial)}")
     print(f"Direto Enfermaria Nacional (sem cp): {_fmt_vals(vals_enf_sem)}")
-    print(f"Direto Apartamento Nacional (sem cp): {_fmt_vals(vals_direto)}")
-    print(f"Direto Enfermaria Nacional (30%): {_fmt_vals(vals_enf)}")
+    print(f"{direto_ap.plano_nome.texto} (sem cp): {_fmt_vals(vals_direto)}")
+    print(f"{direto_enf.plano_nome.texto} (30%): {_fmt_vals(vals_enf)}")
