@@ -11,18 +11,24 @@ from newport_motor.finance import normalizar_vidas_para_recorrente
 from newport_motor.types import PriceBasis, RateBasisPoints, RoundingStrategy, TipoFiscal
 
 
-def _tipo_fiscal_texto(texto: str | None) -> str:
-    if texto and texto.strip().lower() == "operadora":
+def _tipo_fiscal_texto(texto: str | None) -> str | None:
+    if not texto or not str(texto).strip():
+        return None
+    chave = str(texto).strip().lower()
+    if chave == "operadora":
         return "operadora"
-    return "seguradora"
+    if chave == "seguradora":
+        return "seguradora"
+    return None
 
 
-def _tipo_fiscal_motor(texto: str | None) -> TipoFiscal:
-    return (
-        TipoFiscal.OPERADORA
-        if _tipo_fiscal_texto(texto) == "operadora"
-        else TipoFiscal.SEGURADORA
-    )
+def _tipo_fiscal_motor(texto: str | None) -> TipoFiscal | None:
+    chave = _tipo_fiscal_texto(texto)
+    if chave == "operadora":
+        return TipoFiscal.OPERADORA
+    if chave == "seguradora":
+        return TipoFiscal.SEGURADORA
+    return None
 
 
 def _iof_bps_padrao() -> RateBasisPoints:
@@ -56,6 +62,8 @@ def estimar_total_tabela_rascunho(
     """Soma normalizada (mesma regra por-vida do motor) para opção já no rascunho."""
     tf_txt = _tipo_fiscal_texto(tipo_fiscal)
     tf = _tipo_fiscal_motor(tipo_fiscal)
+    if tf_txt is None or tf is None:
+        return None
     iof = iof_bps or _iof_bps_padrao()
     por_faixa = {fx.faixa: fx for fx in tabela}
     valores_basis: list[tuple[int, PriceBasis]] = []
@@ -91,8 +99,11 @@ def estimar_opcao_candidata(
     iof_bps: RateBasisPoints | None = None,
 ) -> int | None:
     """Estimativa mensal para linha da etapa 3 (extração PDF)."""
-    tf_txt = _tipo_fiscal_texto(opcao.tipo_fiscal.texto if opcao.tipo_fiscal else None)
-    tf = _tipo_fiscal_motor(opcao.tipo_fiscal.texto if opcao.tipo_fiscal else None)
+    texto_tf = opcao.tipo_fiscal.texto if opcao.tipo_fiscal else None
+    tf_txt = _tipo_fiscal_texto(texto_tf)
+    tf = _tipo_fiscal_motor(texto_tf)
+    if tf_txt is None or tf is None:
+        return None
     iof = iof_bps or _iof_bps_padrao()
     por_faixa = {fx.faixa: fx for fx in opcao.tabela}
     valores_basis: list[tuple[int, PriceBasis]] = []

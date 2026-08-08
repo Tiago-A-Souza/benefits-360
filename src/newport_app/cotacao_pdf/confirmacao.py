@@ -49,22 +49,18 @@ def _confirmar_campo(campo: ValorExtraido, *, confirmado_por: str, agora: dateti
     return True
 
 
-def _aplicar_defaults_opcao(op: OpcaoCotacaoCandidata) -> None:
-    if op.tipo_fiscal is not None and not op.tipo_fiscal.texto:
-        op.tipo_fiscal.texto = "seguradora"
-    if op.regime_copart is not None and not op.regime_copart.texto:
-        op.regime_copart.texto = "sem"
-
-
 def confirmar_opcao_implicita(
     op: OpcaoCotacaoCandidata,
     *,
     confirmado_por: str = "analista-local",
 ) -> int:
-    """Aceita valores extraídos preenchidos — seleção ou aplicação implica revisão ok."""
+    """Aceita valores extraídos preenchidos — seleção ou aplicação implica revisão ok.
+
+    Não preenche campos ausentes: tipo_fiscal e regime_copart sem valor
+    permanecem ausentes e bloqueiam a aplicação via pendencias_opcao.
+    """
     if op.excluida:
         return 0
-    _aplicar_defaults_opcao(op)
     agora = datetime.now(timezone.utc)
     confirmados = 0
     for campo in _iter_campos_opcao(op):

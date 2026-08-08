@@ -55,6 +55,13 @@ import {
   formatarResumoUploads,
   primeiroUploadComSucesso,
 } from "./cotacaoPdf/uploadLote";
+import { REGIMES_COPART, TIPOS_FISCAIS } from "./constants";
+
+function rotuloTipoFiscal(texto) {
+  if (texto === "operadora") return "Operadora";
+  if (texto === "seguradora") return "Seguradora";
+  return null;
+}
 
 function BadgeSituacao({ situacao }) {
   const cls =
@@ -486,9 +493,13 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
     estimativaMotor != null ? estimativaMotor : subtotalBruto;
   const validadeAtual = op.validade_oficial?.data || validadeDocumento || "";
   const validadePendente = !validadeAtual;
+  const tipoFiscalAtual = op.tipo_fiscal?.texto || "";
+  const tipoFiscalPendente = !tipoFiscalAtual;
+  const regimeAtual = op.regime_copart?.texto || "";
+  const regimePendente = !regimeAtual;
 
   return (
-    <div className="cartao cartao--interno revisao-plano">
+    <div className="cartao cartao--fluxo revisao-plano">
       <div className="revisao-plano-cabecalho">
         <span className="revisao-plano-rotulo">Plano selecionado</span>
         <strong className="revisao-plano-nome">{nomePlanoExibicao(op)}</strong>
@@ -505,17 +516,72 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </div>
         <div>
           <dt>Tipo fiscal</dt>
-          <dd>{op.tipo_fiscal?.texto === "operadora" ? "Operadora" : "Seguradora"}</dd>
+          <dd>{rotuloTipoFiscal(tipoFiscalAtual) || "A declarar"}</dd>
         </div>
         <div>
           <dt>Coparticipação</dt>
-          <dd>{rotuloRegime(op)}</dd>
+          <dd>{regimePendente ? "A declarar" : rotuloRegime(op)}</dd>
         </div>
         <div>
           <dt>Validade</dt>
           <dd>{validadeAtual || "—"}</dd>
         </div>
       </dl>
+
+      {tipoFiscalPendente && (
+        <label className="campo-revisao">
+          <span>Tipo fiscal</span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (op.tipo_fiscal?.id && e.target.value) {
+                onSalvarCampo(op.tipo_fiscal.id, {
+                  texto: e.target.value,
+                  confirmado: true,
+                });
+              }
+            }}
+          >
+            <option value="">Selecione…</option>
+            {TIPOS_FISCAIS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <span className="muted revisao-plano-dica">
+            Operadora (Amil, Hapvida, Unimed, NotreDame) ou Seguradora (Porto, SulAmérica,
+            Bradesco)? O IOF de 2,38% só se aplica a seguradora.
+          </span>
+        </label>
+      )}
+
+      {regimePendente && (
+        <label className="campo-revisao">
+          <span>Regime de coparticipação</span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (op.regime_copart?.id && e.target.value) {
+                onSalvarCampo(op.regime_copart.id, {
+                  texto: e.target.value,
+                  confirmado: true,
+                });
+              }
+            }}
+          >
+            <option value="">Selecione…</option>
+            {REGIMES_COPART.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          <span className="muted revisao-plano-dica">
+            Não inferido automaticamente — declare antes de adicionar ao comparativo.
+          </span>
+        </label>
+      )}
 
       {validadePendente && (
         <label className="campo-revisao campo-revisao--validade">
@@ -537,7 +603,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </label>
       )}
 
-      {!validadePendente && (
+      {!validadePendente && !tipoFiscalPendente && !regimePendente && (
         <p className="muted revisao-plano-dica">
           Dados extraídos do PDF. Use <strong>Corrigir</strong> na tabela apenas se algum valor estiver errado.
         </p>
@@ -1158,6 +1224,18 @@ export default function CotacaoPdfPanel({
       setErro("Selecione ao menos um plano antes de adicionar ao comparativo.");
       return;
     }
+    const semTipoFiscal = selecionadas.filter((o) => !o.tipo_fiscal?.texto);
+    if (semTipoFiscal.length) {
+      setErro(
+        "Declare o tipo fiscal de cada plano (Operadora ou Seguradora) antes de adicionar ao comparativo."
+      );
+      return;
+    }
+    const semRegime = selecionadas.filter((o) => !o.regime_copart?.texto);
+    if (semRegime.length) {
+      setErro("Declare o regime de coparticipação de cada plano antes de adicionar ao comparativo.");
+      return;
+    }
     try {
       const res = await aplicarExtracaoCotacao(estudoId, extracaoId);
       const listaAtualizada = await listarExtracoesCotacao(estudoId)
@@ -1631,7 +1709,19 @@ export default function CotacaoPdfPanel({
                   </div>
                   <div>
                     <dt>Tipo fiscal</dt>
-                    <dd>Seguradora</dd>
+                    <dd>
+                      {(() => {
+                        const tipos = [
+                          ...new Set(
+                            selecionadas
+                              .map((o) => rotuloTipoFiscal(o.tipo_fiscal?.texto))
+                              .filter(Boolean)
+                          ),
+                        ];
+                        if (!tipos.length) return "A declarar por plano";
+                        return tipos.join(" / ");
+                      })()}
+                    </dd>
                   </div>
                 </dl>
               </div>

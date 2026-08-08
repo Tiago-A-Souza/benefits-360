@@ -10,8 +10,14 @@ export const OPERADORAS = [
 ];
 
 export const TIPOS_FISCAIS = [
-  { value: "seguradora", label: "Seguradora (contrato)" },
-  { value: "operadora", label: "Operadora (administrado)" },
+  {
+    value: "operadora",
+    label: "Operadora (Amil, Hapvida, Unimed, NotreDame) — sem IOF",
+  },
+  {
+    value: "seguradora",
+    label: "Seguradora (Porto, SulAmérica, Bradesco) — com IOF",
+  },
 ];
 
 export const MODALIDADES = [

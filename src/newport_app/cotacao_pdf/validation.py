@@ -12,6 +12,16 @@ _CAMPOS_OBRIGATORIOS = (
     "regime_copart",
 )
 
+_MENSAGENS_AUSENCIA = {
+    "tipo_fiscal": (
+        "Tipo fiscal: declare se é Operadora (Amil, Hapvida, Unimed, NotreDame) "
+        "ou Seguradora (Porto, SulAmérica, Bradesco) — o IOF depende dessa escolha."
+    ),
+    "regime_copart": (
+        "Regime de coparticipação: declare o regime — não é preenchido automaticamente."
+    ),
+}
+
 
 def _tem_valor(campo: ValorExtraido | None) -> bool:
     if campo is None:
@@ -29,7 +39,7 @@ def pendencias_opcao(op: OpcaoCotacaoCandidata) -> list[str]:
         campo = getattr(op, nome, None)
         rotulo = campo.rotulo if campo else nome.replace("_", " ")
         if not _tem_valor(campo):
-            msgs.append(f"{rotulo}: valor ausente.")
+            msgs.append(_MENSAGENS_AUSENCIA.get(nome, f"{rotulo}: valor ausente."))
 
     faixas_com_valor = sum(1 for fx in op.tabela if fx.valor.centavos is not None)
     if faixas_com_valor == 0:
