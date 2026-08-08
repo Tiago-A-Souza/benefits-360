@@ -85,6 +85,10 @@ class ResumoPlanoAtualItem(BaseModel):
 
 class ResumoPlanoAtualResponse(BaseModel):
     planos: list[ResumoPlanoAtualItem] = Field(default_factory=list)
+    total_vigente_centavos: int | None = None
+    total_vigente_reais: str | None = None
+    total_reajustado_centavos: int | None = None
+    total_reajustado_reais: str | None = None
     total_calculado_reais: str | None = None
     requer_data_referencia: bool = False
 

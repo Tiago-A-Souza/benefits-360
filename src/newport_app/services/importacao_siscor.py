@@ -37,6 +37,7 @@ from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.importacao_siscor import ImportacaoSiscorRepository
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.siscor_importer.duplicidades import recalcular_duplicidades
+from newport_app.siscor_importer.parentesco_contagem import contar_parentesco
 from newport_app.siscor_importer.parser import parse_planilha_siscor
 from newport_app.siscor_importer.revalidate import revalidar_linha
 from newport_app.siscor_importer.subgrupos import remontar_subgrupos_candidata
@@ -200,6 +201,7 @@ class ImportacaoSiscorService:
                 "planos_detectados": len(planos),
                 "confirmadas": confirmadas,
                 "aguardando_conferencia": len(candidata.linhas) - confirmadas,
+                **contar_parentesco(candidata.linhas).__dict__,
             }
         )
 

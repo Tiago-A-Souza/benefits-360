@@ -57,17 +57,28 @@ def _montar_observacao(
     return " ".join(partes)
 
 
+def _centavos_vida(vida) -> int | None:
+    if vida.valor_fatura and vida.valor_fatura.centavos is not None:
+        return vida.valor_fatura.centavos
+    if vida.valor_conferencia and vida.valor_conferencia.centavos is not None:
+        return vida.valor_conferencia.centavos
+    return None
+
+
 def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualResponse:
     data_ref = rascunho.escolhas.data_referencia_idade
     baseline = rascunho.escolhas.baseline_escolhido.valor
     planos: list[ResumoPlanoAtualItem] = []
-    total_geral = 0
+    total_vigente_geral = 0
+    total_reajustado_geral = 0
+    tem_reajuste_global = False
 
     for sg in rascunho.subgrupos_atuais:
         por_faixa: dict[int, list[int]] = defaultdict(list)
         vidas_por_faixa: dict[int, int] = defaultdict(int)
         qtd_benef = 0
         vidas_com_valor = 0
+        centavos_vidas: list[int] = []
         for vida in rascunho.vidas_incluidas():
             if vida.subgrupo_atual_id != sg.id:
                 continue
@@ -76,13 +87,10 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
                 continue
             _, faixa = faixa_em(vida.nascimento, data_ref)
             vidas_por_faixa[faixa] += 1
-            cent = None
-            if vida.valor_fatura and vida.valor_fatura.centavos is not None:
-                cent = vida.valor_fatura.centavos
-            elif vida.valor_conferencia and vida.valor_conferencia.centavos is not None:
-                cent = vida.valor_conferencia.centavos
+            cent = _centavos_vida(vida)
             if cent is not None:
                 por_faixa[faixa].append(cent)
+                centavos_vidas.append(cent)
                 vidas_com_valor += 1
 
         faixas_resumo: list[ResumoFaixaPlanoAtual] = []
@@ -113,7 +121,10 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
         vigente = subtotal if vidas_com_valor > 0 else None
         reajustado = None
         if vigente is not None and sg.reajuste_bps is not None:
-            reajustado = apply_rate_bps(vigente, sg.reajuste_bps)
+            tem_reajuste_global = True
+            reajustado = sum(
+                apply_rate_bps(cent, sg.reajuste_bps) for cent in centavos_vidas
+            )
 
         if baseline == "reajustado" and reajustado is not None:
             referencia_centavos = reajustado
@@ -122,7 +133,11 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
             referencia_centavos = vigente
             referencia_rotulo = "vigente"
 
-        total_geral += referencia_centavos or 0
+        if vigente is not None:
+            total_vigente_geral += vigente
+        if reajustado is not None:
+            total_reajustado_geral += reajustado
+
         planos.append(
             ResumoPlanoAtualItem(
                 subgrupo_id=sg.id,
@@ -148,8 +163,17 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
             )
         )
 
+    total_vigente = total_vigente_geral if total_vigente_geral else None
+    total_reajustado = (
+        total_reajustado_geral if tem_reajuste_global and total_reajustado_geral else None
+    )
+
     return ResumoPlanoAtualResponse(
         planos=planos,
-        total_calculado_reais=_formatar_reais(total_geral if total_geral else None),
+        total_vigente_centavos=total_vigente,
+        total_vigente_reais=_formatar_reais(total_vigente),
+        total_reajustado_centavos=total_reajustado,
+        total_reajustado_reais=_formatar_reais(total_reajustado),
+        total_calculado_reais=_formatar_reais(total_vigente),
         requer_data_referencia=data_ref is None,
     )

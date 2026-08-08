@@ -28,6 +28,7 @@ from newport_app.models.siscor_import import (
     SubgrupoSiscorSugerido,
 )
 from newport_app.siscor_importer.constants import COLUNAS_OBRIGATORIAS
+from newport_app.siscor_importer.parentesco_contagem import contar_parentesco
 from newport_app.siscor_importer.duplicidades import recalcular_duplicidades
 from newport_app.siscor_importer.money import valor_para_centavos
 from newport_app.siscor_importer.normalize import (
@@ -73,6 +74,7 @@ def _estatisticas(linhas: list[LinhaSiscorCandidata]) -> EstatisticasImportacaoS
     com_excecao = sum(1 for linha in linhas if linha.tem_excecao and not linha.excluida)
     confirmadas = sum(1 for linha in linhas if linha.registro_confirmado)
     planos = {linha.subgrupo_sugerido_id for linha in linhas if linha.subgrupo_sugerido_id}
+    parentesco = contar_parentesco(linhas)
     return EstatisticasImportacaoSiscor(
         total_linhas_lidas=len(linhas),
         linhas_utilizaveis=len(linhas),
@@ -80,6 +82,9 @@ def _estatisticas(linhas: list[LinhaSiscorCandidata]) -> EstatisticasImportacaoS
         planos_detectados=len(planos),
         confirmadas=confirmadas,
         aguardando_conferencia=len(linhas) - confirmadas,
+        qtd_titulares=parentesco.titulares,
+        qtd_dependentes=parentesco.dependentes,
+        qtd_sem_parentesco=parentesco.sem_parentesco,
     )
 
 

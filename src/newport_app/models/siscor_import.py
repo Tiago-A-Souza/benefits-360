@@ -92,6 +92,9 @@ class EstatisticasImportacaoSiscor(BaseModel):
     confirmadas: int = 0
     aguardando_conferencia: int = 0
     vidas_no_rascunho: int = 0
+    qtd_titulares: int = 0
+    qtd_dependentes: int = 0
+    qtd_sem_parentesco: int = 0
 
 
 class ImportacaoSiscorCandidata(BaseModel):

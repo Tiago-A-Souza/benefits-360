@@ -72,12 +72,9 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
   }
 
   const stats = conferencia?.estatisticas;
-  const titulares = conferencia?.linhas?.filter((l) =>
-    /titular/i.test(l.parentesco_texto || "")
-  ).length;
-  const dependentes = conferencia?.linhas?.filter((l) =>
-    /dependente/i.test(l.parentesco_texto || "")
-  ).length;
+  const titulares = stats?.qtd_titulares ?? 0;
+  const dependentes = stats?.qtd_dependentes ?? 0;
+  const semParentesco = stats?.qtd_sem_parentesco ?? 0;
   const temBase = Boolean(stats);
 
   return (
@@ -161,13 +158,19 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
             <span className="resumo-kpi-rotulo">Vidas</span>
           </div>
           <div className="resumo-kpi">
-            <span className="resumo-kpi-valor">{titulares ?? "—"}</span>
+            <span className="resumo-kpi-valor">{titulares}</span>
             <span className="resumo-kpi-rotulo">Titulares</span>
           </div>
           <div className="resumo-kpi">
-            <span className="resumo-kpi-valor">{dependentes ?? "—"}</span>
+            <span className="resumo-kpi-valor">{dependentes}</span>
             <span className="resumo-kpi-rotulo">Dependentes</span>
           </div>
+          {semParentesco > 0 && (
+            <div className="resumo-kpi">
+              <span className="resumo-kpi-valor">{semParentesco}</span>
+              <span className="resumo-kpi-rotulo">Sem parentesco</span>
+            </div>
+          )}
           <div className="resumo-kpi">
             <span className="resumo-kpi-valor">{stats.planos_detectados}</span>
             <span className="resumo-kpi-rotulo">Planos</span>

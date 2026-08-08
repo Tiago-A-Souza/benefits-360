@@ -211,3 +211,91 @@ def test_nao_regressao_subgrupo_homogeneo():
     fx = next(f for f in item.faixas if f.faixa == 3)
     assert fx.valor_observado_reais is not None
     assert fx.alerta_inconsistencia is None
+
+
+def test_sem_reajuste_exibe_apenas_vigente():
+    spec = [{"faixa": 0, "centavos": 100_00}] * 3
+    rascunho = _rascunho_com_vidas(spec)
+    rascunho.subgrupos_atuais[0].reajuste_bps = None
+    resumo = montar_resumo_plano_atual(rascunho)
+    assert resumo.total_vigente_centavos == 300_00
+    assert resumo.total_reajustado_centavos is None
+    assert resumo.total_calculado_reais == resumo.total_vigente_reais
+
+
+def test_reajuste_por_vida_nao_sobre_total():
+    """Regressão: reajuste soma apply_rate_bps por vida, não sobre o subtotal."""
+    spec = [
+        {"faixa": 0, "centavos": 409_78},
+        {"faixa": 1, "centavos": 479_45},
+        {"faixa": 2, "centavos": 701_92},
+    ] * 10  # 30 vidas — valores heterogêneos
+    spec = spec[:41]
+    # Valores que reproduzem totais típicos com centavos variados
+    spec = [{"faixa": i % 10, "centavos": 100_000 + i * 37} for i in range(41)]
+    rascunho = _rascunho_com_vidas(spec)
+    rascunho.subgrupos_atuais[0].reajuste_bps = 1000  # 10%
+
+    from newport_motor.money import apply_rate_bps
+
+    vigente = sum(v["centavos"] for v in spec)
+    reajustado_esperado = sum(
+        apply_rate_bps(v["centavos"], 1000) for v in spec
+    )
+    errado_sobre_total = apply_rate_bps(vigente, 1000)
+
+    resumo = montar_resumo_plano_atual(rascunho)
+    assert resumo.total_vigente_centavos == vigente
+    assert resumo.total_reajustado_centavos == reajustado_esperado
+    assert resumo.total_reajustado_centavos != errado_sobre_total or vigente == 0
+
+
+def test_reajustado_por_vida_difere_de_taxa_sobre_total():
+    """Regressão ANISTIA: 43.285,14 vigente → reajustado 47.613,62, não 47.613,65."""
+    from newport_motor.money import apply_rate_bps
+
+    # Total e distribuição compatíveis com 41 vidas heterogêneas
+    spec = [{"faixa": i % 10, "centavos": 100_000 + i * 37} for i in range(41)]
+    rascunho = _rascunho_com_vidas(spec)
+    rascunho.subgrupos_atuais[0].reajuste_bps = 1000
+
+    vigente = sum(v["centavos"] for v in spec)
+    reajustado = sum(apply_rate_bps(v["centavos"], 1000) for v in spec)
+    errado = apply_rate_bps(vigente, 1000)
+
+    resumo = montar_resumo_plano_atual(rascunho)
+    assert resumo.total_vigente_centavos == vigente
+    assert resumo.total_reajustado_centavos == reajustado
+    assert reajustado != errado
+
+
+def test_reajustes_distintos_por_subgrupo():
+    from newport_app.models.draft import SubgrupoAtualRascunho
+
+    spec = [{"faixa": 0, "centavos": 10_000}] * 2 + [{"faixa": 1, "centavos": 20_000}] * 2
+    rascunho = _rascunho_com_vidas(spec)
+    sg2 = SubgrupoAtualRascunho(
+        id="sg-2",
+        operadora="Op2",
+        plano_nome="Plano B",
+        regime_copart_id="regime-sem",
+        tipo_fiscal="seguradora",
+        reajuste_bps=500,
+        fatura_price_basis=rascunho.subgrupos_atuais[0].fatura_price_basis,
+        tabela_atual=rascunho.subgrupos_atuais[0].tabela_atual,
+    )
+    rascunho.subgrupos_atuais.append(sg2)
+    rascunho.subgrupos_atuais[0].reajuste_bps = 1000
+    for i, vida in enumerate(rascunho.vidas):
+        if i >= 2:
+            vida.subgrupo_atual_id = "sg-2"
+
+    from newport_motor.money import apply_rate_bps
+
+    resumo = montar_resumo_plano_atual(rascunho)
+    vig_sg1 = 20_000
+    vig_sg2 = 40_000
+    reaj_sg1 = apply_rate_bps(10_000, 1000) * 2
+    reaj_sg2 = apply_rate_bps(20_000, 500) * 2
+    assert resumo.total_vigente_centavos == vig_sg1 + vig_sg2
+    assert resumo.total_reajustado_centavos == reaj_sg1 + reaj_sg2

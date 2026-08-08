@@ -294,10 +294,26 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
         </div>
       </div>
 
-      {resumoAtual?.total_calculado_reais && (
-        <p className="resumo-plano-atual muted">
-          Total mensal observado na base: <strong>{resumoAtual.total_calculado_reais}</strong>
-        </p>
+      {(resumoAtual?.total_vigente_reais || resumoAtual?.total_reajustado_reais) && (
+        <div className="resumo-plano-atual-totais muted">
+          {resumoAtual.total_vigente_reais && (
+            <p>
+              Total vigente na base: <strong>{resumoAtual.total_vigente_reais}</strong>
+            </p>
+          )}
+          {resumoAtual.total_reajustado_reais && (
+            <p>
+              Total reajustado: <strong>{resumoAtual.total_reajustado_reais}</strong>
+              {resumoAtual.planos?.length === 1 &&
+                resumoAtual.planos[0].reajuste_percentual_exibicao && (
+                  <>
+                    {" "}
+                    ({resumoAtual.planos[0].reajuste_percentual_exibicao})
+                  </>
+                )}
+            </p>
+          )}
+        </div>
       )}
 
       {pendencias.filter((p) => p.etapa === 2).length > 0 && (
