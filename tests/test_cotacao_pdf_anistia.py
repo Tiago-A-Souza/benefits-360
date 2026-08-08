@@ -75,7 +75,7 @@ def test_sintetico_sulamerica_com_copart_dois_regimes():
     )
     regimes = {op.regime_copart.texto for op in ext.opcoes}
     assert "sem" in regimes
-    assert "parcial" in regimes
+    assert "percentual" in regimes
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
 
 
@@ -88,11 +88,11 @@ def test_sintetico_porto_27_duas_tabelas():
     )
     assert len(ext.opcoes) >= 2
     regimes = {op.regime_copart.texto for op in ext.opcoes}
-    assert "parcial" in regimes
+    assert "percentual" in regimes
     # Plano com COPAR no nome prevalece sobre cabeçalho "sem coparticipação" do sintético.
     for op in ext.opcoes:
         if "COPAR" in (op.plano_nome.texto or "").upper():
-            assert op.regime_copart.texto == "parcial"
+            assert op.regime_copart.texto == "percentual"
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
 
 
@@ -105,7 +105,7 @@ def test_anistia_sulamerica_com_ajustes():
     assert ext.opcoes
     regimes = {op.regime_copart.texto for op in ext.opcoes}
     assert "sem" in regimes
-    assert "parcial" in regimes
+    assert "percentual" in regimes
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
     assert not any(c.confirmado for c in ext.campos_extraidos)
 

@@ -240,6 +240,7 @@ class CenarioRascunho(BaseModel):
 class RegimeCopartRascunho(BaseModel):
     id: str
     tipo: Literal["sem", "parcial", "percentual", "customizada"]
+    percentual: int | None = None
 
 
 class RascunhoEstudo(BaseModel):

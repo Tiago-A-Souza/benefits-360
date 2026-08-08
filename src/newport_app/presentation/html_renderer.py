@@ -12,7 +12,7 @@ from newport_app.models.presentation import (
     PropostaApresentacao,
     SecaoRegimeApresentacao,
 )
-from newport_app.presentation.formatacao import formatar_reais
+from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
 RENDERER_VERSAO = "html@2.8.1"
 PROPOSTAS_POR_PAGINA = 3
@@ -62,7 +62,8 @@ def _meta_proposta(prop: PropostaApresentacao) -> str:
     if prop.copart_descricao:
         partes.append(f"Coparticipação: {html.escape(prop.copart_descricao)}")
     if prop.validade:
-        partes.append(f"Validade: {html.escape(prop.validade)}")
+        validade = formatar_data_br(prop.validade) or prop.validade
+        partes.append(f"Validade: {html.escape(validade)}")
     if prop.premio_centavos is not None:
         partes.append(f"Prêmio: {_cel(prop.premio_centavos)}")
     if prop.iof_centavos is not None:

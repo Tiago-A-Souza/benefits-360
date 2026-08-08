@@ -121,7 +121,7 @@ def classificar_regime_plano_porto(nome_plano: str, cabecalho: str) -> tuple[str
     match = _RE_COPAR_NOME.search(nome_u)
     if match:
         pct = int(match.group(1)) if match.group(1) else 30
-        return "parcial", pct, f"Coparticipação {pct}%"
+        return "percentual", pct, f"Coparticipação {pct}%"
 
     regime_tipo, copart_pct, rotulo = classificar_regime_cabecalho(cabecalho)
     if regime_tipo == "ambíguo":
@@ -229,13 +229,13 @@ def classificar_regime_cabecalho(texto_cabecalho: str) -> tuple[str, int | None,
         return "sem", None, "Sem coparticipação"
     match = _RE_PCT_COPART.search(texto_cabecalho)
     if match:
-        return "parcial", int(match.group(1)), f"Coparticipação {match.group(1)}%"
+        return "percentual", int(match.group(1)), f"Coparticipação {match.group(1)}%"
     if re.search(r"com\s+copart", t) and not re.search(r"sem\s+copart", t):
         pct = 30
         m2 = re.search(r"(\d{1,2})\s*%", texto_cabecalho)
         if m2:
             pct = int(m2.group(1))
-        return "parcial", pct, f"Coparticipação {pct}%"
+        return "percentual", pct, f"Coparticipação {pct}%"
     if "coparticip" in t and "sem" not in t and "valores apresentados com" not in t:
         return "ambíguo", None, "Regime de coparticipação ambíguo"
     return "a_confirmar", None, "A confirmar"

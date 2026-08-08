@@ -165,13 +165,22 @@ def test_auto_aprovacao_explicita(stack):
     assert aprov.revisor_nome == "Ana"
 
 
-def test_dez_faixas_sempre_presentes(stack):
+def test_dez_faixas_quando_solicitado(stack):
     repo, _, _, snap_svc, _ = stack
     r = rascunho_demo_12_vidas()
     snap_id = _aprovar(repo, snap_svc, r)
     snap = snap_svc.obter_snapshot(snap_id)
     vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=["op-1"])
     for sec in vm.secoes_regime:
+        for plano in sec.planos_atuais:
+            assert 1 <= len(plano.faixas) <= 10
+    vm_todas = construir_view_model(
+        snap,
+        modo="faixas",
+        propostas_selecionadas=["op-1"],
+        exibir_todas_faixas=True,
+    )
+    for sec in vm_todas.secoes_regime:
         for plano in sec.planos_atuais:
             assert len(plano.faixas) == 10
 

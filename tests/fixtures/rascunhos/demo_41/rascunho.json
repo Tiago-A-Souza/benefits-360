@@ -944,7 +944,8 @@
   "regimes_copart": [
     {
       "id": "regime-sem",
-      "tipo": "sem"
+      "tipo": "sem",
+      "percentual": null
     }
   ],
   "cenarios": [

@@ -433,7 +433,11 @@ def mapear_estudo_input(
         )
 
     regimes = [
-        RegimeCopart(id=r.id, tipo=RegimeCopartTipo(r.tipo))
+        RegimeCopart(
+            id=r.id,
+            tipo=RegimeCopartTipo(r.tipo),
+            percentual_bps=(r.percentual * 100 if r.percentual is not None else None),
+        )
         for r in rascunho.regimes_copart
     ]
     cenarios = [

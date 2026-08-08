@@ -67,25 +67,64 @@ def _comp(
     )
 
 
-def _regime_id(campo: ValorExtraido | None) -> str | None:
+def _copart_percentual_opcao(op: OpcaoCotacaoCandidata) -> int | None:
+    if op.copart_percentual is None or op.copart_percentual.inteiro is None:
+        return None
+    return int(op.copart_percentual.inteiro)
+
+
+def _tipo_regime_canonico(campo: ValorExtraido | None, percentual: int | None) -> str | None:
+    """Normaliza tipo comercial: % explícito nunca vira «parcial»."""
     if campo is None or not campo.confirmado or not campo.texto:
         return None
+    chave = campo.texto.lower().strip()
+    if chave == "parcial" and percentual is not None:
+        return "percentual"
+    return chave
+
+
+def _regime_id(campo: ValorExtraido | None, percentual: int | None = None) -> str | None:
+    chave = _tipo_regime_canonico(campo, percentual)
+    if chave is None:
+        return None
+    if chave == "percentual":
+        if percentual is not None:
+            return f"regime-percentual-{percentual}"
+        return "regime-percentual"
     mapa = {
         "sem": "regime-sem",
         "parcial": "regime-parcial",
-        "percentual": "regime-percentual",
         "customizada": "regime-customizada",
     }
-    chave = campo.texto.lower().strip()
     return mapa.get(chave, f"regime-{chave}")
 
 
-def _ensure_regime(rascunho: RascunhoEstudo, regime_id: str | None) -> None:
+def _tipo_de_regime_id(regime_id: str) -> str:
+    resto = regime_id.removeprefix("regime-")
+    for tipo in ("sem", "parcial", "percentual", "customizada"):
+        if resto == tipo or resto.startswith(f"{tipo}-"):
+            return tipo
+    return resto
+
+
+def _ensure_regime(
+    rascunho: RascunhoEstudo,
+    regime_id: str | None,
+    *,
+    percentual: int | None = None,
+) -> None:
     if not regime_id:
         return
-    tipo = regime_id.replace("regime-", "")
-    if not any(r.id == regime_id for r in rascunho.regimes_copart):
-        rascunho.regimes_copart.append(RegimeCopartRascunho(id=regime_id, tipo=tipo))  # type: ignore[arg-type]
+    if any(r.id == regime_id for r in rascunho.regimes_copart):
+        return
+    tipo = _tipo_de_regime_id(regime_id)
+    rascunho.regimes_copart.append(
+        RegimeCopartRascunho(
+            id=regime_id,
+            tipo=tipo,  # type: ignore[arg-type]
+            percentual=percentual if tipo == "percentual" else None,
+        )
+    )
 
 
 def _modalidade(campo: ValorExtraido | None) -> ModalidadeRascunho | None:
@@ -120,7 +159,8 @@ def opcao_candidata_para_rascunho(
     if not op.plano_nome or not op.plano_nome.texto:
         return None
 
-    regime_id = _regime_id(op.regime_copart)
+    percentual = _copart_percentual_opcao(op)
+    regime_id = _regime_id(op.regime_copart, percentual)
     tipo_fiscal = op.tipo_fiscal.texto if op.tipo_fiscal and op.tipo_fiscal.texto else None
     if regime_id is None or tipo_fiscal is None:
         return None
@@ -275,8 +315,9 @@ def aplicar_extracao_confirmada(
             )
             continue
 
-        regime_id = _regime_id(op_c.regime_copart)
-        _ensure_regime(rascunho, regime_id)
+        percentual = _copart_percentual_opcao(op_c)
+        regime_id = _regime_id(op_c.regime_copart, percentual)
+        _ensure_regime(rascunho, regime_id, percentual=percentual)
 
         existente = next(
             (

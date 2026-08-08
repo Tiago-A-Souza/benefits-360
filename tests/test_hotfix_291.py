@@ -187,9 +187,11 @@ def test_relatorio_aceite_privado_sulamerica_ajustes():
     assert not any(n in proibidos for n in nomes)
 
     sem = [op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "sem"]
-    parcial = [op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "parcial"]
+    percentual = [
+        op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "percentual"
+    ]
     assert len(sem) == 11
-    assert len(parcial) == 11
+    assert len(percentual) == 11
 
     for op in ext.opcoes:
         assert len(op.tabela) == 10
@@ -225,7 +227,7 @@ def test_relatorio_aceite_privado_sulamerica_ajustes():
 
     direto_enf = next(
         op
-        for op in parcial
+        for op in percentual
         if (op.plano_nome.texto or "").startswith("Direto Enfermaria")
     )
     vals_enf = [fx.valor.centavos for fx in direto_enf.tabela]
@@ -233,7 +235,7 @@ def test_relatorio_aceite_privado_sulamerica_ajustes():
     assert vals_enf[9] > 100000
 
     print("\n=== ACEITE PRIVADO SulAmérica ajustes ===")
-    print(f"Total opções: {len(ext.opcoes)} (sem={len(sem)}, 30%={len(parcial)})")
+    print(f"Total opções: {len(ext.opcoes)} (sem={len(sem)}, 30%={len(percentual)})")
     print(f"Especial Vital RC (sem cp): {_fmt_vals(vals_especial)}")
     print(f"Direto Enfermaria Nacional (sem cp): {_fmt_vals(vals_enf_sem)}")
     print(f"{direto_ap.plano_nome.texto} (sem cp): {_fmt_vals(vals_direto)}")

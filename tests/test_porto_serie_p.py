@@ -148,13 +148,13 @@ def test_porto3_extrai_serie_p_e_p220_q_copar():
         for op in ext.opcoes
         if op.regime_copart and op.regime_copart.texto == "sem"
     ]
-    parcial = [
+    percentual = [
         op
         for op in ext.opcoes
-        if op.regime_copart and op.regime_copart.texto == "parcial"
+        if op.regime_copart and op.regime_copart.texto == "percentual"
     ]
     assert len(sem) == 18
-    assert len(parcial) == 18
+    assert len(percentual) == 18
 
     p220 = next(
         op

@@ -71,7 +71,7 @@ def test_classifica_copar_30_pelo_nome():
         "BRONZE RIO PRO COPAR Q 30",
         "Tabela Geral de Prêmios sem coparticipação",
     )
-    assert regime == "parcial"
+    assert regime == "percentual"
     assert pct == 30
     assert "30%" in rotulo
 
@@ -94,16 +94,16 @@ def test_porto_corpus_34_opcoes_nomes_limpos_copar_30():
     assert not any(_RE_PRECO_NO_NOME.search(op.plano_nome.texto or "") for op in ext.opcoes)
 
     sem = [op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "sem"]
-    parcial = [
+    percentual = [
         op
         for op in ext.opcoes
         if op.regime_copart
-        and op.regime_copart.texto == "parcial"
+        and op.regime_copart.texto == "percentual"
         and op.copart_percentual
         and op.copart_percentual.inteiro == 30
     ]
     assert len(sem) == 17
-    assert len(parcial) == 17
+    assert len(percentual) == 17
     assert all(op.tipo_fiscal and op.tipo_fiscal.texto == "seguradora" for op in ext.opcoes)
     assert any((op.plano_nome.texto or "").upper().startswith("P220") for op in ext.opcoes)
 

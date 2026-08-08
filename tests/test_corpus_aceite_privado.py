@@ -77,13 +77,15 @@ def test_aceite_sulamerica_ajustes_dual_regimes():
     assert mat["tabela_extraida"]
 
     sem = [op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "sem"]
-    parcial = [op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "parcial"]
+    percentual = [
+        op for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "percentual"
+    ]
 
     assert len(sem) >= 1
-    assert len(parcial) >= 1
+    assert len(percentual) >= 1
     assert len(ext.opcoes) == 22
     assert len(sem) == 11
-    assert len(parcial) == 11
+    assert len(percentual) == 11
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
     nomes_proibidos = {"Nacional", "Apartamento Nacional", "Direto Apartamento"}
     assert not any((op.plano_nome.texto or "").strip() in nomes_proibidos for op in ext.opcoes)
@@ -94,7 +96,7 @@ def test_aceite_sulamerica_ajustes_dual_regimes():
         for op in ext.opcoes
     )
     assert all(
-        op.copart_percentual and op.copart_percentual.inteiro == 30 for op in parcial
+        op.copart_percentual and op.copart_percentual.inteiro == 30 for op in percentual
     )
 
 
@@ -116,16 +118,16 @@ def test_aceite_porto_27_tabela_geral():
     assert mat["exige_selecao_consciente"]
     assert not mat["extracao_financeira_homologada"]
     sem = sum(1 for op in ext.opcoes if op.regime_copart and op.regime_copart.texto == "sem")
-    parcial = sum(
+    percentual = sum(
         1
         for op in ext.opcoes
         if op.regime_copart
-        and op.regime_copart.texto == "parcial"
+        and op.regime_copart.texto == "percentual"
         and op.copart_percentual
         and op.copart_percentual.inteiro == 30
     )
     assert sem == 17
-    assert parcial == 17
+    assert percentual == 17
 
 
 def test_maturidade_distingue_estagios_sintetico():

@@ -25,6 +25,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
   const [propostas, setPropostas] = useState([]);
   const [propostasSel, setPropostasSel] = useState([]);
   const [modo, setModo] = useState("faixas");
+  const [exibirTodasFaixas, setExibirTodasFaixas] = useState(false);
   const [revisor, setRevisor] = useState("");
   const [justificativa, setJustificativa] = useState("");
   const [autoAprovacao, setAutoAprovacao] = useState(false);
@@ -125,6 +126,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
         modo,
         propostas_selecionadas: [],
         ressalvas: [],
+        exibir_todas_faixas: exibirTodasFaixas,
       });
       setPreview(vm);
     } catch (e) {
@@ -153,6 +155,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
         modo,
         propostas_selecionadas: [],
         ressalvas: [],
+        exibir_todas_faixas: exibirTodasFaixas,
       });
       setEntregavel(res);
     } catch (e) {
@@ -290,6 +293,17 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
               Detalhado por beneficiário (contém nomes)
             </label>
           </fieldset>
+
+          {modo === "faixas" && (
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={exibirTodasFaixas}
+                onChange={(e) => setExibirTodasFaixas(e.target.checked)}
+              />
+              Exibir todas as faixas etárias (inclui faixas sem vidas)
+            </label>
+          )}
 
           <fieldset>
             <legend>Propostas no material</legend>

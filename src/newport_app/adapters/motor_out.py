@@ -86,7 +86,9 @@ def _formatar_reais_opcional(valor) -> str | None:
     return _formatar_reais(valor.centavos)
 
 
-def _rotulo_regime(tipo: str) -> str:
+def _rotulo_regime(tipo: str, percentual: int | None = None) -> str:
+    if tipo == "percentual" and percentual is not None:
+        return f"Coparticipação {percentual}%"
     mapa = {
         "sem": "Sem coparticipação",
         "parcial": "Coparticipação parcial",
@@ -189,7 +191,7 @@ def _regime_label_rascunho(rascunho: RascunhoEstudo, regime_id: str | None) -> s
         return None
     for reg in rascunho.regimes_copart:
         if reg.id == regime_id:
-            return _rotulo_regime(reg.tipo)
+            return _rotulo_regime(reg.tipo, reg.percentual)
     return None
 
 
@@ -448,7 +450,16 @@ def _montar_propostas(
                         if op and op.validade_oficial
                         else None
                     ),
-                    regime_coparticipacao=_rotulo_regime(regime_tipo),
+                    regime_coparticipacao=(
+                        _rotulo_regime(regime_tipo)
+                        if regime_tipo == "misto"
+                        else (
+                            _regime_label_rascunho(
+                                rascunho, op.regime_copart_id if op else None
+                            )
+                            or _rotulo_regime(regime_tipo)
+                        )
+                    ),
                     regime_tipo=regime_tipo,
                     grupo_regime=_grupo_regime(regime_tipo),
                     totais=None,
@@ -484,7 +495,16 @@ def _montar_propostas(
                 validade_oficial=(
                     op.validade_oficial.isoformat() if op and op.validade_oficial else None
                 ),
-                regime_coparticipacao=_rotulo_regime(regime_tipo),
+                regime_coparticipacao=(
+                    _rotulo_regime(regime_tipo)
+                    if regime_tipo == "misto"
+                    else (
+                        _regime_label_rascunho(
+                            rascunho, op.regime_copart_id if op else None
+                        )
+                        or _rotulo_regime(regime_tipo)
+                    )
+                ),
                 regime_tipo=regime_tipo,
                 grupo_regime=_grupo_regime(regime_tipo),
                 totais=totais,

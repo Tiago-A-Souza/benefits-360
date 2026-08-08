@@ -82,8 +82,9 @@ export function grupoCopart(op) {
   const pct = op.copart_percentual?.inteiro;
   if (regime === "a_confirmar") return "A confirmar";
   if (regime === "sem") return "Sem coparticipação";
-  if (pct === 30 || regime === "parcial") return "Coparticipação 30%";
   if (pct != null) return `Coparticipação ${pct}%`;
+  if (regime === "percentual") return "Coparticipação percentual";
+  if (regime === "parcial") return "Coparticipação parcial";
   return "Outros regimes";
 }
 

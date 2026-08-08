@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from newport_app.agregacao_faixa import agregar_valores_faixa
@@ -21,6 +22,7 @@ from newport_app.models.presentation import (
     TotaisSecaoApresentacao,
 )
 from newport_app.models.snapshot import SnapshotCalculo
+from newport_app.presentation.formatacao import formatar_data_br
 from newport_app.presentation.motor_por_proposta import (
     CalculoProposta,
     VidaCalculoProposta,
@@ -32,7 +34,24 @@ MAX_PROPOSTAS_POR_PAGINA = 3
 _ORDEM_REGIMES = ("sem", "parcial", "percentual", "customizada")
 
 
-def _rotulo_regime(tipo: str) -> str:
+def _percentual_tipico(rascunho: RascunhoEstudo, tipo: str) -> int | None:
+    if tipo != "percentual":
+        return None
+    pcts = sorted(
+        {
+            r.percentual
+            for r in rascunho.regimes_copart
+            if r.tipo == "percentual" and r.percentual is not None
+        }
+    )
+    if len(pcts) == 1:
+        return pcts[0]
+    return None
+
+
+def _rotulo_regime(tipo: str, percentual: int | None = None) -> str:
+    if tipo == "percentual" and percentual is not None:
+        return f"Coparticipação {percentual}%"
     mapa = {
         "sem": "Sem coparticipação",
         "parcial": "Coparticipação parcial",
@@ -48,10 +67,61 @@ def _copart_descricao(rascunho: RascunhoEstudo, regime_id: str | None) -> str | 
     regime = next((r for r in rascunho.regimes_copart if r.id == regime_id), None)
     if regime is None:
         return None
-    return _rotulo_regime(regime.tipo)
+    return _rotulo_regime(regime.tipo, regime.percentual)
+
+
+def _qualificador_regime_curto(rascunho: RascunhoEstudo, regime_id: str | None) -> str | None:
+    desc = _copart_descricao(rascunho, regime_id)
+    if not desc:
+        return None
+    if desc == "Sem coparticipação":
+        return "sem copart"
+    if desc.startswith("Coparticipação "):
+        resto = desc.removeprefix("Coparticipação ").strip()
+        if resto.endswith("%"):
+            return f"copart {resto}"
+        return f"copart {resto}"
+    return desc
+
+
+def _qualificar_rotulos_propostas(
+    rascunho: RascunhoEstudo,
+    propostas: list[PropostaApresentacao],
+) -> None:
+    """Garante rótulos únicos entre colunas do comparativo."""
+    grupos: dict[str, list[PropostaApresentacao]] = defaultdict(list)
+    for prop in propostas:
+        grupos[(prop.plano_nome or "").strip() or prop.opcao_id].append(prop)
+
+    for nome_base, itens in grupos.items():
+        if len(itens) < 2:
+            continue
+        ops = {
+            p.opcao_id: next((o for o in rascunho.opcoes_proposta if o.id == p.opcao_id), None)
+            for p in itens
+        }
+        quals_regime = [
+            _qualificador_regime_curto(rascunho, ops[p.opcao_id].regime_copart_id if ops[p.opcao_id] else None)
+            for p in itens
+        ]
+        if len({q for q in quals_regime if q}) == len(itens) and all(quals_regime):
+            for prop, qual in zip(itens, quals_regime):
+                prop.plano_nome = f"{nome_base} ({qual})"
+            continue
+        quals_acom = [
+            (ops[p.opcao_id].acomodacao or "").strip() if ops[p.opcao_id] else ""
+            for p in itens
+        ]
+        if len({q for q in quals_acom if q}) == len(itens) and all(quals_acom):
+            for prop, qual in zip(itens, quals_acom):
+                prop.plano_nome = f"{nome_base} ({qual})"
+            continue
+        for idx, prop in enumerate(itens, start=1):
+            prop.plano_nome = f"{nome_base} ({idx})"
 
 
 def _coletar_regimes_apresentacao(
+    rascunho: RascunhoEstudo,
     calculo_atual: CalculoProposta,
     calculos: dict[str, CalculoProposta],
     propostas_ids: list[str],
@@ -66,10 +136,21 @@ def _coletar_regimes_apresentacao(
         for sec in calc.secoes:
             encontrados.add(sec.regime_tipo)
     return [
-        (tipo, _rotulo_regime(tipo))
+        (tipo, _rotulo_regime(tipo, _percentual_tipico(rascunho, tipo)))
         for tipo in _ORDEM_REGIMES
         if tipo in encontrados
     ]
+
+
+def _faixa_com_conteudo(fx: FaixaApresentacao) -> bool:
+    if fx.qtd_total > 0:
+        return True
+    if fx.atual_vigente_total_centavos or fx.atual_reajustado_total_centavos:
+        return True
+    return any(
+        (col.quantidade or 0) > 0 or col.valor_unitario_centavos is not None
+        for col in fx.propostas
+    )
 
 
 def _propostas_do_regime(
@@ -91,6 +172,8 @@ def _montar_faixas_plano(
     calculos_proposta: dict[str, CalculoProposta],
     propostas_ids: list[str],
     regime_tipo: str,
+    *,
+    exibir_todas_faixas: bool = False,
 ) -> list[FaixaApresentacao]:
     faixas: dict[int, FaixaApresentacao] = {
         i: FaixaApresentacao(faixa=i, rotulo=ROTULOS_FAIXA[i]) for i in range(10)
@@ -150,7 +233,11 @@ def _montar_faixas_plano(
                     subtotal_centavos=sub_p,
                 )
             )
-    return [faixas[i] for i in range(10)]
+    lista = [faixas[i] for i in range(10)]
+    if exibir_todas_faixas:
+        return lista
+    filtradas = [fx for fx in lista if _faixa_com_conteudo(fx)]
+    return filtradas or lista
 
 
 def _paginar_propostas(propostas_ids: list[str]) -> list[PaginaFaixasApresentacao]:
@@ -175,16 +262,20 @@ def _montar_proposta_meta(
     if op is None:
         return None
     secao = next((s for s in calc.secoes if s.regime_tipo == regime_tipo), None)
+    regime = next((r for r in rascunho.regimes_copart if r.id == op.regime_copart_id), None)
+    pct_secao = regime.percentual if regime and regime.tipo == regime_tipo else None
+    if pct_secao is None and regime_tipo == "percentual":
+        pct_secao = _percentual_tipico(rascunho, regime_tipo)
     return PropostaApresentacao(
         opcao_id=op.id,
         operadora=op.operadora,
         plano_nome=op.plano_nome,
-        regime_rotulo=_rotulo_regime(regime_tipo),
+        regime_rotulo=_rotulo_regime(regime_tipo, pct_secao),
         regime_tipo=regime_tipo,
         acomodacao=op.acomodacao,
         modalidade=op.modalidade.value if op.modalidade else None,
         copart_descricao=_copart_descricao(rascunho, op.regime_copart_id),
-        validade=op.validade_oficial.isoformat() if op.validade_oficial else None,
+        validade=formatar_data_br(op.validade_oficial),
         premio_centavos=op.premio_saude.centavos if op.premio_saude else None,
         iof_centavos=op.iof.centavos if op.iof else None,
         total_recorrente_centavos=(
@@ -203,6 +294,7 @@ def construir_view_model(
     propostas_selecionadas: list[str],
     ressalvas: list[str] | None = None,
     titulo: str | None = None,
+    exibir_todas_faixas: bool = False,
 ) -> PresentationViewModel:
     rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
     calculo_atual = calcular_atual_do_snapshot(snap)
@@ -216,7 +308,7 @@ def construir_view_model(
         atual_por_vida.update(sec.vidas)
 
     regimes_ordem = _coletar_regimes_apresentacao(
-        calculo_atual, calculos, propostas_selecionadas
+        rascunho, calculo_atual, calculos, propostas_selecionadas
     )
 
     secoes_vm: list[SecaoRegimeApresentacao] = []
@@ -233,6 +325,7 @@ def construir_view_model(
                 calculos,
                 propostas_regime,
                 regime_tipo,
+                exibir_todas_faixas=exibir_todas_faixas,
             )
             vigentes = [
                 d.vigente_centavos
@@ -352,6 +445,9 @@ def construir_view_model(
         totais_gerais.propostas[op_id] = calc.total_proposta_centavos
         totais_gerais.diff_mensal[op_id] = calc.diff_mes_centavos
         totais_gerais.diff_anual[op_id] = calc.diff_ano_centavos
+
+    todas_propostas = [p for secao in secoes_vm for p in secao.propostas]
+    _qualificar_rotulos_propostas(rascunho, todas_propostas)
 
     return PresentationViewModel(
         titulo=titulo or rascunho.titulo,

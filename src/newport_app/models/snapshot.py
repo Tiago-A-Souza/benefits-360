@@ -76,6 +76,7 @@ class GerarApresentacaoRequest(BaseModel):
     propostas_selecionadas: list[str]
     ressalvas: list[str] = Field(default_factory=list)
     titulo: str | None = None
+    exibir_todas_faixas: bool = False
 
 
 class GerarApresentacaoResponse(BaseModel):

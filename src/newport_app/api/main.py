@@ -929,6 +929,7 @@ def create_app(
             propostas_selecionadas=propostas,
             ressalvas=body.ressalvas,
             titulo=body.titulo,
+            exibir_todas_faixas=body.exibir_todas_faixas,
         )
 
     @app.post(

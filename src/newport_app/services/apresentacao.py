@@ -72,6 +72,7 @@ class ApresentacaoService:
             propostas_selecionadas=propostas,
             ressalvas=req.ressalvas,
             titulo=req.titulo,
+            exibir_todas_faixas=req.exibir_todas_faixas,
         )
         html_content = render_html(vm)
         digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})
