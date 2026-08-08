@@ -70,7 +70,8 @@ class LinhaSiscorCandidata(BaseModel):
 
     @property
     def tem_excecao(self) -> bool:
-        return bool(self.alertas)
+        """Alertas informativos (severidade=info) não bloqueiam confirmação."""
+        return any(a.severidade != "info" for a in self.alertas)
 
     @property
     def confirmavel(self) -> bool:

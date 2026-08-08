@@ -22,13 +22,16 @@ def rascunho_vazio(
     titulo: str,
     *,
     nome_empresa: str | None = None,
+    formato: str = "renovacao",
 ) -> RascunhoEstudo:
+    if formato not in ("renovacao", "novo"):
+        formato = "renovacao"
     return RascunhoEstudo(
         rascunho_versao=RASCUNHO_VERSAO_ATUAL,
         policy_set_versao=POLICY_SET_VERSAO_PADRAO,
         id=estudo_id,
         titulo=titulo,
-        formato="renovacao",
+        formato=formato,  # type: ignore[arg-type]
         vidas=[],
         empresa_cliente=EmpresaCliente(nome=nome_empresa) if nome_empresa else None,
     )

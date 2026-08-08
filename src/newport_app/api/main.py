@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -152,6 +153,7 @@ class NovoEstudoRequest(BaseModel):
     titulo: str
     nome_empresa: str
     id: str | None = None
+    formato: Literal["renovacao", "novo"] = "renovacao"
 
 
 class AtualizarLinhaSiscorRequest(BaseModel):
@@ -309,6 +311,7 @@ def create_app(
             estudo_id,
             body.titulo.strip(),
             nome_empresa=body.nome_empresa.strip(),
+            formato=body.formato,
         )
         repository.salvar_rascunho(rascunho)
         return service.obter_resumo(estudo_id)

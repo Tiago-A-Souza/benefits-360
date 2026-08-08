@@ -38,14 +38,23 @@ from newport_app.siscor_importer.normalize import (
     parse_data_nascimento,
 )
 from newport_app.siscor_importer.subgrupos import montar_subgrupos
+from newport_app.siscor_importer.valor_fatura import FormatoEstudoSiscor, alertas_valor_mensal
 
 
 def _erro_arquivo(codigo: str, mensagem: str) -> ErroArquivoSiscor:
     return ErroArquivoSiscor(codigo=codigo, mensagem=mensagem)
 
 
-def _alerta(codigo: str, caminho: str, mensagem: str) -> AlertaLinhaSiscor:
-    return AlertaLinhaSiscor(codigo=codigo, caminho=caminho, mensagem=mensagem)
+def _alerta(
+    codigo: str,
+    caminho: str,
+    mensagem: str,
+    *,
+    severidade: str = "alerta",
+) -> AlertaLinhaSiscor:
+    return AlertaLinhaSiscor(
+        codigo=codigo, caminho=caminho, mensagem=mensagem, severidade=severidade
+    )
 
 
 def _celula_tem_formula(cell: Cell) -> bool:
@@ -98,6 +107,7 @@ def parse_planilha_siscor(
     documento_id: str,
     versao: int = 1,
     criado_por: str = "analista-local",
+    formato: FormatoEstudoSiscor = "renovacao",
 ) -> ResultadoParseSiscor:
     if not conteudo:
         return ResultadoParseSiscor(
@@ -302,34 +312,27 @@ def parse_planilha_siscor(
 
             valor_bruto = valores.get("VALOR")
             valor_centavos = valor_para_centavos(valor_bruto)
-            if valor_bruto is None or (
+            valor_ausente = valor_bruto is None or (
                 isinstance(valor_bruto, str) and not str(valor_bruto).strip()
-            ):
-                alertas.append(
-                    _alerta(
-                        "APP-SIS-009",
-                        f"{caminho}/valor",
-                        "Valor mensal ausente — informe.",
-                    )
+            )
+            valor_negativo = (
+                not valor_ausente
+                and valor_centavos is None
+                and str(valor_bruto).strip().startswith("-")
+            )
+            valor_ilegivel = (
+                not valor_ausente and valor_centavos is None and not valor_negativo
+            )
+            alertas.extend(
+                alertas_valor_mensal(
+                    caminho=caminho,
+                    valor_centavos=valor_centavos,
+                    valor_ausente=valor_ausente,
+                    valor_ilegivel=valor_ilegivel,
+                    valor_negativo=valor_negativo,
+                    formato=formato,
                 )
-            elif valor_centavos is None:
-                alertas.append(
-                    _alerta(
-                        "APP-SIS-012" if str(valor_bruto).strip().startswith("-") else "APP-SIS-009",
-                        f"{caminho}/valor",
-                        "Valor mensal negativo — revise."
-                        if str(valor_bruto).strip().startswith("-")
-                        else "Valor mensal ilegível — revise.",
-                    )
-                )
-            elif valor_centavos == 0:
-                alertas.append(
-                    _alerta(
-                        "APP-SIS-003",
-                        f"{caminho}/valor",
-                        "Valor mensal zerado — revise.",
-                    )
-                )
+            )
 
             status_texto, status_norm = normalizar_status(valores.get("STATUS SEGURADO"))
             if not status_texto:

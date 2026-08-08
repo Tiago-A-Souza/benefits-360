@@ -154,11 +154,16 @@ export async function listarEstudos() {
   return tratarResposta(res, "Não foi possível listar estudos.");
 }
 
-export async function criarEstudo({ titulo, nome_empresa, id } = {}) {
+export async function criarEstudo({ titulo, nome_empresa, id, formato } = {}) {
   const res = await fetch(`${API}/estudos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ titulo, nome_empresa: nome_empresa, id: id || null }),
+    body: JSON.stringify({
+      titulo,
+      nome_empresa: nome_empresa,
+      id: id || null,
+      formato: formato || "renovacao",
+    }),
   });
   return tratarResposta(res, "Não foi possível criar o estudo.");
 }

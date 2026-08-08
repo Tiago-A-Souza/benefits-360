@@ -23,6 +23,7 @@ export default function MeusEstudos({ onContinuar }) {
   const [modal, setModal] = useState(false);
   const [nomeEmpresa, setNomeEmpresa] = useState("");
   const [nomeEstudo, setNomeEstudo] = useState("");
+  const [formato, setFormato] = useState("renovacao");
   const [criando, setCriando] = useState(false);
 
   function recarregar() {
@@ -46,10 +47,12 @@ export default function MeusEstudos({ onContinuar }) {
       const res = await criarEstudo({
         titulo: nomeEstudo.trim(),
         nome_empresa: nomeEmpresa.trim(),
+        formato,
       });
       setModal(false);
       setNomeEmpresa("");
       setNomeEstudo("");
+      setFormato("renovacao");
       onContinuar(res.id);
     } catch (err) {
       setErro(err.message);
@@ -147,17 +150,36 @@ export default function MeusEstudos({ onContinuar }) {
           </ul>
         )}
 
-        <footer className="estudos-rodape">
-          <span className="estudos-rodape-tag">Seguro novo</span>
-          <span>Disponível em breve</span>
-        </footer>
       </section>
 
       {modal && (
         <div className="modal-overlay" role="dialog" aria-modal="true">
           <form className="modal-cartao estudos-modal" onSubmit={handleCriar}>
             <h2>Novo estudo</h2>
-            <p className="muted">Renovação de plano de saúde empresarial.</p>
+            <p className="muted">Comparativo de planos de saúde empresariais.</p>
+            <fieldset>
+              <legend>Tipo de estudo</legend>
+              <label className="radio">
+                <input
+                  type="radio"
+                  name="formato"
+                  value="renovacao"
+                  checked={formato === "renovacao"}
+                  onChange={() => setFormato("renovacao")}
+                />
+                Renovação — há contrato vigente (fatura por vida)
+              </label>
+              <label className="radio">
+                <input
+                  type="radio"
+                  name="formato"
+                  value="novo"
+                  checked={formato === "novo"}
+                  onChange={() => setFormato("novo")}
+                />
+                Seguro novo — sem plano vigente (valores de fatura opcionais)
+              </label>
+            </fieldset>
             <label>
               Nome da empresa
               <input
@@ -173,7 +195,11 @@ export default function MeusEstudos({ onContinuar }) {
                 required
                 value={nomeEstudo}
                 onChange={(ev) => setNomeEstudo(ev.target.value)}
-                placeholder="Ex.: Renovação 2026 — 18 vidas"
+                placeholder={
+                  formato === "novo"
+                    ? "Ex.: Seguro novo 2026 — 12 vidas"
+                    : "Ex.: Renovação 2026 — 18 vidas"
+                }
               />
             </label>
             <div className="modal-acoes">

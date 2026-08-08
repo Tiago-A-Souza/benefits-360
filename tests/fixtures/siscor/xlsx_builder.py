@@ -46,6 +46,10 @@ def planilha_12_vidas() -> bytes:
     return gerar_planilha_siscor([linha_ficticia(i) for i in range(12)])
 
 
+def planilha_12_vidas_valores_zerados() -> bytes:
+    return gerar_planilha_siscor([linha_ficticia(i, valor=0) for i in range(12)])
+
+
 def planilha_41_vidas_2_planos() -> bytes:
     linhas = []
     for i in range(36):

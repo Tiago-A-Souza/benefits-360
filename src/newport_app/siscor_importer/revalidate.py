@@ -21,13 +21,27 @@ from newport_app.siscor_importer.normalize import (
     normalizar_status,
     parse_data_nascimento,
 )
+from newport_app.siscor_importer.valor_fatura import FormatoEstudoSiscor, alertas_valor_mensal
 
 
-def _alerta(codigo: str, caminho: str, mensagem: str) -> AlertaLinhaSiscor:
-    return AlertaLinhaSiscor(codigo=codigo, caminho=caminho, mensagem=mensagem)
+def _alerta(
+    codigo: str,
+    caminho: str,
+    mensagem: str,
+    *,
+    severidade: str = "alerta",
+) -> AlertaLinhaSiscor:
+    return AlertaLinhaSiscor(
+        codigo=codigo, caminho=caminho, mensagem=mensagem, severidade=severidade
+    )
 
 
-def revalidar_linha(linha: LinhaSiscorCandidata, *, documento_id: str | None = None) -> None:
+def revalidar_linha(
+    linha: LinhaSiscorCandidata,
+    *,
+    documento_id: str | None = None,
+    formato: FormatoEstudoSiscor = "renovacao",
+) -> None:
     caminho = f"/linhas/{linha.id}"
     alertas: list[AlertaLinhaSiscor] = []
 
@@ -96,18 +110,16 @@ def revalidar_linha(linha: LinhaSiscorCandidata, *, documento_id: str | None = N
             )
         )
 
-    if linha.valor_centavos is None:
-        alertas.append(
-            _alerta("APP-SIS-009", f"{caminho}/valor", "Valor mensal ausente — informe.")
+    alertas.extend(
+        alertas_valor_mensal(
+            caminho=caminho,
+            valor_centavos=linha.valor_centavos,
+            valor_ausente=linha.valor_centavos is None,
+            valor_ilegivel=False,
+            valor_negativo=linha.valor_centavos is not None and linha.valor_centavos < 0,
+            formato=formato,
         )
-    elif linha.valor_centavos < 0:
-        alertas.append(
-            _alerta("APP-SIS-012", f"{caminho}/valor", "Valor mensal negativo — revise.")
-        )
-    elif linha.valor_centavos == 0:
-        alertas.append(
-            _alerta("APP-SIS-003", f"{caminho}/valor", "Valor mensal zerado — revise.")
-        )
+    )
 
     if not linha.status_texto:
         alertas.append(

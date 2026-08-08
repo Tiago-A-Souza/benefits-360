@@ -309,6 +309,7 @@ class ImportacaoSiscorService:
             documento_id=documento_id,
             versao=versao,
             criado_por=criado_por,
+            formato=rascunho.formato,
         )
         if not resultado.sucesso or resultado.candidata is None:
             registrar_evento(
@@ -334,7 +335,13 @@ class ImportacaoSiscorService:
         self._importacoes.salvar(resultado.candidata, ativa=True)
 
         if modo == "substituir" or not possui_dados:
-            rascunho = rascunho_vazio(rascunho.id, rascunho.titulo)
+            empresa = rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None
+            rascunho = rascunho_vazio(
+                rascunho.id,
+                rascunho.titulo,
+                nome_empresa=empresa,
+                formato=rascunho.formato,
+            )
 
         if self._estudos.obter_rascunho(estudo_id) is None:
             self._persistir_rascunho(rascunho, motivo_invalidacao="Criação de estudo via SISCOR")
@@ -571,7 +578,9 @@ class ImportacaoSiscorService:
         if houve_edicao:
             self._reset_confirmacao(linha)
 
-        revalidar_linha(linha, documento_id=candidata.documento_id)
+        rascunho_fmt = self._estudos.obter_rascunho(estudo_id)
+        formato = rascunho_fmt.formato if rascunho_fmt is not None else "renovacao"
+        revalidar_linha(linha, documento_id=candidata.documento_id, formato=formato)
         recalcular_duplicidades(candidata.linhas)
         remontar_subgrupos_candidata(candidata)
 
