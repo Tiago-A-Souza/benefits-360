@@ -12,7 +12,60 @@ __all__ = [
     "detectar_sequencia_suspeita",
     "validar_linha_tarifaria",
     "aplicar_validacao_estrutural_opcao",
+    "indices_quebra_monotonicidade",
+    "alertas_monotonicidade_opcao",
 ]
+
+
+def indices_quebra_monotonicidade(valores: list[int | None]) -> list[int]:
+    """Índices onde o prêmio é menor que o da faixa etária anterior (ANS: não decresce)."""
+    quebras: list[int] = []
+    anterior: int | None = None
+    for i, v in enumerate(valores):
+        if v is None:
+            continue
+        if anterior is not None and v < anterior:
+            quebras.append(i)
+        anterior = v
+    return quebras
+
+
+def _fmt_br(centavos: int | None) -> str:
+    if centavos is None:
+        return "—"
+    reais, cents = divmod(abs(centavos), 100)
+    inteiro = f"{reais:,}".replace(",", ".")
+    return f"R$ {inteiro},{cents:02d}"
+
+
+def alertas_monotonicidade_opcao(
+    opcao: OpcaoCotacaoCandidata,
+    *,
+    codigo: str = "PDF-TARIFA-001",
+) -> list[AlertaExtracaoCotacao]:
+    """Emite alerta se a tabela violar crescimento monotônico por faixa."""
+    valores = [fx.valor.centavos for fx in opcao.tabela]
+    alertas: list[AlertaExtracaoCotacao] = []
+    for idx in indices_quebra_monotonicidade(valores):
+        fx = opcao.tabela[idx]
+        if fx.valor:
+            fx.valor.estado = "revisar"
+        prev = valores[idx - 1] if idx > 0 else None
+        atual = valores[idx]
+        nome = opcao.plano_nome.texto if opcao.plano_nome else "plano"
+        alertas.append(
+            AlertaExtracaoCotacao(
+                codigo=codigo,
+                mensagem=(
+                    f"«{nome}»: valor da faixa {idx} ({_fmt_br(atual)}) "
+                    f"é menor que a faixa {idx - 1} ({_fmt_br(prev)}) — "
+                    "tabela ANS não deveria decrescer. Confira se o milhar foi truncado."
+                ),
+                severidade="alerta",
+                pagina=fx.valor.evidencia.pagina if fx.valor and fx.valor.evidencia else None,
+            )
+        )
+    return alertas
 
 
 def aplicar_validacao_estrutural_opcao(

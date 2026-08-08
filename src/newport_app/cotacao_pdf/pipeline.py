@@ -10,6 +10,7 @@ from newport_app.cotacao_pdf.conferencia import normalizar_extracao
 from newport_app.cotacao_pdf.extract import PdfDocumento
 from newport_app.cotacao_pdf.parsers.base import novo_campo
 from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
+from newport_app.cotacao_pdf.tarifa_validation import alertas_monotonicidade_opcao
 from newport_app.cotacao_pdf.template_families import identificar_familia, operadora_candidata
 from newport_app.models.cotacao_pdf import (
     AlertaExtracaoCotacao,
@@ -95,10 +96,14 @@ def parse_cotacao_pdf(
                 )
 
             opcoes, alertas, meta = familia.extrator(doc, documento_hash=doc_hash)
+            codigo_mono = (
+                "PDF-AMIL-002" if familia.id.startswith("amil") else "PDF-TARIFA-001"
+            )
             for op in opcoes:
                 msg_parser = op.reconciliacao.mensagem if op.reconciliacao else None
                 status_parser = op.reconciliacao.status if op.reconciliacao else None
                 reconciliar_opcao(op)
+                alertas.extend(alertas_monotonicidade_opcao(op, codigo=codigo_mono))
                 # Preservar mensagem contextual do parser (ex.: plano do resumo ≠ este plano).
                 if (
                     msg_parser

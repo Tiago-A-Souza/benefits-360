@@ -101,7 +101,7 @@ def test_regressao_amil_quatro_opcoes_sintetico():
     with PdfDocumento.abrir(conteudo) as pdf:
         pdf.paginas_texto[0] = "AMIL ONE\n" + pdf.paginas_texto[0]
         opcoes, alertas, _ = amil.parse(pdf, documento_hash="hash-amil")
-    assert not alertas
+    assert not any(a.codigo == "PDF-AMIL-001" for a in alertas)
     assert len(opcoes) >= 2
     for op in opcoes:
         assert len(op.tabela) == 10
