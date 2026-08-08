@@ -48,6 +48,14 @@ class ListaExtracaoCotacaoResponse(BaseModel):
     extracoes: list[ExtracaoCotacaoCandidata] = Field(default_factory=list)
 
 
+class EstimarPropostasRequest(BaseModel):
+    quantidades_por_faixa: dict[int, int] = Field(default_factory=dict)
+
+
+class EstimarPropostasResponse(BaseModel):
+    totais: dict[str, int | None] = Field(default_factory=dict)
+
+
 class RemoverExtracaoResponse(BaseModel):
     removido: bool = True
     planos_removidos: int = 0

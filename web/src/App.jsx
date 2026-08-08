@@ -35,12 +35,14 @@ export default function App() {
 
   const recarregarContexto = useCallback(async () => {
     if (!estudoId) return;
-    const [r, p, c, e] = await Promise.all([
+    const [r, p, c, e, res] = await Promise.all([
       obterRascunho(estudoId).catch(() => null),
       obterPendencias(estudoId).catch(() => []),
       obterConferenciaSiscor(estudoId).catch(() => null),
       listarExtracoesCotacao(estudoId).catch(() => ({ extracoes: [] })),
+      obterEstudo(estudoId).catch(() => null),
     ]);
+    if (res) setResumo(res);
     setCtxFluxo({
       rascunho: r,
       pendencias: p,

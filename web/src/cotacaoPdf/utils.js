@@ -140,7 +140,7 @@ export function contextoSiscorSimulacao(resumoSiscor, subgrupoSelecionado) {
   };
 }
 
-export function formatarEstimativaSiscor(op, quantidades, ctx) {
+export function formatarEstimativaSiscor(op, quantidades, ctx, totalNormalizadoCentavos = null) {
   if (ctx?.exigeEscolha) {
     return {
       texto: "Estimativa indisponível até selecionar o grupo",
@@ -152,7 +152,10 @@ export function formatarEstimativaSiscor(op, quantidades, ctx) {
   if (!temPop) {
     return { texto: "—", indisponivel: true, destacarGrupo: false };
   }
-  const est = calcularEstimadoCentavos(op, quantidades);
+  const est =
+    totalNormalizadoCentavos != null
+      ? totalNormalizadoCentavos
+      : calcularEstimadoCentavos(op, quantidades);
   if (est == null || est === 0) {
     return { texto: "—", indisponivel: true, destacarGrupo: false };
   }

@@ -64,6 +64,8 @@ from newport_app.models.responses import (
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     ConfirmacaoExtracaoResponse,
+    EstimarPropostasRequest,
+    EstimarPropostasResponse,
     ListaExtracaoCotacaoResponse,
     RemoverExtracaoResponse,
     ResultadoImportacaoCotacaoResponse,
@@ -474,6 +476,23 @@ def create_app(
         if ext.estudo_id != estudo_id:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
         return ext
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/estimar",
+        response_model=EstimarPropostasResponse,
+    )
+    def estimar_propostas_extracao(
+        estudo_id: str,
+        extracao_id: str,
+        body: EstimarPropostasRequest,
+    ) -> EstimarPropostasResponse:
+        try:
+            ext = cotacao.obter_extracao(extracao_id)
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        if ext.estudo_id != estudo_id:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        return cotacao.estimar_propostas(extracao_id, body.quantidades_por_faixa)
 
     @app.patch(
         "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/campos/{campo_id}",

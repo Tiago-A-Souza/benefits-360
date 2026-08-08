@@ -5,6 +5,7 @@ import {
   importarCotacaoPdf,
   listarExtracoesCotacao,
   obterExtracaoCotacao,
+  estimarPropostasExtracao,
   obterRascunho,
   obterResumoPlanoAtual,
   removerExtracaoCotacao,
@@ -307,6 +308,7 @@ function TabelaSelecaoCompacta({
   templateId,
   quantidades,
   siscorCtx,
+  estimativasMotor,
   referenciaCentavos,
   selecionados,
   opcoesComparativo,
@@ -384,8 +386,14 @@ function TabelaSelecaoCompacta({
             </div>
             {opsGrupo.map((op) => {
               const estado = estadoExibicaoOpcao(op, opcoesComparativo);
-              const est = formatarEstimativaSiscor(op, quantidades, siscorCtx);
-              const estimado = calcularEstimadoCentavos(op, quantidades);
+              const est = formatarEstimativaSiscor(
+                op,
+                quantidades,
+                siscorCtx,
+                estimativasMotor?.[op.id]
+              );
+              const estimado =
+                estimativasMotor?.[op.id] ?? calcularEstimadoCentavos(op, quantidades);
               const diff = formatarDiferencaReferencia(estimado, referenciaCentavos);
               const estimativaTitulo = est.destacarGrupo
                 ? "Estimativa indisponível até selecionar o grupo de beneficiários"
@@ -459,12 +467,14 @@ function TabelaSelecaoCompacta({
   );
 }
 
-function RevisaoPlano({ op, quantidades, siscorCtx, validadeDocumento, onSalvarCampo }) {
+function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDocumento, onSalvarCampo }) {
   const faixasPorIndice = Object.fromEntries((op.tabela || []).map((fx) => [fx.faixa, fx]));
-  let subtotal = 0;
+  let subtotalBruto = 0;
   const sit = situacaoOpcao(op);
   const temPop = quantidades && Object.values(quantidades).some((q) => q > 0);
   const estimativaIndisponivel = siscorCtx?.exigeEscolha || !temPop;
+  const subtotal =
+    estimativaMotor != null ? estimativaMotor : subtotalBruto;
   const validadeAtual = op.validade_oficial?.data || validadeDocumento || "";
   const validadePendente = !validadeAtual;
 
@@ -539,7 +549,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, validadeDocumento, onSalvarC
               const qtd = quantidades?.[idx] ?? fx?.quantidade?.inteiro ?? 0;
               const val = fx?.valor?.centavos;
               const linha = val != null && qtd > 0 ? val * qtd : null;
-              if (linha) subtotal += linha;
+              if (linha) subtotalBruto += linha;
               return (
                 <tr
                   key={idx}
@@ -595,7 +605,9 @@ function RevisaoPlano({ op, quantidades, siscorCtx, validadeDocumento, onSalvarC
                 ? siscorCtx?.exigeEscolha
                   ? "Selecione o grupo"
                   : "—"
-                : centavosParaReaisExibicao(subtotal)}
+                : estimativaMotor != null
+                  ? centavosParaReaisExibicao(subtotal)
+                  : "…"}
             </dd>
           </div>
           <div>
@@ -760,6 +772,7 @@ export default function CotacaoPdfPanel({
   const [pdfInlineDocumentoId, setPdfInlineDocumentoId] = useState(null);
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
   const [alternandoOpcao, setAlternandoOpcao] = useState(null);
+  const [estimativasMotor, setEstimativasMotor] = useState({});
 
   const recarregar = useCallback(() => {
     listarExtracoesCotacao(estudoId)
@@ -810,6 +823,21 @@ export default function CotacaoPdfPanel({
     () => contextoSiscorSimulacao(resumoSiscor, subgrupoSimulacao),
     [resumoSiscor, subgrupoSimulacao]
   );
+
+  useEffect(() => {
+    if (!extracaoId || siscorCtx?.exigeEscolha) {
+      setEstimativasMotor({});
+      return;
+    }
+    const temPop = quantidades && Object.values(quantidades).some((q) => q > 0);
+    if (!temPop) {
+      setEstimativasMotor({});
+      return;
+    }
+    estimarPropostasExtracao(estudoId, extracaoId, quantidades)
+      .then((r) => setEstimativasMotor(r.totais || {}))
+      .catch(() => setEstimativasMotor({}));
+  }, [estudoId, extracaoId, quantidades, siscorCtx?.exigeEscolha]);
 
   const opcoesAtivas = useMemo(
     () => detalhe?.opcoes?.filter((o) => !o.excluida) || [],
@@ -1383,6 +1411,7 @@ export default function CotacaoPdfPanel({
                 templateId={docAberto?.template_id}
                 quantidades={quantidades}
                 siscorCtx={siscorCtx}
+                estimativasMotor={estimativasMotor}
                 referenciaCentavos={planoSiscor?.referencia_comparativo_centavos}
                 selecionados={{ filtros, setFiltro }}
                 opcoesComparativo={opcoesComparativo}
@@ -1433,6 +1462,7 @@ export default function CotacaoPdfPanel({
                   op={op}
                   quantidades={quantidades}
                   siscorCtx={siscorCtx}
+                  estimativaMotor={estimativasMotor?.[op.id]}
                   validadeDocumento={
                     detalhe.validade_oficial?.data ||
                     selecionadas.find((o) => o.validade_oficial?.data)?.validade_oficial?.data

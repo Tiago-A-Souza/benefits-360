@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from newport_app.config.paths import diretorio_uploads_cotacao
 from newport_app.diagnostico import registrar_evento
-from newport_app.cotacao_pdf.confirmacao import confirmar_extracao_selecionadas, confirmar_opcao_implicita
+from newport_app.cotacao_pdf.estimativa import estimar_opcao_candidata
 from newport_app.cotacao_pdf.maturidade import avaliar_maturidade
 from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada
 from newport_app.cotacao_pdf.pipeline import parse_cotacao_pdf
@@ -23,6 +23,7 @@ from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     BloqueioOpcaoExtracao,
     ConfirmacaoExtracaoResponse,
+    EstimarPropostasResponse,
     RemoverExtracaoResponse,
     ResultadoImportacaoCotacaoResponse,
 )
@@ -400,3 +401,18 @@ class ExtracaoCotacaoService:
             aprovacao_invalidada=planos_removidos > 0,
             mensagem=msg,
         )
+
+    def estimar_propostas(
+        self,
+        extracao_id: str,
+        quantidades_por_faixa: dict[int, int],
+    ) -> EstimarPropostasResponse:
+        extracao = self._extracoes.obter(extracao_id)
+        if extracao is None:
+            raise ExtracaoNaoEncontradaError(extracao_id)
+        totais: dict[str, int | None] = {}
+        for opcao in extracao.opcoes:
+            if opcao.excluida:
+                continue
+            totais[opcao.id] = estimar_opcao_candidata(opcao, quantidades_por_faixa)
+        return EstimarPropostasResponse(totais=totais)

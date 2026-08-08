@@ -177,6 +177,18 @@ export async function obterExtracaoCotacao(estudoId, extracaoId) {
   return tratarResposta(res, "Não foi possível carregar a extração.");
 }
 
+export async function estimarPropostasExtracao(estudoId, extracaoId, quantidadesPorFaixa) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/estimar`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantidades_por_faixa: quantidadesPorFaixa }),
+    }
+  );
+  return tratarResposta(res, "Não foi possível estimar as propostas.");
+}
+
 export async function atualizarCampoExtracao(estudoId, extracaoId, campoId, patch) {
   const res = await fetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/campos/${campoId}`,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import re
 
 from newport_app.models.presentation import (
     FaixaApresentacao,
@@ -15,10 +16,39 @@ from newport_app.presentation.formatacao import formatar_reais
 
 RENDERER_VERSAO = "html@2.8.1"
 PROPOSTAS_POR_PAGINA = 3
+_UUID_RE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+    re.IGNORECASE,
+)
 
 
 def _cel(valor: int | None) -> str:
     return html.escape(formatar_reais(valor))
+
+
+def _mapa_rotulos_propostas(model: PresentationViewModel) -> dict[str, str]:
+    """Resolve nomes comerciais; fallback numerado — nunca expõe id interno."""
+    rotulos: dict[str, str] = {}
+    for indice, op_id in enumerate(model.propostas_selecionadas, start=1):
+        nome: str | None = None
+        for secao in model.secoes_regime:
+            prop = next((p for p in secao.propostas if p.opcao_id == op_id), None)
+            if prop and (prop.plano_nome or "").strip():
+                nome = prop.plano_nome.strip()
+                break
+        rotulos[op_id] = nome or f"Proposta {indice}"
+    return rotulos
+
+
+def _rotulo_proposta(
+    op_id: str,
+    propostas: list[PropostaApresentacao],
+    rotulos: dict[str, str],
+) -> str:
+    prop = next((p for p in propostas if p.opcao_id == op_id), None)
+    if prop and (prop.plano_nome or "").strip():
+        return prop.plano_nome.strip()
+    return rotulos.get(op_id, "Proposta")
 
 
 def _meta_proposta(prop: PropostaApresentacao) -> str:
@@ -58,6 +88,7 @@ def _render_tabela_faixas(
     plano: PlanoAtualApresentacao,
     propostas: list[PropostaApresentacao],
     op_ids: list[str],
+    rotulos: dict[str, str],
 ) -> str:
     partes = [
         f"<h3>Plano atual — {html.escape(plano.operadora)} · {html.escape(plano.plano_nome)}</h3>",
@@ -76,8 +107,7 @@ def _render_tabela_faixas(
         "<th>Atual vigente</th><th>Atual reajustado</th>"
     )
     for op_id in op_ids:
-        prop = next((p for p in propostas if p.opcao_id == op_id), None)
-        rotulo = prop.plano_nome if prop else op_id
+        rotulo = _rotulo_proposta(op_id, propostas, rotulos)
         partes.append(
             f"<th colspan='3'>{html.escape(rotulo)}<br><small>Unit. · Qtd · Subtotal</small></th>"
         )
@@ -139,12 +169,15 @@ def _render_linha_faixa(fx: FaixaApresentacao, op_ids: list[str]) -> str:
     return "".join(partes)
 
 
-def _render_totais_secao(secao: SecaoRegimeApresentacao, op_ids: list[str]) -> str:
+def _render_totais_secao(
+    secao: SecaoRegimeApresentacao,
+    op_ids: list[str],
+    rotulos: dict[str, str],
+) -> str:
     partes = ["<div class='totais-secao'><h4>Totais mensais</h4><table><thead><tr>"]
     partes.append("<th></th><th>Plano atual</th>")
     for op_id in op_ids:
-        prop = next((p for p in secao.propostas if p.opcao_id == op_id), None)
-        rotulo = prop.plano_nome if prop else op_id
+        rotulo = _rotulo_proposta(op_id, secao.propostas, rotulos)
         partes.append(f"<th>{html.escape(rotulo)}</th>")
     partes.append("</tr></thead><tbody>")
 
@@ -224,6 +257,7 @@ def render_html(model: PresentationViewModel) -> str:
         )
 
     tg = model.totais_gerais
+    rotulos = _mapa_rotulos_propostas(model)
     if tg.atual_centavos is not None or tg.propostas:
         cabecalho.append("<div class='totais-gerais'>")
         if tg.baseline_rotulo:
@@ -231,10 +265,14 @@ def render_html(model: PresentationViewModel) -> str:
         if tg.atual_centavos is not None:
             cabecalho.append(f"<div><strong>Total atual</strong>{_cel(tg.atual_centavos)}</div>")
         for op_id, total in tg.propostas.items():
-            cabecalho.append(f"<div><strong>Proposta {html.escape(op_id)}</strong>{_cel(total)}</div>")
+            rotulo = rotulos.get(op_id, "Proposta")
+            cabecalho.append(f"<div><strong>{html.escape(rotulo)}</strong>{_cel(total)}</div>")
         for op_id, diff in tg.diff_mensal.items():
             if diff is not None:
-                cabecalho.append(f"<div><strong>Δ mensal {html.escape(op_id)}</strong>{_cel(diff)}</div>")
+                rotulo = rotulos.get(op_id, "Proposta")
+                cabecalho.append(
+                    f"<div><strong>Δ mensal {html.escape(rotulo)}</strong>{_cel(diff)}</div>"
+                )
         cabecalho.append("</div>")
 
     nova_pagina(cabecalho)
@@ -250,14 +288,15 @@ def render_html(model: PresentationViewModel) -> str:
             ]
             for plano in secao.planos_atuais:
                 bloco.append(
-                    f"<div class='pagina-faixas'>{_render_tabela_faixas(plano, secao.propostas, pagina.propostas_ids)}</div>"
+                    f"<div class='pagina-faixas'>{_render_tabela_faixas(plano, secao.propostas, pagina.propostas_ids, rotulos)}</div>"
                 )
-            bloco.append(_render_totais_secao(secao, pagina.propostas_ids))
+            bloco.append(_render_totais_secao(secao, pagina.propostas_ids, rotulos))
             bloco.append("</section>")
             nova_pagina(bloco)
 
     if model.modo == "beneficiario" and model.beneficiarios:
         op_ids = model.propostas_selecionadas
+        rotulos = _mapa_rotulos_propostas(model)
         for i in range(0, len(op_ids), PROPOSTAS_POR_PAGINA):
             chunk = op_ids[i : i + PROPOSTAS_POR_PAGINA]
             bloco = ["<section class='secao-regime'><h2>Detalhamento por beneficiário</h2>"]
@@ -267,7 +306,8 @@ def render_html(model: PresentationViewModel) -> str:
                 "<th>Plano atual</th><th>Vigente</th><th>Reajustado</th>"
             )
             for op_id in chunk:
-                bloco.append(f"<th>Proposta<br><small>{html.escape(op_id)}</small></th><th>Δ</th>")
+                rotulo = rotulos.get(op_id, "Proposta")
+                bloco.append(f"<th>{html.escape(rotulo)}<br><small>Valor · Δ</small></th>")
             bloco.append("</tr></thead><tbody>")
             for b in model.beneficiarios:
                 bloco.append(
@@ -282,8 +322,8 @@ def render_html(model: PresentationViewModel) -> str:
                 for op_id in chunk:
                     col = next((c for c in b.propostas if c.opcao_id == op_id), None)
                     bloco.append(
-                        f"<td>{_cel(col.valor_centavos if col else None)}</td>"
-                        f"<td>{_cel(col.diff_centavos if col else None)}</td>"
+                        f"<td>{_cel(col.valor_centavos if col else None)}"
+                        f"<br><small>{_cel(col.diff_centavos if col else None)}</small></td>"
                     )
                 bloco.append("</tr>")
             bloco.append("</tbody></table></section>")
