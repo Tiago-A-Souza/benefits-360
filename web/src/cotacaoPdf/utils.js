@@ -227,10 +227,14 @@ export function exigeSelecaoConsciente(detalhe) {
 }
 
 export function traduzirAlerta(alerta) {
+  if (alerta.codigo === "PDF-PORTO-006" && alerta.mensagem) {
+    return alerta.mensagem;
+  }
   const mapa = {
     "PDF-PORTO-001": "O plano destacado no resumo financeiro não foi associado automaticamente a uma linha da tabela.",
     "PDF-PORTO-004": "Não localizamos a tabela geral de prêmios neste PDF.",
     "PDF-PORTO-005": "Há planos com códigos muito parecidos — confira o nome antes de selecionar.",
+    "PDF-PORTO-006": "Alguns planos da tabela tarifária não puderam ser extraídos — a lista pode estar incompleta.",
     "PDF-SUL-001": "Não localizamos a tabela tarifária esperada neste PDF SulAmérica.",
     "PDF-SUL-003": "O regime de coparticipação de uma tabela ficou ambíguo.",
     "PDF-SUL-004": "Valor de faixa possivelmente fragmentado — confira a célula no PDF.",

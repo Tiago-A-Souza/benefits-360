@@ -87,9 +87,9 @@ def test_nao_usa_sem_copart_como_fallback_ambiguo():
 
 
 @pytest.mark.private_corpus
-def test_porto_corpus_22_opcoes_nomes_limpos_copar_30():
+def test_porto_corpus_34_opcoes_nomes_limpos_copar_30():
     ext = _extrair_porto()
-    assert len(ext.opcoes) == 22
+    assert len(ext.opcoes) == 34
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
     assert not any(_RE_PRECO_NO_NOME.search(op.plano_nome.texto or "") for op in ext.opcoes)
 
@@ -102,9 +102,10 @@ def test_porto_corpus_22_opcoes_nomes_limpos_copar_30():
         and op.copart_percentual
         and op.copart_percentual.inteiro == 30
     ]
-    assert len(sem) == 11
-    assert len(parcial) == 11
+    assert len(sem) == 17
+    assert len(parcial) == 17
     assert all(op.tipo_fiscal and op.tipo_fiscal.texto == "seguradora" for op in ext.opcoes)
+    assert any((op.plano_nome.texto or "").upper().startswith("P220") for op in ext.opcoes)
 
 
 @pytest.mark.private_corpus

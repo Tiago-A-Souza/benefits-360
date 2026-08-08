@@ -48,6 +48,7 @@ class SecaoTabelaPagina:
     linhas: list[LinhaPlanoExtraida]
     cabecalho: str
     contexto_pagina: str = ""
+    linhas_tarifarias_detectadas: int = 0
 
 
 def _ascii_lower(texto: str) -> str:
@@ -126,17 +127,6 @@ def classificar_regime_plano_porto(nome_plano: str, cabecalho: str) -> tuple[str
     return regime_tipo, copart_pct, rotulo
 
 
-def _deduplicar_codigos_p(linhas: list[LinhaPlanoExtraida]) -> list[LinhaPlanoExtraida]:
-    """Remove linhas P220/P320 quando a mesma página já traz nomes comerciais."""
-    tem_nomeado = any(
-        re.search(r"\b(BRONZE|PRATA|OURO|DIAMANTE)\b", ln.plano_nome, re.IGNORECASE)
-        for ln in linhas
-    )
-    if not tem_nomeado:
-        return linhas
-    return [ln for ln in linhas if not _RE_PCODE.match(ln.plano_nome.strip())]
-
-
 def _valores_monetarios(texto: str) -> list[int]:
     vals = extrair_valores_reais(texto)
     if len(vals) >= 10:
@@ -163,6 +153,16 @@ def _eh_secao_acomodacao(texto: str) -> bool:
     return t in {"enfermaria", "apartamento", "plano"}
 
 
+def _eh_codigo_plano_porto(texto: str) -> bool:
+    """Aceita códigos alfanuméricos Porto: P220 Q, P320 E COPAR, etc."""
+    t = texto.strip()
+    if _RE_PCODE.match(t):
+        return True
+    if _RE_PLANO_PORTO.fullmatch(t):
+        return True
+    return bool(re.fullmatch(r"P\d{3}\s*[EQ](?:\s+COPAR(?:\s+\d{1,2})?)?", t, re.IGNORECASE))
+
+
 def _eh_nome_plano_valido(texto: str) -> bool:
     t = texto.strip()
     if len(t) < 4:
@@ -179,6 +179,8 @@ def _eh_nome_plano_valido(texto: str) -> bool:
         return False
     if "ans" in t.lower() and "proposta" in t.lower():
         return False
+    if _eh_codigo_plano_porto(t):
+        return True
     letras = sum(1 for c in t if c.isalpha())
     return letras >= 4
 
@@ -247,12 +249,14 @@ def _parear_linhas_plano(
     header_y: float,
     header_ws: list[tuple[float, float, float, float, str]] | None,
     pagina: int,
-) -> list[LinhaPlanoExtraida]:
+) -> tuple[list[LinhaPlanoExtraida], int]:
+    """Retorna (linhas montadas, candidatas tarifárias detectadas com ≥10 valores)."""
     resultado: list[LinhaPlanoExtraida] = []
     vistos: set[tuple[str, tuple[int, ...]]] = set()
     items = [(y, ws) for y, ws in linhas_ordenadas if y > header_y]
     acomodacao = ""
     x_limite = _x_limite_nome_colunas(header_ws) if header_ws else None
+    candidatas = 0
 
     for idx, (y, ws) in enumerate(items):
         texto = _texto_linha(ws)
@@ -310,6 +314,7 @@ def _parear_linhas_plano(
         if len(vals) < 10:
             continue
 
+        candidatas += 1
         nome = normalizar_espacos(nome.upper().replace("  ", " ")).strip()
         if not _eh_nome_plano_valido(nome):
             continue
@@ -332,7 +337,7 @@ def _parear_linhas_plano(
                 coordenadas=_coordenadas_linha(ws),
             )
         )
-    return resultado
+    return resultado, candidatas
 
 
 def extrair_tabelas_pagina(
@@ -363,15 +368,16 @@ def extrair_tabelas_pagina(
     if header_y is None:
         return None
 
-    linhas_extraidas = _parear_linhas_plano(linhas_ordenadas, header_y, header_ws, pagina)
-    linhas_extraidas = _deduplicar_codigos_p(linhas_extraidas)
+    linhas_extraidas, candidatas = _parear_linhas_plano(
+        linhas_ordenadas, header_y, header_ws, pagina
+    )
     if codigo_plano_filtro:
         base = codigo_plano_filtro.split()[0].upper()
         filtradas = [ln for ln in linhas_extraidas if base in ln.plano_nome.upper()]
         if filtradas:
             linhas_extraidas = filtradas
 
-    if not linhas_extraidas:
+    if not linhas_extraidas and candidatas == 0:
         return None
 
     return SecaoTabelaPagina(
@@ -382,6 +388,7 @@ def extrair_tabelas_pagina(
         linhas=linhas_extraidas,
         cabecalho=cabecalho_faixas or "\n".join(linhas_topo[:5]),
         contexto_pagina="\n".join(linhas_topo[:12]),
+        linhas_tarifarias_detectadas=candidatas,
     )
 
 

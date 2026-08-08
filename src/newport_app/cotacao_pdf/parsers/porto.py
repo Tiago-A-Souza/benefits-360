@@ -24,7 +24,7 @@ from newport_app.cotacao_pdf.text_utils import (
 from newport_app.models.cotacao_pdf import AlertaExtracaoCotacao, OpcaoCotacaoCandidata
 from newport_app.models.draft import PriceBasisRascunho
 
-PARSER_VERSAO = "porto@2.0.1"
+PARSER_VERSAO = "porto@2.0.2"
 OPERADORA = "Porto Seguro"
 TEMPLATE_ID = "porto-orcamento-v2"
 
@@ -317,9 +317,12 @@ def parse(
     codigo_base = codigo_resumo.split()[0].upper() if codigo_resumo else None
     qtds = extrair_quantidades_faixa_porto(doc, codigo_resumo) if codigo_resumo else {}
     alguma_associacao = False
+    linhas_detectadas = sum(s.linhas_tarifarias_detectadas for s in secoes)
+    linhas_montadas = 0
 
     for secao in secoes:
         for linha in secao.linhas:
+            linhas_montadas += 1
             associacao_ok = True
             if codigo_base:
                 associacao_ok = codigo_base in linha.plano_nome.upper()
@@ -339,6 +342,23 @@ def parse(
                     associacao_confirmada=associacao_ok and codigo_resumo is not None,
                 )
             )
+
+    ignoradas = max(0, linhas_detectadas - linhas_montadas)
+    meta["linhas_tarifarias_detectadas"] = linhas_detectadas
+    meta["opcoes_montadas"] = len(opcoes)
+    if ignoradas > 0:
+        alertas.append(
+            AlertaExtracaoCotacao(
+                codigo="PDF-PORTO-006",
+                mensagem=(
+                    f"{ignoradas} plano(s) detectado(s) na tabela tarifária "
+                    f"não puderam ser extraídos ({linhas_montadas} de "
+                    f"{linhas_detectadas} linhas recuperadas). "
+                    "Revise o PDF ou use entrada manual para os planos faltantes."
+                ),
+                severidade="alerta",
+            )
+        )
 
     if codigo_resumo and not alguma_associacao and opcoes:
         alertas.append(

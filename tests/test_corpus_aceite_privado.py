@@ -110,7 +110,8 @@ def test_aceite_porto_27_tabela_geral():
     assert not any(a.codigo in _CODIGOS_TABELA_AUSENTE for a in ext.alertas)
     assert "Tabela não encontrada" not in " ".join(a.mensagem for a in ext.alertas)
 
-    assert len(ext.opcoes) == 22
+    # Inclui série P (P220/P320/…) além dos planos BRONZE/PRATA/…
+    assert len(ext.opcoes) == 34
     assert all(len(op.tabela) == 10 for op in ext.opcoes)
     assert mat["exige_selecao_consciente"]
     assert not mat["extracao_financeira_homologada"]
@@ -123,8 +124,8 @@ def test_aceite_porto_27_tabela_geral():
         and op.copart_percentual
         and op.copart_percentual.inteiro == 30
     )
-    assert sem == 11
-    assert parcial == 11
+    assert sem == 17
+    assert parcial == 17
 
 
 def test_maturidade_distingue_estagios_sintetico():
