@@ -398,20 +398,17 @@ def create_app(
         body: AtualizarLinhaSiscorRequest,
     ):
         try:
+            campos = body.model_dump(exclude_unset=True)
+            confirmar = campos.pop("confirmar", False)
+            limpar_valor = "valor_centavos" in campos and campos["valor_centavos"] is None
+            if limpar_valor:
+                campos.pop("valor_centavos")
             linha = siscor.atualizar_linha(
                 estudo_id,
                 linha_id,
-                segurado=body.segurado,
-                nascimento=body.nascimento,
-                parentesco_texto=body.parentesco_texto,
-                plano=body.plano,
-                operadora=body.operadora,
-                status_texto=body.status_texto,
-                valor_centavos=body.valor_centavos,
-                incluida=body.incluida,
-                excluida=body.excluida,
-                motivo_exclusao=body.motivo_exclusao,
-                confirmar=body.confirmar,
+                confirmar=confirmar,
+                limpar_valor=limpar_valor,
+                **campos,
             )
             return {"linha": linha.model_dump(mode="json")}
         except EstudoNaoEncontradoError:

@@ -95,6 +95,7 @@ class EstatisticasImportacaoSiscor(BaseModel):
     qtd_titulares: int = 0
     qtd_dependentes: int = 0
     qtd_sem_parentesco: int = 0
+    qtd_excluidas: int = 0
 
 
 class ImportacaoSiscorCandidata(BaseModel):

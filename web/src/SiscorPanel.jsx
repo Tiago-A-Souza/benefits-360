@@ -13,6 +13,8 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
   const [reimportOpções, setReimportOpções] = useState(null);
   const [detalheAberto, setDetalheAberto] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [excluindo, setExcluindo] = useState(null);
+  const [motivoExclusao, setMotivoExclusao] = useState("");
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -75,7 +77,55 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
   const titulares = stats?.qtd_titulares ?? 0;
   const dependentes = stats?.qtd_dependentes ?? 0;
   const semParentesco = stats?.qtd_sem_parentesco ?? 0;
+  const excluidas = stats?.qtd_excluidas ?? 0;
   const temBase = Boolean(stats);
+
+  function abrirEdicao(linha) {
+    setEditando({
+      ...linha,
+      valor_reais:
+        linha.valor_centavos != null ? centavosParaReaisExibicao(linha.valor_centavos) : "",
+    });
+  }
+
+  async function executarExclusao(e) {
+    e.preventDefault();
+    const motivo = motivoExclusao.trim();
+    if (!motivo) {
+      setErro("Informe o motivo ao excluir uma vida.");
+      return;
+    }
+    setErro(null);
+    setCarregando(true);
+    try {
+      await atualizarLinhaSiscor(estudoId, excluindo.id, {
+        excluida: true,
+        motivo_exclusao: motivo,
+      });
+      setExcluindo(null);
+      setMotivoExclusao("");
+      setMsg("Beneficiário excluído do estudo.");
+      recarregarConferencia();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function reverterExclusao(linha) {
+    setErro(null);
+    setCarregando(true);
+    try {
+      await atualizarLinhaSiscor(estudoId, linha.id, { excluida: false });
+      setMsg("Exclusão revertida.");
+      recarregarConferencia();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setCarregando(false);
+    }
+  }
 
   return (
     <section className="secao-fluxo">
@@ -171,6 +221,12 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
               <span className="resumo-kpi-rotulo">Sem parentesco</span>
             </div>
           )}
+          {excluidas > 0 && (
+            <div className="resumo-kpi resumo-kpi--alerta">
+              <span className="resumo-kpi-valor">{excluidas}</span>
+              <span className="resumo-kpi-rotulo">Excluídas</span>
+            </div>
+          )}
           <div className="resumo-kpi">
             <span className="resumo-kpi-valor">{stats.planos_detectados}</span>
             <span className="resumo-kpi-rotulo">Planos</span>
@@ -207,15 +263,58 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
               </thead>
               <tbody>
                 {conferencia.linhas.map((linha) => (
-                  <tr key={linha.id} className={linha.alertas?.length ? "linha-excecao" : ""}>
+                  <tr
+                    key={linha.id}
+                    className={[
+                      linha.excluida ? "linha-excluida" : "",
+                      !linha.excluida && linha.alertas?.length ? "linha-excecao" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
                     <td>{linha.segurado || "—"}</td>
                     <td>{linha.plano || "—"}</td>
                     <td>{centavosParaReaisExibicao(linha.valor_centavos)}</td>
-                    <td>{linha.registro_confirmado ? "Confirmado" : linha.status_texto || "—"}</td>
                     <td>
-                      <button type="button" className="link" onClick={() => setEditando(linha)}>
-                        Editar
-                      </button>
+                      {linha.excluida ? (
+                        <>
+                          Excluída
+                          {linha.motivo_exclusao && (
+                            <span className="muted"> — {linha.motivo_exclusao}</span>
+                          )}
+                        </>
+                      ) : (
+                        linha.registro_confirmado ? "Confirmado" : linha.status_texto || "—"
+                      )}
+                    </td>
+                    <td className="acoes-celula">
+                      {linha.excluida ? (
+                        <button
+                          type="button"
+                          className="link"
+                          disabled={carregando}
+                          onClick={() => reverterExclusao(linha)}
+                        >
+                          Reverter exclusão
+                        </button>
+                      ) : (
+                        <>
+                          <button type="button" className="link" onClick={() => abrirEdicao(linha)}>
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="link"
+                            onClick={() => {
+                              setExcluindo(linha);
+                              setMotivoExclusao("");
+                              setErro(null);
+                            }}
+                          >
+                            Excluir do estudo
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -225,19 +324,83 @@ export default function SiscorPanel({ estudoId, onAtualizado }) {
         </div>
       )}
 
+      {excluindo && (
+        <form className="cartao cartao--edit" onSubmit={executarExclusao}>
+          <h3>Excluir do estudo</h3>
+          <p className="muted">
+            A vida permanece visível na conferência, mas não entrará no cálculo. Informe o motivo.
+          </p>
+          <p>
+            <strong>{excluindo.segurado || "Beneficiário sem nome"}</strong>
+            {excluindo.plano ? ` — ${excluindo.plano}` : ""}
+          </p>
+          <label>
+            Motivo da exclusão
+            <textarea
+              required
+              rows={3}
+              value={motivoExclusao}
+              onChange={(e) => setMotivoExclusao(e.target.value)}
+              placeholder="Ex.: beneficiário desligado, plano encerrado…"
+            />
+          </label>
+          <div className="acoes-edit">
+            <button type="submit" disabled={carregando}>
+              Confirmar exclusão
+            </button>
+            <button
+              type="button"
+              className="secundario"
+              disabled={carregando}
+              onClick={() => {
+                setExcluindo(null);
+                setMotivoExclusao("");
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
       {editando && (
         <form
           className="cartao cartao--edit"
           onSubmit={async (e) => {
             e.preventDefault();
-            const patch = {
-              segurado: editando.segurado,
-              plano: editando.plano,
-              valor_centavos: reaisTextoParaCentavos(editando.valor_reais).centavos,
-            };
-            await atualizarLinhaSiscor(estudoId, editando.id, patch);
-            setEditando(null);
-            recarregarConferencia();
+            const nomeVazio = !(editando.segurado || "").trim();
+            const valorVazio = !(editando.valor_reais || "").trim();
+            if (nomeVazio || valorVazio) {
+              const ok = window.confirm(
+                "Esta linha ficará com exceção e não entrará no cálculo. Confirmar?"
+              );
+              if (!ok) return;
+            }
+            setErro(null);
+            setCarregando(true);
+            try {
+              const patch = {
+                segurado: editando.segurado ?? "",
+                plano: editando.plano,
+              };
+              if (valorVazio) {
+                patch.valor_centavos = null;
+              } else {
+                const parsed = reaisTextoParaCentavos(editando.valor_reais);
+                if (!parsed.ok) {
+                  setErro(parsed.erro);
+                  return;
+                }
+                patch.valor_centavos = parsed.centavos;
+              }
+              await atualizarLinhaSiscor(estudoId, editando.id, patch);
+              setEditando(null);
+              recarregarConferencia();
+            } catch (err) {
+              setErro(err.message);
+            } finally {
+              setCarregando(false);
+            }
           }}
         >
           <h3>Editar beneficiário</h3>

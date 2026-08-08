@@ -188,20 +188,24 @@ class ImportacaoSiscorService:
             caminho.unlink()
 
     def _recalcular_estatisticas(self, candidata: ImportacaoSiscorCandidata) -> None:
-        com_excecao = sum(
-            1 for linha in candidata.linhas if linha.tem_excecao and not linha.excluida
-        )
-        confirmadas = sum(1 for linha in candidata.linhas if linha.registro_confirmado)
-        planos = {l.subgrupo_sugerido_id for l in candidata.linhas if l.subgrupo_sugerido_id}
+        ativas = [linha for linha in candidata.linhas if not linha.excluida]
+        excluidas = len(candidata.linhas) - len(ativas)
+        com_excecao = sum(1 for linha in ativas if linha.tem_excecao)
+        confirmadas = sum(1 for linha in ativas if linha.registro_confirmado)
+        planos = {l.subgrupo_sugerido_id for l in ativas if l.subgrupo_sugerido_id}
+        parentesco = contar_parentesco(candidata.linhas)
         candidata.estatisticas = candidata.estatisticas.model_copy(
             update={
-                "total_linhas_lidas": len(candidata.linhas),
-                "linhas_utilizaveis": len(candidata.linhas),
+                "total_linhas_lidas": len(ativas),
+                "linhas_utilizaveis": len(ativas),
                 "linhas_com_excecao": com_excecao,
                 "planos_detectados": len(planos),
                 "confirmadas": confirmadas,
-                "aguardando_conferencia": len(candidata.linhas) - confirmadas,
-                **contar_parentesco(candidata.linhas).__dict__,
+                "aguardando_conferencia": len(ativas) - confirmadas,
+                "qtd_titulares": parentesco.titulares,
+                "qtd_dependentes": parentesco.dependentes,
+                "qtd_sem_parentesco": parentesco.sem_parentesco,
+                "qtd_excluidas": excluidas,
             }
         )
 
@@ -461,6 +465,7 @@ class ImportacaoSiscorService:
         operadora: str | None = None,
         status_texto: str | None = None,
         valor_centavos: int | None = None,
+        limpar_valor: bool = False,
         incluida: bool | None = None,
         excluida: bool | None = None,
         motivo_exclusao: str | None = None,
@@ -537,6 +542,13 @@ class ImportacaoSiscorService:
                     }
                 )
             houve_edicao = True
+        elif limpar_valor:
+            self._registrar_edicao(
+                linha, "valor_centavos", linha.valor_centavos, None, editado_por=editado_por
+            )
+            linha.valor_centavos = None
+            linha.valor_fatura = None
+            houve_edicao = True
         if incluida is not None:
             self._registrar_edicao(
                 linha, "incluida", linha.incluida_sugerida, incluida, editado_por=editado_por
@@ -546,6 +558,8 @@ class ImportacaoSiscorService:
         if excluida is not None:
             self._registrar_edicao(linha, "excluida", linha.excluida, excluida, editado_por=editado_por)
             linha.excluida = excluida
+            if not excluida:
+                linha.motivo_exclusao = None
             houve_edicao = True
         if motivo_exclusao is not None:
             self._registrar_edicao(

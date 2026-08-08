@@ -71,20 +71,23 @@ def _linha_vazia(valores: dict[str, Any]) -> bool:
 
 
 def _estatisticas(linhas: list[LinhaSiscorCandidata]) -> EstatisticasImportacaoSiscor:
-    com_excecao = sum(1 for linha in linhas if linha.tem_excecao and not linha.excluida)
-    confirmadas = sum(1 for linha in linhas if linha.registro_confirmado)
-    planos = {linha.subgrupo_sugerido_id for linha in linhas if linha.subgrupo_sugerido_id}
+    ativas = [linha for linha in linhas if not linha.excluida]
+    excluidas = len(linhas) - len(ativas)
+    com_excecao = sum(1 for linha in ativas if linha.tem_excecao)
+    confirmadas = sum(1 for linha in ativas if linha.registro_confirmado)
+    planos = {linha.subgrupo_sugerido_id for linha in ativas if linha.subgrupo_sugerido_id}
     parentesco = contar_parentesco(linhas)
     return EstatisticasImportacaoSiscor(
-        total_linhas_lidas=len(linhas),
-        linhas_utilizaveis=len(linhas),
+        total_linhas_lidas=len(ativas),
+        linhas_utilizaveis=len(ativas),
         linhas_com_excecao=com_excecao,
         planos_detectados=len(planos),
         confirmadas=confirmadas,
-        aguardando_conferencia=len(linhas) - confirmadas,
+        aguardando_conferencia=len(ativas) - confirmadas,
         qtd_titulares=parentesco.titulares,
         qtd_dependentes=parentesco.dependentes,
         qtd_sem_parentesco=parentesco.sem_parentesco,
+        qtd_excluidas=excluidas,
     )
 
 

@@ -88,3 +88,4 @@ htmlcov/
 .data/
 web/node_modules/
 web/dist/
+calcular_response.json

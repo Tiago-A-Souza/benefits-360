@@ -119,3 +119,24 @@ def test_propriedade_soma_contadores_igual_total(linhas_spec):
     ]
     contagem = contar_parentesco(linhas)
     assert contagem.total == len(linhas)
+
+
+def test_linhas_excluidas_ficam_fora_da_contagem():
+    linhas = [
+        _linha(
+            id="t1",
+            numero_linha=1,
+            parentesco_texto="TITULAR",
+            parentesco=ParentescoRascunho.TITULAR,
+        ),
+        _linha(
+            id="t2",
+            numero_linha=2,
+            parentesco_texto="TITULAR",
+            parentesco=ParentescoRascunho.TITULAR,
+            excluida=True,
+        ),
+    ]
+    contagem = contar_parentesco(linhas)
+    assert contagem.titulares == 1
+    assert contagem.total == 1

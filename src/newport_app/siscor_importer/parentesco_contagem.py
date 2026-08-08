@@ -43,6 +43,8 @@ def classificar_parentesco_linha(linha: LinhaSiscorCandidata) -> str:
 def contar_parentesco(linhas: list[LinhaSiscorCandidata]) -> ContagemParentesco:
     titulares = dependentes = sem = 0
     for linha in linhas:
+        if linha.excluida:
+            continue
         cat = classificar_parentesco_linha(linha)
         if cat == "titular":
             titulares += 1
