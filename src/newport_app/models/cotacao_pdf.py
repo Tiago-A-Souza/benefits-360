@@ -121,6 +121,10 @@ class ExtracaoCotacaoCandidata(BaseModel):
     criado_em: datetime
     criado_por: str = "analista-local"
     versoes_anteriores: list[int] = Field(default_factory=list)
+    descartada: bool = False
+    motivo_descarte: str | None = None
+    descartada_em: datetime | None = None
+    descartada_por: str | None = None
 
     @property
     def campos_extraidos(self) -> list[ValorExtraido]:

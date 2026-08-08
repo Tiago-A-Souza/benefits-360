@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   aplicarExtracaoCotacao,
   atualizarCampoExtracao,
+  descartarExtracaoCotacao,
   importarCotacaoPdf,
   listarExtracoesCotacao,
   obterExtracaoCotacao,
@@ -9,12 +10,18 @@ import {
   obterRascunho,
   obterResumoPlanoAtual,
   removerExtracaoCotacao,
+  reverterDescarteExtracaoCotacao,
   salvarRascunho,
   selecionarOpcaoExtracao,
   carregarPdfCotacaoBlob,
   mensagemErroOperador,
   registrarDiagnostico,
 } from "./api";
+import {
+  proximaExtracaoPendente,
+  resumoSelecaoDocumento,
+  rotuloDocumentoExtracao,
+} from "./fluxo/cotacoesPendentes";
 import FilePickerButton from "./components/FilePickerButton";
 import {
   centavosParaReaisExibicao,
@@ -777,6 +784,9 @@ export default function CotacaoPdfPanel({
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
   const [alternandoOpcao, setAlternandoOpcao] = useState(null);
   const [estimativasMotor, setEstimativasMotor] = useState({});
+  const [descarteExId, setDescarteExId] = useState(null);
+  const [motivoDescarte, setMotivoDescarte] = useState("");
+  const [proximoPendenteId, setProximoPendenteId] = useState(null);
 
   const recarregar = useCallback(() => {
     listarExtracoesCotacao(estudoId)
@@ -990,6 +1000,59 @@ export default function CotacaoPdfPanel({
     }
   }
 
+  function abrirDescarte(ex) {
+    setDescarteExId(ex.id);
+    setMotivoDescarte("");
+    setErro(null);
+    setMsg(null);
+    setFase("lista");
+    setExtracaoId(null);
+    setDetalhe(null);
+    setPdfInlineDocumentoId(null);
+  }
+
+  async function confirmarDescarte() {
+    const motivo = motivoDescarte.trim();
+    if (!motivo) {
+      setErro("Informe o motivo para não usar esta cotação.");
+      return;
+    }
+    if (!descarteExId) return;
+    setCarregando(true);
+    setErro(null);
+    try {
+      const res = await descartarExtracaoCotacao(estudoId, descarteExId, motivo);
+      setMsg(res.mensagem || "Cotação marcada como não utilizada.");
+      setDescarteExId(null);
+      setMotivoDescarte("");
+      if (extracaoId === descarteExId) voltarLista();
+      if (setCestaGlobal) {
+        setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== descarteExId));
+      }
+      recarregar();
+      onAplicado?.();
+    } catch (err) {
+      setErro(mensagemErroOperador(err, "Não foi possível descartar a cotação."));
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function handleReverterDescarte(ex) {
+    setCarregando(true);
+    setErro(null);
+    try {
+      await reverterDescarteExtracaoCotacao(estudoId, ex.id);
+      setMsg("Descarte revertido — você pode escolher planos desta cotação.");
+      recarregar();
+      onAplicado?.();
+    } catch (err) {
+      setErro(mensagemErroOperador(err, "Não foi possível reverter o descarte."));
+    } finally {
+      setCarregando(false);
+    }
+  }
+
   async function handleRemoverPlanoComparativo(opcao) {
     if (
       !window.confirm(
@@ -1097,25 +1160,45 @@ export default function CotacaoPdfPanel({
     }
     try {
       const res = await aplicarExtracaoCotacao(estudoId, extracaoId);
+      const listaAtualizada = await listarExtracoesCotacao(estudoId)
+        .then((r) => r.extracoes || [])
+        .catch(() => extracoes);
+      const opsComp = await obterRascunho(estudoId)
+        .then((r) => r.opcoes_proposta || [])
+        .catch(() => opcoesComparativo);
+      const prox = proximaExtracaoPendente(listaAtualizada, opsComp, extracaoId);
+      setProximoPendenteId(prox?.id || null);
+
       if (selecionadas.length === 0) {
         setMsg("Planos desta cotação removidos do comparativo.");
       } else if (res.opcoes_adicionadas || res.opcoes_atualizadas) {
         setMsg(
-          `${res.opcoes_adicionadas || 0} adicionado(s), ${res.opcoes_atualizadas || 0} atualizado(s). Agora você pode ir para a próxima etapa.`
+          prox
+            ? `${res.opcoes_adicionadas || 0} adicionado(s), ${res.opcoes_atualizadas || 0} atualizado(s). Há outra cotação pendente de revisão.`
+            : `${res.opcoes_adicionadas || 0} adicionado(s), ${res.opcoes_atualizadas || 0} atualizado(s). Comparativo atualizado.`
         );
       } else {
-        setMsg("Comparativo atualizado.");
+        setMsg(prox ? "Comparativo atualizado. Há outra cotação pendente." : "Comparativo atualizado.");
       }
       if (res.bloqueios?.length) setBloqueios(res.bloqueios);
       if (setCestaGlobal) {
         setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
       }
+      setExtracoes(listaAtualizada);
       await recarregarDetalhe();
       onAplicado?.();
     } catch (err) {
       if (err.bloqueios) setBloqueios(err.bloqueios);
       setErro(err.message);
     }
+  }
+
+  function irProximoDocumento() {
+    if (!proximoPendenteId) return;
+    const id = proximoPendenteId;
+    setProximoPendenteId(null);
+    setMsg(null);
+    abrirDocumento(id);
   }
 
   function setFiltro(campo, valor) {
@@ -1170,51 +1253,115 @@ export default function CotacaoPdfPanel({
               <div className="documentos-pdf-grid">
                 {extracoes.map((ex) => {
                   const qtd = ex.opcoes?.filter((o) => !o.excluida).length ?? 0;
-                  const noComparativo = opcoesComparativo.filter((o) => o.extracao_id === ex.id).length;
                   const doc = ex.documento;
+                  const resumoSel = resumoSelecaoDocumento(ex, opcoesComparativo);
+                  const rotulo = rotuloDocumentoExtracao(ex);
+                  const pendente =
+                    !ex.descartada &&
+                    opcoesComparativo.filter((o) => o.extracao_id === ex.id).length === 0 &&
+                    !(ex.opcoes || []).some((o) => !o.excluida && o.selecionada_para_comparativo);
                   return (
-                    <article key={ex.id} className="documento-pdf-card">
+                    <article
+                      key={ex.id}
+                      className={`documento-pdf-card${ex.descartada ? " documento-pdf-card--descartada" : ""}${pendente ? " documento-pdf-card--pendente" : ""}`}
+                    >
                       <header>
                         <strong>{doc?.operadora_detectada || "Operadora"}</strong>
                         <BadgeSituacao
                           situacao={{
-                            codigo: ex.estado === "extraido" ? "pronto" : "revisao",
-                            rotulo: rotuloEstado(ex.estado),
+                            codigo: ex.descartada
+                              ? "revisao"
+                              : ex.estado === "extraido"
+                                ? "pronto"
+                                : "revisao",
+                            rotulo: ex.descartada ? "Descartada" : rotuloEstado(ex.estado),
                           }}
                         />
                       </header>
+                      <p className={`documento-pdf-selecao${pendente ? " documento-pdf-selecao--pendente" : ""}`}>
+                        {rotulo} — {resumoSel}
+                      </p>
                       <ul className="documento-pdf-meta">
                         <li>{doc?.nome_arquivo || "arquivo.pdf"}</li>
                         <li>Enviado: {formatarDataUpload(ex.criado_em)}</li>
                         <li>{qtd} opção(ões) encontrada(s)</li>
-                        {noComparativo > 0 && (
-                          <li>
-                            {noComparativo} no comparativo
-                          </li>
-                        )}
                       </ul>
-                      <div className="documento-pdf-acoes">
-                        <button type="button" onClick={() => abrirDocumento(ex.id)}>
-                          Escolher planos
-                        </button>
-                        {doc?.id && (
+                      {descarteExId === ex.id ? (
+                        <div className="documento-pdf-descarte">
+                          <label>
+                            Motivo para não usar esta cotação
+                            <input
+                              type="text"
+                              value={motivoDescarte}
+                              onChange={(e) => setMotivoDescarte(e.target.value)}
+                              placeholder="Ex.: fora do perfil, vencida, não competitiva"
+                              disabled={carregando}
+                              autoFocus
+                            />
+                          </label>
+                          <div className="documento-pdf-descarte-acoes">
+                            <button type="button" onClick={confirmarDescarte} disabled={carregando}>
+                              Confirmar descarte
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-link secundario"
+                              onClick={() => {
+                                setDescarteExId(null);
+                                setMotivoDescarte("");
+                              }}
+                              disabled={carregando}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="documento-pdf-acoes">
+                            {ex.descartada ? (
+                              <button
+                                type="button"
+                                onClick={() => handleReverterDescarte(ex)}
+                                disabled={carregando}
+                              >
+                                Reverter descarte
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => abrirDocumento(ex.id)}>
+                                Escolher planos
+                              </button>
+                            )}
+                            {doc?.id && (
+                              <button
+                                type="button"
+                                className={`btn-link secundario btn-compacto${pdfInlineDocumentoId === doc.id ? " ativo" : ""}`}
+                                onClick={() => togglePdfInline(doc.id)}
+                              >
+                                {pdfInlineDocumentoId === doc.id ? "Ocultar PDF" : "Ver PDF"}
+                              </button>
+                            )}
+                            {!ex.descartada && (
+                              <button
+                                type="button"
+                                className="btn-link secundario btn-compacto"
+                                onClick={() => abrirDescarte(ex)}
+                                disabled={carregando}
+                              >
+                                Não usar esta cotação
+                              </button>
+                            )}
+                          </div>
                           <button
                             type="button"
-                            className={`btn-link secundario btn-compacto${pdfInlineDocumentoId === doc.id ? " ativo" : ""}`}
-                            onClick={() => togglePdfInline(doc.id)}
+                            className="btn-remover documento-pdf-remover"
+                            onClick={() => handleRemoverExtracao(ex)}
+                            disabled={carregando}
                           >
-                            {pdfInlineDocumentoId === doc.id ? "Ocultar PDF" : "Ver PDF"}
+                            Remover PDF
                           </button>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-remover documento-pdf-remover"
-                        onClick={() => handleRemoverExtracao(ex)}
-                        disabled={carregando}
-                      >
-                        Remover PDF
-                      </button>
+                        </>
+                      )}
                     </article>
                   );
                 })}
@@ -1283,6 +1430,16 @@ export default function CotacaoPdfPanel({
               <button type="button" className="secundario" onClick={voltarLista}>
                 ← Voltar aos documentos
               </button>
+              {extracaoAberta && !extracaoAberta.descartada && (
+                <button
+                  type="button"
+                  className="secundario btn-compacto"
+                  disabled={carregando}
+                  onClick={() => abrirDescarte(extracaoAberta)}
+                >
+                  Não usar esta cotação
+                </button>
+              )}
               {extracaoAberta && (
                 <button
                   type="button"
@@ -1506,6 +1663,16 @@ export default function CotacaoPdfPanel({
                       : `Adicionar ${selecionadas.length} plano(s) ao comparativo`}
                 </button>
               </div>
+              {proximoPendenteId && (
+                <div className="documento-pdf-proximo">
+                  <button type="button" className="revisao-fluxo-principal" onClick={irProximoDocumento}>
+                    Próximo documento →
+                  </button>
+                  <button type="button" className="link" onClick={voltarLista}>
+                    ← Voltar aos documentos
+                  </button>
+                </div>
+              )}
             </>
           )}
           </div>
@@ -1534,6 +1701,13 @@ export default function CotacaoPdfPanel({
       )}
 
       {msg && <p className="ok">{msg}</p>}
+      {proximoPendenteId && fase === "lista" && (
+        <div className="documento-pdf-proximo">
+          <button type="button" className="revisao-fluxo-principal" onClick={irProximoDocumento}>
+            Próximo documento →
+          </button>
+        </div>
+      )}
       {erro && <p className="erro">{erro}</p>}
     </div>
   );

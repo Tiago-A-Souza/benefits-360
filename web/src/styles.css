@@ -723,6 +723,59 @@ select:focus {
   box-shadow: 0 0 0 2px rgba(11, 92, 171, 0.15);
 }
 
+.documento-pdf-card--pendente {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.documento-pdf-card--descartada {
+  opacity: 0.78;
+  border-style: dashed;
+}
+
+.documento-pdf-selecao {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #334155;
+  line-height: 1.35;
+}
+
+.documento-pdf-selecao--pendente {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.documento-pdf-descarte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.documento-pdf-descarte label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.documento-pdf-descarte input {
+  width: 100%;
+}
+
+.documento-pdf-descarte-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.documento-pdf-proximo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
 .documento-pdf-card header {
   display: flex;
   justify-content: space-between;
@@ -2259,6 +2312,15 @@ a.btn-link {
   font-size: 0.8125rem;
   color: #c2410c;
   max-width: 20rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.wizard-nav-aviso {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #b45309;
+  max-width: 22rem;
   line-height: 1.35;
   text-align: right;
 }

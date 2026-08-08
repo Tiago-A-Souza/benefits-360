@@ -1,5 +1,6 @@
 /** Heurísticas de conclusão por etapa do fluxo operacional. */
 
+import { documentosPendentesRevisao } from "./cotacoesPendentes";
 import { chavePassoVisivel, exigeCorrespondenciaManual, passosVisiveis } from "./passos";
 
 function subgruposComVidas(rascunho) {
@@ -105,7 +106,15 @@ export function statusEtapaPorChave(chave, ctx) {
           pendencia: "Aguarde a sincronização das propostas com o plano atual",
         };
       }
-      return { concluida: true, pendencia: null };
+      const pendentesDocs = documentosPendentesRevisao(
+        extracoes || [],
+        rascunho?.opcoes_proposta || []
+      );
+      const aviso =
+        pendentesDocs.length > 0
+          ? `${pendentesDocs.length} cotação(ões) sem plano no comparativo (pode avançar com aviso)`
+          : null;
+      return { concluida: true, pendencia: null, aviso };
     }
     case "selecionados": {
       const ops = rascunho?.opcoes_proposta?.length || 0;

@@ -64,6 +64,8 @@ from newport_app.models.responses import (
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     ConfirmacaoExtracaoResponse,
+    DescartarExtracaoRequest,
+    DescartarExtracaoResponse,
     EstimarPropostasRequest,
     EstimarPropostasResponse,
     ListaExtracaoCotacaoResponse,
@@ -96,10 +98,12 @@ from newport_app.services.comparativo_ui import (
 )
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
+    CotacaoDescartadaError,
     EstudoNaoEncontradoError as EstudoCotacaoNaoEncontradoError,
     AplicacaoExtracaoError,
     ExtracaoCotacaoService,
     ExtracaoNaoEncontradaError,
+    MotivoDescarteObrigatorioError,
     OpcaoNaoEncontradaError,
 )
 from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
@@ -620,6 +624,12 @@ def create_app(
                 ),
                 codigo="PDF-SEL-002",
             )
+        except CotacaoDescartadaError:
+            _falha(
+                409,
+                "Esta cotação foi marcada como não utilizada. Reverta o descarte para selecionar planos.",
+                codigo="PDF-SEL-003",
+            )
         except Exception as exc:  # noqa: BLE001 — devolver motivo legível ao operador
             registrar_evento(
                 estudo_id=estudo_id,
@@ -670,6 +680,17 @@ def create_app(
             return cotacao.aplicar_ao_rascunho(extracao_id)
         except ExtracaoNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        except CotacaoDescartadaError:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "codigo": "PDF-DESC-002",
+                    "mensagem": (
+                        "Esta cotação foi marcada como não utilizada. "
+                        "Reverta o descarte antes de adicionar planos ao comparativo."
+                    ),
+                },
+            ) from None
         except AplicacaoExtracaoError as exc:
             raise HTTPException(
                 status_code=422,
@@ -689,6 +710,45 @@ def create_app(
     ) -> RemoverExtracaoResponse:
         try:
             return cotacao.remover_extracao(estudo_id, extracao_id)
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/descartar",
+        response_model=DescartarExtracaoResponse,
+    )
+    def descartar_extracao_cotacao(
+        estudo_id: str,
+        extracao_id: str,
+        body: DescartarExtracaoRequest,
+    ) -> DescartarExtracaoResponse:
+        try:
+            return cotacao.descartar_extracao(
+                estudo_id,
+                extracao_id,
+                motivo=body.motivo,
+            )
+        except MotivoDescarteObrigatorioError:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "codigo": "PDF-DESC-001",
+                    "mensagem": "Informe o motivo para não usar esta cotação.",
+                },
+            ) from None
+        except ExtracaoNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/reverter-descarte",
+        response_model=ExtracaoCotacaoCandidata,
+    )
+    def reverter_descarte_extracao_cotacao(
+        estudo_id: str,
+        extracao_id: str,
+    ) -> ExtracaoCotacaoCandidata:
+        try:
+            return cotacao.reverter_descarte_extracao(estudo_id, extracao_id)
         except ExtracaoNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
 

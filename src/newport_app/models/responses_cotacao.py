@@ -61,3 +61,14 @@ class RemoverExtracaoResponse(BaseModel):
     planos_removidos: int = 0
     aprovacao_invalidada: bool = False
     mensagem: str = ""
+
+
+class DescartarExtracaoRequest(BaseModel):
+    motivo: str
+
+
+class DescartarExtracaoResponse(BaseModel):
+    descartada: bool = True
+    motivo: str
+    planos_removidos: int = 0
+    mensagem: str = ""

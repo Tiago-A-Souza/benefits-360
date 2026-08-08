@@ -16,6 +16,7 @@ import PropostaPanel from "./PropostaPanel";
 import RevisaoApresentacaoPanel from "./RevisaoApresentacaoPanel";
 import DiagnosticoPanel from "./DiagnosticoPanel";
 import SiscorPanel from "./SiscorPanel";
+import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
 import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 
@@ -96,9 +97,15 @@ export default function App() {
   const chavePassoAtual = passos[passo - 1]?.chave;
 
   function irProximo() {
-    if (passo < passos.length && proximaEtapaDisponivel(passo, ctxFluxo)) {
-      setPasso(passo + 1);
+    if (passo >= passos.length || !proximaEtapaDisponivel(passo, ctxFluxo)) return;
+    if (chavePassoAtual === "cotacoes") {
+      const aviso = avisoAvancoCotacoesPendentes(
+        ctxFluxo.extracoes,
+        ctxFluxo.rascunho?.opcoes_proposta || []
+      );
+      if (aviso && !window.confirm(aviso)) return;
     }
+    setPasso(passo + 1);
   }
 
   function irAnterior() {
@@ -193,6 +200,9 @@ export default function App() {
             {!proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.pendencia && (
               <p className="wizard-nav-pendencia">{statusPassos[passo].pendencia}</p>
             )}
+            {proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.aviso && (
+              <p className="wizard-nav-aviso">{statusPassos[passo].aviso}</p>
+            )}
             {passo < passos.length && (
               <button
                 type="button"
@@ -201,7 +211,7 @@ export default function App() {
                 title={
                   !proximaEtapaDisponivel(passo, ctxFluxo)
                     ? statusPassos[passo]?.pendencia || "Conclua esta etapa primeiro"
-                    : undefined
+                    : statusPassos[passo]?.aviso || undefined
                 }
               >
                 Próxima etapa →

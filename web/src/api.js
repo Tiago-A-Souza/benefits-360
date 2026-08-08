@@ -319,6 +319,26 @@ export async function removerExtracaoCotacao(estudoId, extracaoId) {
   return tratarResposta(res, "Não foi possível remover a cotação.");
 }
 
+export async function descartarExtracaoCotacao(estudoId, extracaoId, motivo) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/descartar`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivo }),
+    }
+  );
+  return tratarResposta(res, "Não foi possível descartar a cotação.");
+}
+
+export async function reverterDescarteExtracaoCotacao(estudoId, extracaoId) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/reverter-descarte`,
+    { method: "POST" }
+  );
+  return tratarResposta(res, "Não foi possível reverter o descarte da cotação.");
+}
+
 export function urlPdfCotacao(estudoId, documentoId) {
   return `${API}/estudos/${estudoId}/documentos-cotacao/${documentoId}/pdf`;
 }

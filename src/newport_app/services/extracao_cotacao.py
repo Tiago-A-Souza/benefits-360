@@ -27,6 +27,7 @@ from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     BloqueioOpcaoExtracao,
     ConfirmacaoExtracaoResponse,
+    DescartarExtracaoResponse,
     EstimarPropostasResponse,
     RemoverExtracaoResponse,
     ResultadoImportacaoCotacaoResponse,
@@ -49,6 +50,14 @@ class CampoNaoEncontradoError(Exception):
 
 
 class OpcaoNaoEncontradaError(Exception):
+    pass
+
+
+class MotivoDescarteObrigatorioError(Exception):
+    pass
+
+
+class CotacaoDescartadaError(Exception):
     pass
 
 
@@ -293,6 +302,8 @@ class ExtracaoCotacaoService:
         if not self._extracoes.esta_ativa(extracao_id):
             raise ExtracaoNaoEncontradaError(extracao_id)
         extracao = self.obter_extracao(extracao_id)
+        if extracao.descartada and selecionada:
+            raise CotacaoDescartadaError(extracao_id)
         for op in extracao.opcoes:
             if op.id == opcao_id:
                 if op.excluida:
@@ -306,6 +317,8 @@ class ExtracaoCotacaoService:
 
     def aplicar_ao_rascunho(self, extracao_id: str) -> AplicarExtracaoResponse:
         extracao = self.obter_extracao(extracao_id)
+        if extracao.descartada:
+            raise CotacaoDescartadaError(extracao_id)
         confirmar_extracao_selecionadas(extracao, confirmado_por="aplicacao")
         self._extracoes.salvar(extracao)
         rascunho = self._estudos.obter_rascunho(extracao.estudo_id)
@@ -354,6 +367,96 @@ class ExtracaoCotacaoService:
             total_opcoes=len(rascunho.opcoes_proposta),
             bloqueios=bloqueios,
         )
+
+    def _retirar_planos_do_rascunho(
+        self,
+        estudo_id: str,
+        extracao_id: str,
+    ) -> int:
+        rascunho = self._estudos.obter_rascunho(estudo_id)
+        if rascunho is None:
+            return 0
+        antes = len(rascunho.opcoes_proposta)
+        rascunho.opcoes_proposta = [
+            op for op in rascunho.opcoes_proposta if op.extracao_id != extracao_id
+        ]
+        removidos = antes - len(rascunho.opcoes_proposta)
+        if removidos:
+            opcoes_validas = {op.id for op in rascunho.opcoes_proposta}
+            for cenario in rascunho.cenarios:
+                cenario.atribuicoes = [
+                    atr
+                    for atr in cenario.atribuicoes
+                    if atr.opcao_plano_id in opcoes_validas
+                ]
+            self._estudos.salvar_rascunho(rascunho)
+            if self._on_rascunho_alterado:
+                self._on_rascunho_alterado(
+                    estudo_id,
+                    "Retirada de planos de cotação descartada do comparativo",
+                )
+        return removidos
+
+    def descartar_extracao(
+        self,
+        estudo_id: str,
+        extracao_id: str,
+        *,
+        motivo: str,
+        descartada_por: str = "analista-local",
+    ) -> DescartarExtracaoResponse:
+        motivo_limpo = (motivo or "").strip()
+        if not motivo_limpo:
+            raise MotivoDescarteObrigatorioError("motivo")
+        extracao = self.obter_extracao(extracao_id)
+        if extracao.estudo_id != estudo_id:
+            raise ExtracaoNaoEncontradaError(extracao_id)
+        for op in extracao.opcoes:
+            op.selecionada_para_comparativo = False
+        extracao.descartada = True
+        extracao.motivo_descarte = motivo_limpo
+        extracao.descartada_em = datetime.now(timezone.utc)
+        extracao.descartada_por = descartada_por
+        self._extracoes.salvar(extracao)
+        planos_removidos = self._retirar_planos_do_rascunho(estudo_id, extracao_id)
+        registrar_evento(
+            estudo_id=estudo_id,
+            etapa="cotacao_pdf",
+            evento="cotacao_descartada",
+            detalhe={
+                "extracao_id": extracao_id,
+                "motivo": motivo_limpo[:200],
+                "planos_removidos": planos_removidos,
+            },
+        )
+        return DescartarExtracaoResponse(
+            descartada=True,
+            motivo=motivo_limpo,
+            planos_removidos=planos_removidos,
+            mensagem=(
+                f"Cotação marcada como não utilizada ({motivo_limpo})."
+                + (
+                    f" {planos_removidos} plano(s) retirado(s) do comparativo."
+                    if planos_removidos
+                    else ""
+                )
+            ),
+        )
+
+    def reverter_descarte_extracao(
+        self,
+        estudo_id: str,
+        extracao_id: str,
+    ) -> ExtracaoCotacaoCandidata:
+        extracao = self.obter_extracao(extracao_id)
+        if extracao.estudo_id != estudo_id:
+            raise ExtracaoNaoEncontradaError(extracao_id)
+        extracao.descartada = False
+        extracao.motivo_descarte = None
+        extracao.descartada_em = None
+        extracao.descartada_por = None
+        self._extracoes.salvar(extracao)
+        return extracao
 
     def remover_extracao(self, estudo_id: str, extracao_id: str) -> RemoverExtracaoResponse:
         extracao = self.obter_extracao(extracao_id)
