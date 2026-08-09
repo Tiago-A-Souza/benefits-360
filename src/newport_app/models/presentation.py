@@ -111,6 +111,7 @@ class PresentationViewModel(BaseModel):
     data_apresentacao: str
     estudo_id: str
     modo: str
+    formato: str = "renovacao"
     propostas_selecionadas: list[str] = Field(default_factory=list)
     ressalvas: list[str] = Field(default_factory=list)
     politicas_provisorias: bool = True

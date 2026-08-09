@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 
 from newport_app.draft_compiler import compile
-from newport_app.models.draft import RascunhoEstudo
+from newport_app.models.draft import AtribuicaoRascunho, CenarioRascunho, RascunhoEstudo
 from newport_app.models.snapshot import SnapshotCalculo
 from newport_app.policy.registry import PolicySetRegistry, default_registry
+from newport_app.rascunho.cenarios_sync import subgrupos_com_vidas, vidas_incluidas_ids
 from newport_motor.engine import calcular
 from newport_motor.result import MotorResult
 
@@ -54,14 +56,48 @@ class CalculoProposta:
     diff_ano_centavos: int | None
 
 
+def _novo_id(prefixo: str) -> str:
+    return f"{prefixo}-{uuid.uuid4().hex[:8]}"
+
+
 def _atribuir_proposta_unica(rascunho: RascunhoEstudo, opcao_id: str) -> RascunhoEstudo:
+    """Monta um único cenário cobrindo todos os alvos do formato com a opção pedida.
+
+    Em renovação o alvo é subgrupo; em seguro novo o alvo é vida. Sem isso, a
+    apresentação reutiliza o primeiro cenário e todas as colunas repetem o mesmo total.
+    """
     copia = rascunho.model_copy(deep=True)
-    if not copia.cenarios:
+    if copia.formato == "novo":
+        alvo_tipo = "vida"
+        alvos = vidas_incluidas_ids(copia)
+    else:
+        alvo_tipo = "subgrupo"
+        alvos = subgrupos_com_vidas(copia)
+        if not alvos and len(copia.subgrupos_atuais) == 1:
+            alvos = [copia.subgrupos_atuais[0].id]
+
+    if not alvos:
         return copia
-    cenario = copia.cenarios[0]
-    for atr in cenario.atribuicoes:
-        if atr.alvo_tipo == "subgrupo":
-            atr.opcao_plano_id = opcao_id
+
+    atr_ids: dict[str, str] = {}
+    for cenario in copia.cenarios:
+        for atr in cenario.atribuicoes:
+            if atr.alvo_tipo == alvo_tipo:
+                atr_ids.setdefault(atr.alvo_id, atr.id)
+
+    cenario_id = copia.cenarios[0].id if copia.cenarios else _novo_id("c")
+    atribuicoes = [
+        AtribuicaoRascunho(
+            id=atr_ids.get(alvo_id, _novo_id("a")),
+            alvo_tipo=alvo_tipo,  # type: ignore[arg-type]
+            alvo_id=alvo_id,
+            opcao_plano_id=opcao_id,
+        )
+        for alvo_id in alvos
+    ]
+    copia.cenarios = [
+        CenarioRascunho(id=cenario_id, rotulo=None, atribuicoes=atribuicoes)
+    ]
     return copia
 
 

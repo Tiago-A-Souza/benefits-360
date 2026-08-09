@@ -90,23 +90,27 @@ def _render_tabela_faixas(
     propostas: list[PropostaApresentacao],
     op_ids: list[str],
     rotulos: dict[str, str],
+    *,
+    seguro_novo: bool = False,
 ) -> str:
-    partes = [
-        f"<h3>Plano atual — {html.escape(plano.operadora)} · {html.escape(plano.plano_nome)}</h3>",
-    ]
-    if plano.acomodacao or plano.copart_descricao:
-        meta = []
-        if plano.acomodacao:
-            meta.append(f"Acomodação: {html.escape(plano.acomodacao)}")
-        if plano.copart_descricao:
-            meta.append(f"Coparticipação: {html.escape(plano.copart_descricao)}")
-        partes.append(f"<p class='plano-meta'>{' · '.join(meta)}</p>")
+    if seguro_novo:
+        partes = ["<h3>Distribuição por faixa etária</h3>"]
+    else:
+        partes = [
+            f"<h3>Plano atual — {html.escape(plano.operadora)} · {html.escape(plano.plano_nome)}</h3>",
+        ]
+        if plano.acomodacao or plano.copart_descricao:
+            meta = []
+            if plano.acomodacao:
+                meta.append(f"Acomodação: {html.escape(plano.acomodacao)}")
+            if plano.copart_descricao:
+                meta.append(f"Coparticipação: {html.escape(plano.copart_descricao)}")
+            partes.append(f"<p class='plano-meta'>{' · '.join(meta)}</p>")
 
     partes.append("<table><thead><tr>")
-    partes.append(
-        "<th>Faixa</th><th>Tit.</th><th>Dep.</th><th>Vidas</th>"
-        "<th>Atual vigente</th><th>Atual reajustado</th>"
-    )
+    partes.append("<th>Faixa</th><th>Tit.</th><th>Dep.</th><th>Vidas</th>")
+    if not seguro_novo:
+        partes.append("<th>Atual vigente</th><th>Atual reajustado</th>")
     for op_id in op_ids:
         rotulo = _rotulo_proposta(op_id, propostas, rotulos)
         partes.append(
@@ -115,12 +119,14 @@ def _render_tabela_faixas(
     partes.append("<th>Obs.</th></tr></thead><tbody>")
 
     for fx in plano.faixas:
-        partes.append(_render_linha_faixa(fx, op_ids))
+        partes.append(_render_linha_faixa(fx, op_ids, seguro_novo=seguro_novo))
     partes.append("</tbody>")
 
-    partes.append("<tfoot><tr><td colspan='4'><strong>Totais do plano</strong></td>")
-    partes.append(f"<td>{_cel(plano.subtotal_vigente_centavos)}</td>")
-    partes.append(f"<td>{_cel(plano.subtotal_reajustado_centavos)}</td>")
+    colspan_base = 4
+    partes.append(f"<tfoot><tr><td colspan='{colspan_base}'><strong>Totais</strong></td>")
+    if not seguro_novo:
+        partes.append(f"<td>{_cel(plano.subtotal_vigente_centavos)}</td>")
+        partes.append(f"<td>{_cel(plano.subtotal_reajustado_centavos)}</td>")
     for op_id in op_ids:
         subtotal = sum(
             col.subtotal_centavos or 0
@@ -133,30 +139,36 @@ def _render_tabela_faixas(
     return "".join(partes)
 
 
-def _render_linha_faixa(fx: FaixaApresentacao, op_ids: list[str]) -> str:
-    vigente = fx.atual_vigente_total_centavos
-    if fx.atual_vigente_unitario_centavos is not None and fx.qtd_total > 0:
-        cel_vig = (
-            f"{_cel(fx.atual_vigente_unitario_centavos)}"
-            f"<br><small>total {_cel(vigente)}</small>"
-        )
-    else:
-        cel_vig = _cel(vigente)
-
-    reaj = fx.atual_reajustado_total_centavos
-    if fx.atual_reajustado_unitario_centavos is not None and fx.qtd_total > 0:
-        cel_reaj = (
-            f"{_cel(fx.atual_reajustado_unitario_centavos)}"
-            f"<br><small>total {_cel(reaj)}</small>"
-        )
-    else:
-        cel_reaj = _cel(reaj)
-
+def _render_linha_faixa(
+    fx: FaixaApresentacao,
+    op_ids: list[str],
+    *,
+    seguro_novo: bool = False,
+) -> str:
     partes = [
         f"<tr><td>{html.escape(fx.rotulo)}</td>",
         f"<td>{fx.qtd_titulares}</td><td>{fx.qtd_dependentes}</td><td>{fx.qtd_total}</td>",
-        f"<td>{cel_vig}</td><td>{cel_reaj}</td>",
     ]
+    if not seguro_novo:
+        vigente = fx.atual_vigente_total_centavos
+        if fx.atual_vigente_unitario_centavos is not None and fx.qtd_total > 0:
+            cel_vig = (
+                f"{_cel(fx.atual_vigente_unitario_centavos)}"
+                f"<br><small>total {_cel(vigente)}</small>"
+            )
+        else:
+            cel_vig = _cel(vigente)
+
+        reaj = fx.atual_reajustado_total_centavos
+        if fx.atual_reajustado_unitario_centavos is not None and fx.qtd_total > 0:
+            cel_reaj = (
+                f"{_cel(fx.atual_reajustado_unitario_centavos)}"
+                f"<br><small>total {_cel(reaj)}</small>"
+            )
+        else:
+            cel_reaj = _cel(reaj)
+        partes.append(f"<td>{cel_vig}</td><td>{cel_reaj}</td>")
+
     for op_id in op_ids:
         col = next((c for c in fx.propostas if c.opcao_id == op_id), None)
         if col is None or col.quantidade == 0:
@@ -174,25 +186,48 @@ def _render_totais_secao(
     secao: SecaoRegimeApresentacao,
     op_ids: list[str],
     rotulos: dict[str, str],
+    *,
+    seguro_novo: bool = False,
 ) -> str:
-    partes = ["<div class='totais-secao'><h4>Totais mensais</h4><table><thead><tr>"]
-    partes.append("<th></th><th>Plano atual</th>")
+    titulo = "Comparativo entre propostas" if seguro_novo else "Totais mensais"
+    partes = [f"<div class='totais-secao'><h4>{titulo}</h4><table><thead><tr>"]
+    partes.append("<th></th>")
+    if not seguro_novo:
+        partes.append("<th>Plano atual</th>")
     for op_id in op_ids:
         rotulo = _rotulo_proposta(op_id, secao.propostas, rotulos)
         partes.append(f"<th>{html.escape(rotulo)}</th>")
     partes.append("</tr></thead><tbody>")
 
     partes.append("<tr><td>Total mensal</td>")
-    partes.append(f"<td>{_cel(secao.totais.atual_centavos)}</td>")
+    if not seguro_novo:
+        partes.append(f"<td>{_cel(secao.totais.atual_centavos)}</td>")
     for op_id in op_ids:
         partes.append(f"<td>{_cel(secao.totais.propostas.get(op_id))}</td>")
-    partes.append("</tr><tr><td>Diferença mensal</td><td>—</td>")
-    for op_id in op_ids:
-        partes.append(f"<td>{_cel(secao.totais.diff_mensal.get(op_id))}</td>")
-    partes.append("</tr><tr><td>Diferença anual</td><td>—</td>")
-    for op_id in op_ids:
-        partes.append(f"<td>{_cel(secao.totais.diff_anual.get(op_id))}</td>")
-    partes.append("</tr></tbody></table></div>")
+    partes.append("</tr>")
+
+    if not seguro_novo:
+        partes.append("<tr><td>Diferença mensal</td><td>—</td>")
+        for op_id in op_ids:
+            partes.append(f"<td>{_cel(secao.totais.diff_mensal.get(op_id))}</td>")
+        partes.append("</tr><tr><td>Diferença anual</td><td>—</td>")
+        for op_id in op_ids:
+            partes.append(f"<td>{_cel(secao.totais.diff_anual.get(op_id))}</td>")
+        partes.append("</tr>")
+    elif len(op_ids) >= 2:
+        totais = [secao.totais.propostas.get(op_id) for op_id in op_ids]
+        validos = [t for t in totais if t is not None]
+        if validos:
+            menor = min(validos)
+            partes.append("<tr><td>Diferença vs menor proposta</td>")
+            for total in totais:
+                if total is None:
+                    partes.append("<td>—</td>")
+                else:
+                    partes.append(f"<td>{_cel(total - menor)}</td>")
+            partes.append("</tr>")
+
+    partes.append("</tbody></table></div>")
     return "".join(partes)
 
 
@@ -259,21 +294,25 @@ def render_html(model: PresentationViewModel) -> str:
 
     tg = model.totais_gerais
     rotulos = _mapa_rotulos_propostas(model)
+    seguro_novo = model.formato == "novo"
     if tg.atual_centavos is not None or tg.propostas:
         cabecalho.append("<div class='totais-gerais'>")
-        if tg.baseline_rotulo:
-            cabecalho.append(f"<div><strong>Referência atual</strong>{html.escape(tg.baseline_rotulo)}</div>")
-        if tg.atual_centavos is not None:
+        if not seguro_novo and tg.baseline_rotulo:
+            cabecalho.append(
+                f"<div><strong>Referência atual</strong>{html.escape(tg.baseline_rotulo)}</div>"
+            )
+        if not seguro_novo and tg.atual_centavos is not None:
             cabecalho.append(f"<div><strong>Total atual</strong>{_cel(tg.atual_centavos)}</div>")
         for op_id, total in tg.propostas.items():
             rotulo = rotulos.get(op_id, "Proposta")
             cabecalho.append(f"<div><strong>{html.escape(rotulo)}</strong>{_cel(total)}</div>")
-        for op_id, diff in tg.diff_mensal.items():
-            if diff is not None:
-                rotulo = rotulos.get(op_id, "Proposta")
-                cabecalho.append(
-                    f"<div><strong>Δ mensal {html.escape(rotulo)}</strong>{_cel(diff)}</div>"
-                )
+        if not seguro_novo:
+            for op_id, diff in tg.diff_mensal.items():
+                if diff is not None:
+                    rotulo = rotulos.get(op_id, "Proposta")
+                    cabecalho.append(
+                        f"<div><strong>Δ mensal {html.escape(rotulo)}</strong>{_cel(diff)}</div>"
+                    )
         cabecalho.append("</div>")
 
     nova_pagina(cabecalho)
@@ -289,9 +328,24 @@ def render_html(model: PresentationViewModel) -> str:
             ]
             for plano in secao.planos_atuais:
                 bloco.append(
-                    f"<div class='pagina-faixas'>{_render_tabela_faixas(plano, secao.propostas, pagina.propostas_ids, rotulos)}</div>"
+                    "<div class='pagina-faixas'>"
+                    + _render_tabela_faixas(
+                        plano,
+                        secao.propostas,
+                        pagina.propostas_ids,
+                        rotulos,
+                        seguro_novo=seguro_novo,
+                    )
+                    + "</div>"
                 )
-            bloco.append(_render_totais_secao(secao, pagina.propostas_ids, rotulos))
+            bloco.append(
+                _render_totais_secao(
+                    secao,
+                    pagina.propostas_ids,
+                    rotulos,
+                    seguro_novo=seguro_novo,
+                )
+            )
             bloco.append("</section>")
             nova_pagina(bloco)
 
