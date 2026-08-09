@@ -33,7 +33,7 @@ function rotuloCopartCurto(regime) {
   return regime;
 }
 
-function CardProposta({ proposta, selecionada, onToggle, compacto }) {
+function CardProposta({ proposta, selecionada, onToggle, compacto, seguroNovo }) {
   const n = proposta.numerico;
   const diffCls = classeVariacao(n?.diff_mes_centavos ?? n?.diff_bps);
 
@@ -56,14 +56,21 @@ function CardProposta({ proposta, selecionada, onToggle, compacto }) {
           </span>
           <span className="cmp-card-mensal-rotulo">/ mês</span>
         </div>
-        <div className={`cmp-card-diff ${diffCls}`}>
-          <span>{formatCentavos(n?.diff_mes_centavos)}</span>
-          <span className="cmp-card-diff-sep" aria-hidden>
-            ·
-          </span>
-          <span>{formatBps(n?.diff_bps)}</span>
-          <span className="cmp-card-diff-vs">vs atual</span>
-        </div>
+        {seguroNovo ? (
+          <div className={`cmp-card-diff ${diffCls}`}>
+            <span>{formatCentavos(n?.diff_mes_centavos)}</span>
+            <span className="cmp-card-diff-vs">vs menor proposta</span>
+          </div>
+        ) : (
+          <div className={`cmp-card-diff ${diffCls}`}>
+            <span>{formatCentavos(n?.diff_mes_centavos)}</span>
+            <span className="cmp-card-diff-sep" aria-hidden>
+              ·
+            </span>
+            <span>{formatBps(n?.diff_bps)}</span>
+            <span className="cmp-card-diff-vs">vs atual</span>
+          </div>
+        )}
       </div>
 
       <div className="cmp-card-bloco cmp-card-bloco--rodape">
@@ -94,20 +101,22 @@ function CelulaVariacao({ centavos, bps }) {
   );
 }
 
-function CabecalhoMatriz({ planoAtual, propostas }) {
+function CabecalhoMatriz({ planoAtual, propostas, seguroNovo }) {
   return (
     <thead className="cmp-matriz-thead">
       <tr>
         <th className="cmp-matriz-rotulo-col" scope="col">
           Indicador
         </th>
-        <th className="cmp-col-atual" scope="col">
-          <span className="cmp-col-badge">Contrato atual</span>
-          <strong>{planoAtual?.plano_nome || "Plano atual"}</strong>
-          {planoAtual?.operadora && (
-            <span className="cmp-col-sub">{planoAtual.operadora}</span>
-          )}
-        </th>
+        {!seguroNovo && (
+          <th className="cmp-col-atual" scope="col">
+            <span className="cmp-col-badge">Contrato atual</span>
+            <strong>{planoAtual?.plano_nome || "Plano atual"}</strong>
+            {planoAtual?.operadora && (
+              <span className="cmp-col-sub">{planoAtual.operadora}</span>
+            )}
+          </th>
+        )}
         {propostas.map((p) => (
           <th key={p.opcao_id} scope="col">
             <strong>{p.plano_nome}</strong>
@@ -119,7 +128,7 @@ function CabecalhoMatriz({ planoAtual, propostas }) {
   );
 }
 
-function DetalhesFixosMatriz({ planoAtual, propostas }) {
+function DetalhesFixosMatriz({ planoAtual, propostas, seguroNovo }) {
   const linhas = [
     {
       rotulo: "Acomodação",
@@ -138,12 +147,12 @@ function DetalhesFixosMatriz({ planoAtual, propostas }) {
       destaque: true,
     },
     {
-      rotulo: "Variação do custo",
+      rotulo: seguroNovo ? "Diferença vs menor proposta" : "Variação do custo",
       atual: "Referência",
       proposta: (p) => (
         <CelulaVariacao
           centavos={p.numerico?.diff_mes_centavos}
-          bps={p.numerico?.diff_bps}
+          bps={seguroNovo ? null : p.numerico?.diff_bps}
         />
       ),
     },
@@ -154,7 +163,7 @@ function DetalhesFixosMatriz({ planoAtual, propostas }) {
       {linhas.map((linha) => (
         <tr key={linha.rotulo} className={linha.destaque ? "cmp-linha-destaque" : undefined}>
           <th scope="row">{linha.rotulo}</th>
-          <td className="cmp-col-atual">{linha.atual}</td>
+          {!seguroNovo && <td className="cmp-col-atual">{linha.atual}</td>}
           {propostas.map((p) => (
             <td key={p.opcao_id}>
               {typeof linha.proposta === "function" ? linha.proposta(p) : linha.proposta}
@@ -176,7 +185,7 @@ function SeparadorMatriz({ rotulo }) {
   );
 }
 
-function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
+function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroNovo }) {
   if (!propostas.length) {
     return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
   }
@@ -186,16 +195,26 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
   return (
     <div className="cmp-matriz-scroll">
       <table className="conferencia cmp-matriz">
-        <CabecalhoMatriz planoAtual={planoAtual} propostas={propostas} />
-        <DetalhesFixosMatriz planoAtual={planoAtual} propostas={propostas} />
+        <CabecalhoMatriz
+          planoAtual={planoAtual}
+          propostas={propostas}
+          seguroNovo={seguroNovo}
+        />
+        <DetalhesFixosMatriz
+          planoAtual={planoAtual}
+          propostas={propostas}
+          seguroNovo={seguroNovo}
+        />
 
         {vista === "resumo" && (
           <>
             <SeparadorMatriz rotulo="Resumo executivo" />
             <tbody className="cmp-matriz-dados">
               <tr>
-                <th scope="row">Diferença mensal</th>
-                <td className="cmp-col-atual">—</td>
+                <th scope="row">
+                  {seguroNovo ? "Diferença vs menor (mês)" : "Diferença mensal"}
+                </th>
+                {!seguroNovo && <td className="cmp-col-atual">—</td>}
                 {propostas.map((p) => (
                   <td key={p.opcao_id}>
                     <CelulaVariacao centavos={p.numerico?.diff_mes_centavos} bps={null} />
@@ -203,8 +222,10 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
                 ))}
               </tr>
               <tr>
-                <th scope="row">Diferença anual</th>
-                <td className="cmp-col-atual">—</td>
+                <th scope="row">
+                  {seguroNovo ? "Diferença vs menor (ano)" : "Diferença anual"}
+                </th>
+                {!seguroNovo && <td className="cmp-col-atual">—</td>}
                 {propostas.map((p) => (
                   <td key={p.opcao_id} className={classeVariacao(p.numerico?.diff_ano_centavos)}>
                     {formatCentavos(p.numerico?.diff_ano_centavos)}
@@ -213,7 +234,7 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
               </tr>
               <tr>
                 <th scope="row">Validade da cotação</th>
-                <td className="cmp-col-atual">—</td>
+                {!seguroNovo && <td className="cmp-col-atual">—</td>}
                 {propostas.map((p) => (
                   <td key={p.opcao_id}>{p.validade_oficial || "—"}</td>
                 ))}
@@ -233,12 +254,14 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
                   return (
                     <tr key={fx}>
                       <th scope="row">{FAIXAS_ROTULOS[fx] || `Faixa ${fx + 1}`}</th>
-                      <td className="cmp-col-atual">
-                        {formatCentavos(faixaAtual?.atual_centavos)}
-                        {faixaAtual?.quantidade > 1 && (
-                          <small className="cmp-faixa-qtd"> ({faixaAtual.quantidade} vidas)</small>
-                        )}
-                      </td>
+                      {!seguroNovo && (
+                        <td className="cmp-col-atual">
+                          {formatCentavos(faixaAtual?.atual_centavos)}
+                          {faixaAtual?.quantidade > 1 && (
+                            <small className="cmp-faixa-qtd"> ({faixaAtual.quantidade} vidas)</small>
+                          )}
+                        </td>
+                      )}
                       {propostas.map((p) => {
                         const f = (p.faixas || []).find((x) => x.faixa === fx);
                         return (
@@ -277,9 +300,11 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes }) {
                   <th scope="row">
                     {mostrarNomes ? v.nome : `Beneficiário · faixa ${(v.faixa ?? 0) + 1}`}
                   </th>
-                  <td className="cmp-col-atual">
-                    {formatCentavos(v.atual_centavos)}
-                  </td>
+                  {!seguroNovo && (
+                    <td className="cmp-col-atual">
+                      {formatCentavos(v.atual_centavos)}
+                    </td>
+                  )}
                   {propostas.map((p) => {
                     const pv = p.secoes?.[0]?.vidas?.find((x) => x.vida_id === v.vida_id);
                     return (
@@ -307,6 +332,9 @@ export default function ComparativoExperiencia({
   onRecalcular,
   recalculando,
 }) {
+  const seguroNovo =
+    resultado?.formato === "novo" || rascunho?.formato === "novo";
+
   const todas = useMemo(
     () => (resultado?.propostas || []).filter((p) => p.calculo_realizado),
     [resultado]
@@ -609,8 +637,12 @@ export default function ComparativoExperiencia({
               <span className="cmp-filtro-label">Ordenar por</span>
               <select value={ordenacao} onChange={(e) => setOrdenacao(e.target.value)}>
                 <option value="menor_mensalidade">Menor mensalidade</option>
-                <option value="menor_aumento">Menor aumento / maior economia</option>
-                <option value="mais_proximo">Mais próximo do contrato atual</option>
+                {!seguroNovo && (
+                  <>
+                    <option value="menor_aumento">Menor aumento / maior economia</option>
+                    <option value="mais_proximo">Mais próximo do contrato atual</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
@@ -644,6 +676,7 @@ export default function ComparativoExperiencia({
               selecionada={selecao.includes(p.opcao_id)}
               onToggle={toggleSelecao}
               compacto={modo === "previa"}
+              seguroNovo={seguroNovo}
             />
           ))}
         </div>
@@ -659,7 +692,9 @@ export default function ComparativoExperiencia({
           <div>
             <h3 className="cmp-secao-titulo">Matriz comparativa</h3>
             <p className="cmp-secao-sub muted">
-              Contrato atual na primeira coluna · {selecionadas.length} proposta(s) selecionada(s)
+              {seguroNovo
+                ? `Comparativo entre propostas · ${selecionadas.length} proposta(s) selecionada(s)`
+                : `Contrato atual na primeira coluna · ${selecionadas.length} proposta(s) selecionada(s)`}
             </p>
           </div>
           <div className="cmp-vistas">
@@ -701,6 +736,7 @@ export default function ComparativoExperiencia({
           propostas={selecionadas}
           vista={vista}
           mostrarNomes={modo === "analise" && mostrarNomes}
+          seguroNovo={seguroNovo}
         />
       </section>
 
@@ -802,9 +838,9 @@ export default function ComparativoExperiencia({
                                 <th>Beneficiário</th>
                                 <th>Idade</th>
                                 <th>Faixa</th>
-                                <th>Atual</th>
+                                {!seguroNovo && <th>Atual</th>}
                                 <th>Proposta</th>
-                                <th>Diff</th>
+                                {!seguroNovo && <th>Diff</th>}
                               </tr>
                             </thead>
                             <tbody>
@@ -813,11 +849,15 @@ export default function ComparativoExperiencia({
                                   <td>{v.nome}</td>
                                   <td>{v.idade ?? "—"}</td>
                                   <td>{v.faixa ?? "—"}</td>
-                                  <td>{formatCentavos(v.atual_centavos)}</td>
+                                  {!seguroNovo && (
+                                    <td>{formatCentavos(v.atual_centavos)}</td>
+                                  )}
                                   <td>{formatCentavos(v.proposta_centavos)}</td>
-                                  <td className={classeVariacao(v.diff_mes_centavos)}>
-                                    {formatCentavos(v.diff_mes_centavos)}
-                                  </td>
+                                  {!seguroNovo && (
+                                    <td className={classeVariacao(v.diff_mes_centavos)}>
+                                      {formatCentavos(v.diff_mes_centavos)}
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>

@@ -201,9 +201,9 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
               </p>
               {comparativo.totais && (
                 <p>
-                  Total atual: {comparativo.totais.atual_mensal_reais} · Proposta:{" "}
-                  {comparativo.totais.proposta_mensal_reais} · Diferença:{" "}
-                  {comparativo.totais.diferenca_mensal_reais}
+                  {comparativo.formato === "novo" || !comparativo.totais.atual_mensal_reais
+                    ? `Proposta: ${comparativo.totais.proposta_mensal_reais}`
+                    : `Total atual: ${comparativo.totais.atual_mensal_reais} · Proposta: ${comparativo.totais.proposta_mensal_reais} · Diferença: ${comparativo.totais.diferenca_mensal_reais}`}
                 </p>
               )}
             </div>

@@ -142,13 +142,24 @@ def _calcular_diff_bps(atual_centavos: int, proposta_centavos: int) -> int | Non
 
 def _montar_numerico_cenario(
     cenario: ScenarioResult,
+    *,
+    seguro_novo: bool = False,
 ) -> TotaisComparativoNumerico | None:
-    atual = cenario.total_atual_baseline_centavos
     proposta = cenario.total_proposta_centavos
+    if not proposta:
+        return None
+    if seguro_novo:
+        return TotaisComparativoNumerico(
+            proposta_mensal_centavos=proposta.centavos,
+        )
+    atual = cenario.total_atual_baseline_centavos
     diff_m = cenario.diff_mes_centavos
     diff_a = cenario.diff_ano_centavos
-    if not (atual and proposta and diff_m and diff_a):
-        return None
+    if not (atual and diff_m and diff_a):
+        return TotaisComparativoNumerico(
+            atual_mensal_centavos=atual.centavos if atual else None,
+            proposta_mensal_centavos=proposta.centavos,
+        )
     semantica, _, _ = rotulos_diferenca(diff_m.centavos, diff_a.centavos)
     return TotaisComparativoNumerico(
         atual_mensal_centavos=atual.centavos,
@@ -199,7 +210,7 @@ def _montar_plano_atual(
     rascunho: RascunhoEstudo,
     propostas: list[ResultadoPropostaComparativo],
 ) -> PlanoAtualComparativo | None:
-    if not rascunho.subgrupos_atuais:
+    if rascunho.formato == "novo" or not rascunho.subgrupos_atuais:
         return None
     sg = rascunho.subgrupos_atuais[0]
     mensal = None
@@ -215,8 +226,18 @@ def _montar_plano_atual(
     )
 
 
-def _calcular_destaques(propostas: list[ResultadoPropostaComparativo]) -> None:
-    ok = [p for p in propostas if p.calculo_realizado and p.numerico]
+def _calcular_destaques(
+    propostas: list[ResultadoPropostaComparativo],
+    *,
+    seguro_novo: bool = False,
+) -> None:
+    ok = [
+        p
+        for p in propostas
+        if p.calculo_realizado
+        and p.numerico
+        and p.numerico.proposta_mensal_centavos is not None
+    ]
     if len(ok) < 2:
         return
 
@@ -226,6 +247,9 @@ def _calcular_destaques(propostas: list[ResultadoPropostaComparativo]) -> None:
 
     menor_mensal = min(ok, key=_prop_centavos)
     menor_mensal.destaques.append("menor_mensalidade")
+
+    if seguro_novo:
+        return
 
     aumentos = [
         p
@@ -262,6 +286,38 @@ def _calcular_destaques(propostas: list[ResultadoPropostaComparativo]) -> None:
     mais_proximo.destaques.append("mais_proximo_atual")
 
 
+def _aplicar_diffs_entre_propostas(
+    propostas: list[ResultadoPropostaComparativo],
+) -> None:
+    """Em seguro novo não há base vigente — diferença é contra a menor proposta."""
+    ok = [
+        p
+        for p in propostas
+        if p.numerico and p.numerico.proposta_mensal_centavos is not None
+    ]
+    if not ok:
+        return
+    menor = min(p.numerico.proposta_mensal_centavos for p in ok)  # type: ignore[union-attr]
+    for p in ok:
+        assert p.numerico is not None
+        prop = p.numerico.proposta_mensal_centavos
+        assert prop is not None
+        diff = prop - menor
+        semantica, rotulo_mes, rotulo_ano = rotulos_diferenca(diff, diff * 12)
+        diff_mes_exib = _diff_exibicao_centavos(diff, semantica)
+        diff_ano_exib = _diff_exibicao_centavos(diff * 12, semantica)
+        p.numerico.diff_mes_centavos = diff
+        p.numerico.diff_ano_centavos = diff * 12
+        p.numerico.diff_bps = _calcular_diff_bps(menor, prop) if menor else None
+        p.numerico.diferenca_semantica = semantica
+        if p.totais is not None:
+            p.totais.diferenca_mensal_reais = _formatar_reais(diff_mes_exib)
+            p.totais.diferenca_anual_reais = _formatar_reais(diff_ano_exib)
+            p.totais.diferenca_semantica = semantica
+            p.totais.rotulo_diferenca_mensal = rotulo_mes
+            p.totais.rotulo_diferenca_anual = rotulo_ano
+
+
 def _diff_exibicao_centavos(diff_centavos: int, semantica: str) -> int:
     if semantica == "empate":
         return 0
@@ -273,13 +329,25 @@ def _diff_exibicao_centavos(diff_centavos: int, semantica: str) -> int:
 def _montar_totais_cenario(
     cenario: ScenarioResult,
     rascunho: RascunhoEstudo,
+    *,
+    seguro_novo: bool = False,
 ) -> TotaisComparativo | None:
-    atual = cenario.total_atual_baseline_centavos
     proposta = cenario.total_proposta_centavos
+    if not proposta:
+        return None
+    if seguro_novo:
+        return TotaisComparativo(
+            proposta_mensal_reais=_formatar_reais(proposta.centavos),
+        )
+    atual = cenario.total_atual_baseline_centavos
     diff_m = cenario.diff_mes_centavos
     diff_a = cenario.diff_ano_centavos
-    if not (atual and proposta and diff_m and diff_a):
-        return None
+    if not (atual and diff_m and diff_a):
+        return TotaisComparativo(
+            proposta_mensal_reais=_formatar_reais(proposta.centavos),
+            atual_mensal_reais=_formatar_reais(atual.centavos) if atual else None,
+            baseline_rotulo=_baseline_rotulo(rascunho) if atual else None,
+        )
     semantica, rotulo_mes, rotulo_ano = rotulos_diferenca(
         diff_m.centavos,
         diff_a.centavos,
@@ -302,21 +370,29 @@ def _montar_secoes_cenario(
     rascunho: RascunhoEstudo,
     cenario: ScenarioResult,
 ) -> tuple[list[SecaoComparativo], int]:
+    """Monta seções do comparativo a partir dos subgrupos do motor.
+
+    Em renovação os ids batem com ``subgrupos_atuais``; em seguro novo o motor
+    usa ids sintéticos ``novo-{opcao}`` e as vidas vêm nesse agrupamento.
+    """
     vidas_por_id = {v.id: v for v in rascunho.vidas}
     subgrupos_por_id = {s.id: s for s in rascunho.subgrupos_atuais}
+    seguro_novo = rascunho.formato == "novo"
     secoes: list[SecaoComparativo] = []
     total_benef = 0
     for secao_motor in cenario.secoes:
         detalhes: list[DetalheVidaComparativo] = []
         for sg in secao_motor.subgrupos:
-            sg_rasc = subgrupos_por_id.get(sg.subgrupo_id)
+            sg_rasc = None if seguro_novo else subgrupos_por_id.get(sg.subgrupo_id)
             plano_nome = sg_rasc.plano_nome if sg_rasc else None
             for rv in sg.vidas:
                 vida = vidas_por_id.get(rv.vida_id)
-                baseline_val = rv.atual_reajustado_centavos or rv.atual_vigente_centavos
-                atual_c = _centavos_valor(baseline_val)
-                proposta_c = _centavos_valor(rv.proposta_centavos)
-                diff_c = _centavos_valor(rv.diff_mes_centavos)
+                if seguro_novo:
+                    baseline_val = None
+                    diff_val = None
+                else:
+                    baseline_val = rv.atual_reajustado_centavos or rv.atual_vigente_centavos
+                    diff_val = rv.diff_mes_centavos
                 detalhes.append(
                     DetalheVidaComparativo(
                         vida_id=rv.vida_id,
@@ -327,10 +403,10 @@ def _montar_secoes_cenario(
                         plano_atual=plano_nome,
                         atual_reais=_formatar_reais_opcional(baseline_val),
                         proposta_reais=_formatar_reais_opcional(rv.proposta_centavos),
-                        diff_mes_reais=_formatar_reais_opcional(rv.diff_mes_centavos),
-                        atual_centavos=atual_c,
-                        proposta_centavos=proposta_c,
-                        diff_mes_centavos=diff_c,
+                        diff_mes_reais=_formatar_reais_opcional(diff_val),
+                        atual_centavos=_centavos_valor(baseline_val),
+                        proposta_centavos=_centavos_valor(rv.proposta_centavos),
+                        diff_mes_centavos=_centavos_valor(diff_val),
                     )
                 )
         total_benef += len(detalhes)
@@ -338,19 +414,33 @@ def _montar_secoes_cenario(
         rotulo_mes = None
         diff_mes_exib = None
         diff_ano_exib = None
-        if secao_motor.diff_mes_centavos and secao_motor.diff_ano_centavos:
+        if (
+            not seguro_novo
+            and secao_motor.diff_mes_centavos
+            and secao_motor.diff_ano_centavos
+        ):
             semantica, rotulo_mes, _ = rotulos_diferenca(
                 secao_motor.diff_mes_centavos.centavos,
                 secao_motor.diff_ano_centavos.centavos,
             )
-            diff_mes_exib = _diff_exibicao_centavos(secao_motor.diff_mes_centavos.centavos, semantica)
-            diff_ano_exib = _diff_exibicao_centavos(secao_motor.diff_ano_centavos.centavos, semantica)
+            diff_mes_exib = _diff_exibicao_centavos(
+                secao_motor.diff_mes_centavos.centavos, semantica
+            )
+            diff_ano_exib = _diff_exibicao_centavos(
+                secao_motor.diff_ano_centavos.centavos, semantica
+            )
         secoes.append(
             SecaoComparativo(
                 rotulo=secao_motor.rotulo_derivado or _rotulo_regime(secao_motor.regime_tipo.value),
                 regime_tipo=secao_motor.regime_tipo.value,
-                atual_mensal_reais=_formatar_reais_opcional(secao_motor.total_atual_baseline_centavos),
-                proposta_mensal_reais=_formatar_reais_opcional(secao_motor.total_proposta_centavos),
+                atual_mensal_reais=(
+                    None
+                    if seguro_novo
+                    else _formatar_reais_opcional(secao_motor.total_atual_baseline_centavos)
+                ),
+                proposta_mensal_reais=_formatar_reais_opcional(
+                    secao_motor.total_proposta_centavos
+                ),
                 diferenca_mensal_reais=(
                     _formatar_reais(diff_mes_exib) if diff_mes_exib is not None else None
                 ),
@@ -426,6 +516,7 @@ def _montar_propostas(
 ) -> list[ResultadoPropostaComparativo]:
     cenarios_motor = {c.cenario_id: c for c in resultado.cenarios}
     propostas: list[ResultadoPropostaComparativo] = []
+    seguro_novo = rascunho.formato == "novo"
 
     for cenario_rasc in rascunho.cenarios:
         opcao_id, plano_nome, regime_tipo = _metadados_coluna_cenario(
@@ -475,11 +566,17 @@ def _montar_propostas(
             continue
 
         secoes, _ = _montar_secoes_cenario(rascunho, cenario_motor)
-        totais = _montar_totais_cenario(cenario_motor, rascunho)
-        numerico = _montar_numerico_cenario(cenario_motor)
+        totais = _montar_totais_cenario(
+            cenario_motor, rascunho, seguro_novo=seguro_novo
+        )
+        numerico = _montar_numerico_cenario(cenario_motor, seguro_novo=seguro_novo)
         faixas = _montar_faixas(secoes)
         diff_pct = None
-        if numerico and numerico.atual_mensal_centavos is not None:
+        if (
+            not seguro_novo
+            and numerico
+            and numerico.atual_mensal_centavos is not None
+        ):
             diff_pct = _formatar_percentual(
                 numerico.atual_mensal_centavos,
                 numerico.proposta_mensal_centavos or 0,
@@ -518,7 +615,9 @@ def _montar_propostas(
             )
         )
 
-    _calcular_destaques(propostas)
+    if seguro_novo:
+        _aplicar_diffs_entre_propostas(propostas)
+    _calcular_destaques(propostas, seguro_novo=seguro_novo)
     return propostas
 
 
@@ -990,6 +1089,7 @@ def montar_comparativo(
         titulo=rascunho.titulo,
         beneficiarios_calculados=beneficiarios_calculados,
         calculo_realizado=calculo_realizado,
+        formato=rascunho.formato,
         totais=totais,
         secoes=secoes,
         propostas=propostas,

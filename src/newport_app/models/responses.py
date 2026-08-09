@@ -20,14 +20,14 @@ class EstudoResumo(BaseModel):
 
 
 class TotaisComparativo(BaseModel):
-    atual_mensal_reais: str
     proposta_mensal_reais: str
-    diferenca_mensal_reais: str
-    diferenca_anual_reais: str
-    diferenca_semantica: str  # aumento | economia | empate
-    rotulo_diferenca_mensal: str
-    rotulo_diferenca_anual: str
-    baseline_rotulo: str
+    atual_mensal_reais: str | None = None
+    diferenca_mensal_reais: str | None = None
+    diferenca_anual_reais: str | None = None
+    diferenca_semantica: str | None = None  # aumento | economia | empate
+    rotulo_diferenca_mensal: str | None = None
+    rotulo_diferenca_anual: str | None = None
+    baseline_rotulo: str | None = None
 
 
 class TotaisComparativoNumerico(BaseModel):
@@ -206,6 +206,7 @@ class ComparativoResponse(BaseModel):
     titulo: str
     beneficiarios_calculados: int
     calculo_realizado: bool
+    formato: str = "renovacao"
     totais: TotaisComparativo | None = None
     secoes: list[SecaoComparativo] = Field(default_factory=list)
     propostas: list[ResultadoPropostaComparativo] = Field(default_factory=list)
