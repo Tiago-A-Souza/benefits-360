@@ -11,14 +11,38 @@ function subgruposComVidas(rascunho) {
   return (rascunho?.subgrupos_atuais || []).filter((sg) => comVidas.has(sg.id));
 }
 
+function vidasIncluidasIds(rascunho) {
+  return (rascunho?.vidas || []).filter((v) => v.incluida).map((v) => v.id);
+}
+
 export function cenariosSincronizados(rascunho) {
   const ops = rascunho?.opcoes_proposta || [];
   if (!ops.length) return false;
-  const sgs = subgruposComVidas(rascunho);
-  if (!sgs.length) return false;
 
   const cenarios = rascunho?.cenarios || [];
   const opIds = new Set(ops.map((op) => op.id));
+
+  if (rascunho?.formato === "novo") {
+    const vidasObrigatorias = new Set(vidasIncluidasIds(rascunho));
+    if (!vidasObrigatorias.size) return false;
+    if (cenarios.length !== ops.length) return false;
+    return cenarios.every((cenario) => {
+      const atribPorVida = new Map();
+      for (const atr of cenario.atribuicoes || []) {
+        if (atr.alvo_tipo !== "vida") return false;
+        if (!atr.opcao_plano_id || !opIds.has(atr.opcao_plano_id)) return false;
+        atribPorVida.set(atr.alvo_id, atr.opcao_plano_id);
+      }
+      if (atribPorVida.size !== vidasObrigatorias.size) return false;
+      for (const vidaId of vidasObrigatorias) {
+        if (!atribPorVida.has(vidaId)) return false;
+      }
+      return true;
+    });
+  }
+
+  const sgs = subgruposComVidas(rascunho);
+  if (!sgs.length) return false;
   const sgObrigatorios = new Set(sgs.map((sg) => sg.id));
 
   if ((rascunho?.subgrupos_atuais?.length || 0) === 1) {
@@ -27,6 +51,7 @@ export function cenariosSincronizados(rascunho) {
     return cenarios.every(
       (c) =>
         c.atribuicoes?.length === 1 &&
+        c.atribuicoes[0].alvo_tipo === "subgrupo" &&
         c.atribuicoes[0].alvo_id === sgId &&
         opIds.has(c.atribuicoes[0].opcao_plano_id)
     );
@@ -71,6 +96,14 @@ export function statusEtapaPorChave(chave, ctx) {
       return { concluida: true, pendencia: null };
     }
     case "plano": {
+      if (rascunho?.formato === "novo") {
+        if (!rascunho.escolhas?.data_referencia_idade) {
+          return { concluida: false, pendencia: "Informe a data de referência das idades" };
+        }
+        const p2novo = (pendencias || []).filter((p) => p.tipo === "bloqueio" && p.etapa === 2);
+        if (p2novo.length) return { concluida: false, pendencia: p2novo[0].titulo };
+        return { concluida: true, pendencia: null };
+      }
       if (!rascunho?.subgrupos_atuais?.length) {
         return { concluida: false, pendencia: "Configure o plano atual" };
       }
@@ -120,7 +153,13 @@ export function statusEtapaPorChave(chave, ctx) {
       const ops = rascunho?.opcoes_proposta?.length || 0;
       if (!ops) return { concluida: false, pendencia: "Adicione planos ao comparativo" };
       if (!cenariosSincronizados(rascunho)) {
-        return { concluida: false, pendencia: "Confirme a matriz de propostas por subgrupo" };
+        return {
+          concluida: false,
+          pendencia:
+            rascunho?.formato === "novo"
+              ? "Confirme a atribuição das propostas às vidas"
+              : "Confirme a matriz de propostas por subgrupo",
+        };
       }
       return { concluida: true, pendencia: null };
     }
@@ -128,7 +167,10 @@ export function statusEtapaPorChave(chave, ctx) {
       if (!cenariosSincronizados(rascunho)) {
         return {
           concluida: false,
-          pendencia: "Confirme a matriz de propostas por subgrupo",
+          pendencia:
+            rascunho?.formato === "novo"
+              ? "Aguarde a sincronização das propostas com as vidas"
+              : "Confirme a matriz de propostas por subgrupo",
         };
       }
       if (!comparativoConfirmado(rascunho)) {

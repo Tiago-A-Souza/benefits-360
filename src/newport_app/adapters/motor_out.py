@@ -75,7 +75,7 @@ _TRADUCOES: dict[str, tuple[str, str, str, str | None]] = {
         "bloqueio",
         "Atribuição de plano incompleta",
         "Nem todo grupo ou beneficiário está vinculado a uma proposta no cenário.",
-        "Atribua a proposta a todos os grupos do estudo.",
+        "Atribua a proposta a todos os alvos exigidos pelo formato do estudo.",
     ),
 }
 
@@ -656,19 +656,8 @@ def _mensagem_agrupada(codigo: str, quantidade: int, mensagem_base: str) -> str:
 
 
 def _detalhe_tecnico_bloqueio(items: list[BloqueioComparativo]) -> str | None:
+    """Sempre preserva alvo_ref e mensagem bruta de cada item do grupo."""
     linhas: list[str] = []
-    if len(items) == 1:
-        item = items[0]
-        bruto = item.mensagem_motor or item.mensagem
-        alvo_id = _extrair_alvo_id_para_agrupamento(item.alvo_ref)
-        if alvo_id and (not item.alvo_rotulo or alvo_id != item.alvo_rotulo):
-            linhas.append(f"id: {alvo_id}")
-        elif item.alvo_ref:
-            linhas.append(f"alvo_ref: {item.alvo_ref}")
-        if bruto and (bruto != item.mensagem or (alvo_id and alvo_id in bruto)):
-            linhas.append(f"motor: {bruto}")
-        return "\n".join(linhas) if linhas else None
-
     vistos: set[str] = set()
     for item in items:
         if item.alvo_ref and item.alvo_ref not in vistos:
@@ -858,6 +847,17 @@ def _traduzir_validacao(
         )
     if codigo in _TRADUCOES:
         tipo, titulo, descricao, acao = _TRADUCOES[codigo]
+        if codigo == "B-06":
+            acao = (
+                "Atribua a proposta a todas as vidas incluídas do estudo."
+                if rascunho.formato == "novo"
+                else "Atribua a proposta a todos os grupos do estudo."
+            )
+            descricao = (
+                "Nem toda vida incluída está vinculada a uma proposta no cenário."
+                if rascunho.formato == "novo"
+                else "Nem todo grupo com vidas está vinculado a uma proposta no cenário."
+            )
         return PendenciaItem(tipo=tipo, titulo=titulo, descricao=descricao, acao_sugerida=acao)
     return PendenciaItem(
         tipo="bloqueio",

@@ -28,6 +28,10 @@ def subgrupos_com_vidas(rascunho: RascunhoEstudo) -> list[str]:
     return [sg.id for sg in rascunho.subgrupos_atuais if sg.id in com_vidas]
 
 
+def vidas_incluidas_ids(rascunho: RascunhoEstudo) -> list[str]:
+    return [v.id for v in rascunho.vidas if v.incluida]
+
+
 def _nome_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
     op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
     if op and op.plano_nome:
@@ -78,7 +82,7 @@ def podar_cenarios_orfaos(rascunho: RascunhoEstudo) -> None:
 
 def sincronizar_cenarios_subgrupo_unico(rascunho: RascunhoEstudo) -> None:
     """Um cenário por proposta, todos comparados com o único plano atual."""
-    if len(rascunho.subgrupos_atuais) != 1:
+    if rascunho.formato == "novo" or len(rascunho.subgrupos_atuais) != 1:
         return
 
     if not rascunho.opcoes_proposta:
@@ -113,7 +117,7 @@ def sincronizar_cenarios_subgrupo_unico(rascunho: RascunhoEstudo) -> None:
 
 def sincronizar_cenarios_multiplos_subgrupos(rascunho: RascunhoEstudo) -> None:
     """Um cenário por proposta; cada cenário cobre todos os subgrupos com vidas."""
-    if len(rascunho.subgrupos_atuais) <= 1:
+    if rascunho.formato == "novo" or len(rascunho.subgrupos_atuais) <= 1:
         return
 
     if not rascunho.opcoes_proposta:
@@ -137,7 +141,11 @@ def sincronizar_cenarios_multiplos_subgrupos(rascunho: RascunhoEstudo) -> None:
             atr_existente = None
             if existente:
                 atr_existente = next(
-                    (a for a in existente.atribuicoes if a.alvo_id == sg_id),
+                    (
+                        a
+                        for a in existente.atribuicoes
+                        if a.alvo_tipo == "subgrupo" and a.alvo_id == sg_id
+                    ),
                     None,
                 )
             opcao_celula = op.id
@@ -171,12 +179,67 @@ def sincronizar_cenarios_multiplos_subgrupos(rascunho: RascunhoEstudo) -> None:
     rascunho.cenarios = novos
 
 
-def cenarios_sincronizados(rascunho: RascunhoEstudo) -> bool:
-    """True quando cada cenário cobre todos os subgrupos com vidas."""
+def sincronizar_cenarios_seguro_novo(rascunho: RascunhoEstudo) -> None:
+    """Um cenário por proposta; cada cenário cobre todas as vidas incluídas."""
+    if rascunho.formato != "novo":
+        return
+
+    if not rascunho.opcoes_proposta:
+        rascunho.cenarios = []
+        return
+
+    vidas_ids = vidas_incluidas_ids(rascunho)
+    if not vidas_ids:
+        return
+
+    opcoes_ids = {op.id for op in rascunho.opcoes_proposta}
+    novos: list[CenarioRascunho] = []
+
+    for indice, op in enumerate(rascunho.opcoes_proposta):
+        existente: CenarioRascunho | None = (
+            rascunho.cenarios[indice] if indice < len(rascunho.cenarios) else None
+        )
+        atribuicoes: list[AtribuicaoRascunho] = []
+        for vida_id in vidas_ids:
+            atr_existente = None
+            if existente:
+                atr_existente = next(
+                    (
+                        a
+                        for a in existente.atribuicoes
+                        if a.alvo_tipo == "vida" and a.alvo_id == vida_id
+                    ),
+                    None,
+                )
+            opcao_celula = op.id
+            if (
+                atr_existente
+                and atr_existente.opcao_plano_id
+                and atr_existente.opcao_plano_id in opcoes_ids
+            ):
+                opcao_celula = atr_existente.opcao_plano_id
+            atribuicoes.append(
+                AtribuicaoRascunho(
+                    id=atr_existente.id if atr_existente else _novo_id("a"),
+                    alvo_tipo="vida",
+                    alvo_id=vida_id,
+                    opcao_plano_id=opcao_celula,
+                )
+            )
+
+        cenario_novo = CenarioRascunho(
+            id=existente.id if existente else _novo_id("c"),
+            rotulo=op.plano_nome or f"Comparativo {indice + 1}",
+            atribuicoes=atribuicoes,
+        )
+        novos.append(cenario_novo)
+
+    rascunho.cenarios = novos
+
+
+def _cenarios_sincronizados_renovacao(rascunho: RascunhoEstudo) -> bool:
     opcoes = rascunho.opcoes_proposta
-    if not opcoes:
-        return False
-    if not rascunho.subgrupos_atuais:
+    if not opcoes or not rascunho.subgrupos_atuais:
         return False
 
     subgrupos_obrigatorios = set(subgrupos_com_vidas(rascunho))
@@ -193,7 +256,11 @@ def cenarios_sincronizados(rascunho: RascunhoEstudo) -> bool:
             if len(cenario.atribuicoes) != 1:
                 return False
             atr = cenario.atribuicoes[0]
-            if atr.alvo_id != sg_id or atr.opcao_plano_id not in opcoes_ids:
+            if (
+                atr.alvo_tipo != "subgrupo"
+                or atr.alvo_id != sg_id
+                or atr.opcao_plano_id not in opcoes_ids
+            ):
                 return False
         return True
 
@@ -214,10 +281,43 @@ def cenarios_sincronizados(rascunho: RascunhoEstudo) -> bool:
     return True
 
 
+def _cenarios_sincronizados_seguro_novo(rascunho: RascunhoEstudo) -> bool:
+    opcoes = rascunho.opcoes_proposta
+    if not opcoes:
+        return False
+    vidas_obrigatorias = set(vidas_incluidas_ids(rascunho))
+    if not vidas_obrigatorias:
+        return False
+    if len(rascunho.cenarios) != len(opcoes):
+        return False
+
+    opcoes_ids = {op.id for op in opcoes}
+    for cenario in rascunho.cenarios:
+        atrib_por_vida: dict[str, str] = {}
+        for atr in cenario.atribuicoes:
+            if atr.alvo_tipo != "vida":
+                return False
+            if not atr.opcao_plano_id or atr.opcao_plano_id not in opcoes_ids:
+                return False
+            atrib_por_vida[atr.alvo_id] = atr.opcao_plano_id
+        if set(atrib_por_vida.keys()) != vidas_obrigatorias:
+            return False
+    return True
+
+
+def cenarios_sincronizados(rascunho: RascunhoEstudo) -> bool:
+    """True quando cada cenário cobre todos os alvos exigidos pelo formato."""
+    if rascunho.formato == "novo":
+        return _cenarios_sincronizados_seguro_novo(rascunho)
+    return _cenarios_sincronizados_renovacao(rascunho)
+
+
 def sincronizar_cenarios(rascunho: RascunhoEstudo) -> RascunhoEstudo:
-    """Poda órfãos; recria cenários automaticamente conforme planos atuais."""
+    """Poda órfãos; recria cenários automaticamente conforme o formato do estudo."""
     podar_cenarios_orfaos(rascunho)
-    if len(rascunho.subgrupos_atuais) == 1:
+    if rascunho.formato == "novo":
+        sincronizar_cenarios_seguro_novo(rascunho)
+    elif len(rascunho.subgrupos_atuais) == 1:
         sincronizar_cenarios_subgrupo_unico(rascunho)
     elif len(rascunho.subgrupos_atuais) > 1:
         sincronizar_cenarios_multiplos_subgrupos(rascunho)

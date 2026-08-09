@@ -14,6 +14,7 @@ export const PASSOS_FLUXO = [
 ];
 
 export function exigeCorrespondenciaManual(rascunho) {
+  if (rascunho?.formato === "novo") return false;
   return (rascunho?.subgrupos_atuais?.length || 0) > 1;
 }
 

@@ -191,11 +191,14 @@ def mapear_estudo_input(
     erros: list[ErroCompilacao] = []
     _validar_documentos_vinculados(rascunho, erros)
 
+    renovacao = rascunho.formato == "renovacao"
+
     vidas: list[Vida] = []
     for idx, v in enumerate(rascunho.vidas):
         fatura_basis: PriceBasis | None = None
-        if v.valor_fatura is not None:
+        if v.valor_fatura is not None and renovacao:
             sg_tipo = "seguradora"
+            sg = None
             if v.subgrupo_atual_id:
                 sg = next(
                     (s for s in rascunho.subgrupos_atuais if s.id == v.subgrupo_atual_id),
@@ -240,21 +243,23 @@ def mapear_estudo_input(
                 nome=v.nome,
                 nascimento=v.nascimento,
                 incluida=v.incluida,
-                subgrupo_atual_id=v.subgrupo_atual_id,
+                subgrupo_atual_id=v.subgrupo_atual_id if renovacao else None,
                 valor_fatura_centavos=(
-                    v.valor_fatura.centavos if v.valor_fatura else None
+                    v.valor_fatura.centavos
+                    if v.valor_fatura and renovacao
+                    else None
                 ),
                 fatura_price_basis=fatura_basis,
                 fatura_proveniencia=(
                     _proveniencia_motor(v.valor_fatura.proveniencia)
-                    if v.valor_fatura
+                    if v.valor_fatura and renovacao
                     else None
                 ),
             )
         )
 
     subgrupos: list[SubgrupoAtual] = []
-    for idx, sg in enumerate(rascunho.subgrupos_atuais):
+    for idx, sg in enumerate(rascunho.subgrupos_atuais if renovacao else []):
         if sg.tipo_fiscal is None:
             erros.append(
                 _erro(
@@ -492,27 +497,30 @@ def mapear_effective_policy(
             )
         )
 
+    renovacao = rascunho.formato == "renovacao"
     baseline = esc.baseline_escolhido
-    if not baseline.confirmado or baseline.valor is None:
-        erros.append(
-            _erro(
-                "APP-ESC-002",
-                "/escolhas/baseline_escolhido/confirmado",
-                "Confirme qual valor considerar como situação atual: "
-                "contrato vigente ou reajustado.",
-            )
-        )
-
     precedencia = esc.precedencia_atual_vida
-    if not precedencia.confirmado or precedencia.valor is None:
-        erros.append(
-            _erro(
-                "APP-ESC-003",
-                "/escolhas/precedencia_atual_vida/confirmado",
-                "Confirme qual fonte prevalece em caso de diferença: "
-                "tabela do plano atual ou valor da fatura.",
+
+    if renovacao:
+        if not baseline.confirmado or baseline.valor is None:
+            erros.append(
+                _erro(
+                    "APP-ESC-002",
+                    "/escolhas/baseline_escolhido/confirmado",
+                    "Confirme qual valor considerar como situação atual: "
+                    "contrato vigente ou reajustado.",
+                )
             )
-        )
+
+        if not precedencia.confirmado or precedencia.valor is None:
+            erros.append(
+                _erro(
+                    "APP-ESC-003",
+                    "/escolhas/precedencia_atual_vida/confirmado",
+                    "Confirme qual fonte prevalece em caso de diferença: "
+                    "tabela do plano atual ou valor da fatura.",
+                )
+            )
 
     if erros:
         return None
@@ -529,8 +537,14 @@ def mapear_effective_policy(
     return EffectivePolicy(
         policy_set_versao=policy_set.versao,
         data_referencia_idade=esc.data_referencia_idade,
-        baseline_escolhido=baseline_map[baseline.valor],  # type: ignore[index]
-        precedencia_atual_vida=precedencia_map[precedencia.valor],  # type: ignore[index]
+        baseline_escolhido=(
+            baseline_map[baseline.valor] if renovacao and baseline.valor else None  # type: ignore[index]
+        ),
+        precedencia_atual_vida=(
+            precedencia_map[precedencia.valor]
+            if renovacao and precedencia.valor
+            else None  # type: ignore[index]
+        ),
         iof_bps=policy_set.iof_bps,
         tolerancias=policy_set.tolerancias,
         estrategia_arredondamento=policy_set.estrategia_arredondamento,

@@ -71,13 +71,21 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
     setSalvando(true);
     setErro(null);
     const copia = structuredClone(rascunho);
-    copia.escolhas.baseline_escolhido.confirmado = confirmacaoFinal;
-    copia.escolhas.precedencia_atual_vida.confirmado = confirmacaoFinal;
+    const seguroNovo = copia.formato === "novo";
+    if (seguroNovo) {
+      copia.escolhas.baseline_escolhido.confirmado = false;
+      copia.escolhas.baseline_escolhido.valor = null;
+      copia.escolhas.precedencia_atual_vida.confirmado = false;
+      copia.escolhas.precedencia_atual_vida.valor = null;
+    } else {
+      copia.escolhas.baseline_escolhido.confirmado = confirmacaoFinal;
+      copia.escolhas.precedencia_atual_vida.confirmado = confirmacaoFinal;
+    }
     try {
       await salvarRascunho(estudoId, copia);
       setRascunho(copia);
       setPendencias(await obterPendencias(estudoId));
-      setMsg("Informações do plano atual salvas.");
+      setMsg(seguroNovo ? "Referência de idades salva." : "Informações do plano atual salvas.");
       onSalvo?.();
     } catch (e) {
       setErro(e.message);
@@ -87,6 +95,41 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
   }
 
   if (!rascunho) return <p className="muted">Carregando plano atual…</p>;
+
+  if (rascunho.formato === "novo") {
+    return (
+      <section className="secao-fluxo">
+        <header className="secao-fluxo-cabecalho">
+          <h2>Referência do estudo</h2>
+          <p className="lead">
+            Seguro novo não possui contrato vigente. Informe apenas a data usada para calcular as
+            idades dos beneficiários.
+          </p>
+        </header>
+
+        <div className="bloco-secao bloco-secao--escolhas">
+          <label className="campo-form campo-form--data">
+            Data usada para calcular as idades
+            <input
+              type="date"
+              value={rascunho.escolhas.data_referencia_idade || ""}
+              onChange={(e) => atualizarEscolha("data_referencia_idade", e.target.value)}
+            />
+          </label>
+        </div>
+
+        <footer className="secao-fluxo-rodape">
+          <div className="secao-fluxo-acoes">
+            {msg && <p className="ok">{msg}</p>}
+            {erro && <p className="erro">{erro}</p>}
+            <button type="button" onClick={handleSalvar} disabled={salvando}>
+              {salvando ? "Salvando…" : "Salvar referência"}
+            </button>
+          </div>
+        </footer>
+      </section>
+    );
+  }
 
   return (
     <section className="secao-fluxo">
