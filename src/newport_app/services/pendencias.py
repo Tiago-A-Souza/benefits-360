@@ -342,4 +342,7 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
                 quantidade=1,
             )
         )
+    from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
+
+    itens.extend(pendencias_divergencia_acomodacao(rascunho))
     return itens

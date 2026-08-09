@@ -587,6 +587,7 @@
       "subtotal_impresso": null,
       "custos_unicos": [],
       "documento_cotacao_id": null,
+      "documentos_origem_ids": [],
       "extracao_id": null,
       "extracao_opcao_id": null,
       "validade_oficial": null,

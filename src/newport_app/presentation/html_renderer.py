@@ -250,6 +250,8 @@ def render_html(model: PresentationViewModel) -> str:
     .sub { color: #555; margin: 0; }
     .rascunho { background: #fff3e0; border: 1px solid #ffb74d; padding: 8px 12px; margin: 12px 0; font-weight: 600; color: #e65100; }
     .aviso-pii { background: #fdecea; border: 1px solid #f5c2c0; padding: 8px 12px; margin: 12px 0; }
+    .aviso-acomodacao { background: #fff8e1; border: 1px solid #ffe082; padding: 8px 12px; margin: 12px 0; color: #6d4c00; }
+    .aviso-acomodacao ul { margin: 6px 0 0; padding-left: 1.2rem; }
     table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin: 12px 0 20px; }
     th, td { border: 1px solid #dde2e8; padding: 5px 6px; text-align: left; vertical-align: top; }
     th { background: #e8f0fa; color: #0b5cab; }
@@ -286,6 +288,11 @@ def render_html(model: PresentationViewModel) -> str:
         "</header>",
         f"<div class='rascunho'>{html.escape(model.aviso_rascunho_interno)}</div>",
     ]
+    if model.avisos_acomodacao:
+        cabecalho.append("<div class='aviso-acomodacao'><strong>Atenção — acomodação</strong><ul>")
+        for aviso in model.avisos_acomodacao:
+            cabecalho.append(f"<li>{html.escape(aviso)}</li>")
+        cabecalho.append("</ul></div>")
     if model.modo == "beneficiario":
         cabecalho.append(
             "<div class='aviso-pii'>Este material contém nomes de beneficiários. "

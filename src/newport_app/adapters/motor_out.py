@@ -1043,12 +1043,16 @@ def montar_comparativo(
     ]
 
     propostas = _montar_propostas(rascunho, resultado) if resultado.cenarios else []
+    from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
+
     consistencia = _avaliar_consistencia(
         rascunho,
         propostas,
         resultado,
         erros_compilacao=erros_compilacao,
     )
+    if not erros_compilacao:
+        pendencias.extend(pendencias_divergencia_acomodacao(rascunho))
     if not consistencia.consistente and consistencia.mensagem:
         if not (
             consistencia.bloqueios

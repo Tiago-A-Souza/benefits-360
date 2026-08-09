@@ -10,6 +10,53 @@ function subgruposComVidas(rascunho) {
   return (rascunho.subgrupos_atuais || []).filter((sg) => comVidas.has(sg.id));
 }
 
+function normalizarAcomodacao(texto) {
+  if (!texto) return null;
+  const t = String(texto).trim().toLowerCase();
+  if (["enfermaria", "qc", "e", "coletivo", "quarto coletivo"].includes(t)) return "enfermaria";
+  if (["apartamento", "qp", "q", "privativo", "quarto privativo"].includes(t)) return "apartamento";
+  if (t.includes("enfermaria") || /\bqc\b/.test(t)) return "enfermaria";
+  if (t.includes("apartamento") || /\bqp\b/.test(t)) return "apartamento";
+  return null;
+}
+
+function acomodacaoDe(entidade) {
+  return (
+    normalizarAcomodacao(entidade?.acomodacao) ||
+    normalizarAcomodacao(entidade?.plano_nome)
+  );
+}
+
+function rotuloAcomodacao(canonico) {
+  if (canonico === "enfermaria") return "Enfermaria";
+  if (canonico === "apartamento") return "Apartamento";
+  return "—";
+}
+
+function avisosAcomodacaoMatriz(rascunho, matriz) {
+  const subgrupos = subgruposComVidas(rascunho);
+  const msgs = [];
+  const vistos = new Set();
+  rascunho.opcoes_proposta.forEach((opColuna, i) => {
+    const celulas = matriz[i] || {};
+    for (const sg of subgrupos) {
+      const opId = celulas[sg.id] || opColuna.id;
+      const op = rascunho.opcoes_proposta.find((o) => o.id === opId);
+      if (!op) continue;
+      const acSg = acomodacaoDe(sg);
+      const acOp = acomodacaoDe(op);
+      if (!acSg || !acOp || acSg === acOp) continue;
+      const msg =
+        `«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída «${op.plano_nome}» é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`;
+      if (!vistos.has(msg)) {
+        vistos.add(msg);
+        msgs.push(msg);
+      }
+    }
+  });
+  return msgs;
+}
+
 function rotuloCenario(rascunho, atribuicoes) {
   const opIds = [];
   const vistos = new Set();
@@ -122,6 +169,7 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
     rascunho.opcoes_proposta.some(
       (_, i) => subgrupos.some((sg) => !matriz[i]?.[sg.id])
     );
+  const avisosAcomodacao = avisosAcomodacaoMatriz(rascunho, matriz);
 
   if (!multiplosPlanosAtuais) {
     return (
@@ -172,33 +220,62 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {subgrupos.map((sg) => (
-                    <tr key={sg.id}>
-                      <td>
-                        <strong>{sg.plano_nome}</strong>
-                        <span className="muted"> · {sg.operadora || "—"}</span>
-                      </td>
-                      <td>
-                        <select
-                          value={celulas[sg.id] || op.id}
-                          onChange={(e) => atualizarCelula(i, sg.id, e.target.value)}
-                          aria-label={`Proposta para ${sg.plano_nome} no cenário ${i + 1}`}
-                        >
-                          {rascunho.opcoes_proposta.map((opcao) => (
-                            <option key={opcao.id} value={opcao.id}>
-                              {opcao.plano_nome || opcao.id}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
+                  {subgrupos.map((sg) => {
+                    const opId = celulas[sg.id] || op.id;
+                    const opSel = rascunho.opcoes_proposta.find((o) => o.id === opId);
+                    const acSg = acomodacaoDe(sg);
+                    const acOp = acomodacaoDe(opSel);
+                    const diverge = acSg && acOp && acSg !== acOp;
+                    return (
+                      <tr key={sg.id} className={diverge ? "matriz-linha-aviso" : undefined}>
+                        <td>
+                          <strong>{sg.plano_nome}</strong>
+                          <span className="muted"> · {sg.operadora || "—"}</span>
+                          {acSg && (
+                            <span className="muted"> · {rotuloAcomodacao(acSg)}</span>
+                          )}
+                        </td>
+                        <td>
+                          <select
+                            value={opId}
+                            onChange={(e) => atualizarCelula(i, sg.id, e.target.value)}
+                            aria-label={`Proposta para ${sg.plano_nome} no cenário ${i + 1}`}
+                          >
+                            {rascunho.opcoes_proposta.map((opcao) => (
+                              <option key={opcao.id} value={opcao.id}>
+                                {opcao.plano_nome || opcao.id}
+                                {acomodacaoDe(opcao)
+                                  ? ` (${rotuloAcomodacao(acomodacaoDe(opcao))})`
+                                  : ""}
+                              </option>
+                            ))}
+                          </select>
+                          {diverge && (
+                            <p className="alerta alerta-inline">
+                              {`«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`}
+                            </p>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </article>
           );
         })}
       </div>
+
+      {avisosAcomodacao.length > 0 && (
+        <div className="alerta">
+          <strong>Acomodação divergente</strong>
+          <ul>
+            {avisosAcomodacao.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {matrizIncompleta && (
         <p className="alerta">Complete a atribuição de proposta para cada subgrupo antes de confirmar.</p>

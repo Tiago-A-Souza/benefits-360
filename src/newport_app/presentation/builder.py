@@ -574,6 +574,8 @@ def construir_view_model(
     todas_propostas = [p for secao in secoes_vm for p in secao.propostas]
     _qualificar_rotulos_propostas(rascunho, todas_propostas)
 
+    from newport_app.rascunho.acomodacao import coletar_divergencias_acomodacao
+
     return PresentationViewModel(
         titulo=titulo or rascunho.titulo,
         subtitulo=rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None,
@@ -583,6 +585,7 @@ def construir_view_model(
         formato=rascunho.formato,
         propostas_selecionadas=propostas_selecionadas,
         ressalvas=ressalvas or [],
+        avisos_acomodacao=coletar_divergencias_acomodacao(rascunho),
         totais_gerais=totais_gerais,
         secoes_regime=secoes_vm,
         beneficiarios=beneficiarios,

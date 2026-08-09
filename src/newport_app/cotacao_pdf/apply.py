@@ -20,6 +20,7 @@ from newport_app.models.draft import (
     RegimeCopartRascunho,
     TabelaFaixaRascunho,
 )
+from newport_app.rascunho.acomodacao import chave_plano_equivalente, tabela_por_faixa
 
 
 def _validade_documento(extracao: ExtracaoCotacaoCandidata):
@@ -212,6 +213,7 @@ def opcao_candidata_para_rascunho(
         subtotal_impresso=_comp(op.subtotal_impresso, documento_id, parser_versao, documento_hash),
         custos_unicos=custos,
         documento_cotacao_id=documento_id,
+        documentos_origem_ids=[documento_id],
         extracao_id=extracao_id,
         extracao_opcao_id=op.id,
         validade_oficial=(
@@ -219,6 +221,43 @@ def opcao_candidata_para_rascunho(
         ),
         observacoes=op.observacoes.texto if op.observacoes and op.observacoes.texto else None,
     )
+
+
+def _registrar_documento_origem(opcao: OpcaoPropostaRascunho, documento_id: str) -> None:
+    if documento_id and documento_id not in opcao.documentos_origem_ids:
+        opcao.documentos_origem_ids.append(documento_id)
+    if not opcao.documento_cotacao_id:
+        opcao.documento_cotacao_id = documento_id
+
+
+def _buscar_equivalente_por_tabela(
+    rascunho: RascunhoEstudo,
+    candidata: OpcaoPropostaRascunho,
+) -> OpcaoPropostaRascunho | None:
+    chave = chave_plano_equivalente(candidata)
+    tabela = tabela_por_faixa(candidata)
+    if not tabela:
+        return None
+    for existente in rascunho.opcoes_proposta:
+        if chave_plano_equivalente(existente) != chave:
+            continue
+        if tabela_por_faixa(existente) == tabela:
+            return existente
+    return None
+
+
+def _equivalente_com_tabela_divergente(
+    rascunho: RascunhoEstudo,
+    candidata: OpcaoPropostaRascunho,
+) -> OpcaoPropostaRascunho | None:
+    chave = chave_plano_equivalente(candidata)
+    tabela = tabela_por_faixa(candidata)
+    for existente in rascunho.opcoes_proposta:
+        if chave_plano_equivalente(existente) != chave:
+            continue
+        if tabela_por_faixa(existente) != tabela:
+            return existente
+    return None
 
 
 def aplicar_extracao_confirmada(
@@ -346,9 +385,33 @@ def aplicar_extracao_confirmada(
             continue
 
         if existente is not None:
+            origem_prev = list(existente.documentos_origem_ids)
             idx = rascunho.opcoes_proposta.index(existente)
             rascunho.opcoes_proposta[idx] = opcao
-        else:
-            rascunho.opcoes_proposta.append(opcao)
+            for doc_id in origem_prev:
+                _registrar_documento_origem(rascunho.opcoes_proposta[idx], doc_id)
+            _registrar_documento_origem(rascunho.opcoes_proposta[idx], doc.id)
+            continue
+
+        equivalente = _buscar_equivalente_por_tabela(rascunho, opcao)
+        if equivalente is not None:
+            _registrar_documento_origem(equivalente, doc.id)
+            continue
+
+        divergente = _equivalente_com_tabela_divergente(rascunho, opcao)
+        if divergente is not None:
+            bloqueios.append(
+                {
+                    "opcao_id": op_c.id,
+                    "plano": opcao.plano_nome,
+                    "motivos": [
+                        f"«{opcao.plano_nome}» já existe no estudo com tabela de valores "
+                        f"diferente (doc. {divergente.documento_cotacao_id or 'anterior'}). "
+                        "Mantidas como opções separadas — revise qual versão usar."
+                    ],
+                }
+            )
+
+        rascunho.opcoes_proposta.append(opcao)
 
     return rascunho, bloqueios

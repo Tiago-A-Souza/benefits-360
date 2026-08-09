@@ -218,6 +218,7 @@ class OpcaoPropostaRascunho(BaseModel):
     subtotal_impresso: ComponenteFinanceiroRascunho | None = None
     custos_unicos: list[CustoUnicoRascunho] = Field(default_factory=list)
     documento_cotacao_id: str | None = None
+    documentos_origem_ids: list[str] = Field(default_factory=list)
     extracao_id: str | None = None
     extracao_opcao_id: str | None = None
     validade_oficial: date | None = None
