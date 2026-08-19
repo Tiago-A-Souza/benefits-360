@@ -138,6 +138,23 @@ def _planos_vm_por_subgrupo(vm) -> dict[str, dict]:
     return acc
 
 
+def _rotulos_vm(vm) -> dict[str, str]:
+    rotulos: dict[str, str] = {}
+    for secao in vm.secoes_regime:
+        for prop in secao.propostas:
+            rotulos.setdefault(prop.opcao_id, prop.plano_nome)
+    return rotulos
+
+
+def assert_paridade_rotulos(matriz, vm) -> None:
+    rotulos_vm = _rotulos_vm(vm)
+    vistos: list[str] = []
+    for prop in matriz.propostas:
+        assert prop.plano_nome == rotulos_vm[prop.opcao_id]
+        vistos.append(prop.plano_nome)
+    assert len(vistos) == len(set(vistos))
+
+
 def assert_paridade_planos(matriz, vm) -> None:
     vm_planos = _planos_vm_por_subgrupo(vm)
     ids_matriz = {p.subgrupo_id for p in matriz.planos_atuais}
@@ -317,6 +334,7 @@ def test_paridade_renovacao_um_subgrupo(tmp_path: Path):
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
     vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     assert_paridade_planos(matriz, vm)
+    assert_paridade_rotulos(matriz, vm)
     assert_coerencia_interna(matriz)
 
 
@@ -327,6 +345,7 @@ def test_paridade_renovacao_dois_subgrupos(tmp_path: Path):
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
     vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     assert_paridade_planos(matriz, vm)
+    assert_paridade_rotulos(matriz, vm)
     assert_coerencia_interna(matriz)
     assert len(matriz.planos_atuais) == 2
 
@@ -338,6 +357,7 @@ def test_paridade_renovacao_tres_subgrupos(tmp_path: Path):
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
     vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     assert_paridade_planos(matriz, vm)
+    assert_paridade_rotulos(matriz, vm)
     assert_coerencia_interna(matriz)
     assert len(matriz.planos_atuais) == 3
 
@@ -354,6 +374,7 @@ def test_paridade_seguro_novo(tmp_path: Path):
         assert p.numerico is not None
         assert p.numerico.proposta_mensal_centavos == vm.totais_gerais.propostas[p.opcao_id]
         assert p.subgrupos == []
+    assert_paridade_rotulos(matriz, vm)
 
 
 def test_regressao_planos_atuais_nao_carregam_consolidado():
@@ -422,3 +443,50 @@ def test_gabarito_dois_planos_vigente_e_reajuste(reajuste_bps: int):
         "consolidado_centavos"
     ]
     assert_coerencia_interna(matriz)
+
+
+def test_rotulos_desambiguados_quando_nome_base_coincide(tmp_path: Path):
+    base = rascunho_demo_12_vidas()
+    nome = "Executivo R1 Apartamento (Nacional)"
+    op_sem = deepcopy(base.opcoes_proposta[0])
+    op_sem.id = "op-r1-sem"
+    op_sem.plano_nome = nome
+    op_sem.regime_copart_id = "regime-sem"
+    op_com = deepcopy(base.opcoes_proposta[0])
+    op_com.id = "op-r1-copart"
+    op_com.plano_nome = nome
+    op_com.regime_copart_id = "regime-percentual"
+    op_com.tabela = [
+        f.model_copy(update={"valor_centavos": f.valor_centavos + 12_000})
+        for f in op_com.tabela
+    ]
+    rascunho = base.model_copy(
+        update={
+            "id": "rotulos-ambiguos",
+            "opcoes_proposta": [op_sem, op_com],
+            "regimes_copart": [
+                RegimeCopartRascunho(id="regime-sem", tipo="sem"),
+                RegimeCopartRascunho(id="regime-percentual", tipo="percentual", percentual=30),
+            ],
+            "cenarios": [],
+        }
+    )
+    sincronizar_cenarios(rascunho)
+    matriz, _ = _calcular_matriz(rascunho)
+    nomes = [p.plano_nome for p in matriz.propostas]
+    assert len(nomes) == len(set(nomes))
+    assert any("sem copart" in n for n in nomes)
+    assert any("copart 30%" in n for n in nomes)
+    snap = _aprovar(tmp_path, rascunho)
+    ids = [p.opcao_id for p in matriz.propostas]
+    vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
+    assert_paridade_rotulos(matriz, vm)
+
+
+def test_rotulo_unico_nao_ganha_sufixo():
+    rascunho = rascunho_demo_12_vidas()
+    matriz, _ = _calcular_matriz(rascunho)
+    nome = matriz.propostas[0].plano_nome
+    assert "(sem copart)" not in nome
+    assert not nome.endswith("(1)")
+

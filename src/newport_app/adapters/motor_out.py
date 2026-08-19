@@ -25,6 +25,7 @@ from newport_app.models.responses import (
     TotaisComparativo,
     TotaisComparativoNumerico,
 )
+from newport_app.presentation.rotulos import qualificar_rotulos_propostas
 from newport_app.presentation.textos import (
     descricao_estudo,
     formatar_tipo_estudo,
@@ -774,6 +775,7 @@ def _montar_propostas(
     if seguro_novo:
         _aplicar_diffs_entre_propostas(propostas)
     _calcular_destaques(propostas, seguro_novo=seguro_novo)
+    qualificar_rotulos_propostas(rascunho, propostas)
     return propostas
 
 

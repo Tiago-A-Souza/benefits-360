@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import datetime, timezone
 
 from newport_app.agregacao_faixa import agregar_valores_faixa
@@ -23,6 +22,7 @@ from newport_app.models.presentation import (
 )
 from newport_app.models.snapshot import SnapshotCalculo
 from newport_app.presentation.formatacao import formatar_data_br
+from newport_app.presentation.rotulos import copart_descricao, qualificar_rotulos_propostas, rotulo_regime
 from newport_app.presentation.motor_por_proposta import (
     CalculoProposta,
     VidaCalculoProposta,
@@ -50,74 +50,11 @@ def _percentual_tipico(rascunho: RascunhoEstudo, tipo: str) -> int | None:
 
 
 def _rotulo_regime(tipo: str, percentual: int | None = None) -> str:
-    if tipo == "percentual" and percentual is not None:
-        return f"Coparticipação {percentual}%"
-    mapa = {
-        "sem": "Sem coparticipação",
-        "parcial": "Coparticipação parcial",
-        "percentual": "Coparticipação percentual",
-        "customizada": "Coparticipação customizada",
-    }
-    return mapa.get(tipo, tipo)
+    return rotulo_regime(tipo, percentual)
 
 
 def _copart_descricao(rascunho: RascunhoEstudo, regime_id: str | None) -> str | None:
-    if not regime_id:
-        return None
-    regime = next((r for r in rascunho.regimes_copart if r.id == regime_id), None)
-    if regime is None:
-        return None
-    return _rotulo_regime(regime.tipo, regime.percentual)
-
-
-def _qualificador_regime_curto(rascunho: RascunhoEstudo, regime_id: str | None) -> str | None:
-    desc = _copart_descricao(rascunho, regime_id)
-    if not desc:
-        return None
-    if desc == "Sem coparticipação":
-        return "sem copart"
-    if desc.startswith("Coparticipação "):
-        resto = desc.removeprefix("Coparticipação ").strip()
-        if resto.endswith("%"):
-            return f"copart {resto}"
-        return f"copart {resto}"
-    return desc
-
-
-def _qualificar_rotulos_propostas(
-    rascunho: RascunhoEstudo,
-    propostas: list[PropostaApresentacao],
-) -> None:
-    """Garante rótulos únicos entre colunas do comparativo."""
-    grupos: dict[str, list[PropostaApresentacao]] = defaultdict(list)
-    for prop in propostas:
-        grupos[(prop.plano_nome or "").strip() or prop.opcao_id].append(prop)
-
-    for nome_base, itens in grupos.items():
-        if len(itens) < 2:
-            continue
-        ops = {
-            p.opcao_id: next((o for o in rascunho.opcoes_proposta if o.id == p.opcao_id), None)
-            for p in itens
-        }
-        quals_regime = [
-            _qualificador_regime_curto(rascunho, ops[p.opcao_id].regime_copart_id if ops[p.opcao_id] else None)
-            for p in itens
-        ]
-        if len({q for q in quals_regime if q}) == len(itens) and all(quals_regime):
-            for prop, qual in zip(itens, quals_regime):
-                prop.plano_nome = f"{nome_base} ({qual})"
-            continue
-        quals_acom = [
-            (ops[p.opcao_id].acomodacao or "").strip() if ops[p.opcao_id] else ""
-            for p in itens
-        ]
-        if len({q for q in quals_acom if q}) == len(itens) and all(quals_acom):
-            for prop, qual in zip(itens, quals_acom):
-                prop.plano_nome = f"{nome_base} ({qual})"
-            continue
-        for idx, prop in enumerate(itens, start=1):
-            prop.plano_nome = f"{nome_base} ({idx})"
+    return copart_descricao(rascunho, regime_id)
 
 
 def _coletar_regimes_apresentacao(
@@ -572,7 +509,7 @@ def construir_view_model(
             totais_gerais.diff_anual[op_id] = calc.diff_ano_centavos
 
     todas_propostas = [p for secao in secoes_vm for p in secao.propostas]
-    _qualificar_rotulos_propostas(rascunho, todas_propostas)
+    qualificar_rotulos_propostas(rascunho, todas_propostas)
 
     from newport_app.rascunho.acomodacao import coletar_divergencias_acomodacao
 

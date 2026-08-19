@@ -17,10 +17,8 @@ from newport_app.cotacao_pdf.coords_extract import (
 from newport_app.models.cotacao_pdf import FaixaExtraida, OpcaoCotacaoCandidata, ValorExtraido
 from newport_app.models.draft import AtribuicaoRascunho, CenarioRascunho, RegimeCopartRascunho
 from newport_app.models.snapshot import AprovarSnapshotRequest
-from newport_app.presentation.builder import (
-    _qualificar_rotulos_propostas,
-    construir_view_model,
-)
+from newport_app.presentation.builder import construir_view_model
+from newport_app.presentation.rotulos import qualificar_rotulos_propostas
 from newport_app.presentation.formatacao import formatar_data_br
 from newport_app.presentation.html_renderer import render_html
 from newport_app.models.presentation import PropostaApresentacao
@@ -164,7 +162,7 @@ def test_rotulos_duplicados_qualificados_por_regime():
             regime_tipo="sem",
         ),
     ]
-    _qualificar_rotulos_propostas(rascunho, props)
+    qualificar_rotulos_propostas(rascunho, props)
     nomes = {p.plano_nome for p in props}
     assert len(nomes) == 2
     assert any("copart 30%" in n for n in nomes)
@@ -192,7 +190,7 @@ def test_rotulos_identicos_recebem_sufixo_numerico():
             regime_tipo="sem",
         ),
     ]
-    _qualificar_rotulos_propostas(rascunho, props)
+    qualificar_rotulos_propostas(rascunho, props)
     assert props[0].plano_nome == f"{nome} (1)"
     assert props[1].plano_nome == f"{nome} (2)"
 
@@ -215,7 +213,7 @@ def test_rotulos_distintos_inalterados():
             regime_tipo="sem",
         ),
     ]
-    _qualificar_rotulos_propostas(rascunho, props)
+    qualificar_rotulos_propostas(rascunho, props)
     assert props[0].plano_nome == "Plano A"
     assert props[1].plano_nome == "Plano B"
 
