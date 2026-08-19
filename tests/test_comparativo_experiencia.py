@@ -24,8 +24,8 @@ def test_propostas_tem_campos_numericos_e_faixas():
     )
     resp = motor_result_para_comparativo(rascunho, motor)
 
-    assert resp.plano_atual is not None
-    assert resp.plano_atual.mensal_centavos is not None
+    assert resp.planos_atuais
+    assert resp.planos_atuais[0].mensal_centavos is not None
 
     for p in resp.propostas:
         assert p.numerico is not None

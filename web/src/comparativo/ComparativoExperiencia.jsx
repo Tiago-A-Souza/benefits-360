@@ -101,7 +101,26 @@ function CelulaVariacao({ centavos, bps }) {
   );
 }
 
-function CabecalhoMatriz({ planoAtual, propostas, seguroNovo }) {
+function vidasDaProposta(proposta) {
+  return (proposta?.secoes || []).flatMap((s) => s.vidas || []);
+}
+
+function recorteSubgrupo(proposta, subgrupoId) {
+  return (proposta?.subgrupos || []).find((s) => s.subgrupo_id === subgrupoId);
+}
+
+function valorUnico(itens, campo) {
+  const vals = [...new Set((itens || []).map((x) => x?.[campo]).filter((v) => v))];
+  return vals.length === 1 ? vals[0] : null;
+}
+
+function somarCampo(itens, campo) {
+  return (itens || []).reduce((acc, x) => acc + (x?.[campo] || 0), 0);
+}
+
+function CabecalhoMatriz({ planosAtuais, propostas, seguroNovo }) {
+  const varios = (planosAtuais || []).length > 1;
+  const unico = (planosAtuais || []).length === 1 ? planosAtuais[0] : null;
   return (
     <thead className="cmp-matriz-thead">
       <tr>
@@ -111,10 +130,11 @@ function CabecalhoMatriz({ planoAtual, propostas, seguroNovo }) {
         {!seguroNovo && (
           <th className="cmp-col-atual" scope="col">
             <span className="cmp-col-badge">Contrato atual</span>
-            <strong>{planoAtual?.plano_nome || "Plano atual"}</strong>
-            {planoAtual?.operadora && (
-              <span className="cmp-col-sub">{planoAtual.operadora}</span>
+            <strong>{varios ? "Contrato atual" : unico?.plano_nome || "Plano atual"}</strong>
+            {!varios && unico?.operadora && (
+              <span className="cmp-col-sub">{unico.operadora}</span>
             )}
+            {varios && <span className="cmp-col-sub">vários planos</span>}
           </th>
         )}
         {propostas.map((p) => (
@@ -128,21 +148,22 @@ function CabecalhoMatriz({ planoAtual, propostas, seguroNovo }) {
   );
 }
 
-function DetalhesFixosMatriz({ planoAtual, propostas, seguroNovo }) {
+function DetalhesFixosMatriz({ planosAtuais, propostas, seguroNovo }) {
+  const consolidadoMensal = somarCampo(planosAtuais, "mensal_centavos");
   const linhas = [
     {
       rotulo: "Acomodação",
-      atual: planoAtual?.acomodacao || "—",
+      atual: valorUnico(planosAtuais, "acomodacao") || "—",
       proposta: (p) => p.acomodacao || "—",
     },
     {
       rotulo: "Coparticipação",
-      atual: planoAtual?.regime_coparticipacao || "—",
+      atual: valorUnico(planosAtuais, "regime_coparticipacao") || "—",
       proposta: (p) => p.regime_coparticipacao || "—",
     },
     {
       rotulo: "Custo total mensal",
-      atual: formatCentavos(planoAtual?.mensal_centavos),
+      atual: formatCentavos(planosAtuais?.length ? consolidadoMensal : null),
       proposta: (p) => formatCentavos(p.numerico?.proposta_mensal_centavos),
       destaque: true,
     },
@@ -185,23 +206,109 @@ function SeparadorMatriz({ rotulo }) {
   );
 }
 
-function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroNovo }) {
+function CelulaPlanoAtual({ plano }) {
+  return (
+    <>
+      <div>{formatCentavos(plano?.vigente_centavos)} vigente</div>
+      <div>{formatCentavos(plano?.reajustado_centavos)} reajustado</div>
+    </>
+  );
+}
+
+function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
+  const vidasRef = vidasDaProposta(propostas[0]).filter(
+    (v) => seguroNovo || v.subgrupo_id === plano?.subgrupo_id
+  );
+  const faixas = [...new Set(vidasRef.map((v) => v.faixa).filter((fx) => fx != null))].sort(
+    (a, b) => a - b
+  );
+  return (
+    <table className="conferencia cmp-matriz">
+      {!seguroNovo && plano && (
+        <caption className="cmp-matriz-caption">
+          Plano atual — {plano.operadora} · {plano.plano_nome}
+        </caption>
+      )}
+      <CabecalhoMatriz
+        planosAtuais={plano ? [plano] : []}
+        propostas={propostas}
+        seguroNovo={seguroNovo}
+      />
+      <tbody className="cmp-matriz-dados">
+        {faixas.map((fx) => {
+          const vidasFx = vidasRef.filter((v) => v.faixa === fx);
+          const vigente = vidasFx.reduce((s, v) => s + (v.vigente_centavos || 0), 0);
+          const reajustado = vidasFx.reduce((s, v) => s + (v.reajustado_centavos || 0), 0);
+          return (
+            <tr key={fx}>
+              <th scope="row">
+                {FAIXAS_ROTULOS[fx] || `Faixa ${fx + 1}`}
+                {vidasFx.length > 1 && (
+                  <small className="cmp-faixa-qtd"> ({vidasFx.length} vidas)</small>
+                )}
+              </th>
+              {!seguroNovo && (
+                <td className="cmp-col-atual">
+                  <div>{formatCentavos(vigente)} vigente</div>
+                  <div>{formatCentavos(reajustado)} reajustado</div>
+                </td>
+              )}
+              {propostas.map((p) => {
+                const vidasP = vidasDaProposta(p).filter(
+                  (v) => v.faixa === fx && (seguroNovo || v.subgrupo_id === plano?.subgrupo_id)
+                );
+                const proposta = vidasP.reduce((s, v) => s + (v.proposta_centavos || 0), 0);
+                return (
+                  <td key={p.opcao_id}>
+                    {formatCentavos(proposta)}
+                    {vidasP.length > 1 && (
+                      <small className="cmp-faixa-qtd"> ({vidasP.length} vidas)</small>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function MatrizComparativa({ planosAtuais, propostas, vista, mostrarNomes, seguroNovo }) {
   if (!propostas.length) {
     return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
   }
 
-  const faixasAtual = propostas[0]?.faixas || [];
+  const vidasRef = vidasDaProposta(propostas[0]);
 
   return (
     <div className="cmp-matriz-scroll">
+      {vista === "faixas" ? (
+        <>
+          <p className="cmp-matriz-separador-texto">Valores por faixa etária (soma do grupo)</p>
+          {(seguroNovo || !(planosAtuais || []).length) ? (
+            <TabelaFaixasPlano plano={null} propostas={propostas} seguroNovo={seguroNovo} />
+          ) : (
+            planosAtuais.map((plano) => (
+              <TabelaFaixasPlano
+                key={plano.subgrupo_id}
+                plano={plano}
+                propostas={propostas}
+                seguroNovo={false}
+              />
+            ))
+          )}
+        </>
+      ) : (
       <table className="conferencia cmp-matriz">
         <CabecalhoMatriz
-          planoAtual={planoAtual}
+          planosAtuais={planosAtuais}
           propostas={propostas}
           seguroNovo={seguroNovo}
         />
         <DetalhesFixosMatriz
-          planoAtual={planoAtual}
+          planosAtuais={planosAtuais}
           propostas={propostas}
           seguroNovo={seguroNovo}
         />
@@ -210,6 +317,36 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroN
           <>
             <SeparadorMatriz rotulo="Resumo executivo" />
             <tbody className="cmp-matriz-dados">
+              {!seguroNovo &&
+                (planosAtuais || []).map((pl) => (
+                  <tr key={pl.subgrupo_id}>
+                    <th scope="row">{pl.plano_nome}</th>
+                    <td className="cmp-col-atual">
+                      <CelulaPlanoAtual plano={pl} />
+                    </td>
+                    {propostas.map((p) => (
+                      <td key={p.opcao_id}>
+                        {formatCentavos(recorteSubgrupo(p, pl.subgrupo_id)?.proposta_centavos)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              {!seguroNovo && (planosAtuais || []).length > 0 && (
+                <tr>
+                  <th scope="row">Consolidado</th>
+                  <td className="cmp-col-atual">
+                    <div>{formatCentavos(somarCampo(planosAtuais, "vigente_centavos"))} vigente</div>
+                    <div>
+                      {formatCentavos(somarCampo(planosAtuais, "reajustado_centavos"))} reajustado
+                    </div>
+                  </td>
+                  {propostas.map((p) => (
+                    <td key={p.opcao_id}>
+                      {formatCentavos(p.numerico?.proposta_mensal_centavos)}
+                    </td>
+                  ))}
+                </tr>
+              )}
               <tr>
                 <th scope="row">
                   {seguroNovo ? "Diferença vs menor (mês)" : "Diferença mensal"}
@@ -243,43 +380,6 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroN
           </>
         )}
 
-        {vista === "faixas" && (
-          <>
-            <SeparadorMatriz rotulo="Valores por faixa etária (soma do grupo)" />
-            <tbody className="cmp-matriz-dados">
-              {[...new Set(propostas.flatMap((p) => (p.faixas || []).map((f) => f.faixa)))]
-                .sort((a, b) => a - b)
-                .map((fx) => {
-                  const faixaAtual = faixasAtual.find((f) => f.faixa === fx);
-                  return (
-                    <tr key={fx}>
-                      <th scope="row">{FAIXAS_ROTULOS[fx] || `Faixa ${fx + 1}`}</th>
-                      {!seguroNovo && (
-                        <td className="cmp-col-atual">
-                          {formatCentavos(faixaAtual?.atual_centavos)}
-                          {faixaAtual?.quantidade > 1 && (
-                            <small className="cmp-faixa-qtd"> ({faixaAtual.quantidade} vidas)</small>
-                          )}
-                        </td>
-                      )}
-                      {propostas.map((p) => {
-                        const f = (p.faixas || []).find((x) => x.faixa === fx);
-                        return (
-                          <td key={p.opcao_id}>
-                            {formatCentavos(f?.proposta_centavos)}
-                            {f?.quantidade > 1 && (
-                              <small className="cmp-faixa-qtd"> ({f.quantidade} vidas)</small>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </>
-        )}
-
         {vista === "beneficiarios" && (
           <>
             {!mostrarNomes && (
@@ -295,10 +395,13 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroN
             )}
             <SeparadorMatriz rotulo="Detalhamento por beneficiário" />
             <tbody className="cmp-matriz-dados">
-              {(propostas[0]?.secoes?.[0]?.vidas || []).map((v) => (
+              {vidasRef.map((v) => (
                 <tr key={v.vida_id}>
                   <th scope="row">
                     {mostrarNomes ? v.nome : `Beneficiário · faixa ${(v.faixa ?? 0) + 1}`}
+                    {!seguroNovo && v.plano_atual && (
+                      <small className="cmp-faixa-qtd"> · {v.plano_atual}</small>
+                    )}
                   </th>
                   {!seguroNovo && (
                     <td className="cmp-col-atual">
@@ -306,7 +409,7 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroN
                     </td>
                   )}
                   {propostas.map((p) => {
-                    const pv = p.secoes?.[0]?.vidas?.find((x) => x.vida_id === v.vida_id);
+                    const pv = vidasDaProposta(p).find((x) => x.vida_id === v.vida_id);
                     return (
                       <td key={p.opcao_id}>{formatCentavos(pv?.proposta_centavos)}</td>
                     );
@@ -317,6 +420,7 @@ function MatrizComparativa({ planoAtual, propostas, vista, mostrarNomes, seguroN
           </>
         )}
       </table>
+      )}
     </div>
   );
 }
@@ -408,7 +512,7 @@ export default function ComparativoExperiencia({
 
   const operadoras = opcoesUnicas(todas, "operadora");
   const acomodacoes = opcoesUnicas(todas, "acomodacao");
-  const planoAtual = resultado.plano_atual;
+  const planosAtuais = resultado.planos_atuais || [];
   const filtrosAtivos = Object.entries(filtros).filter(
     ([, v]) => v !== "" && v != null
   ).length;
@@ -492,21 +596,32 @@ export default function ComparativoExperiencia({
             )}
           </div>
 
-          {planoAtual && (
-            <div className="cmp-ref-bar" title={`${planoAtual.plano_nome} · ${planoAtual.operadora}`}>
+          {planosAtuais.length > 0 && (
+            <div
+              className="cmp-ref-bar"
+              title={planosAtuais.map((p) => `${p.plano_nome} · ${p.operadora}`).join(" | ")}
+            >
               <span className="cmp-ref-etiq">Referência</span>
               <p className="cmp-ref-texto">
-                <strong>{planoAtual.plano_nome}</strong>
-                <span className="cmp-ref-sep">·</span>
-                <span>{planoAtual.operadora}</span>
-                {planoAtual.acomodacao && (
+                {planosAtuais.length === 1 ? (
                   <>
+                    <strong>{planosAtuais[0].plano_nome}</strong>
                     <span className="cmp-ref-sep">·</span>
-                    <span>{planoAtual.acomodacao}</span>
+                    <span>{planosAtuais[0].operadora}</span>
+                    {planosAtuais[0].acomodacao && (
+                      <>
+                        <span className="cmp-ref-sep">·</span>
+                        <span>{planosAtuais[0].acomodacao}</span>
+                      </>
+                    )}
                   </>
+                ) : (
+                  <strong>{planosAtuais.length} planos vigentes</strong>
                 )}
               </p>
-              <span className="cmp-ref-valor">{formatCentavos(planoAtual.mensal_centavos)}</span>
+              <span className="cmp-ref-valor">
+                {formatCentavos(somarCampo(planosAtuais, "mensal_centavos"))}
+              </span>
             </div>
           )}
         </div>
@@ -732,7 +847,7 @@ export default function ComparativoExperiencia({
           </label>
         )}
         <MatrizComparativa
-          planoAtual={resultado.plano_atual}
+          planosAtuais={planosAtuais}
           propostas={selecionadas}
           vista={vista}
           mostrarNomes={modo === "analise" && mostrarNomes}
@@ -830,7 +945,7 @@ export default function ComparativoExperiencia({
                     </summary>
                     <div className="cmp-detalhe-corpo">
                       {p.pendencias?.length > 0 && <Pendencias items={p.pendencias} />}
-                      {p.secoes?.[0]?.vidas?.length > 0 ? (
+                      {vidasDaProposta(p).length > 0 ? (
                         <div className="cmp-detalhe-tabela-scroll">
                           <table className="conferencia cmp-detalhe-tabela">
                             <thead>
@@ -844,7 +959,7 @@ export default function ComparativoExperiencia({
                               </tr>
                             </thead>
                             <tbody>
-                              {p.secoes[0].vidas.map((v) => (
+                              {vidasDaProposta(p).map((v) => (
                                 <tr key={v.vida_id}>
                                   <td>{v.nome}</td>
                                   <td>{v.idade ?? "—"}</td>

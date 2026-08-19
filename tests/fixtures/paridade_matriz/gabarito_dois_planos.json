@@ -1,0 +1,33 @@
+{
+  "planos": [
+    {"chave": "plano_a", "vidas": 36, "vigente_centavos": 2623822},
+    {"chave": "plano_b", "vidas": 5, "vigente_centavos": 1704692}
+  ],
+  "consolidado_vigente_centavos": 4328514,
+  "propostas": [
+    {
+      "chave": "prata",
+      "plano_a_centavos": 2360717,
+      "plano_b_centavos": 610061,
+      "consolidado_centavos": 2970778
+    },
+    {
+      "chave": "ouro",
+      "plano_a_centavos": 2751249,
+      "plano_b_centavos": 710988,
+      "consolidado_centavos": 3462237
+    }
+  ],
+  "reajuste": {
+    "1000": {
+      "plano_a_centavos": 2886201,
+      "plano_b_centavos": 1875161,
+      "consolidado_centavos": 4761362
+    },
+    "1200": {
+      "plano_a_centavos": 2938676,
+      "plano_b_centavos": 1909255,
+      "consolidado_centavos": 4847931
+    }
+  }
+}

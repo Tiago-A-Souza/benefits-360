@@ -100,10 +100,13 @@ class DetalheVidaComparativo(BaseModel):
     faixa: int | None = None
     parentesco: str | None = None
     plano_atual: str | None = None
+    subgrupo_id: str | None = None
     atual_reais: str | None = None
     proposta_reais: str | None = None
     diff_mes_reais: str | None = None
     atual_centavos: int | None = None
+    vigente_centavos: int | None = None
+    reajustado_centavos: int | None = None
     proposta_centavos: int | None = None
     diff_mes_centavos: int | None = None
 
@@ -117,12 +120,30 @@ class FaixaComparativo(BaseModel):
 
 
 class PlanoAtualComparativo(BaseModel):
+    subgrupo_id: str
     plano_nome: str
     operadora: str
     acomodacao: str | None = None
     regime_coparticipacao: str | None = None
+    vidas: int = 0
+    vigente_centavos: int | None = None
+    reajustado_centavos: int | None = None
     mensal_centavos: int | None = None
+    vigente_reais: str | None = None
+    reajustado_reais: str | None = None
     mensal_reais: str | None = None
+
+
+class RecorteSubgrupoComparativo(BaseModel):
+    subgrupo_id: str
+    plano_nome: str
+    proposta_centavos: int | None = None
+    diff_mes_centavos: int | None = None
+    diff_ano_centavos: int | None = None
+    diff_bps: int | None = None
+    proposta_reais: str | None = None
+    diff_mes_reais: str | None = None
+    diff_ano_reais: str | None = None
 
 
 class SecaoComparativo(BaseModel):
@@ -177,6 +198,7 @@ class ResultadoPropostaComparativo(BaseModel):
     faixas: list[FaixaComparativo] = Field(default_factory=list)
     destaques: list[str] = Field(default_factory=list)
     secoes: list[SecaoComparativo] = Field(default_factory=list)
+    subgrupos: list[RecorteSubgrupoComparativo] = Field(default_factory=list)
     pendencias: list[PendenciaItem] = Field(default_factory=list)
     calculo_realizado: bool = True
 
@@ -210,7 +232,7 @@ class ComparativoResponse(BaseModel):
     totais: TotaisComparativo | None = None
     secoes: list[SecaoComparativo] = Field(default_factory=list)
     propostas: list[ResultadoPropostaComparativo] = Field(default_factory=list)
-    plano_atual: PlanoAtualComparativo | None = None
+    planos_atuais: list[PlanoAtualComparativo] = Field(default_factory=list)
     propostas_apresentacao: list[str] = Field(default_factory=list)
     consistencia: ConsistenciaComparativo | None = None
     validade_proposta: str | None = None

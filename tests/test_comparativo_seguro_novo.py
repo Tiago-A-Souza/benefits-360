@@ -151,7 +151,7 @@ def _aprovar(tmp_path: Path, rascunho):
 def test_ivtec_seguro_novo_comparativo_exibe_totais_e_faixas():
     cmp = _calcular_comparativo(_rascunho_ivtec_novo())
     assert cmp.formato == "novo"
-    assert cmp.plano_atual is None
+    assert cmp.planos_atuais == []
     assert cmp.calculo_realizado
     assert cmp.beneficiarios_calculados == 12
 
@@ -216,8 +216,7 @@ def test_renovacao_um_subgrupo_inalterado():
     rascunho = rascunho_demo_12_vidas()
     cmp = _calcular_comparativo(rascunho)
     assert cmp.formato == "renovacao"
-    assert cmp.plano_atual is not None
-    assert cmp.propostas
+    assert cmp.planos_atuais
     p0 = cmp.propostas[0]
     assert p0.numerico is not None
     assert p0.numerico.proposta_mensal_centavos is not None
@@ -257,7 +256,14 @@ def test_renovacao_dois_subgrupos_totais_proprios(tmp_path: Path):
     sincronizar_cenarios(rascunho)
     cmp = _calcular_comparativo(rascunho)
     assert cmp.formato == "renovacao"
-    assert cmp.plano_atual is not None
+    assert len(cmp.planos_atuais) == 2
+    ids = {p.subgrupo_id for p in cmp.planos_atuais}
+    assert ids == {base.subgrupos_atuais[0].id, "sg-2"}
+    mensais = [p.mensal_centavos for p in cmp.planos_atuais]
+    assert all(v is not None for v in mensais)
+    consolidado = sum(mensais)
+    if mensais[0] != mensais[1]:
+        assert all(p.mensal_centavos != consolidado for p in cmp.planos_atuais)
     por_id = {p.opcao_id: p for p in cmp.propostas}
     t1 = por_id["op-1"].numerico.proposta_mensal_centavos
     t2 = por_id["op-2"].numerico.proposta_mensal_centavos

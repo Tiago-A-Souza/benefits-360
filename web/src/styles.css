@@ -3742,7 +3742,21 @@ a.btn-link {
 
 .cmp-matriz {
   min-width: 560px;
-  margin: 0;
+  margin: 0 0 1.25rem;
+}
+
+.cmp-matriz caption,
+.cmp-matriz-caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  padding: 0.65rem 0 0.35rem;
+}
+
+.cmp-matriz-separador-texto {
+  font-weight: 600;
+  margin: 0.85rem 0 0.4rem;
+  color: #334155;
 }
 
 .cmp-matriz-thead th {

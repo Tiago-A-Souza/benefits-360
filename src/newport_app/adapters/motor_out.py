@@ -19,6 +19,7 @@ from newport_app.models.responses import (
     FaixaComparativo,
     PendenciaItem,
     PlanoAtualComparativo,
+    RecorteSubgrupoComparativo,
     ResultadoPropostaComparativo,
     SecaoComparativo,
     TotaisComparativo,
@@ -206,24 +207,168 @@ def _regime_label_rascunho(rascunho: RascunhoEstudo, regime_id: str | None) -> s
     return None
 
 
-def _montar_plano_atual(
-    rascunho: RascunhoEstudo,
-    propostas: list[ResultadoPropostaComparativo],
-) -> PlanoAtualComparativo | None:
-    if rascunho.formato == "novo" or not rascunho.subgrupos_atuais:
-        return None
-    sg = rascunho.subgrupos_atuais[0]
-    mensal = None
-    if propostas and propostas[0].numerico:
-        mensal = propostas[0].numerico.atual_mensal_centavos
-    return PlanoAtualComparativo(
-        plano_nome=sg.plano_nome,
-        operadora=sg.operadora,
-        acomodacao=sg.acomodacao,
-        regime_coparticipacao=_regime_label_rascunho(rascunho, sg.regime_copart_id),
-        mensal_centavos=mensal,
-        mensal_reais=_formatar_reais(mensal) if mensal is not None else None,
+def _baseline_escolhido(rascunho: RascunhoEstudo) -> str:
+    escolhido = rascunho.escolhas.baseline_escolhido
+    if escolhido and escolhido.valor == "vigente":
+        return "vigente"
+    return "reajustado"
+
+
+def _agregar_subtotais_por_subgrupo(cenario: ScenarioResult) -> dict[str, dict[str, int | bool]]:
+    """Soma subtotais do motor por subgrupo_id em todas as seções do cenário."""
+    agregado: dict[str, dict[str, int | bool]] = {}
+    for secao in cenario.secoes:
+        for sg in secao.subgrupos:
+            slot = agregado.setdefault(
+                sg.subgrupo_id,
+                {
+                    "vigente": 0,
+                    "reajustado": 0,
+                    "proposta": 0,
+                    "diff_mes": 0,
+                    "diff_ano": 0,
+                    "tem_vigente": False,
+                    "tem_reajustado": False,
+                    "tem_proposta": False,
+                },
+            )
+            if sg.subtotal_atual_vigente_centavos is not None:
+                slot["vigente"] = int(slot["vigente"]) + sg.subtotal_atual_vigente_centavos.centavos
+                slot["tem_vigente"] = True
+            if sg.subtotal_atual_reajustado_centavos is not None:
+                slot["reajustado"] = int(slot["reajustado"]) + sg.subtotal_atual_reajustado_centavos.centavos
+                slot["tem_reajustado"] = True
+            if sg.subtotal_proposta_centavos is not None:
+                slot["proposta"] = int(slot["proposta"]) + sg.subtotal_proposta_centavos.centavos
+                slot["tem_proposta"] = True
+            for rv in sg.vidas:
+                if rv.diff_mes_centavos is not None:
+                    slot["diff_mes"] = int(slot["diff_mes"]) + rv.diff_mes_centavos.centavos
+                if rv.diff_ano_centavos is not None:
+                    slot["diff_ano"] = int(slot["diff_ano"]) + rv.diff_ano_centavos.centavos
+    return agregado
+
+
+def _vidas_incluidas_subgrupo(rascunho: RascunhoEstudo, subgrupo_id: str) -> int:
+    return sum(
+        1
+        for v in rascunho.vidas
+        if v.incluida and v.subgrupo_atual_id == subgrupo_id
     )
+
+
+def _centavos_flag(slot: dict[str, int | bool] | None, campo: str, flag: str) -> int | None:
+    if not slot or not slot.get(flag):
+        return None
+    return int(slot[campo])
+
+
+def _montar_recortes_subgrupo(
+    rascunho: RascunhoEstudo,
+    cenario: ScenarioResult,
+) -> list[RecorteSubgrupoComparativo]:
+    if rascunho.formato == "novo" or not rascunho.subgrupos_atuais:
+        return []
+    agregado = _agregar_subtotais_por_subgrupo(cenario)
+    baseline = _baseline_escolhido(rascunho)
+    recortes: list[RecorteSubgrupoComparativo] = []
+    for sg in rascunho.subgrupos_atuais:
+        slot = agregado.get(sg.id)
+        proposta = _centavos_flag(slot, "proposta", "tem_proposta")
+        vigente = _centavos_flag(slot, "vigente", "tem_vigente")
+        reajustado = _centavos_flag(slot, "reajustado", "tem_reajustado")
+        mensal = reajustado if baseline == "reajustado" else vigente
+        if slot is None:
+            diff_mes = None
+            diff_ano = None
+        else:
+            diff_mes = int(slot["diff_mes"])
+            diff_ano = int(slot["diff_ano"])
+        recortes.append(
+            RecorteSubgrupoComparativo(
+                subgrupo_id=sg.id,
+                plano_nome=sg.plano_nome,
+                proposta_centavos=proposta,
+                diff_mes_centavos=diff_mes,
+                diff_ano_centavos=diff_ano,
+                diff_bps=(
+                    _calcular_diff_bps(mensal, proposta)
+                    if mensal is not None and proposta is not None
+                    else None
+                ),
+                proposta_reais=_formatar_reais(proposta) if proposta is not None else None,
+                diff_mes_reais=_formatar_reais(diff_mes) if diff_mes is not None else None,
+                diff_ano_reais=_formatar_reais(diff_ano) if diff_ano is not None else None,
+            )
+        )
+    return recortes
+
+
+def _chave_contrato_subgrupo(slot: dict[str, int | bool] | None) -> tuple[int | None, int | None]:
+    return (
+        _centavos_flag(slot, "vigente", "tem_vigente"),
+        _centavos_flag(slot, "reajustado", "tem_reajustado"),
+    )
+
+
+def _montar_planos_atuais(
+    rascunho: RascunhoEstudo,
+    resultado: MotorResult,
+) -> tuple[list[PlanoAtualComparativo], list[PendenciaItem]]:
+    if rascunho.formato == "novo" or not rascunho.subgrupos_atuais:
+        return [], []
+
+    agregados = [_agregar_subtotais_por_subgrupo(c) for c in resultado.cenarios]
+    pendencias: list[PendenciaItem] = []
+    if len(agregados) >= 2:
+        ids = {sg.id for sg in rascunho.subgrupos_atuais}
+        for agg in agregados:
+            ids.update(agg)
+        divergiu = any(
+            len({_chave_contrato_subgrupo(agg.get(sg_id)) for agg in agregados}) > 1
+            for sg_id in ids
+        )
+        if divergiu:
+            pendencias.append(
+                PendenciaItem(
+                    tipo="bloqueio",
+                    titulo="Contrato vigente divergente entre cenários",
+                    descricao=(
+                        "Os subtotais do contrato atual não coincidem em todos os cenários "
+                        "calculados. O contrato vigente é o mesmo e deveria produzir os "
+                        "mesmos valores em cada proposta."
+                    ),
+                    acao_sugerida="Recalcule o estudo e revise os planos vigentes.",
+                    codigo="APP-CMP-002",
+                    etapa=5,
+                )
+            )
+
+    referencia = next((agg for agg in agregados if agg), {})
+    baseline = _baseline_escolhido(rascunho)
+    planos: list[PlanoAtualComparativo] = []
+    for sg in rascunho.subgrupos_atuais:
+        slot = referencia.get(sg.id)
+        vigente = _centavos_flag(slot, "vigente", "tem_vigente")
+        reajustado = _centavos_flag(slot, "reajustado", "tem_reajustado")
+        mensal = reajustado if baseline == "reajustado" else vigente
+        planos.append(
+            PlanoAtualComparativo(
+                subgrupo_id=sg.id,
+                plano_nome=sg.plano_nome,
+                operadora=sg.operadora,
+                acomodacao=sg.acomodacao,
+                regime_coparticipacao=_regime_label_rascunho(rascunho, sg.regime_copart_id),
+                vidas=_vidas_incluidas_subgrupo(rascunho, sg.id),
+                vigente_centavos=vigente,
+                reajustado_centavos=reajustado,
+                mensal_centavos=mensal,
+                vigente_reais=_formatar_reais(vigente) if vigente is not None else None,
+                reajustado_reais=_formatar_reais(reajustado) if reajustado is not None else None,
+                mensal_reais=_formatar_reais(mensal) if mensal is not None else None,
+            )
+        )
+    return planos, pendencias
 
 
 def _calcular_destaques(
@@ -385,13 +530,18 @@ def _montar_secoes_cenario(
         for sg in secao_motor.subgrupos:
             sg_rasc = None if seguro_novo else subgrupos_por_id.get(sg.subgrupo_id)
             plano_nome = sg_rasc.plano_nome if sg_rasc else None
+            baseline = _baseline_escolhido(rascunho)
             for rv in sg.vidas:
                 vida = vidas_por_id.get(rv.vida_id)
                 if seguro_novo:
                     baseline_val = None
                     diff_val = None
                 else:
-                    baseline_val = rv.atual_reajustado_centavos or rv.atual_vigente_centavos
+                    baseline_val = (
+                        rv.atual_vigente_centavos
+                        if baseline == "vigente"
+                        else rv.atual_reajustado_centavos
+                    )
                     diff_val = rv.diff_mes_centavos
                 detalhes.append(
                     DetalheVidaComparativo(
@@ -401,10 +551,13 @@ def _montar_secoes_cenario(
                         faixa=rv.faixa,
                         parentesco=vida.parentesco.value if vida and vida.parentesco else None,
                         plano_atual=plano_nome,
+                        subgrupo_id=None if seguro_novo else sg.subgrupo_id,
                         atual_reais=_formatar_reais_opcional(baseline_val),
                         proposta_reais=_formatar_reais_opcional(rv.proposta_centavos),
                         diff_mes_reais=_formatar_reais_opcional(diff_val),
                         atual_centavos=_centavos_valor(baseline_val),
+                        vigente_centavos=_centavos_valor(rv.atual_vigente_centavos),
+                        reajustado_centavos=_centavos_valor(rv.atual_reajustado_centavos),
                         proposta_centavos=_centavos_valor(rv.proposta_centavos),
                         diff_mes_centavos=_centavos_valor(diff_val),
                     )
@@ -559,6 +712,7 @@ def _montar_propostas(
                     faixas=[],
                     destaques=[],
                     secoes=[],
+                    subgrupos=[],
                     pendencias=_pendencias_proposta(calculo_realizado=False),
                     calculo_realizado=False,
                 )
@@ -566,6 +720,7 @@ def _montar_propostas(
             continue
 
         secoes, _ = _montar_secoes_cenario(rascunho, cenario_motor)
+        recortes = _montar_recortes_subgrupo(rascunho, cenario_motor)
         totais = _montar_totais_cenario(
             cenario_motor, rascunho, seguro_novo=seguro_novo
         )
@@ -610,6 +765,7 @@ def _montar_propostas(
                 faixas=faixas,
                 destaques=[],
                 secoes=secoes,
+                subgrupos=recortes,
                 pendencias=_pendencias_proposta(calculo_realizado=True),
                 calculo_realizado=True,
             )
@@ -1043,6 +1199,7 @@ def montar_comparativo(
     ]
 
     propostas = _montar_propostas(rascunho, resultado) if resultado.cenarios else []
+    planos_atuais, pendencias_planos = _montar_planos_atuais(rascunho, resultado)
     from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
 
     consistencia = _avaliar_consistencia(
@@ -1053,6 +1210,7 @@ def montar_comparativo(
     )
     if not erros_compilacao:
         pendencias.extend(pendencias_divergencia_acomodacao(rascunho))
+    pendencias.extend(pendencias_planos)
     if not consistencia.consistente and consistencia.mensagem:
         if not (
             consistencia.bloqueios
@@ -1097,7 +1255,7 @@ def montar_comparativo(
         totais=totais,
         secoes=secoes,
         propostas=propostas,
-        plano_atual=_montar_plano_atual(rascunho, propostas),
+        planos_atuais=planos_atuais,
         propostas_apresentacao=ordem_apresentacao_rascunho(rascunho),
         consistencia=consistencia,
         validade_proposta=_validade_proposta(rascunho),
