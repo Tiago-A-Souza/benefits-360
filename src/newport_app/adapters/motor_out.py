@@ -25,6 +25,7 @@ from newport_app.models.responses import (
     TotaisComparativo,
     TotaisComparativoNumerico,
 )
+from newport_app.presentation.formatacao import formatar_data_br
 from newport_app.presentation.rotulos import qualificar_rotulos_propostas
 from newport_app.presentation.textos import (
     descricao_estudo,
@@ -690,11 +691,7 @@ def _montar_propostas(
                     plano_nome=plano_nome or "Proposta sem nome",
                     operadora=op.operadora if op else "",
                     acomodacao=op.acomodacao if op else None,
-                    validade_oficial=(
-                        op.validade_oficial.isoformat()
-                        if op and op.validade_oficial
-                        else None
-                    ),
+                    validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
                     regime_coparticipacao=(
                         _rotulo_regime(regime_tipo)
                         if regime_tipo == "misto"
@@ -745,9 +742,7 @@ def _montar_propostas(
                 plano_nome=plano_nome or "Proposta sem nome",
                 operadora=op.operadora if op else "",
                 acomodacao=op.acomodacao if op else None,
-                validade_oficial=(
-                    op.validade_oficial.isoformat() if op and op.validade_oficial else None
-                ),
+                validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
                 regime_coparticipacao=(
                     _rotulo_regime(regime_tipo)
                     if regime_tipo == "misto"
@@ -1083,7 +1078,7 @@ def _avaliar_consistencia(
 def _validade_proposta(rascunho: RascunhoEstudo) -> str | None:
     for op in rascunho.opcoes_proposta:
         if op.validade_oficial:
-            return op.validade_oficial.isoformat()
+            return formatar_data_br(op.validade_oficial)
     return None
 
 
