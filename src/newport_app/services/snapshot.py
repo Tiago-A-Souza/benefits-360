@@ -5,10 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from newport_app.adapters.motor_out import motor_result_para_comparativo
 from newport_app.diagnostico import registrar_evento
-from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
-from newport_app.draft_compiler import compile
 from newport_app.models.compilation import COMPILER_VERSAO
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import ComparativoResponse
@@ -25,14 +22,13 @@ from newport_app.policy.registry import PolicySetRegistry, default_registry
 from newport_app.repository.base import StudyRepository
 from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.snapshot import SnapshotRepository
-from newport_app.services.calculo import RascunhoNaoCompilavelError
+from newport_app.services.comparativo_confirmacao import montar_payload_nucleo_congelamento
 from newport_app.snapshot.comparativo import (
     MENSAGEM_FORMATO_ANTERIOR,
     SnapshotFormatoIncompativelError,
     ler_comparativo_congelado,
 )
 from newport_app.snapshot.hashing import hash_snapshot_canonico
-from newport_motor.engine import calcular
 
 # Reexportado para os testes e a API que importam deste módulo.
 _MENSAGEM_FORMATO_ANTERIOR = MENSAGEM_FORMATO_ANTERIOR
@@ -48,6 +44,19 @@ class SnapshotBloqueadoError(Exception):
 
 class AprovacaoInvalidaError(Exception):
     pass
+
+
+def mensagem_bloqueio_snapshot(comparativo: ComparativoResponse) -> str:
+    titulos = [p.titulo for p in comparativo.pendencias if p.tipo == "bloqueio" and p.titulo]
+    if not titulos:
+        return "O comparativo possui bloqueios — resolva pendências antes do snapshot."
+    return "Não é possível congelar o comparativo — pendência: " + "; ".join(titulos)
+
+
+def _dump_aprovacao(aprov: AprovacaoSnapshot | None) -> dict | None:
+    if aprov is None:
+        return None
+    return aprov.model_dump(mode="json")
 
 
 class SnapshotService:
@@ -66,42 +75,22 @@ class SnapshotService:
     def _compilar_e_calcular(
         self, rascunho: RascunhoEstudo
     ) -> tuple[ComparativoResponse, dict, dict, bool]:
-        resultado = compile(rascunho, policy_registry=self._policy_registry)
-        if not resultado.compilavel:
-            raise RascunhoNaoCompilavelError(resultado)
-        assert resultado.compilado is not None
-        motor_result = calcular(
-            resultado.compilado.estudo_input,
-            resultado.compilado.effective_policy,
+        comparativo, payload_nucleo, tem_bloqueio = montar_payload_nucleo_congelamento(
+            rascunho, self._policy_registry
         )
-        comparativo = motor_result_para_comparativo(rascunho, motor_result)
-        tem_bloqueio = motor_result.tem_bloqueio or any(
-            p.tipo == "bloqueio" for p in comparativo.pendencias
-        )
-        payload_nucleo = {
-            "rascunho": rascunho.model_dump(mode="json"),
-            "estudo_input": resultado.compilado.estudo_input.model_dump(mode="json"),
-            "effective_policy": resultado.compilado.effective_policy.model_dump(mode="json"),
-            "motor_result": motor_result.model_dump(mode="json"),
-            "comparativo": comparativo.model_dump(mode="json"),
-            "propostas_apresentacao": ordem_apresentacao_rascunho(rascunho),
-            "compiler_versao": COMPILER_VERSAO,
-            "motor_versao": MOTOR_VERSAO,
-            "snapshot_versao": SNAPSHOT_VERSAO,
-            "policy_set_versao": rascunho.policy_set_versao,
-            "documentos": {
-                "siscor": [d.model_dump(mode="json") for d in rascunho.documentos_siscor],
-                "cotacao": [d.model_dump(mode="json") for d in rascunho.documentos_cotacao],
-            },
-        }
         payload = {
             **payload_nucleo,
             "gerado_em": datetime.now(timezone.utc).isoformat(),
         }
         return comparativo, payload, payload_nucleo, tem_bloqueio
 
-    def gerar_snapshot_candidato(self, estudo_id: str) -> GerarSnapshotResponse:
-        rascunho = self._estudos.obter_rascunho(estudo_id)
+    def gerar_snapshot_candidato(
+        self,
+        estudo_id: str,
+        rascunho: RascunhoEstudo | None = None,
+    ) -> GerarSnapshotResponse:
+        if rascunho is None:
+            rascunho = self._estudos.obter_rascunho(estudo_id)
         if rascunho is None:
             raise ValueError("Estudo não encontrado")
         comparativo, payload, payload_nucleo, tem_bloqueio = self._compilar_e_calcular(rascunho)
@@ -116,9 +105,7 @@ class SnapshotService:
                     ],
                 },
             )
-            raise SnapshotBloqueadoError(
-                "O comparativo possui bloqueios — resolva pendências antes do snapshot."
-            )
+            raise SnapshotBloqueadoError(mensagem_bloqueio_snapshot(comparativo))
         digest = hash_snapshot_canonico(payload_nucleo)
         snap = SnapshotCalculo(
             id=str(uuid.uuid4()),
@@ -132,6 +119,10 @@ class SnapshotService:
             snapshot_versao=SNAPSHOT_VERSAO,
             tem_bloqueio=False,
             criado_em=datetime.now(timezone.utc),
+        )
+        # Novo congelamento tira de vigor a aprovação anterior; o histórico permanece.
+        self._snapshots.invalidar_aprovacoes_estudo(
+            estudo_id, "Novo snapshot candidato gerado"
         )
         self._snapshots.salvar_snapshot(snap)
         self._historico.sincronizar_estudo_meta(rascunho)
@@ -164,6 +155,70 @@ class SnapshotService:
 
     def listar_snapshots(self, estudo_id: str) -> list[SnapshotCalculo]:
         return self._snapshots.listar_snapshots(estudo_id)
+
+    def garantir_aprovacao_unica(self, estudo_id: str) -> None:
+        """Repara legado com duas aprovações vivas: permanece a de `aprovado_em` mais recente."""
+        vivo = self._snapshots.snapshot_aprovado_atual(estudo_id)
+        if vivo is None:
+            return
+        self._snapshots.superar_aprovacao_em_vigor(
+            estudo_id,
+            "Aprovação anterior superada — permanece somente a mais recente em vigor",
+            exceto_snapshot_id=vivo.id,
+        )
+
+    def status_governanca(self, estudo_id: str) -> dict:
+        """Estado que a etapa 5 usa para decidir o que exibir e exportar.
+
+        Em vigor = único snapshot `aprovado` com aprovação `invalidada_em IS NULL`.
+        Se o legado tiver mais de um, permanece o de `aprovado_em` mais recente.
+        """
+        self.garantir_aprovacao_unica(estudo_id)
+        vivo = self._snapshots.snapshot_aprovado_atual(estudo_id)
+        candidato = self._snapshots.snapshot_candidato_atual(estudo_id)
+        superado = self._snapshots.aprovacao_superada_recente(estudo_id)
+
+        if vivo is not None:
+            aprov = self._snapshots.obter_aprovacao(vivo.id)
+            return {
+                "aprovado": True,
+                "estado": "aprovado",
+                "snapshot_id": vivo.id,
+                "hash_sha256": vivo.hash_sha256,
+                "aprovacao": _dump_aprovacao(aprov),
+                "candidato_id": candidato.id if candidato else None,
+                "superado": None,
+            }
+        if candidato is not None:
+            return {
+                "aprovado": False,
+                "estado": "candidato",
+                "snapshot_id": candidato.id,
+                "hash_sha256": candidato.hash_sha256,
+                "aprovacao": None,
+                "candidato_id": candidato.id,
+                "superado": _dump_superado(superado),
+            }
+        if superado is not None:
+            snap, aprov = superado
+            return {
+                "aprovado": False,
+                "estado": "superado",
+                "snapshot_id": snap.id,
+                "hash_sha256": snap.hash_sha256,
+                "aprovacao": _dump_aprovacao(aprov),
+                "candidato_id": None,
+                "superado": _dump_superado(superado),
+            }
+        return {
+            "aprovado": False,
+            "estado": None,
+            "snapshot_id": None,
+            "hash_sha256": None,
+            "aprovacao": None,
+            "candidato_id": None,
+            "superado": None,
+        }
 
     def aprovar_snapshot(
         self,
@@ -204,6 +259,10 @@ class SnapshotService:
             justificativa=req.justificativa,
             auto_aprovacao=req.auto_aprovacao,
         )
+        self._snapshots.superar_aprovacao_em_vigor(
+            estudo_id,
+            "Nova aprovação em vigor — a anterior foi superada",
+        )
         self._snapshots.salvar_aprovacao(aprov)
         self._snapshots.marcar_aprovado(snapshot_id)
         self._historico.atualizar_estado_workflow(estudo_id, "aprovado")
@@ -239,3 +298,20 @@ class SnapshotService:
     def rascunho_do_snapshot(self, snapshot_id: str) -> RascunhoEstudo:
         snap = self.obter_snapshot(snapshot_id)
         return RascunhoEstudo.model_validate(snap.payload["rascunho"])
+
+
+def _dump_superado(
+    par: tuple[SnapshotCalculo, AprovacaoSnapshot] | None,
+) -> dict | None:
+    if par is None:
+        return None
+    snap, aprov = par
+    return {
+        "snapshot_id": snap.id,
+        "hash_sha256": snap.hash_sha256,
+        "revisor_nome": aprov.revisor_nome,
+        "aprovado_em": aprov.aprovado_em.isoformat(),
+        "invalidada_em": aprov.invalidada_em.isoformat() if aprov.invalidada_em else None,
+        "invalidada_motivo": aprov.invalidada_motivo,
+        "auto_aprovacao": aprov.auto_aprovacao,
+    }

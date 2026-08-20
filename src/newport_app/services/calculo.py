@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from newport_app.adapters.motor_out import montar_comparativo, rascunho_para_resumo
 from newport_app.diagnostico import registrar_evento
@@ -16,6 +17,7 @@ from newport_app.repository.base import StudyRepository
 from newport_app.services.comparativo_confirmacao import (
     confirmar_comparativo_revisao,
     hash_comparativo_atual,
+    hash_identidade_calculo,
 )
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
 from newport_app.services.opcao_proposta import excluir_opcao_proposta_manual as _excluir_opcao_manual
@@ -38,10 +40,12 @@ class CalculoService:
         repository: StudyRepository,
         policy_registry: PolicySetRegistry | None = None,
         on_rascunho_alterado: Callable[[str, str], None] | None = None,
+        snapshot_service: Any | None = None,
     ) -> None:
         self._repo = repository
         self._policy_registry = policy_registry or default_registry
         self._on_rascunho_alterado = on_rascunho_alterado
+        self._snapshot_service = snapshot_service
 
     def obter_resumo(self, estudo_id: str) -> EstudoResumo:
         rascunho = self._repo.obter_rascunho(estudo_id)
@@ -100,11 +104,15 @@ class CalculoService:
         comparativo = montar_comparativo(rascunho, motor_result=motor_result)
 
         try:
-            digest, _ = hash_comparativo_atual(
+            digest_identidade, _ = hash_identidade_calculo(
+                rascunho, policy_registry=self._policy_registry
+            )
+            digest_congelado, _ = hash_comparativo_atual(
                 rascunho, policy_registry=self._policy_registry
             )
         except RascunhoNaoCompilavelError:
-            digest = None
+            digest_identidade = None
+            digest_congelado = None
         bloqueios = [p for p in comparativo.pendencias if p.tipo == "bloqueio"]
         if bloqueios:
             registrar_evento(
@@ -119,12 +127,12 @@ class CalculoService:
                 },
             )
         if rascunho.confirmacao_comparativo:
-            if rascunho.confirmacao_comparativo.hash_comparativo != digest:
+            if rascunho.confirmacao_comparativo.hash_comparativo != digest_congelado:
                 rascunho.confirmacao_comparativo = None
                 self._repo.salvar_rascunho(rascunho)
         return comparativo.model_copy(
             update={
-                "hash_comparativo": digest,
+                "hash_comparativo": digest_identidade,
                 "propostas_apresentacao": ordem_apresentacao_rascunho(rascunho),
             }
         )
@@ -144,7 +152,22 @@ class CalculoService:
             opcao_ids,
             policy_registry=self._policy_registry,
         )
-        self.salvar_rascunho(rascunho)
+        if self._snapshot_service is not None:
+            # Snapshot primeiro: se falhar, a confirmação permanece só em memória.
+            gerado = self._snapshot_service.gerar_snapshot_candidato(
+                estudo_id, rascunho=rascunho
+            )
+            if rascunho.confirmacao_comparativo:
+                rascunho.confirmacao_comparativo.hash_comparativo = gerado.hash_sha256
+            resp = resp.model_copy(
+                update={
+                    "hash_comparativo": gerado.hash_sha256,
+                    "snapshot_id": gerado.snapshot_id,
+                }
+            )
+            self._repo.salvar_rascunho(rascunho)
+            return resp
+        self._repo.salvar_rascunho(rascunho)
         return resp
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:

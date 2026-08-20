@@ -959,7 +959,7 @@ export default function ComparativoExperiencia({
             {selecao.length === 0
               ? "Adicione ao menos uma proposta na matriz (botão «Adicionar» nos cards)."
               : confirmado
-                ? "Comparativo confirmado. Use «Próxima etapa» para ir à Apresentação."
+                ? "Comparativo confirmado. Aprove abaixo para liberar a exportação ao cliente."
                 : `${selecao.length} proposta(s) selecionada(s) para o material ao cliente.`}
           </p>
           <button
@@ -969,7 +969,7 @@ export default function ComparativoExperiencia({
             onClick={() => onConfirmar(selecao)}
           >
             {confirmando
-              ? "Confirmando…"
+              ? "Confirmando e congelando…"
               : "Confirmar comparativo e continuar para apresentação"}
           </button>
         </section>

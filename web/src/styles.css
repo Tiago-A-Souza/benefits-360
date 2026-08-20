@@ -4192,3 +4192,55 @@ a.btn-link {
   border-bottom: 1px solid var(--borda-suave, #eef2f7);
   word-break: break-word;
 }
+
+.gov-banner {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #dde2e8;
+}
+
+.gov-banner--superado {
+  background: #fff6e5;
+  border-color: #e6c36a;
+}
+
+.gov-banner--aprovado {
+  background: #eef8f0;
+  border-color: #9ccc9c;
+}
+
+.gov-banner-titulo {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.gov-hash {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.gov-secao {
+  margin-top: 1rem;
+}
+
+.gov-comparativo textarea,
+.gov-secao textarea {
+  width: 100%;
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #ccd3db;
+  border-radius: 6px;
+}
+
+.secao-inline {
+  margin-top: 1.25rem;
+}
+
+.cartao--aviso {
+  background: #f8fafc;
+  border: 1px dashed #c5d4e8;
+  border-radius: 8px;
+  padding: 1rem;
+}
+

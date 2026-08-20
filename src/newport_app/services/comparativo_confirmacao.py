@@ -9,9 +9,9 @@ from newport_app.draft_compiler import compile
 from newport_app.models.compilation import COMPILER_VERSAO
 from newport_app.models.draft import ConfirmacaoComparativoRascunho, RascunhoEstudo
 from newport_app.models.responses import ComparativoResponse, ConfirmarComparativoResponse
-from newport_app.models.snapshot import MOTOR_VERSAO
+from newport_app.models.snapshot import MOTOR_VERSAO, SNAPSHOT_VERSAO
 from newport_app.policy.registry import PolicySetRegistry, default_registry
-from newport_app.services.comparativo_ui import salvar_selecao_apresentacao
+from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho, salvar_selecao_apresentacao
 from newport_app.snapshot.hashing import hash_sha256_objeto, hash_snapshot_canonico
 from newport_motor.engine import calcular
 
@@ -28,10 +28,18 @@ def rascunho_fingerprint_calc(rascunho: RascunhoEstudo) -> str:
     return hash_sha256_objeto(copia.model_dump(mode="json"))
 
 
-def _payload_nucleo_comparativo(
+def _rascunho_dump_congelamento(rascunho: RascunhoEstudo) -> dict:
+    """Rascunho no payload canônico — confirmação é governança, não conteúdo congelado."""
+    copia = rascunho.model_copy(deep=True)
+    copia.confirmacao_comparativo = None
+    return copia.model_dump(mode="json")
+
+
+def montar_payload_nucleo_congelamento(
     rascunho: RascunhoEstudo,
     policy_registry: PolicySetRegistry,
-) -> tuple[ComparativoResponse, dict]:
+) -> tuple[ComparativoResponse, dict, bool]:
+    """Núcleo 2.8.0 compartilhado pela confirmação e pelo snapshot (inclui a seleção)."""
     resultado = compile(rascunho, policy_registry=policy_registry)
     if not resultado.compilavel:
         from newport_app.services.calculo import RascunhoNaoCompilavelError
@@ -43,29 +51,49 @@ def _payload_nucleo_comparativo(
         resultado.compilado.effective_policy,
     )
     comparativo = motor_result_para_comparativo(rascunho, motor_result)
+    tem_bloqueio = motor_result.tem_bloqueio or any(
+        p.tipo == "bloqueio" for p in comparativo.pendencias
+    )
     payload_nucleo = {
-        "rascunho": rascunho.model_dump(mode="json"),
+        "rascunho": _rascunho_dump_congelamento(rascunho),
         "estudo_input": resultado.compilado.estudo_input.model_dump(mode="json"),
         "effective_policy": resultado.compilado.effective_policy.model_dump(mode="json"),
         "motor_result": motor_result.model_dump(mode="json"),
         "comparativo": comparativo.model_dump(mode="json"),
+        "propostas_apresentacao": ordem_apresentacao_rascunho(rascunho),
         "compiler_versao": COMPILER_VERSAO,
         "motor_versao": MOTOR_VERSAO,
+        "snapshot_versao": SNAPSHOT_VERSAO,
         "policy_set_versao": rascunho.policy_set_versao,
         "documentos": {
             "siscor": [d.model_dump(mode="json") for d in rascunho.documentos_siscor],
             "cotacao": [d.model_dump(mode="json") for d in rascunho.documentos_cotacao],
         },
     }
-    return comparativo, payload_nucleo
+    return comparativo, payload_nucleo, tem_bloqueio
+
+
+def hash_identidade_calculo(
+    rascunho: RascunhoEstudo,
+    policy_registry: PolicySetRegistry | None = None,
+) -> tuple[str, ComparativoResponse]:
+    """Token de frescor 2.7.0 — a seleção não entra, para o PUT-então-confirmar da UI."""
+    registry = policy_registry or default_registry
+    copia = rascunho.model_copy(deep=True)
+    copia.selecao_apresentacao = None
+    copia.confirmacao_comparativo = None
+    comparativo, payload_nucleo, _ = montar_payload_nucleo_congelamento(copia, registry)
+    digest = hash_snapshot_canonico(payload_nucleo, versao="2.7.0")
+    return digest, comparativo
 
 
 def hash_comparativo_atual(
     rascunho: RascunhoEstudo,
     policy_registry: PolicySetRegistry | None = None,
 ) -> tuple[str, ComparativoResponse]:
-    registry = policy_registry or default_registry()
-    comparativo, payload_nucleo = _payload_nucleo_comparativo(rascunho, registry)
+    """Hash 2.8.0 do congelamento (seleção incluída) — o mesmo do snapshot candidato."""
+    registry = policy_registry or default_registry
+    comparativo, payload_nucleo, _ = montar_payload_nucleo_congelamento(rascunho, registry)
     digest = hash_snapshot_canonico(payload_nucleo)
     return digest, comparativo
 
@@ -102,8 +130,9 @@ def confirmar_comparativo_revisao(
     opcao_ids: list[str],
     policy_registry: PolicySetRegistry | None = None,
 ) -> ConfirmarComparativoResponse:
-    hash_atual, comparativo = hash_comparativo_atual(rascunho, policy_registry)
-    if hash_informado and hash_informado != hash_atual:
+    registry = policy_registry or default_registry
+    hash_fresco, comparativo = hash_identidade_calculo(rascunho, registry)
+    if hash_informado and hash_informado != hash_fresco:
         raise ConfirmacaoComparativoInvalidaError(
             "O comparativo foi alterado — recalcule antes de confirmar."
         )
@@ -124,15 +153,16 @@ def confirmar_comparativo_revisao(
     salvar_selecao_apresentacao(rascunho, opcao_ids, invalidar_confirmacao=False)
     agora = datetime.now(timezone.utc)
     ordem = list(rascunho.selecao_apresentacao.ordem if rascunho.selecao_apresentacao else [])
+    digest_congelado, _ = hash_comparativo_atual(rascunho, registry)
     rascunho.confirmacao_comparativo = ConfirmacaoComparativoRascunho(
         opcao_ids=list(ordem),
         ordem=list(ordem),
-        hash_comparativo=hash_atual,
+        hash_comparativo=digest_congelado,
         rascunho_fingerprint=rascunho_fingerprint_calc(rascunho),
         confirmado_em=agora,
     )
     return ConfirmarComparativoResponse(
-        hash_comparativo=hash_atual,
+        hash_comparativo=digest_congelado,
         ordem=list(ordem),
         confirmado_em=agora.isoformat(),
     )

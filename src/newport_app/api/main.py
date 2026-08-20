@@ -213,7 +213,11 @@ def create_app(
     def _invalidar(estudo_id: str, motivo: str) -> None:
         snapshot_service.invalidar_por_alteracao(estudo_id, motivo)
 
-    service = CalculoService(repository, on_rascunho_alterado=_invalidar)
+    service = CalculoService(
+        repository,
+        on_rascunho_alterado=_invalidar,
+        snapshot_service=snapshot_service,
+    )
     siscor = ImportacaoSiscorService(
         repository,
         importacoes,
@@ -851,10 +855,19 @@ def create_app(
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         except ConfirmacaoComparativoInvalidaError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
+        except SnapshotBloqueadoError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
         except RascunhoNaoCompilavelError as exc:
+            titulos = [e.mensagem or e.codigo for e in exc.resultado.erros]
+            mensagem = (
+                "Não é possível confirmar — " + "; ".join(titulos)
+                if titulos
+                else "Não é possível confirmar — rascunho não compilável."
+            )
             raise HTTPException(
                 status_code=422,
                 detail={
+                    "mensagem": mensagem,
                     "erros": [e.model_dump() for e in exc.resultado.erros],
                     "compiler_versao": exc.resultado.compiler_versao,
                 },
@@ -873,9 +886,16 @@ def create_app(
         except SnapshotBloqueadoError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except RascunhoNaoCompilavelError as exc:
+            titulos = [e.mensagem or e.codigo for e in exc.resultado.erros]
+            mensagem = (
+                "Não é possível congelar o comparativo — " + "; ".join(titulos)
+                if titulos
+                else "Não é possível congelar o comparativo — rascunho não compilável."
+            )
             raise HTTPException(
                 status_code=422,
                 detail={
+                    "mensagem": mensagem,
                     "erros": [e.model_dump() for e in exc.resultado.erros],
                     "compiler_versao": exc.resultado.compiler_versao,
                 },
@@ -937,16 +957,9 @@ def create_app(
 
     @app.get("/api/estudos/{estudo_id}/snapshot-aprovado")
     def snapshot_aprovado_atual(estudo_id: str):
-        snap = snap_repo.snapshot_aprovado_atual(estudo_id)
-        if snap is None:
-            return {"aprovado": False}
-        aprov = snap_repo.obter_aprovacao(snap.id)
-        return {
-            "aprovado": True,
-            "snapshot_id": snap.id,
-            "hash_sha256": snap.hash_sha256,
-            "aprovacao": aprov.model_dump(mode="json") if aprov else None,
-        }
+        if repository.obter_rascunho(estudo_id) is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return snapshot_service.status_governanca(estudo_id)
 
     @app.post(
         "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/apresentacao/preview",

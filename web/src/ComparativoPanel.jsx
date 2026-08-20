@@ -8,6 +8,7 @@ import {
 } from "./api";
 import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
 import BloqueiosComparativo from "./comparativo/BloqueiosComparativo";
+import GovernancaComparativo from "./apresentacao/GovernancaComparativo";
 import { comparativoConfirmado } from "./fluxo/stepStatus";
 import { tituloPasso } from "./fluxo/passos";
 
@@ -174,7 +175,7 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
 
       {jaConfirmado && !resultado?.calculo_realizado && (
         <p className="ok cmp-confirmacao-banner">
-          Comparativo confirmado — use «Próxima etapa» para ir à Apresentação.
+          Comparativo confirmado — aprove abaixo para liberar a exportação.
         </p>
       )}
 
@@ -191,6 +192,13 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
           recalculando={carregando}
         />
       )}
+
+      <GovernancaComparativo
+        estudoId={estudoId}
+        rascunho={rascunho}
+        confirmado={jaConfirmado}
+        onAtualizado={onAtualizado}
+      />
     </section>
   );
 }

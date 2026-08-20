@@ -81,6 +81,12 @@ class SnapshotRepository:
         return self._row_snapshot(row) if row else None
 
     def snapshot_aprovado_atual(self, estudo_id: str) -> SnapshotCalculo | None:
+        """Aprovação em vigor: `estado='aprovado'` e `invalidada_em IS NULL`.
+
+        Se o legado tiver mais de uma viva, devolve a de `aprovado_em` mais recente.
+        Quem muta (aprovar / gerar / GET governança) supera as demais — não use
+        esta ordenação como regra de negócio silenciosa.
+        """
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -100,6 +106,98 @@ class SnapshotRepository:
                 (estudo_id,),
             ).fetchall()
         return [self._row_snapshot(r) for r in rows]
+
+    def contar_aprovacoes_vivas(self, estudo_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) FROM aprovacoes a
+                JOIN snapshots s ON s.id = a.snapshot_id
+                WHERE s.estudo_id=? AND s.estado='aprovado' AND a.invalidada_em IS NULL
+                """,
+                (estudo_id,),
+            ).fetchone()
+        return int(row[0]) if row else 0
+
+    def listar_aprovacoes_estudo(self, estudo_id: str) -> list[AprovacaoSnapshot]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT a.* FROM aprovacoes a
+                JOIN snapshots s ON s.id = a.snapshot_id
+                WHERE s.estudo_id=?
+                ORDER BY a.aprovado_em DESC
+                """,
+                (estudo_id,),
+            ).fetchall()
+        return [self._row_aprovacao(r) for r in rows]
+
+    def aprovacao_superada_recente(
+        self, estudo_id: str
+    ) -> tuple[SnapshotCalculo, AprovacaoSnapshot] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT a.snapshot_id FROM aprovacoes a
+                JOIN snapshots s ON s.id = a.snapshot_id
+                WHERE s.estudo_id=?
+                  AND (s.estado='superado' OR a.invalidada_em IS NOT NULL)
+                ORDER BY COALESCE(a.invalidada_em, s.superado_em, a.aprovado_em) DESC
+                LIMIT 1
+                """,
+                (estudo_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        snap = self.obter_snapshot(row["snapshot_id"])
+        aprov = self.obter_aprovacao(row["snapshot_id"])
+        if snap is None or aprov is None:
+            return None
+        return snap, aprov
+
+    def superar_aprovacao_em_vigor(
+        self,
+        estudo_id: str,
+        motivo: str,
+        *,
+        exceto_snapshot_id: str | None = None,
+    ) -> None:
+        """Tira de vigor aprovações vivas do estudo, sem apagar o registro histórico."""
+        agora = datetime.now(timezone.utc).isoformat()
+        with self._connect() as conn:
+            params: list[str] = [agora, motivo, estudo_id]
+            sql = """
+                UPDATE aprovacoes SET invalidada_em=?, invalidada_motivo=?
+                WHERE snapshot_id IN (
+                    SELECT id FROM snapshots WHERE estudo_id=? AND estado='aprovado'
+                ) AND invalidada_em IS NULL
+            """
+            if exceto_snapshot_id:
+                sql += " AND snapshot_id != ?"
+                params.append(exceto_snapshot_id)
+            conn.execute(sql, params)
+            sql_snap = """
+                UPDATE snapshots SET estado='superado', superado_em=?
+                WHERE estudo_id=? AND estado='aprovado'
+            """
+            params_snap: list[str] = [agora, estudo_id]
+            if exceto_snapshot_id:
+                sql_snap += " AND id != ?"
+                params_snap.append(exceto_snapshot_id)
+            conn.execute(sql_snap, params_snap)
+            if exceto_snapshot_id:
+                conn.execute(
+                    """
+                    UPDATE entregaveis SET invalidado=1
+                    WHERE estudo_id=? AND snapshot_id != ?
+                    """,
+                    (estudo_id, exceto_snapshot_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE entregaveis SET invalidado=1 WHERE estudo_id=?",
+                    (estudo_id,),
+                )
 
     def marcar_superado(self, snapshot_id: str) -> None:
         with self._connect() as conn:
@@ -146,6 +244,9 @@ class SnapshotRepository:
             ).fetchone()
         if row is None:
             return None
+        return self._row_aprovacao(row)
+
+    def _row_aprovacao(self, row: sqlite3.Row) -> AprovacaoSnapshot:
         return AprovacaoSnapshot(
             id=row["id"],
             snapshot_id=row["snapshot_id"],

@@ -243,6 +243,7 @@ class ConfirmarComparativoResponse(BaseModel):
     hash_comparativo: str
     ordem: list[str] = Field(default_factory=list)
     confirmado_em: str
+    snapshot_id: str | None = None
 
 
 class ComparativoResponse(BaseModel):
