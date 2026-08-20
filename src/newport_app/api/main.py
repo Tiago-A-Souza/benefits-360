@@ -831,7 +831,7 @@ def create_app(
             resp = salvar_selecao_apresentacao(rascunho, body.opcao_ids)
         except SelecaoApresentacaoInvalidaError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
-        repository.salvar_rascunho(rascunho)
+        service.salvar_rascunho(rascunho)
         return resp
 
     @app.post(
