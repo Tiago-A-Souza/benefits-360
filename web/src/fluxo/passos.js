@@ -10,7 +10,6 @@ export const PASSOS_FLUXO = [
     somenteMultiplosPlanosAtuais: true,
   },
   { chave: "comparativo", titulo: "Comparativo" },
-  { chave: "apresentacao", titulo: "Apresentação" },
 ];
 
 export function exigeCorrespondenciaManual(rascunho) {

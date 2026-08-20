@@ -4210,6 +4210,11 @@ a.btn-link {
   border-color: #9ccc9c;
 }
 
+.gov-banner--formato {
+  background: #fdecea;
+  border-color: #f5c2c0;
+}
+
 .gov-banner-titulo {
   margin: 0 0 0.35rem;
   font-size: 1rem;

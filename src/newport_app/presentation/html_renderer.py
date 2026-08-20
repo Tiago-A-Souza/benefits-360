@@ -12,10 +12,10 @@ from newport_app.models.presentation import (
     PropostaApresentacao,
     SecaoRegimeApresentacao,
 )
+from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
 RENDERER_VERSAO = "html@2.8.1"
-PROPOSTAS_POR_PAGINA = 3
 _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     re.IGNORECASE,
@@ -252,10 +252,10 @@ def _subtotal_proposta_plano(plano: PlanoAtualApresentacao, op_id: str) -> int |
 def _render_resumo(
     model: PresentationViewModel,
     rotulos: dict[str, str],
+    op_ids: list[str],
     *,
     seguro_novo: bool,
 ) -> str:
-    op_ids = model.propostas_selecionadas
     planos = [p for p in _planos_unicos(model) if p.subgrupo_id != "vidas-incluidas"]
     partes = [
         "<section class='secao-regime'>",
@@ -294,13 +294,19 @@ def _render_resumo(
     )
     if not seguro_novo:
         partes.append("<td>—</td>")
+    totais_todas = [
+        model.totais_gerais.propostas.get(i) for i in model.propostas_selecionadas
+    ]
+    validos_todas = [t for t in totais_todas if t is not None]
+    menor_global = min(validos_todas) if validos_todas else None
     for op_id in op_ids:
         if seguro_novo:
-            totais = [model.totais_gerais.propostas.get(i) for i in op_ids]
-            validos = [t for t in totais if t is not None]
-            menor = min(validos) if validos else None
             total = model.totais_gerais.propostas.get(op_id)
-            diff = (total - menor) if total is not None and menor is not None else None
+            diff = (
+                (total - menor_global)
+                if total is not None and menor_global is not None
+                else None
+            )
             partes.append(f"<td>{_cel(diff)}</td>")
         else:
             partes.append(f"<td>{_cel(model.totais_gerais.diff_mensal.get(op_id))}</td>")
@@ -410,7 +416,12 @@ def render_html(model: PresentationViewModel) -> str:
     nova_pagina(cabecalho)
 
     if model.modo == "resumo":
-        nova_pagina([_render_resumo(model, rotulos, seguro_novo=seguro_novo)])
+        op_ids = model.propostas_selecionadas
+        for i in range(0, max(len(op_ids), 1), MAX_PROPOSTAS_POR_PAGINA):
+            chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
+            nova_pagina(
+                [_render_resumo(model, rotulos, chunk, seguro_novo=seguro_novo)]
+            )
 
     for secao in model.secoes_regime:
         for pagina in secao.paginas_faixas:
@@ -447,8 +458,8 @@ def render_html(model: PresentationViewModel) -> str:
     if model.modo == "beneficiario" and model.beneficiarios:
         op_ids = model.propostas_selecionadas
         rotulos = _mapa_rotulos_propostas(model)
-        for i in range(0, len(op_ids), PROPOSTAS_POR_PAGINA):
-            chunk = op_ids[i : i + PROPOSTAS_POR_PAGINA]
+        for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA):
+            chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
             bloco = ["<section class='secao-regime'><h2>Detalhamento por beneficiário</h2>"]
             bloco.append("<table><thead><tr>")
             bloco.append(

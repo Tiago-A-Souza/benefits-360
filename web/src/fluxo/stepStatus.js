@@ -181,8 +181,6 @@ export function statusEtapaPorChave(chave, ctx) {
       }
       return { concluida: true, pendencia: null };
     }
-    case "apresentacao":
-      return { concluida: false, pendencia: "Gere e revise a apresentação" };
     default:
       return { concluida: false, pendencia: null };
   }

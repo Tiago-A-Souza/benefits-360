@@ -144,7 +144,7 @@ class SelecaoApresentacaoRascunho(BaseModel):
 
 
 class ConfirmacaoComparativoRascunho(BaseModel):
-    """Revisão do comparativo confirmada pelo analista — desbloqueia Apresentação."""
+    """Revisão do comparativo confirmada pelo analista — libera aprovação e exportação."""
 
     opcao_ids: list[str] = Field(default_factory=list)
     ordem: list[str] = Field(default_factory=list)

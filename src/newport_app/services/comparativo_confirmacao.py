@@ -1,4 +1,4 @@
-"""Confirmação persistida da revisão do comparativo (desbloqueio de Apresentação)."""
+"""Confirmação persistida da revisão do comparativo (libera aprovação e exportação)."""
 
 from __future__ import annotations
 

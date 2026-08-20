@@ -108,26 +108,26 @@ def test_alterar_proposta_invalida_confirmacao(client: TestClient, repo):
 
 
 def test_passos_visiveis_um_plano():
-    """Com 1 plano atual: Comparativo=4, Apresentação=5."""
+    """Com 1 plano atual: Comparativo é a 4ª e última etapa."""
     rascunho = _rascunho_pronto()
     assert len(rascunho.subgrupos_atuais) == 1
-    chaves = ["base", "plano", "cotacoes", "comparativo", "apresentacao"]
-    assert len(chaves) == 5
+    chaves = ["base", "plano", "cotacoes", "comparativo"]
+    assert len(chaves) == 4
     assert chaves.index("comparativo") == 3
-    assert chaves.index("apresentacao") == 4
+    assert "apresentacao" not in chaves
 
 
 def test_passos_visiveis_dois_planos():
-    """Com 2+ planos atuais: Correspondência=4, Comparativo=5, Apresentação=6."""
+    """Com 2+ planos atuais: Correspondência=4, Comparativo=5 — sem etapa 6."""
     rascunho = _rascunho_pronto()
     sg2 = deepcopy(rascunho.subgrupos_atuais[0])
     sg2.id = "sg-2"
     rascunho.subgrupos_atuais.append(sg2)
-    chaves = ["base", "plano", "cotacoes", "selecionados", "comparativo", "apresentacao"]
-    assert len(chaves) == 6
+    chaves = ["base", "plano", "cotacoes", "selecionados", "comparativo"]
+    assert len(chaves) == 5
     assert chaves.index("selecionados") == 3
     assert chaves.index("comparativo") == 4
-    assert chaves.index("apresentacao") == 5
+    assert "apresentacao" not in chaves
 
 
 def test_confirmar_exige_selecao(client: TestClient, repo):

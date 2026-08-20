@@ -4,6 +4,7 @@ import {
   confirmarComparativo,
   obterPendencias,
   obterRascunho,
+  obterSnapshotAprovado,
   salvarSelecaoApresentacao,
 } from "./api";
 import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
@@ -19,15 +20,18 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [formatoIncompativel, setFormatoIncompativel] = useState(false);
 
   async function recarregarContextoLocal() {
     if (!estudoId) return;
-    const [p, r] = await Promise.all([
+    const [p, r, st] = await Promise.all([
       obterPendencias(estudoId).catch(() => []),
       obterRascunho(estudoId).catch(() => null),
+      obterSnapshotAprovado(estudoId).catch(() => null),
     ]);
     setPendencias(p);
     setRascunho(r);
+    setFormatoIncompativel(Boolean(st?.formato_incompativel));
   }
 
   useEffect(() => {
@@ -39,7 +43,8 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
     [rascunho]
   );
 
-  const jaConfirmado = comparativoConfirmado(rascunho);
+  const jaConfirmado =
+    comparativoConfirmado(rascunho) && !formatoIncompativel;
 
   async function handleCalcular() {
     setCarregando(true);
@@ -118,7 +123,7 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
             <div className="cmp-pre-status">
               {jaConfirmado && (
                 <span className="cmp-pre-badge cmp-pre-badge--ok">
-                  Comparativo confirmado — pode avançar para Apresentação
+                  Comparativo confirmado — aprove abaixo para exportar
                 </span>
               )}
               {!jaConfirmado && pronto && alertas.length === 0 && (
@@ -156,7 +161,7 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
           </div>
 
           <p className="cmp-pre-hint muted">
-            Processa todas as propostas dos cenários · selecione e confirme para liberar Apresentação
+            Processa todas as propostas dos cenários · selecione, confirme e aprove para exportar
           </p>
         </header>
       )}

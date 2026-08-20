@@ -13,7 +13,6 @@ import HistoricoPanel from "./HistoricoPanel";
 import MeusEstudos from "./MeusEstudos";
 import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import PropostaPanel from "./PropostaPanel";
-import RevisaoApresentacaoPanel from "./RevisaoApresentacaoPanel";
 import DiagnosticoPanel from "./DiagnosticoPanel";
 import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
@@ -178,9 +177,6 @@ export default function App() {
           )}
           {chavePassoAtual === "comparativo" && (
             <ComparativoPanel estudoId={estudoId} onAtualizado={recarregarContexto} />
-          )}
-          {chavePassoAtual === "apresentacao" && (
-            <RevisaoApresentacaoPanel estudoId={estudoId} />
           )}
         </main>
 

@@ -379,7 +379,8 @@ def test_duas_vivas_etapa5_exibe_e_exporta_uma(tmp_path: Path):
     assert body["snapshot_id"] == id_nova
     assert body["aprovacao"]["revisor_nome"] == "Bruno"
     assert body["aprovacao"]["aprovado_em"]
-    assert snap_repo.contar_aprovacoes_vivas(r.id) == 1
+    # GET só lê: as duas vivas permanecem até a migração 2.8.3.
+    assert snap_repo.contar_aprovacoes_vivas(r.id) == 2
 
     res = apres.gerar_html(
         r.id,
@@ -387,12 +388,6 @@ def test_duas_vivas_etapa5_exibe_e_exporta_uma(tmp_path: Path):
         GerarApresentacaoRequest(modo="resumo", propostas_selecionadas=["op-1"]),
     )
     assert res.entregavel_id
-    with pytest.raises(AprovacaoInvalidaError):
-        apres.gerar_html(
-            r.id,
-            id_antiga,
-            GerarApresentacaoRequest(modo="resumo", propostas_selecionadas=["op-1"]),
-        )
 
 
 def test_aprovar_segundo_nao_deixa_dois_em_vigor(tmp_path: Path):

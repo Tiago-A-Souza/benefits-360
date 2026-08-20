@@ -650,7 +650,7 @@ export default function ComparativoExperiencia({
             </div>
             <div className="cmp-kpi cmp-kpi--ativo">
               <span className="cmp-kpi-valor">{selecionadas.length}</span>
-              <span className="cmp-kpi-rotulo">Apresentação</span>
+              <span className="cmp-kpi-rotulo">No documento</span>
             </div>
             <div className="cmp-kpi">
               <span className="cmp-kpi-valor">{resultado.beneficiarios_calculados}</span>
@@ -725,7 +725,7 @@ export default function ComparativoExperiencia({
               </div>
               <p className="cmp-modo-hint muted">
                 {modo === "analise"
-                  ? "Catálogo completo · selecione propostas para apresentação"
+                  ? "Catálogo completo · selecione propostas para o documento"
                   : "Espelho do material ao cliente · somente selecionados"}
               </p>
             </>
@@ -844,7 +844,7 @@ export default function ComparativoExperiencia({
         <header className="cmp-secao-cabecalho cmp-secao-cabecalho--cards">
           <div>
             <h3 className="cmp-secao-titulo">
-              {modo === "analise" ? "Propostas calculadas" : "Planos na apresentação"}
+              {modo === "analise" ? "Propostas calculadas" : "Planos no documento"}
               <span className="cmp-contagem">{exibirCards.length}</span>
             </h3>
             <p className="cmp-secao-sub muted">
@@ -855,7 +855,7 @@ export default function ComparativoExperiencia({
           </div>
           {modo === "analise" && selecionadas.length > 0 && (
             <span className="cmp-cards-resumo">
-              {selecionadas.length} na apresentação
+              {selecionadas.length} no documento
             </span>
           )}
         </header>
@@ -970,7 +970,7 @@ export default function ComparativoExperiencia({
           >
             {confirmando
               ? "Confirmando e congelando…"
-              : "Confirmar comparativo e continuar para apresentação"}
+              : "Confirmar comparativo"}
           </button>
         </section>
       )}

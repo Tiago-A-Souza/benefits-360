@@ -26,6 +26,7 @@ from newport_app.services.comparativo_confirmacao import montar_payload_nucleo_c
 from newport_app.snapshot.comparativo import (
     MENSAGEM_FORMATO_ANTERIOR,
     SnapshotFormatoIncompativelError,
+    comparativo_em_formato_anterior,
     ler_comparativo_congelado,
 )
 from newport_app.snapshot.hashing import hash_snapshot_canonico
@@ -57,6 +58,19 @@ def _dump_aprovacao(aprov: AprovacaoSnapshot | None) -> dict | None:
     if aprov is None:
         return None
     return aprov.model_dump(mode="json")
+
+
+def _formato_do_snapshot(snap: SnapshotCalculo | None) -> dict:
+    """Leitura: não altera estado. Sinaliza comparativo em formato anterior."""
+    if snap is None:
+        return {"formato_incompativel": False, "mensagem_formato": None}
+    bruto = (snap.payload or {}).get("comparativo")
+    if comparativo_em_formato_anterior(bruto):
+        return {
+            "formato_incompativel": True,
+            "mensagem_formato": MENSAGEM_FORMATO_ANTERIOR,
+        }
+    return {"formato_incompativel": False, "mensagem_formato": None}
 
 
 class SnapshotService:
@@ -156,24 +170,13 @@ class SnapshotService:
     def listar_snapshots(self, estudo_id: str) -> list[SnapshotCalculo]:
         return self._snapshots.listar_snapshots(estudo_id)
 
-    def garantir_aprovacao_unica(self, estudo_id: str) -> None:
-        """Repara legado com duas aprovações vivas: permanece a de `aprovado_em` mais recente."""
-        vivo = self._snapshots.snapshot_aprovado_atual(estudo_id)
-        if vivo is None:
-            return
-        self._snapshots.superar_aprovacao_em_vigor(
-            estudo_id,
-            "Aprovação anterior superada — permanece somente a mais recente em vigor",
-            exceto_snapshot_id=vivo.id,
-        )
-
     def status_governanca(self, estudo_id: str) -> dict:
         """Estado que a etapa 5 usa para decidir o que exibir e exportar.
 
-        Em vigor = único snapshot `aprovado` com aprovação `invalidada_em IS NULL`.
-        Se o legado tiver mais de um, permanece o de `aprovado_em` mais recente.
+        Somente leitura. Duplicatas de aprovação viva são reparadas na
+        migração 2.8.3, não neste GET. Se ainda houver mais de uma, a exibida
+        é a de `aprovado_em` mais recente (`snapshot_aprovado_atual`).
         """
-        self.garantir_aprovacao_unica(estudo_id)
         vivo = self._snapshots.snapshot_aprovado_atual(estudo_id)
         candidato = self._snapshots.snapshot_candidato_atual(estudo_id)
         superado = self._snapshots.aprovacao_superada_recente(estudo_id)
@@ -188,6 +191,7 @@ class SnapshotService:
                 "aprovacao": _dump_aprovacao(aprov),
                 "candidato_id": candidato.id if candidato else None,
                 "superado": None,
+                **_formato_do_snapshot(vivo),
             }
         if candidato is not None:
             return {
@@ -198,6 +202,7 @@ class SnapshotService:
                 "aprovacao": None,
                 "candidato_id": candidato.id,
                 "superado": _dump_superado(superado),
+                **_formato_do_snapshot(candidato),
             }
         if superado is not None:
             snap, aprov = superado
@@ -209,6 +214,7 @@ class SnapshotService:
                 "aprovacao": _dump_aprovacao(aprov),
                 "candidato_id": None,
                 "superado": _dump_superado(superado),
+                **_formato_do_snapshot(snap),
             }
         return {
             "aprovado": False,
@@ -218,6 +224,8 @@ class SnapshotService:
             "aprovacao": None,
             "candidato_id": None,
             "superado": None,
+            "formato_incompativel": False,
+            "mensagem_formato": None,
         }
 
     def aprovar_snapshot(

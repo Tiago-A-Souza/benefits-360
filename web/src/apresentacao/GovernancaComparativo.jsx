@@ -14,6 +14,31 @@ export function formatarDataAprovacao(iso) {
   return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
+export function AvisoFormatoAnterior({ mensagem, aprovacao }) {
+  if (!mensagem) return null;
+  const quando = formatarDataAprovacao(aprovacao?.aprovado_em);
+  const revisor = aprovacao?.revisor_nome;
+  return (
+    <section className="gov-banner gov-banner--formato" role="alert">
+      <h3 className="gov-banner-titulo">Snapshot em formato anterior</h3>
+      <p>{mensagem}</p>
+      {revisor && (
+        <p>
+          Havia uma aprovação de <strong>{revisor}</strong>
+          {quando ? ` em ${quando}` : ""}. Confirme o comparativo de novo nesta
+          etapa para congelar no formato atual e atestar a revisão.
+        </p>
+      )}
+      {!revisor && (
+        <p>
+          Confirme o comparativo de novo nesta etapa para gerar um snapshot
+          atual.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function AvisoAprovacaoSuperada({ superado }) {
   if (!superado) return null;
   const quando = formatarDataAprovacao(superado.aprovado_em);
@@ -335,10 +360,12 @@ export default function GovernancaComparativo({ estudoId, rascunho, confirmado, 
     rascunho?.selecao_apresentacao?.ordem ||
     [];
 
+  const formatoAntigo = Boolean(status?.formato_incompativel);
   const mostrarSuperado = status?.estado === "superado" || (!status?.aprovado && status?.superado && !confirmado);
   const mostrarForma =
-    confirmado && status?.estado === "candidato" && status?.snapshot_id;
-  const mostrarAprovado = Boolean(status?.aprovado) && Boolean(confirmado);
+    confirmado && status?.estado === "candidato" && status?.snapshot_id && !formatoAntigo;
+  const mostrarAprovado =
+    Boolean(status?.aprovado) && Boolean(confirmado) && !formatoAntigo;
 
   async function handleAprovado() {
     await recarregar();
@@ -348,6 +375,12 @@ export default function GovernancaComparativo({ estudoId, rascunho, confirmado, 
   return (
     <div className="gov-comparativo">
       {erro && <p className="erro">{erro}</p>}
+      {formatoAntigo && (
+        <AvisoFormatoAnterior
+          mensagem={status.mensagem_formato}
+          aprovacao={status.aprovacao}
+        />
+      )}
       {mostrarSuperado && <AvisoAprovacaoSuperada superado={status.superado || status} />}
       {mostrarAprovado && <StatusAprovacaoVigente status={status} />}
       {mostrarForma && (

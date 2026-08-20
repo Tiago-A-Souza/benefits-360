@@ -83,9 +83,9 @@ class SnapshotRepository:
     def snapshot_aprovado_atual(self, estudo_id: str) -> SnapshotCalculo | None:
         """Aprovação em vigor: `estado='aprovado'` e `invalidada_em IS NULL`.
 
-        Se o legado tiver mais de uma viva, devolve a de `aprovado_em` mais recente.
-        Quem muta (aprovar / gerar / GET governança) supera as demais — não use
-        esta ordenação como regra de negócio silenciosa.
+        Se o legado tiver mais de uma viva, devolve a de `aprovado_em` mais
+        recente (`id` como desempate). Esta ordenação é só leitura — o reparo
+        que deixa uma só viva é a migração 2.8.3, não o GET.
         """
         with self._connect() as conn:
             row = conn.execute(
@@ -93,7 +93,7 @@ class SnapshotRepository:
                 SELECT s.* FROM snapshots s
                 JOIN aprovacoes a ON a.snapshot_id = s.id
                 WHERE s.estudo_id=? AND s.estado='aprovado' AND a.invalidada_em IS NULL
-                ORDER BY a.aprovado_em DESC LIMIT 1
+                ORDER BY a.aprovado_em DESC, s.id DESC LIMIT 1
                 """,
                 (estudo_id,),
             ).fetchone()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import sqlite3
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -186,6 +187,7 @@ def migrar_estudos_db(db_path: Path) -> None:
 
         _migrar_281(conn)
         _migrar_282(conn)
+        _migrar_283(conn)
         _migrar_301(conn, db_path=db_path)
 
 
@@ -422,6 +424,108 @@ def _migrar_282(conn: sqlite3.Connection) -> None:
             "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
             ("2.8.2", datetime.now(timezone.utc).isoformat()),
         )
+
+
+MOTIVO_REPARO_APROVACAO_UNICA = (
+    "Migração 2.8.3 — uma aprovação em vigor por estudo; histórico preservado"
+)
+
+
+def reparar_aprovacoes_vivas_duplicadas(conn: sqlite3.Connection) -> int:
+    """Deixa uma aprovação viva por estudo. Idempotente. Não apaga linhas.
+
+    Permanece a de `aprovado_em` mais recente (`snapshots.id` desempata).
+    As demais recebem `invalidada_em` e `estado='superado'`. Grava auditoria.
+    """
+    tabelas = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    if "snapshots" not in tabelas or "aprovacoes" not in tabelas:
+        return 0
+
+    agora = datetime.now(timezone.utc).isoformat()
+    estudos = conn.execute(
+        """
+        SELECT s.estudo_id
+        FROM snapshots s
+        JOIN aprovacoes a ON a.snapshot_id = s.id
+        WHERE s.estado='aprovado' AND a.invalidada_em IS NULL
+        GROUP BY s.estudo_id
+        HAVING COUNT(*) > 1
+        """
+    ).fetchall()
+    reparados = 0
+    for (estudo_id,) in estudos:
+        keep_row = conn.execute(
+            """
+            SELECT s.id FROM snapshots s
+            JOIN aprovacoes a ON a.snapshot_id = s.id
+            WHERE s.estudo_id=? AND s.estado='aprovado' AND a.invalidada_em IS NULL
+            ORDER BY a.aprovado_em DESC, s.id DESC
+            LIMIT 1
+            """,
+            (estudo_id,),
+        ).fetchone()
+        if keep_row is None:
+            continue
+        keep_id = keep_row[0]
+        conn.execute(
+            """
+            UPDATE aprovacoes SET invalidada_em=?, invalidada_motivo=?
+            WHERE snapshot_id IN (
+                SELECT id FROM snapshots WHERE estudo_id=? AND estado='aprovado'
+            ) AND invalidada_em IS NULL AND snapshot_id != ?
+            """,
+            (agora, MOTIVO_REPARO_APROVACAO_UNICA, estudo_id, keep_id),
+        )
+        conn.execute(
+            """
+            UPDATE snapshots SET estado='superado', superado_em=?
+            WHERE estudo_id=? AND estado='aprovado' AND id != ?
+            """,
+            (agora, estudo_id, keep_id),
+        )
+        conn.execute(
+            "UPDATE entregaveis SET invalidado=1 WHERE estudo_id=? AND snapshot_id != ?",
+            (estudo_id, keep_id),
+        )
+        if "auditoria" in tabelas:
+            conn.execute(
+                """
+                INSERT INTO auditoria (
+                    id, estudo_id, entidade, entidade_id, acao, detalhe, criado_em, criado_por
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(uuid.uuid4()),
+                    estudo_id,
+                    "aprovacao",
+                    keep_id,
+                    "reparar_aprovacao_unica",
+                    MOTIVO_REPARO_APROVACAO_UNICA,
+                    agora,
+                    "migracao-2.8.3",
+                ),
+            )
+        reparados += 1
+    return reparados
+
+
+def _migrar_283(conn: sqlite3.Connection) -> None:
+    """Uma aprovação viva por estudo — repara legado; o GET de governança só lê."""
+    ja = conn.execute(
+        "SELECT versao FROM schema_migrations WHERE versao = ?", ("2.8.3",)
+    ).fetchone()
+    if ja is not None:
+        return
+    reparar_aprovacoes_vivas_duplicadas(conn)
+    conn.execute(
+        "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+        ("2.8.3", datetime.now(timezone.utc).isoformat()),
+    )
 
 
 def _ensure_column(conn: sqlite3.Connection, tabela: str, coluna: str, definicao: str) -> None:
