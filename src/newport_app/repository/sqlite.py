@@ -13,6 +13,7 @@ from newport_app.draft_compiler.structural import (
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.services.comparativo_confirmacao import sanitizar_confirmacao_comparativo
+from newport_app.services.comparativo_ui import sanitizar_selecao_apresentacao
 from newport_app.repository.migration import migrar_estudos_db
 
 
@@ -35,11 +36,13 @@ class SQLiteStudyRepository:
             return None
         rascunho = RascunhoEstudo.model_validate_json(row["payload"])
         rascunho = sincronizar_cenarios(rascunho)
+        sanitizar_selecao_apresentacao(rascunho)
         sanitizar_confirmacao_comparativo(rascunho)
         return rascunho
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:
         rascunho = sincronizar_cenarios(rascunho)
+        sanitizar_selecao_apresentacao(rascunho)
         sanitizar_confirmacao_comparativo(rascunho)
         erros = validar_estrutura(rascunho)
         if erros:

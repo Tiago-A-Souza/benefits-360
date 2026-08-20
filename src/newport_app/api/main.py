@@ -91,6 +91,10 @@ from newport_app.services.calculo import (
     EstudoNaoEncontradoError,
     RascunhoNaoCompilavelError,
 )
+from newport_app.services.opcao_proposta import (
+    OpcaoPropostaDeExtracaoError,
+    OpcaoPropostaNaoEncontradaError,
+)
 from newport_app.services.comparativo_confirmacao import ConfirmacaoComparativoInvalidaError
 from newport_app.services.comparativo_ui import (
     SelecaoApresentacaoInvalidaError,
@@ -352,6 +356,31 @@ def create_app(
                 detail={"erros": [e.model_dump() for e in exc.erros]},
             ) from None
         return service.obter_resumo(estudo_id)
+
+    @app.delete(
+        "/api/estudos/{estudo_id}/opcoes-proposta/{opcao_id}",
+        response_model=RascunhoEstudo,
+    )
+    def excluir_opcao_proposta_manual(estudo_id: str, opcao_id: str) -> RascunhoEstudo:
+        try:
+            return service.excluir_opcao_proposta_manual(estudo_id, opcao_id)
+        except EstudoNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        except OpcaoPropostaNaoEncontradaError:
+            raise HTTPException(status_code=404, detail="Cotação não encontrada") from None
+        except OpcaoPropostaDeExtracaoError:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Cotação importada de PDF não pode ser excluída por este caminho. "
+                    "Remova a extração correspondente."
+                ),
+            ) from None
+        except RascunhoEstruturalInvalidoError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"erros": [e.model_dump() for e in exc.erros]},
+            ) from None
 
     @app.post(
         "/api/estudos/{estudo_id}/importar-siscor",

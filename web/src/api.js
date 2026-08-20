@@ -110,6 +110,13 @@ export async function salvarRascunho(estudoId, rascunho) {
   return tratarResposta(res, "Não foi possível salvar o estudo.");
 }
 
+export async function excluirOpcaoPropostaManual(estudoId, opcaoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/opcoes-proposta/${opcaoId}`, {
+    method: "DELETE",
+  });
+  return tratarResposta(res, "Não foi possível excluir a cotação.");
+}
+
 export async function obterPendencias(estudoId) {
   const res = await fetch(`${API}/estudos/${estudoId}/pendencias`);
   return tratarResposta(res, "Não foi possível verificar pendências.");

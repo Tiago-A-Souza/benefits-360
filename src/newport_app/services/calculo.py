@@ -18,6 +18,7 @@ from newport_app.services.comparativo_confirmacao import (
     hash_comparativo_atual,
 )
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
+from newport_app.services.opcao_proposta import excluir_opcao_proposta_manual as _excluir_opcao_manual
 from newport_motor.engine import calcular as calcular_motor
 
 
@@ -150,6 +151,17 @@ class CalculoService:
         self._repo.salvar_rascunho(rascunho)
         if self._on_rascunho_alterado:
             self._on_rascunho_alterado(rascunho.id, "Alteração no rascunho")
+
+    def excluir_opcao_proposta_manual(self, estudo_id: str, opcao_id: str) -> RascunhoEstudo:
+        rascunho = self._repo.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise EstudoNaoEncontradoError(estudo_id)
+        _excluir_opcao_manual(rascunho, opcao_id)
+        self.salvar_rascunho(rascunho)
+        salvo = self._repo.obter_rascunho(estudo_id)
+        if salvo is None:
+            raise EstudoNaoEncontradoError(estudo_id)
+        return salvo
 
     def garantir_rascunho(self, rascunho: RascunhoEstudo) -> None:
         self.salvar_rascunho(rascunho)

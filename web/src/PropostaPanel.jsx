@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obterRascunho, salvarRascunho } from "./api";
+import { obterRascunho, salvarRascunho, excluirOpcaoPropostaManual } from "./api";
 import CotacaoPdfPanel from "./CotacaoPdfPanel";
 import { buildPrefillManualFromExtracao } from "./cotacaoPdf/prefillManual";
 import {
@@ -169,6 +169,35 @@ export default function PropostaPanel({
     try {
       await salvarRascunho(estudoId, rascunho);
       setMsg("Cotação manual salva.");
+      onSalvo?.();
+    } catch (e) {
+      setErro(e.message);
+    }
+  }
+
+  async function handleExcluirManual() {
+    const atual = rascunho.opcoes_proposta[sel];
+    if (!atual || atual.extracao_id) return;
+    const rotulo = atual.plano_nome || atual.operadora || "esta cotação manual";
+    if (!window.confirm(`Excluir «${rotulo}»? Ela sairá do comparativo.`)) {
+      return;
+    }
+    setErro(null);
+    try {
+      const salvo = await excluirOpcaoPropostaManual(estudoId, atual.id);
+      setRascunho(salvo);
+      const manuaisIdx = salvo.opcoes_proposta
+        .map((o, i) => (!o.extracao_id ? i : -1))
+        .filter((i) => i >= 0);
+      if (manuaisIdx.length === 0) {
+        setManualAberto(false);
+        setSel(0);
+      } else {
+        const preferido =
+          manuaisIdx.find((i) => i >= sel) ?? manuaisIdx[manuaisIdx.length - 1];
+        setSel(preferido);
+      }
+      setMsg(`Cotação «${rotulo}» excluída.`);
       onSalvo?.();
     } catch (e) {
       setErro(e.message);
@@ -365,9 +394,14 @@ export default function PropostaPanel({
                 </table>
               </details>
 
-              <button type="button" onClick={handleSalvar}>
-                Salvar cotação manual
-              </button>
+              <div className="acoes-lote">
+                <button type="button" onClick={handleSalvar}>
+                  Salvar cotação manual
+                </button>
+                <button type="button" className="btn-remover" onClick={handleExcluirManual}>
+                  Excluir cotação
+                </button>
+              </div>
             </>
           )}
         </div>

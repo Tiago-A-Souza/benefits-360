@@ -35,6 +35,34 @@ def salvar_selecao_apresentacao(
     return SalvarSelecaoApresentacaoResponse(opcao_ids=list(ordem), ordem=list(ordem))
 
 
+def sanitizar_selecao_apresentacao(rascunho: RascunhoEstudo) -> None:
+    """Remove de `selecao_apresentacao` identificadores que não existem mais."""
+    sel = rascunho.selecao_apresentacao
+    if sel is None:
+        return
+    validos = {op.id for op in rascunho.opcoes_proposta}
+    ids = _ids_validos_unicos(sel.opcao_ids, validos)
+    ordem = _ids_validos_unicos(sel.ordem, validos)
+    if not ids and not ordem:
+        rascunho.selecao_apresentacao = None
+        return
+    rascunho.selecao_apresentacao = SelecaoApresentacaoRascunho(
+        opcao_ids=ids,
+        ordem=ordem,
+    )
+
+
+def _ids_validos_unicos(ids: list[str], validos: set[str]) -> list[str]:
+    out: list[str] = []
+    vistos: set[str] = set()
+    for op_id in ids:
+        if op_id not in validos or op_id in vistos:
+            continue
+        out.append(op_id)
+        vistos.add(op_id)
+    return out
+
+
 def resolver_propostas_apresentacao_snapshot(
     payload: dict,
     solicitadas: list[str] | None = None,
