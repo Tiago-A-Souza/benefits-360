@@ -42,6 +42,24 @@ class AprovacaoInvalidaError(Exception):
     pass
 
 
+class SnapshotFormatoIncompativelError(Exception):
+    """Comparativo gravado num formato que não pode ser reaberto neste código."""
+
+
+_MENSAGEM_FORMATO_ANTERIOR = (
+    "Este snapshot foi gerado num formato anterior e não pode ser reaberto. "
+    "Gere um novo snapshot a partir do comparativo atual."
+)
+
+
+def _comparativo_em_formato_anterior(comparativo: object) -> bool:
+    if not isinstance(comparativo, dict):
+        return False
+    if "plano_atual" in comparativo and not comparativo.get("planos_atuais"):
+        return True
+    return False
+
+
 class SnapshotService:
     def __init__(
         self,
@@ -226,7 +244,10 @@ class SnapshotService:
 
     def comparativo_do_snapshot(self, snapshot_id: str) -> ComparativoResponse:
         snap = self.obter_snapshot(snapshot_id)
-        return ComparativoResponse.model_validate(snap.payload["comparativo"])
+        bruto = snap.payload.get("comparativo") or {}
+        if _comparativo_em_formato_anterior(bruto):
+            raise SnapshotFormatoIncompativelError(_MENSAGEM_FORMATO_ANTERIOR)
+        return ComparativoResponse.model_validate(bruto)
 
     def rascunho_do_snapshot(self, snapshot_id: str) -> RascunhoEstudo:
         snap = self.obter_snapshot(snapshot_id)
