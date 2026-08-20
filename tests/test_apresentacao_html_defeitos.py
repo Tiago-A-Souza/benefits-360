@@ -297,7 +297,7 @@ def test_html_percentual_rotulo_validade_e_faixas(tmp_path):
         propostas_selecionadas=[op.id],
         exibir_todas_faixas=True,
     )
-    assert len(vm_todas.secoes_regime[0].planos_atuais[0].faixas) == 10
+    assert len(vm_todas.secoes_regime[0].planos_atuais[0].faixas) == 3
 
     html = render_html(vm)
     assert "Coparticipação 30%" in html
@@ -322,4 +322,4 @@ def test_estudo_com_vidas_em_todas_faixas_inalterado(tmp_path):
         propostas_selecionadas=[r.opcoes_proposta[0].id],
         exibir_todas_faixas=True,
     )
-    assert len(vm_full.secoes_regime[0].planos_atuais[0].faixas) == 10
+    assert len(vm_full.secoes_regime[0].planos_atuais[0].faixas) == n

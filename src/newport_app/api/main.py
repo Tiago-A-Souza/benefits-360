@@ -125,6 +125,7 @@ from newport_app.services.importacao_siscor import (
 from newport_app.services.snapshot import (
     AprovacaoInvalidaError,
     SnapshotBloqueadoError,
+    SnapshotFormatoIncompativelError,
     SnapshotNaoEncontradoError,
     SnapshotService,
 )
@@ -902,6 +903,22 @@ def create_app(
             raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
         return snap
 
+    @app.get(
+        "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/comparativo",
+        response_model=ComparativoResponse,
+    )
+    def comparativo_do_snapshot(estudo_id: str, snapshot_id: str) -> ComparativoResponse:
+        try:
+            snap = snapshot_service.obter_snapshot(snapshot_id)
+        except SnapshotNaoEncontradoError:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        if snap.estudo_id != estudo_id:
+            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+        try:
+            return snapshot_service.comparativo_do_snapshot(snapshot_id)
+        except SnapshotFormatoIncompativelError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+
     @app.post(
         "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/aprovar",
         response_model=AprovarSnapshotResponse,
@@ -942,27 +959,29 @@ def create_app(
     ) -> PresentationViewModel:
         try:
             snap = snapshot_service.obter_snapshot(snapshot_id)
+            if snap.estudo_id != estudo_id:
+                raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
+            if snap.estado != "aprovado":
+                raise HTTPException(
+                    status_code=422,
+                    detail="Pré-visualização disponível somente para snapshot aprovado.",
+                ) from None
+            propostas = resolver_propostas_apresentacao_snapshot(
+                snap.payload,
+                body.propostas_selecionadas or None,
+            )
+            return construir_view_model(
+                snap,
+                modo=body.modo,
+                propostas_selecionadas=propostas,
+                ressalvas=body.ressalvas,
+                titulo=body.titulo,
+                exibir_todas_faixas=body.exibir_todas_faixas,
+            )
         except SnapshotNaoEncontradoError:
             raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
-        if snap.estudo_id != estudo_id:
-            raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
-        if snap.estado != "aprovado":
-            raise HTTPException(
-                status_code=422,
-                detail="Pré-visualização disponível somente para snapshot aprovado.",
-            ) from None
-        propostas = resolver_propostas_apresentacao_snapshot(
-            snap.payload,
-            body.propostas_selecionadas or None,
-        )
-        return construir_view_model(
-            snap,
-            modo=body.modo,
-            propostas_selecionadas=propostas,
-            ressalvas=body.ressalvas,
-            titulo=body.titulo,
-            exibir_todas_faixas=body.exibir_todas_faixas,
-        )
+        except SnapshotFormatoIncompativelError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
 
     @app.post(
         "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/apresentacao/gerar",
@@ -976,6 +995,8 @@ def create_app(
         try:
             return apresentacao.gerar_html(estudo_id, snapshot_id, body)
         except AprovacaoInvalidaError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except SnapshotFormatoIncompativelError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except PropostaNaoCalculavelError as exc:
             raise HTTPException(

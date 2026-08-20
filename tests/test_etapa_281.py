@@ -180,9 +180,10 @@ def test_dez_faixas_quando_solicitado(stack):
         propostas_selecionadas=["op-1"],
         exibir_todas_faixas=True,
     )
-    for sec in vm_todas.secoes_regime:
-        for plano in sec.planos_atuais:
-            assert len(plano.faixas) == 10
+    antes = [len(plano.faixas) for sec in vm.secoes_regime for plano in sec.planos_atuais]
+    depois = [len(plano.faixas) for sec in vm_todas.secoes_regime for plano in sec.planos_atuais]
+    assert antes == depois
+    assert all(1 <= n <= 10 for n in antes)
 
 
 def test_soma_duas_vidas_mesmo_valor(stack):

@@ -398,6 +398,16 @@ export async function obterSnapshot(estudoId, snapshotId) {
   return tratarResposta(res, "Não foi possível carregar o snapshot.");
 }
 
+export async function obterComparativoSnapshot(estudoId, snapshotId) {
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/snapshots/${snapshotId}/comparativo`
+  );
+  return tratarResposta(
+    res,
+    "Não foi possível carregar o comparativo congelado do snapshot."
+  );
+}
+
 export async function aprovarSnapshot(estudoId, snapshotId, body) {
   const res = await fetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}/aprovar`, {
     method: "POST",

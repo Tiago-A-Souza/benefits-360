@@ -4,11 +4,13 @@ import {
   gerarApresentacaoHtml,
   gerarSnapshot,
   listarSnapshots,
+  obterComparativoSnapshot,
   obterRascunho,
   obterSnapshot,
   obterSnapshotAprovado,
   previewApresentacao,
 } from "./api";
+import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
 
 function formatarJson(obj) {
   try {
@@ -24,8 +26,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
   const [aprovado, setAprovado] = useState(null);
   const [propostas, setPropostas] = useState([]);
   const [propostasSel, setPropostasSel] = useState([]);
-  const [modo, setModo] = useState("faixas");
-  const [exibirTodasFaixas, setExibirTodasFaixas] = useState(false);
+  const [modo, setModo] = useState("resumo");
   const [revisor, setRevisor] = useState("");
   const [justificativa, setJustificativa] = useState("");
   const [autoAprovacao, setAutoAprovacao] = useState(false);
@@ -35,6 +36,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
+  const [matrizCongelada, setMatrizCongelada] = useState(null);
 
   const recarregar = useCallback(async () => {
     if (!estudoId) return;
@@ -46,6 +48,8 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
       ]);
       setSnapshots(lista);
       setAprovado(status);
+      setMatrizCongelada(null);
+      setErro(null);
       const ops = rascunho.opcoes_proposta || [];
       setPropostas(ops);
       const candidato = lista.find((s) => s.estado === "candidato");
@@ -53,15 +57,29 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
       if (snapId) {
         const snap = await obterSnapshot(estudoId, snapId);
         setSnapshotAtual(snap);
-        const ordemSnap =
-          snap.payload?.propostas_apresentacao ||
-          snap.payload?.comparativo?.propostas_apresentacao ||
-          rascunho.selecao_apresentacao?.ordem ||
-          [];
-        if (ordemSnap.length) {
-          setPropostasSel(ordemSnap);
-        } else if (!propostasSel.length && ops.length) {
-          setPropostasSel(ops.map((o) => o.id));
+        try {
+          const congelado = await obterComparativoSnapshot(estudoId, snapId);
+          setMatrizCongelada(congelado);
+          const ordemSnap =
+            congelado.propostas_apresentacao ||
+            snap.payload?.propostas_apresentacao ||
+            rascunho.selecao_apresentacao?.ordem ||
+            [];
+          if (ordemSnap.length) {
+            setPropostasSel(ordemSnap);
+          } else if (!propostasSel.length && ops.length) {
+            setPropostasSel(ops.map((o) => o.id));
+          }
+        } catch (eCmp) {
+          setMatrizCongelada(null);
+          const ordemSnap =
+            snap.payload?.propostas_apresentacao ||
+            rascunho.selecao_apresentacao?.ordem ||
+            [];
+          if (ordemSnap.length) {
+            setPropostasSel(ordemSnap);
+          }
+          setErro(eCmp.message);
         }
       } else {
         setSnapshotAtual(null);
@@ -126,7 +144,6 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
         modo,
         propostas_selecionadas: [],
         ressalvas: [],
-        exibir_todas_faixas: exibirTodasFaixas,
       });
       setPreview(vm);
     } catch (e) {
@@ -155,7 +172,6 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
         modo,
         propostas_selecionadas: [],
         ressalvas: [],
-        exibir_todas_faixas: exibirTodasFaixas,
       });
       setEntregavel(res);
     } catch (e) {
@@ -165,7 +181,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
     }
   }
 
-  const comparativo = snapshotAtual?.payload?.comparativo;
+  const comparativo = matrizCongelada;
 
   return (
     <div className="cartao">
@@ -267,11 +283,36 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
         </section>
       )}
 
+      {aprovado?.aprovado && matrizCongelada && (
+        <section className="secao-inline">
+          <h3>4. Comparativo congelado</h3>
+          <p className="muted">
+            Esta matriz lê o payload do snapshot aprovado. Alterar o rascunho ao vivo não
+            muda estes valores até gerar e aprovar um novo snapshot.
+          </p>
+          <ComparativoExperiencia
+            resultado={matrizCongelada}
+            rotuloEtapa="Apresentação — snapshot aprovado"
+            origemCongelada
+          />
+        </section>
+      )}
+
       {aprovado?.aprovado && (
         <section className="secao-inline">
-          <h3>4. Apresentação HTML</h3>
+          <h3>5. Exportar HTML</h3>
           <fieldset>
-            <legend>Modo</legend>
+            <legend>Visão do documento</legend>
+            <label className="radio">
+              <input
+                type="radio"
+                name="modo"
+                value="resumo"
+                checked={modo === "resumo"}
+                onChange={() => setModo("resumo")}
+              />
+              Resumo executivo
+            </label>
             <label className="radio">
               <input
                 type="radio"
@@ -280,7 +321,7 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
                 checked={modo === "faixas"}
                 onChange={() => setModo("faixas")}
               />
-              Resumo por faixas etárias (recomendado — sem nomes)
+              Faixas etárias (sem nomes)
             </label>
             <label className="radio">
               <input
@@ -290,20 +331,9 @@ export default function RevisaoApresentacaoPanel({ estudoId }) {
                 checked={modo === "beneficiario"}
                 onChange={() => setModo("beneficiario")}
               />
-              Detalhado por beneficiário (contém nomes)
+              Por beneficiário (contém nomes)
             </label>
           </fieldset>
-
-          {modo === "faixas" && (
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={exibirTodasFaixas}
-                onChange={(e) => setExibirTodasFaixas(e.target.checked)}
-              />
-              Exibir todas as faixas etárias (inclui faixas sem vidas)
-            </label>
-          )}
 
           <fieldset>
             <legend>Propostas no material</legend>

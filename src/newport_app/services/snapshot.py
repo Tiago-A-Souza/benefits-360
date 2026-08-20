@@ -26,8 +26,16 @@ from newport_app.repository.base import StudyRepository
 from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.services.calculo import RascunhoNaoCompilavelError
+from newport_app.snapshot.comparativo import (
+    MENSAGEM_FORMATO_ANTERIOR,
+    SnapshotFormatoIncompativelError,
+    ler_comparativo_congelado,
+)
 from newport_app.snapshot.hashing import hash_snapshot_canonico
 from newport_motor.engine import calcular
+
+# Reexportado para os testes e a API que importam deste módulo.
+_MENSAGEM_FORMATO_ANTERIOR = MENSAGEM_FORMATO_ANTERIOR
 
 
 class SnapshotNaoEncontradoError(Exception):
@@ -40,24 +48,6 @@ class SnapshotBloqueadoError(Exception):
 
 class AprovacaoInvalidaError(Exception):
     pass
-
-
-class SnapshotFormatoIncompativelError(Exception):
-    """Comparativo gravado num formato que não pode ser reaberto neste código."""
-
-
-_MENSAGEM_FORMATO_ANTERIOR = (
-    "Este snapshot foi gerado num formato anterior e não pode ser reaberto. "
-    "Gere um novo snapshot a partir do comparativo atual."
-)
-
-
-def _comparativo_em_formato_anterior(comparativo: object) -> bool:
-    if not isinstance(comparativo, dict):
-        return False
-    if "plano_atual" in comparativo and not comparativo.get("planos_atuais"):
-        return True
-    return False
 
 
 class SnapshotService:
@@ -244,10 +234,7 @@ class SnapshotService:
 
     def comparativo_do_snapshot(self, snapshot_id: str) -> ComparativoResponse:
         snap = self.obter_snapshot(snapshot_id)
-        bruto = snap.payload.get("comparativo") or {}
-        if _comparativo_em_formato_anterior(bruto):
-            raise SnapshotFormatoIncompativelError(_MENSAGEM_FORMATO_ANTERIOR)
-        return ComparativoResponse.model_validate(bruto)
+        return ler_comparativo_congelado(snap.payload)
 
     def rascunho_do_snapshot(self, snapshot_id: str) -> RascunhoEstudo:
         snap = self.obter_snapshot(snapshot_id)

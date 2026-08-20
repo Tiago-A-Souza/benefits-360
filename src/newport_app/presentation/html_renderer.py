@@ -231,6 +231,91 @@ def _render_totais_secao(
     return "".join(partes)
 
 
+def _planos_unicos(model: PresentationViewModel) -> list[PlanoAtualApresentacao]:
+    vistos: dict[str, PlanoAtualApresentacao] = {}
+    for secao in model.secoes_regime:
+        for plano in secao.planos_atuais:
+            vistos.setdefault(plano.subgrupo_id, plano)
+    return list(vistos.values())
+
+
+def _subtotal_proposta_plano(plano: PlanoAtualApresentacao, op_id: str) -> int | None:
+    soma = sum(
+        col.subtotal_centavos or 0
+        for fx in plano.faixas
+        for col in fx.propostas
+        if col.opcao_id == op_id
+    )
+    return soma if soma else None
+
+
+def _render_resumo(
+    model: PresentationViewModel,
+    rotulos: dict[str, str],
+    *,
+    seguro_novo: bool,
+) -> str:
+    op_ids = model.propostas_selecionadas
+    planos = [p for p in _planos_unicos(model) if p.subgrupo_id != "vidas-incluidas"]
+    partes = [
+        "<section class='secao-regime'>",
+        "<h2>Resumo executivo</h2>",
+        "<table><thead><tr><th>Indicador</th>",
+    ]
+    if not seguro_novo:
+        partes.append("<th>Contrato atual</th>")
+    for op_id in op_ids:
+        partes.append(f"<th>{html.escape(rotulos.get(op_id, 'Proposta'))}</th>")
+    partes.append("</tr></thead><tbody>")
+
+    if not seguro_novo:
+        for plano in planos:
+            partes.append(f"<tr><td>{html.escape(plano.plano_nome)}</td>")
+            vigente = _cel(plano.subtotal_vigente_centavos)
+            reaj = _cel(plano.subtotal_reajustado_centavos)
+            partes.append(f"<td>{vigente} vigente<br><small>{reaj} reajustado</small></td>")
+            for op_id in op_ids:
+                partes.append(f"<td>{_cel(_subtotal_proposta_plano(plano, op_id))}</td>")
+            partes.append("</tr>")
+        if planos:
+            partes.append("<tr><td>Consolidado</td>")
+            tg = model.totais_gerais
+            vigente_c = sum((p.subtotal_vigente_centavos or 0) for p in planos) or None
+            reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
+            partes.append(f"<td>{_cel(vigente_c)} vigente<br><small>{_cel(reaj_c)} reajustado</small></td>")
+            for op_id in op_ids:
+                partes.append(f"<td>{_cel(tg.propostas.get(op_id))}</td>")
+            partes.append("</tr>")
+
+    partes.append(
+        "<tr><td>"
+        + ("Diferença vs menor (mês)" if seguro_novo else "Diferença mensal")
+        + "</td>"
+    )
+    if not seguro_novo:
+        partes.append("<td>—</td>")
+    for op_id in op_ids:
+        if seguro_novo:
+            totais = [model.totais_gerais.propostas.get(i) for i in op_ids]
+            validos = [t for t in totais if t is not None]
+            menor = min(validos) if validos else None
+            total = model.totais_gerais.propostas.get(op_id)
+            diff = (total - menor) if total is not None and menor is not None else None
+            partes.append(f"<td>{_cel(diff)}</td>")
+        else:
+            partes.append(f"<td>{_cel(model.totais_gerais.diff_mensal.get(op_id))}</td>")
+    partes.append("</tr>")
+
+    if not seguro_novo:
+        partes.append("<tr><td>Diferença anual</td><td>—</td>")
+        for op_id in op_ids:
+            partes.append(f"<td>{_cel(model.totais_gerais.diff_anual.get(op_id))}</td>")
+        partes.append("</tr>")
+
+    partes.append("</tbody></table></section>")
+    return "".join(partes)
+
+
 def render_html(model: PresentationViewModel) -> str:
     css = """
     * { box-sizing: border-box; }
@@ -323,6 +408,9 @@ def render_html(model: PresentationViewModel) -> str:
         cabecalho.append("</div>")
 
     nova_pagina(cabecalho)
+
+    if model.modo == "resumo":
+        nova_pagina([_render_resumo(model, rotulos, seguro_novo=seguro_novo)])
 
     for secao in model.secoes_regime:
         for pagina in secao.paginas_faixas:

@@ -33,9 +33,12 @@ def test_propostas_tem_campos_numericos_e_faixas():
         assert p.numerico.atual_mensal_centavos is not None
         assert p.numerico.diff_mes_centavos is not None
         assert p.numerico.diff_bps is not None
-        assert p.faixas
-        for f in p.faixas:
-            assert f.proposta_centavos is not None
+
+    faixas = resp.planos_atuais[0].faixas
+    assert faixas
+    for fx in faixas:
+        assert fx.quantidade > 0
+        assert fx.propostas
 
     destaques = {d for p in resp.propostas for d in p.destaques}
     assert "menor_mensalidade" in destaques

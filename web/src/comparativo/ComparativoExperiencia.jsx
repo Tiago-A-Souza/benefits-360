@@ -33,7 +33,7 @@ function rotuloCopartCurto(regime) {
   return regime;
 }
 
-function CardProposta({ proposta, selecionada, onToggle, compacto, seguroNovo }) {
+function CardProposta({ proposta, selecionada, onToggle, compacto, seguroNovo, somenteLeitura }) {
   const n = proposta.numerico;
   const diffCls = classeVariacao(n?.diff_mes_centavos ?? n?.diff_bps);
 
@@ -75,13 +75,15 @@ function CardProposta({ proposta, selecionada, onToggle, compacto, seguroNovo })
 
       <div className="cmp-card-bloco cmp-card-bloco--rodape">
         <span className="cmp-card-chip">{rotuloCopartCurto(proposta.regime_coparticipacao)}</span>
-        <button
-          type="button"
-          className={selecionada ? "cmp-card-btn cmp-card-btn--ativo" : "cmp-card-btn"}
-          onClick={() => onToggle(proposta.opcao_id)}
-        >
-          {selecionada ? "Remover" : "Adicionar"}
-        </button>
+        {!somenteLeitura && (
+          <button
+            type="button"
+            className={selecionada ? "cmp-card-btn cmp-card-btn--ativo" : "cmp-card-btn"}
+            onClick={() => onToggle(proposta.opcao_id)}
+          >
+            {selecionada ? "Remover" : "Adicionar"}
+          </button>
+        )}
       </div>
     </article>
   );
@@ -499,6 +501,7 @@ export default function ComparativoExperiencia({
   onConfirmar,
   onRecalcular,
   recalculando,
+  origemCongelada = false,
 }) {
   const seguroNovo =
     resultado?.formato === "novo" || rascunho?.formato === "novo";
@@ -508,7 +511,7 @@ export default function ComparativoExperiencia({
     [resultado]
   );
 
-  const [modo, setModo] = useState("analise");
+  const [modo, setModo] = useState(origemCongelada ? "previa" : "analise");
   const [vista, setVista] = useState("resumo");
   const [mostrarNomes, setMostrarNomes] = useState(false);
   const [ordenacao, setOrdenacao] = useState("menor_mensalidade");
@@ -553,7 +556,7 @@ export default function ComparativoExperiencia({
 
   const persistirSelecao = useCallback(
     async (novaSelecao) => {
-      if (!estudoId) return;
+      if (origemCongelada || !estudoId) return;
       setSalvandoSelecao(true);
       try {
         await salvarSelecaoApresentacao(estudoId, novaSelecao);
@@ -561,10 +564,11 @@ export default function ComparativoExperiencia({
         setSalvandoSelecao(false);
       }
     },
-    [estudoId]
+    [estudoId, origemCongelada]
   );
 
   function toggleSelecao(opcaoId) {
+    if (origemCongelada) return;
     setSelecao((prev) => {
       const nova = prev.includes(opcaoId)
         ? prev.filter((id) => id !== opcaoId)
@@ -691,33 +695,41 @@ export default function ComparativoExperiencia({
         </div>
 
         <div className="cmp-hero-linha cmp-hero-linha--modos">
-          <div className="cmp-segmento" role="tablist" aria-label="Modo de visualização">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={modo === "analise"}
-              title="Catálogo completo, filtros e auditoria"
-              className={modo === "analise" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
-              onClick={() => setModo("analise")}
-            >
-              Análise Newport
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={modo === "previa"}
-              title="Somente planos selecionados para o cliente"
-              className={modo === "previa" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
-              onClick={() => setModo("previa")}
-            >
-              Prévia do cliente
-            </button>
-          </div>
-          <p className="cmp-modo-hint muted">
-            {modo === "analise"
-              ? "Catálogo completo · selecione propostas para apresentação"
-              : "Espelho do material ao cliente · somente selecionados"}
-          </p>
+          {origemCongelada ? (
+            <p className="cmp-modo-hint muted">
+              Matriz congelada no snapshot aprovado · as três visões reproduzem o documento
+            </p>
+          ) : (
+            <>
+              <div className="cmp-segmento" role="tablist" aria-label="Modo de visualização">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={modo === "analise"}
+                  title="Catálogo completo, filtros e auditoria"
+                  className={modo === "analise" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
+                  onClick={() => setModo("analise")}
+                >
+                  Análise Newport
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={modo === "previa"}
+                  title="Somente planos selecionados para o cliente"
+                  className={modo === "previa" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
+                  onClick={() => setModo("previa")}
+                >
+                  Prévia do cliente
+                </button>
+              </div>
+              <p className="cmp-modo-hint muted">
+                {modo === "analise"
+                  ? "Catálogo completo · selecione propostas para apresentação"
+                  : "Espelho do material ao cliente · somente selecionados"}
+              </p>
+            </>
+          )}
         </div>
       </header>
 
@@ -856,6 +868,7 @@ export default function ComparativoExperiencia({
               onToggle={toggleSelecao}
               compacto={modo === "previa"}
               seguroNovo={seguroNovo}
+              somenteLeitura={origemCongelada}
             />
           ))}
         </div>
@@ -900,7 +913,7 @@ export default function ComparativoExperiencia({
             </button>
           </div>
         </header>
-        {vista === "beneficiarios" && modo === "analise" && (
+        {vista === "beneficiarios" && (modo === "analise" || origemCongelada) && (
           <label className="cmp-aviso-pii">
             <input
               type="checkbox"
@@ -914,7 +927,7 @@ export default function ComparativoExperiencia({
           planosAtuais={planosAtuais}
           propostas={selecionadas}
           vista={vista}
-          mostrarNomes={modo === "analise" && mostrarNomes}
+          mostrarNomes={(modo === "analise" || origemCongelada) && mostrarNomes}
           seguroNovo={seguroNovo}
           faixasEstudo={resultado.faixas_estudo || []}
         />

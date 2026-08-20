@@ -19,7 +19,6 @@ from newport_app.models.responses import (
     ConsistenciaComparativo,
     DetalheVidaComparativo,
     EstudoResumo,
-    FaixaComparativo,
     FaixaPlanoComparativo,
     PendenciaItem,
     PlanoAtualComparativo,
@@ -182,33 +181,6 @@ def _montar_numerico_cenario(
         diff_bps=_calcular_diff_bps(atual.centavos, proposta.centavos),
         diferenca_semantica=semantica,
     )
-
-
-def _montar_faixas(secoes: list[SecaoComparativo]) -> list[FaixaComparativo]:
-    agregado: dict[int, dict[str, int]] = {}
-    for sec in secoes:
-        for vida in sec.vidas:
-            if vida.faixa is None:
-                continue
-            slot = agregado.setdefault(
-                vida.faixa,
-                {"qtd": 0, "atual": 0, "proposta": 0, "diff": 0},
-            )
-            slot["qtd"] += 1
-            slot["atual"] += vida.atual_centavos or 0
-            slot["proposta"] += vida.proposta_centavos or 0
-            slot["diff"] += vida.diff_mes_centavos or 0
-    return [
-        FaixaComparativo(
-            faixa=faixa,
-            rotulo=_rotulo_faixa(faixa) or "—",
-            quantidade=vals["qtd"],
-            atual_centavos=vals["atual"] or None,
-            proposta_centavos=vals["proposta"] or None,
-            diff_centavos=vals["diff"] or None,
-        )
-        for faixa, vals in sorted(agregado.items())
-    ]
 
 
 def _regime_label_rascunho(rascunho: RascunhoEstudo, regime_id: str | None) -> str | None:
@@ -875,7 +847,6 @@ def _montar_propostas(
             cenario_motor, rascunho, seguro_novo=seguro_novo
         )
         numerico = _montar_numerico_cenario(cenario_motor, seguro_novo=seguro_novo)
-        faixas = _montar_faixas(secoes)
         diff_pct = None
         if (
             not seguro_novo
@@ -910,7 +881,7 @@ def _montar_propostas(
                 totais=totais,
                 numerico=numerico,
                 diferenca_percentual=diff_pct,
-                faixas=faixas,
+                faixas=[],
                 destaques=[],
                 secoes=secoes,
                 subgrupos=recortes,

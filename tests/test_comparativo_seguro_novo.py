@@ -169,15 +169,16 @@ def test_ivtec_seguro_novo_comparativo_exibe_totais_e_faixas():
     assert bronze.totais.atual_mensal_reais is None
     assert bronze.numerico.atual_mensal_centavos is None
 
-    faixas = {f.faixa: f for f in bronze.faixas}
+    faixas = {f.faixa: f for f in cmp.faixas_estudo}
     assert set(faixas) == {0, 1, 2, 5, 9}
     assert faixas[0].quantidade == 4
     assert faixas[1].quantidade == 2
     assert faixas[2].quantidade == 4
     assert faixas[5].quantidade == 1
     assert faixas[9].quantidade == 1
-    assert faixas[0].proposta_centavos == 4 * 17_938
-    assert faixas[0].atual_centavos is None
+    col_bronze = next(c for c in faixas[0].propostas if c.opcao_id == "op-bronze")
+    assert col_bronze.subtotal_centavos == 4 * 17_938
+    assert faixas[0].vigente_total_centavos is None
 
 
 def test_paridade_totais_comparativo_e_apresentacao(tmp_path: Path):

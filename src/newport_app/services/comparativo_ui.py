@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from newport_app.models.draft import RascunhoEstudo, SelecaoApresentacaoRascunho
 from newport_app.models.responses import SalvarSelecaoApresentacaoResponse
+from newport_app.snapshot.comparativo import recusar_se_formato_anterior
 
 
 class SelecaoApresentacaoInvalidaError(Exception):
@@ -72,6 +73,8 @@ def resolver_propostas_apresentacao_snapshot(
     if payload.get("propostas_apresentacao"):
         return list(payload["propostas_apresentacao"])
     comparativo = payload.get("comparativo") or {}
+    if comparativo:
+        recusar_se_formato_anterior(comparativo)
     if comparativo.get("propostas_apresentacao"):
         return list(comparativo["propostas_apresentacao"])
     rascunho = payload.get("rascunho") or {}
