@@ -238,62 +238,26 @@ function celulaFaixa({ unitario, quantidade, subtotal, sufixo }) {
 }
 
 function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
-  if (seguroNovo || !plano?.faixas?.length) {
-    const vidasRef = vidasDaProposta(propostas[0]).filter(
-      (v) => seguroNovo || v.subgrupo_id === plano?.subgrupo_id
-    );
-    const faixas = [...new Set(vidasRef.map((v) => v.faixa).filter((fx) => fx != null))].sort(
-      (a, b) => a - b
-    );
+  if (!plano?.faixas?.length) {
     return (
-      <table className="conferencia cmp-matriz">
-        <CabecalhoMatriz
-          planosAtuais={plano ? [plano] : []}
-          propostas={propostas}
-          seguroNovo={seguroNovo}
-        />
-        <tbody className="cmp-matriz-dados">
-          {faixas.map((fx) => {
-            const vidasFx = vidasRef.filter((v) => v.faixa === fx);
-            return (
-              <tr key={fx}>
-                <th scope="row">
-                  {vidasFx[0]?.faixa_rotulo || "—"}
-                  {vidasFx.length > 1 && (
-                    <small className="cmp-faixa-qtd"> ({vidasFx.length} vidas)</small>
-                  )}
-                </th>
-                {propostas.map((p) => {
-                  const vidasP = vidasDaProposta(p).filter(
-                    (v) => v.faixa === fx && (seguroNovo || v.subgrupo_id === plano?.subgrupo_id)
-                  );
-                  const proposta = vidasP.reduce((s, v) => s + (v.proposta_centavos || 0), 0);
-                  return (
-                    <td key={p.opcao_id}>
-                      {formatCentavos(proposta)}
-                      {vidasP.length > 1 && (
-                        <small className="cmp-faixa-qtd"> ({vidasP.length} vidas)</small>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <p className="muted">
+        Nenhuma faixa etária disponível neste recorte. Os totais do comparativo
+        não foram agregados nesta tela.
+      </p>
     );
   }
 
   return (
     <table className="conferencia cmp-matriz">
       <caption className="cmp-matriz-caption">
-        Plano atual — {plano.operadora} · {plano.plano_nome}
+        {seguroNovo
+          ? "Distribuição por faixa etária"
+          : `Plano atual — ${plano.operadora} · ${plano.plano_nome}`}
       </caption>
       <CabecalhoMatriz
-        planosAtuais={[plano]}
+        planosAtuais={seguroNovo ? [] : [plano]}
         propostas={propostas}
-        seguroNovo={false}
+        seguroNovo={seguroNovo}
       />
       <tbody className="cmp-matriz-dados">
         {plano.faixas.map((fx) => (
@@ -307,20 +271,22 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
                 <small className="cmp-faixa-obs">{fx.observacao_valor}</small>
               )}
             </th>
-            <td className="cmp-col-atual">
-              {celulaFaixa({
-                unitario: fx.vigente_unitario_centavos,
-                quantidade: fx.quantidade,
-                subtotal: fx.vigente_total_centavos,
-                sufixo: "vigente",
-              })}
-              {celulaFaixa({
-                unitario: fx.reajustado_unitario_centavos,
-                quantidade: fx.quantidade,
-                subtotal: fx.reajustado_total_centavos,
-                sufixo: "reajustado",
-              })}
-            </td>
+            {!seguroNovo && (
+              <td className="cmp-col-atual">
+                {celulaFaixa({
+                  unitario: fx.vigente_unitario_centavos,
+                  quantidade: fx.quantidade,
+                  subtotal: fx.vigente_total_centavos,
+                  sufixo: "vigente",
+                })}
+                {celulaFaixa({
+                  unitario: fx.reajustado_unitario_centavos,
+                  quantidade: fx.quantidade,
+                  subtotal: fx.reajustado_total_centavos,
+                  sufixo: "reajustado",
+                })}
+              </td>
+            )}
             {propostas.map((p) => {
               const col = (fx.propostas || []).find((c) => c.opcao_id === p.opcao_id);
               return (
@@ -339,13 +305,19 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
       <tfoot className="cmp-matriz-totais">
         <tr>
           <th scope="row">Totais</th>
-          <td className="cmp-col-atual">
-            <div>{formatCentavos(plano.vigente_centavos)} vigente</div>
-            <div>{formatCentavos(plano.reajustado_centavos)} reajustado</div>
-          </td>
+          {!seguroNovo && (
+            <td className="cmp-col-atual">
+              <div>{formatCentavos(plano.vigente_centavos)} vigente</div>
+              <div>{formatCentavos(plano.reajustado_centavos)} reajustado</div>
+            </td>
+          )}
           {propostas.map((p) => (
             <td key={p.opcao_id}>
-              {formatCentavos(recorteSubgrupo(p, plano.subgrupo_id)?.proposta_centavos)}
+              {formatCentavos(
+                seguroNovo
+                  ? p.numerico?.proposta_mensal_centavos
+                  : recorteSubgrupo(p, plano.subgrupo_id)?.proposta_centavos
+              )}
             </td>
           ))}
         </tr>
@@ -354,7 +326,14 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
   );
 }
 
-function MatrizComparativa({ planosAtuais, propostas, vista, mostrarNomes, seguroNovo }) {
+function MatrizComparativa({
+  planosAtuais,
+  propostas,
+  vista,
+  mostrarNomes,
+  seguroNovo,
+  faixasEstudo,
+}) {
   if (!propostas.length) {
     return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
   }
@@ -366,8 +345,14 @@ function MatrizComparativa({ planosAtuais, propostas, vista, mostrarNomes, segur
       {vista === "faixas" ? (
         <>
           <p className="cmp-matriz-separador-texto">Valores por faixa etária (soma do grupo)</p>
-          {(seguroNovo || !(planosAtuais || []).length) ? (
-            <TabelaFaixasPlano plano={null} propostas={propostas} seguroNovo={seguroNovo} />
+          {seguroNovo ? (
+            <TabelaFaixasPlano
+              plano={{ faixas: faixasEstudo || [] }}
+              propostas={propostas}
+              seguroNovo
+            />
+          ) : !(planosAtuais || []).length ? (
+            <p className="muted">Nenhum plano vigente neste estudo para montar a tabela de faixas.</p>
           ) : (
             planosAtuais.map((plano) => (
               <TabelaFaixasPlano
@@ -931,6 +916,7 @@ export default function ComparativoExperiencia({
           vista={vista}
           mostrarNomes={modo === "analise" && mostrarNomes}
           seguroNovo={seguroNovo}
+          faixasEstudo={resultado.faixas_estudo || []}
         />
       </section>
 

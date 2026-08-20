@@ -146,7 +146,9 @@ def _finalizar_faixas(
             ag.atual_reajustado_total_centavos = tot_r
             ag.observacao_valor = obs_v or obs_r
         for op_id in propostas_ids:
-            unit_p, sub_p, _ = agregar_valores_faixa(proposta_vals[fx][op_id])
+            unit_p, sub_p, obs_p = agregar_valores_faixa(proposta_vals[fx][op_id])
+            if not incluir_atual and obs_p:
+                ag.observacao_valor = ag.observacao_valor or obs_p
             ag.propostas.append(
                 PropostaFaixaColuna(
                     opcao_id=op_id,

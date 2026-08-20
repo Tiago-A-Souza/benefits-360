@@ -255,6 +255,7 @@ class ComparativoResponse(BaseModel):
     secoes: list[SecaoComparativo] = Field(default_factory=list)
     propostas: list[ResultadoPropostaComparativo] = Field(default_factory=list)
     planos_atuais: list[PlanoAtualComparativo] = Field(default_factory=list)
+    faixas_estudo: list[FaixaPlanoComparativo] = Field(default_factory=list)
     propostas_apresentacao: list[str] = Field(default_factory=list)
     consistencia: ConsistenciaComparativo | None = None
     validade_proposta: str | None = None

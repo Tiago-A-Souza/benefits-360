@@ -405,6 +405,64 @@ def _montar_faixas_plano_comparativo(
     return faixas
 
 
+def _montar_faixas_seguro_novo_comparativo(
+    rascunho: RascunhoEstudo,
+    resultado: MotorResult,
+) -> list[FaixaPlanoComparativo]:
+    """Faixas de seguro novo — mesma forma da renovação, sem coluna de contrato atual."""
+    if rascunho.formato != "novo":
+        return []
+    propostas: dict[int, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
+    opcao_ids: list[str] = []
+    for cenario in resultado.cenarios:
+        opcao_id, _, _ = _metadados_coluna_cenario(rascunho, cenario.cenario_id)
+        if not opcao_id:
+            continue
+        if opcao_id not in opcao_ids:
+            opcao_ids.append(opcao_id)
+        for secao in cenario.secoes:
+            for sg in secao.subgrupos:
+                for rv in sg.vidas:
+                    fx = rv.faixa
+                    if fx is None or fx < 0 or fx > 9:
+                        continue
+                    prop = _centavos_valor(rv.proposta_centavos)
+                    if prop is not None:
+                        propostas[fx][opcao_id].append(prop)
+
+    faixas: list[FaixaPlanoComparativo] = []
+    for fx in range(10):
+        if not any(propostas[fx].values()):
+            continue
+        cols: list[ColunaFaixaPropostaComparativo] = []
+        obs: str | None = None
+        quantidade = 0
+        for op_id in opcao_ids:
+            vals_p = propostas[fx].get(op_id, [])
+            unit_p, sub_p, obs_p = agregar_valores_faixa(vals_p)
+            if obs_p:
+                obs = obs_p
+            quantidade = max(quantidade, len(vals_p))
+            cols.append(
+                ColunaFaixaPropostaComparativo(
+                    opcao_id=op_id,
+                    unitario_centavos=unit_p,
+                    quantidade=len(vals_p),
+                    subtotal_centavos=sub_p,
+                )
+            )
+        faixas.append(
+            FaixaPlanoComparativo(
+                faixa=fx,
+                rotulo=_rotulo_faixa(fx) or "—",
+                quantidade=quantidade,
+                observacao_valor=obs,
+                propostas=cols,
+            )
+        )
+    return faixas
+
+
 def _montar_planos_atuais(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
@@ -1291,6 +1349,11 @@ def montar_comparativo(
 
     propostas = _montar_propostas(rascunho, resultado) if resultado.cenarios else []
     planos_atuais, pendencias_planos = _montar_planos_atuais(rascunho, resultado)
+    faixas_estudo = (
+        _montar_faixas_seguro_novo_comparativo(rascunho, resultado)
+        if rascunho.formato == "novo" and resultado.cenarios
+        else []
+    )
     from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
 
     consistencia = _avaliar_consistencia(
@@ -1347,6 +1410,7 @@ def montar_comparativo(
         secoes=secoes,
         propostas=propostas,
         planos_atuais=planos_atuais,
+        faixas_estudo=faixas_estudo,
         propostas_apresentacao=ordem_apresentacao_rascunho(rascunho),
         consistencia=consistencia,
         validade_proposta=_validade_proposta(rascunho),

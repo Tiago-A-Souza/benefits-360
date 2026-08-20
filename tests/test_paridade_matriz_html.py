@@ -217,7 +217,34 @@ def _textos_exibidos(obj, *, skip_keys: set[str] | None = None) -> list[str]:
 
 
 def assert_paridade_observacao_faixas(matriz, vm) -> None:
-    for pl in matriz.planos_atuais:
+    if matriz.formato == "novo":
+        faixas_matriz = list(matriz.faixas_estudo or [])
+        faixas_html = [
+            fx
+            for secao in vm.secoes_regime
+            for pvm in secao.planos_atuais
+            for fx in pvm.faixas
+        ]
+        assert faixas_matriz, "paridade de observação sem faixas na matriz (seguro novo)"
+        assert faixas_html, "paridade de observação sem faixas no documento (seguro novo)"
+        obs_matriz = {fx.faixa for fx in faixas_matriz if fx.observacao_valor}
+        obs_html = {fx.faixa for fx in faixas_html if fx.observacao_valor}
+        assert obs_matriz == obs_html
+        html_por_faixa = {fx.faixa: fx for fx in faixas_html}
+        for fx in faixas_matriz:
+            html = html_por_faixa[fx.faixa]
+            assert fx.observacao_valor == html.observacao_valor
+            cols_html = {c.opcao_id: c for c in html.propostas}
+            for col in fx.propostas:
+                h = cols_html[col.opcao_id]
+                assert col.unitario_centavos == h.valor_unitario_centavos
+                assert col.subtotal_centavos == h.subtotal_centavos
+                assert col.quantidade == h.quantidade
+        return
+
+    fontes = [pl for pl in matriz.planos_atuais if pl.faixas]
+    assert fontes, "paridade de observação sem faixas na matriz"
+    for pl in fontes:
         obs_matriz = {fx.faixa for fx in pl.faixas if fx.observacao_valor}
         obs_html: set[int] = set()
         unit_html: dict[int, tuple[int | None, int | None]] = {}
@@ -232,6 +259,7 @@ def assert_paridade_observacao_faixas(matriz, vm) -> None:
                         fx.faixa,
                         (fx.atual_vigente_unitario_centavos, fx.atual_reajustado_unitario_centavos),
                     )
+        assert unit_html, "paridade de observação sem faixas no documento"
         assert obs_matriz == obs_html
         for fx in pl.faixas:
             if fx.faixa not in unit_html:
@@ -551,6 +579,7 @@ def test_paridade_seguro_novo(tmp_path: Path):
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
     vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     assert matriz.planos_atuais == []
+    assert matriz.faixas_estudo
     assert _planos_vm_por_subgrupo(vm) == {}
     for p in matriz.propostas:
         assert p.numerico is not None
@@ -739,4 +768,81 @@ def test_rotulo_unico_nao_ganha_sufixo():
     nome = matriz.propostas[0].plano_nome
     assert "(sem copart)" not in nome
     assert not nome.endswith("(1)")
+
+
+def test_seguro_novo_ivtec_estrutura_de_faixas():
+    rascunho = _rascunho_ivtec_novo()
+    matriz, _ = _calcular_matriz(rascunho)
+    assert matriz.planos_atuais == []
+    assert matriz.faixas_estudo
+    assert all(fx.rotulo and fx.quantidade > 0 for fx in matriz.faixas_estudo)
+    op_ids = {p.opcao_id for p in matriz.propostas if p.calculo_realizado}
+    for fx in matriz.faixas_estudo:
+        assert fx.vigente_total_centavos is None
+        assert fx.reajustado_total_centavos is None
+        col_ids = {c.opcao_id for c in fx.propostas}
+        assert op_ids <= col_ids
+        for col in fx.propostas:
+            if col.unitario_centavos is not None and col.quantidade:
+                assert col.subtotal_centavos == col.unitario_centavos * col.quantidade
+            else:
+                assert col.unitario_centavos is None
+
+
+def test_soma_subtotais_faixa_igual_total_proposta_seguro_novo():
+    rascunho = _rascunho_ivtec_novo()
+    matriz, _ = _calcular_matriz(rascunho)
+    for p in matriz.propostas:
+        assert p.numerico is not None
+        soma = sum(
+            col.subtotal_centavos or 0
+            for fx in matriz.faixas_estudo
+            for col in fx.propostas
+            if col.opcao_id == p.opcao_id
+        )
+        assert soma == p.numerico.proposta_mensal_centavos
+
+
+def test_observacao_heterogeneo_seguro_novo():
+    rascunho = _rascunho_ivtec_novo()
+    matriz, motor = _calcular_matriz(rascunho)
+    alvo = None
+    for cenario in motor.cenarios:
+        por_faixa: dict[int, list] = defaultdict(list)
+        for secao in cenario.secoes:
+            for sg in secao.subgrupos:
+                for rv in sg.vidas:
+                    if rv.faixa is not None and rv.proposta_centavos is not None:
+                        por_faixa[rv.faixa].append(rv)
+        for vidas in por_faixa.values():
+            if len(vidas) >= 2:
+                alvo = vidas[0]
+                break
+        if alvo is not None:
+            break
+    assert alvo is not None and alvo.proposta_centavos is not None
+    alvo.proposta_centavos = alvo.proposta_centavos.model_copy(
+        update={"centavos": alvo.proposta_centavos.centavos + 1}
+    )
+    depois = montar_comparativo(rascunho, motor_result=motor)
+    fx = next(f for f in depois.faixas_estudo if f.faixa == alvo.faixa)
+    assert fx.observacao_valor
+    assert "diferentes" in fx.observacao_valor.lower()
+    col = next(c for c in fx.propostas if c.quantidade >= 2)
+    assert col.unitario_centavos is None
+
+
+def test_jsx_tabela_faixas_sem_agregacao_no_cliente():
+    jsx = (
+        Path(__file__).resolve().parents[1]
+        / "web"
+        / "src"
+        / "comparativo"
+        / "ComparativoExperiencia.jsx"
+    )
+    texto = jsx.read_text(encoding="utf-8")
+    assert "seguroNovo || !plano?.faixas?.length" not in texto
+    assert "vidasP.reduce" not in texto
+    assert "Nenhuma faixa etária disponível neste recorte" in texto
+
 
