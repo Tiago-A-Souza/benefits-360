@@ -185,6 +185,7 @@ def migrar_estudos_db(db_path: Path) -> None:
             )
 
         _migrar_281(conn)
+        _migrar_282(conn)
         _migrar_301(conn, db_path=db_path)
 
 
@@ -408,6 +409,19 @@ def _migrar_281(conn: sqlite3.Connection) -> None:
         "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
         ("2.8.1", datetime.now(timezone.utc).isoformat()),
     )
+
+
+def _migrar_282(conn: sqlite3.Connection) -> None:
+    """Persiste snapshot_versao — formato do payload canônico, distinto de motor_versao."""
+    _ensure_column(conn, "snapshots", "snapshot_versao", "TEXT")
+    ja = conn.execute(
+        "SELECT versao FROM schema_migrations WHERE versao = ?", ("2.8.2",)
+    ).fetchone()
+    if ja is None:
+        conn.execute(
+            "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+            ("2.8.2", datetime.now(timezone.utc).isoformat()),
+        )
 
 
 def _ensure_column(conn: sqlite3.Connection, tabela: str, coluna: str, definicao: str) -> None:

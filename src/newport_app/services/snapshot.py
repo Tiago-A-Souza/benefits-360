@@ -14,6 +14,7 @@ from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import ComparativoResponse
 from newport_app.models.snapshot import (
     MOTOR_VERSAO,
+    SNAPSHOT_VERSAO,
     AprovacaoSnapshot,
     AprovarSnapshotRequest,
     AprovarSnapshotResponse,
@@ -25,7 +26,7 @@ from newport_app.repository.base import StudyRepository
 from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.services.calculo import RascunhoNaoCompilavelError
-from newport_app.snapshot.hashing import extrair_payload_canonico, hash_snapshot_canonico
+from newport_app.snapshot.hashing import hash_snapshot_canonico
 from newport_motor.engine import calcular
 
 
@@ -78,6 +79,7 @@ class SnapshotService:
             "propostas_apresentacao": ordem_apresentacao_rascunho(rascunho),
             "compiler_versao": COMPILER_VERSAO,
             "motor_versao": MOTOR_VERSAO,
+            "snapshot_versao": SNAPSHOT_VERSAO,
             "policy_set_versao": rascunho.policy_set_versao,
             "documentos": {
                 "siscor": [d.model_dump(mode="json") for d in rascunho.documentos_siscor],
@@ -119,6 +121,7 @@ class SnapshotService:
             compiler_versao=COMPILER_VERSAO,
             motor_versao=MOTOR_VERSAO,
             policy_set_versao=rascunho.policy_set_versao,
+            snapshot_versao=SNAPSHOT_VERSAO,
             tem_bloqueio=False,
             criado_em=datetime.now(timezone.utc),
         )

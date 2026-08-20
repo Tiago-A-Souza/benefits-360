@@ -40,8 +40,8 @@ class SnapshotRepository:
                 INSERT INTO snapshots (
                     id, estudo_id, estado, hash_sha256, payload,
                     compiler_versao, motor_versao, policy_set_versao,
-                    tem_bloqueio, criado_em, superado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    snapshot_versao, tem_bloqueio, criado_em, superado_em
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     snap.id,
@@ -52,6 +52,7 @@ class SnapshotRepository:
                     snap.compiler_versao,
                     snap.motor_versao,
                     snap.policy_set_versao,
+                    snap.snapshot_versao,
                     1 if snap.tem_bloqueio else 0,
                     snap.criado_em.isoformat(),
                     snap.superado_em.isoformat() if snap.superado_em else None,
@@ -225,6 +226,7 @@ class SnapshotRepository:
             compiler_versao=row["compiler_versao"],
             motor_versao=row["motor_versao"],
             policy_set_versao=row["policy_set_versao"],
+            snapshot_versao=row["snapshot_versao"] if "snapshot_versao" in row.keys() else None,
             tem_bloqueio=bool(row["tem_bloqueio"]),
             criado_em=datetime.fromisoformat(row["criado_em"]),
             superado_em=(

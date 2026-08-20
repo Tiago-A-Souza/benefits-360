@@ -8,7 +8,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 MOTOR_VERSAO = "0.1.0"
-SNAPSHOT_VERSAO = "2.7.0"
+# 2.7.0 = formato implícito (versão não gravada; hash sem seleção de propostas).
+# 2.8.0 = passa a gravar a versão e, na correção seguinte, inclui a seleção no hash.
+SNAPSHOT_VERSAO = "2.8.0"
 
 
 class SnapshotCalculo(BaseModel):
@@ -20,6 +22,7 @@ class SnapshotCalculo(BaseModel):
     compiler_versao: str
     motor_versao: str
     policy_set_versao: str
+    snapshot_versao: str | None = None
     tem_bloqueio: bool = False
     criado_em: datetime
     superado_em: datetime | None = None
