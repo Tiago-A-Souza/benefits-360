@@ -1,22 +1,36 @@
 {
   "planos": [
-    {"chave": "plano_a", "vidas": 36, "vigente_centavos": 2623822},
-    {"chave": "plano_b", "vidas": 5, "vigente_centavos": 1704692}
+    {"chave": "plano_a", "subgrupo_id": "sg-a", "vidas": 36, "vigente_centavos": 2623822},
+    {"chave": "plano_b", "subgrupo_id": "sg-b", "vidas": 5, "vigente_centavos": 1704692}
   ],
   "consolidado_vigente_centavos": 4328514,
+  "unitarias_proposta_centavos": {
+    "prata": [37731, 45757, 55198, 63192, 68469, 70711, 84466, 90931, 112352, 188854],
+    "ouro": [43972, 53326, 64329, 73646, 79796, 82409, 98439, 105974, 130938, 220098]
+  },
+  "vidas_por_faixa": {
+    "sg-a": [3, 4, 4, 10, 10, 2, 1, 0, 1, 1],
+    "sg-b": [0, 0, 0, 0, 0, 2, 0, 1, 0, 2]
+  },
   "propostas": [
     {
       "chave": "prata",
+      "opcao_id": "op-prata",
       "plano_a_centavos": 2360717,
       "plano_b_centavos": 610061,
       "consolidado_centavos": 2970778
     },
     {
       "chave": "ouro",
+      "opcao_id": "op-ouro",
       "plano_a_centavos": 2751249,
       "plano_b_centavos": 710988,
       "consolidado_centavos": 3462237
     }
+  ],
+  "faixas_heterogeneas_reajuste_1200": [
+    {"subgrupo_id": "sg-a", "faixa": 1, "total_reajustado_centavos": 206989},
+    {"subgrupo_id": "sg-a", "faixa": 4, "total_reajustado_centavos": 821529}
   ],
   "reajuste": {
     "1000": {

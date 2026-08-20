@@ -125,13 +125,14 @@ def _planos_vm_por_subgrupo(vm) -> dict[str, dict]:
                 pl.subgrupo_id,
                 {
                     "plano_nome": pl.plano_nome,
-                    "vigente": 0,
-                    "reajustado": 0,
+                    "vigente": None,
+                    "reajustado": None,
                     "propostas": defaultdict(int),
                 },
             )
-            slot["vigente"] += pl.subtotal_vigente_centavos or 0
-            slot["reajustado"] += pl.subtotal_reajustado_centavos or 0
+            if slot["vigente"] is None:
+                slot["vigente"] = pl.subtotal_vigente_centavos or 0
+                slot["reajustado"] = pl.subtotal_reajustado_centavos or 0
             for fx in pl.faixas:
                 for col in fx.propostas:
                     slot["propostas"][col.opcao_id] += col.subtotal_centavos or 0
@@ -211,6 +212,52 @@ def assert_coerencia_interna(matriz) -> None:
     assert sum(p.vidas for p in matriz.planos_atuais) == matriz.beneficiarios_calculados
 
 
+def _vidas_matriz_faixa(matriz, subgrupo_id: str, faixa: int):
+    for prop in matriz.propostas:
+        if not prop.calculo_realizado:
+            continue
+        return [
+            v
+            for sec in prop.secoes
+            for v in sec.vidas
+            if v.subgrupo_id == subgrupo_id and v.faixa == faixa
+        ]
+    return []
+
+
+def _faixa_vm(vm, subgrupo_id: str, faixa: int):
+    for secao in vm.secoes_regime:
+        for pl in secao.planos_atuais:
+            if pl.subgrupo_id != subgrupo_id:
+                continue
+            found = next((fx for fx in pl.faixas if fx.faixa == faixa), None)
+            if found is not None:
+                return found
+    return None
+
+
+def assert_gabarito_propostas(matriz, vm, gab) -> None:
+    vm_planos = _planos_vm_por_subgrupo(vm)
+    mapa_sg = {p["chave"]: p["subgrupo_id"] for p in gab["planos"]}
+    for spec in gab["propostas"]:
+        prop = next(p for p in matriz.propostas if p.opcao_id == spec["opcao_id"])
+        rec_a = next(s for s in prop.subgrupos if s.subgrupo_id == mapa_sg["plano_a"])
+        rec_b = next(s for s in prop.subgrupos if s.subgrupo_id == mapa_sg["plano_b"])
+        assert rec_a.proposta_centavos == spec["plano_a_centavos"], spec["chave"]
+        assert rec_b.proposta_centavos == spec["plano_b_centavos"], spec["chave"]
+        soma = (rec_a.proposta_centavos or 0) + (rec_b.proposta_centavos or 0)
+        assert soma == spec["consolidado_centavos"]
+        assert prop.numerico is not None
+        assert prop.numerico.proposta_mensal_centavos == spec["consolidado_centavos"]
+        assert vm_planos[mapa_sg["plano_a"]]["propostas"][spec["opcao_id"]] == spec[
+            "plano_a_centavos"
+        ]
+        assert vm_planos[mapa_sg["plano_b"]]["propostas"][spec["opcao_id"]] == spec[
+            "plano_b_centavos"
+        ]
+        assert vm.totais_gerais.propostas[spec["opcao_id"]] == spec["consolidado_centavos"]
+
+
 def _rascunho_n_subgrupos(n: int, *, extra_opcoes: int = 0):
     base = rascunho_demo_12_vidas()
     sgs = []
@@ -265,12 +312,20 @@ def _rascunho_dois_planos_gabarito(*, reajuste_bps: int) -> RascunhoEstudo:
                 ),
             )
         )
-    for i, cent in enumerate([200_000, 200_000, 200_000, 200_000, 904_692]):
+    gab = json.loads(_GABARITO.read_text(encoding="utf-8"))
+    faixas_b = [
+        fx
+        for fx, qtd in enumerate(gab["vidas_por_faixa"]["sg-b"])
+        for _ in range(qtd)
+    ]
+    for i, (fx, cent) in enumerate(
+        zip(faixas_b, [200_000, 200_000, 200_000, 200_000, 904_692], strict=True)
+    ):
         vidas.append(
             VidaRascunho(
                 id=f"vb{i}",
                 nome=f"Beneficiário B {i + 1}",
-                nascimento=_nascimento_faixa(i, data_ref),
+                nascimento=_nascimento_faixa(fx, data_ref),
                 incluida=True,
                 subgrupo_atual_id="sg-b",
                 valor_fatura=ComponenteFinanceiroRascunho(
@@ -280,14 +335,8 @@ def _rascunho_dois_planos_gabarito(*, reajuste_bps: int) -> RascunhoEstudo:
                 ),
             )
         )
-    prata_fx = {fx: 65_575 for fx in range(10)}
-    prata_fx[9] = 65_592
-    ouro_fx = {fx: 76_423 for fx in range(10)}
-    ouro_fx[9] = 76_444
-    tabela_a: dict[int, int] = {}
-    for spec in payload_36["vidas"]:
-        tabela_a[spec["faixa"]] = spec["centavos"]
-    tabela_b = {0: 200_000, 1: 200_000, 2: 200_000, 3: 200_000, 4: 904_692}
+    prata_fx = {i: v for i, v in enumerate(gab["unitarias_proposta_centavos"]["prata"])}
+    ouro_fx = {i: v for i, v in enumerate(gab["unitarias_proposta_centavos"]["ouro"])}
     sg_a = SubgrupoAtualRascunho(
         id="sg-a",
         operadora="Operadora A",
@@ -297,14 +346,13 @@ def _rascunho_dois_planos_gabarito(*, reajuste_bps: int) -> RascunhoEstudo:
         acomodacao="Apartamento",
         reajuste_bps=reajuste_bps,
         fatura_price_basis=PriceBasisRascunho.EXCLUI_IOF,
-        tabela_atual=_tabela(tabela_a, quantidade=None),
+        tabela_atual=[],
     )
     sg_b = sg_a.model_copy(
         update={
             "id": "sg-b",
             "operadora": "Operadora B",
             "plano_nome": "Plano vigente B",
-            "tabela_atual": _tabela(tabela_b, quantidade=None),
         }
     )
     op_prata = OpcaoPropostaRascunho(
@@ -451,11 +499,31 @@ def test_planos_atuais_completos_se_primeira_proposta_nao_calcula():
     assert any(not p.calculo_realizado for p in matriz.propostas)
 
 
+def test_gabarito_proposta_por_plano_vigente(tmp_path: Path):
+    gab = json.loads(_GABARITO.read_text(encoding="utf-8"))
+    rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
+    matriz, _ = _calcular_matriz(rascunho)
+    snap = _aprovar(tmp_path, rascunho)
+    ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
+    vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
+    assert_gabarito_propostas(matriz, vm, gab)
+    assert_paridade_planos(matriz, vm)
+    assert_coerencia_interna(matriz)
+    for spec in gab["faixas_heterogeneas_reajuste_1200"]:
+        vidas = _vidas_matriz_faixa(matriz, spec["subgrupo_id"], spec["faixa"])
+        soma_vidas = sum(v.reajustado_centavos or 0 for v in vidas)
+        assert soma_vidas == spec["total_reajustado_centavos"]
+        fx_vm = _faixa_vm(vm, spec["subgrupo_id"], spec["faixa"])
+        assert fx_vm is not None
+        assert fx_vm.atual_reajustado_total_centavos == spec["total_reajustado_centavos"]
+        assert soma_vidas == fx_vm.atual_reajustado_total_centavos
+
+
 @pytest.mark.parametrize("reajuste_bps", [1000, 1200])
 def test_gabarito_dois_planos_vigente_e_reajuste(reajuste_bps: int):
     gab = json.loads(_GABARITO.read_text(encoding="utf-8"))
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=reajuste_bps)
-    matriz, _ = _calcular_matriz(rascunho, resolver_b04=True)
+    matriz, _ = _calcular_matriz(rascunho)
     por_id = {p.subgrupo_id: p for p in matriz.planos_atuais}
     assert por_id["sg-a"].vidas == gab["planos"][0]["vidas"]
     assert por_id["sg-b"].vidas == gab["planos"][1]["vidas"]
@@ -475,6 +543,15 @@ def test_gabarito_dois_planos_vigente_e_reajuste(reajuste_bps: int):
     assert por_op["op-prata"] == "02/07/2026"
     assert por_op["op-ouro"] == "10/04/2026"
     assert matriz.validade_proposta == "02/07/2026"
+    gab_prop = {p["opcao_id"]: p for p in gab["propostas"]}
+    for prop in matriz.propostas:
+        spec = gab_prop[prop.opcao_id]
+        rec = {s.subgrupo_id: s.proposta_centavos for s in prop.subgrupos}
+        assert rec["sg-a"] == spec["plano_a_centavos"]
+        assert rec["sg-b"] == spec["plano_b_centavos"]
+        assert (rec["sg-a"] or 0) + (rec["sg-b"] or 0) == spec["consolidado_centavos"]
+        assert prop.numerico is not None
+        assert prop.numerico.proposta_mensal_centavos == spec["consolidado_centavos"]
 
 
 def test_rotulos_desambiguados_quando_nome_base_coincide(tmp_path: Path):
