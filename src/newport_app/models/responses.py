@@ -98,6 +98,7 @@ class DetalheVidaComparativo(BaseModel):
     nome: str
     idade: int | None = None
     faixa: int | None = None
+    faixa_rotulo: str | None = None
     parentesco: str | None = None
     plano_atual: str | None = None
     subgrupo_id: str | None = None
@@ -113,6 +114,7 @@ class DetalheVidaComparativo(BaseModel):
 
 class FaixaComparativo(BaseModel):
     faixa: int
+    rotulo: str
     quantidade: int
     atual_centavos: int | None = None
     proposta_centavos: int | None = None

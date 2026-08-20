@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { salvarSelecaoApresentacao } from "../api";
 import BloqueiosComparativo from "./BloqueiosComparativo";
-import { FAIXAS_ROTULOS, classeVariacao, formatBps, formatCentavos } from "./format";
+import { classeVariacao, formatBps, formatCentavos } from "./format";
 import {
   filtrarPropostas,
   opcoesUnicas,
@@ -242,7 +242,7 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
           return (
             <tr key={fx}>
               <th scope="row">
-                {FAIXAS_ROTULOS[fx] || `Faixa ${fx + 1}`}
+                {vidasFx[0]?.faixa_rotulo || "—"}
                 {vidasFx.length > 1 && (
                   <small className="cmp-faixa-qtd"> ({vidasFx.length} vidas)</small>
                 )}
@@ -398,7 +398,7 @@ function MatrizComparativa({ planosAtuais, propostas, vista, mostrarNomes, segur
               {vidasRef.map((v) => (
                 <tr key={v.vida_id}>
                   <th scope="row">
-                    {mostrarNomes ? v.nome : `Beneficiário · faixa ${(v.faixa ?? 0) + 1}`}
+                    {mostrarNomes ? v.nome : `Beneficiário · ${v.faixa_rotulo || "faixa não informada"}`}
                     {!seguroNovo && v.plano_atual && (
                       <small className="cmp-faixa-qtd"> · {v.plano_atual}</small>
                     )}
@@ -963,7 +963,7 @@ export default function ComparativoExperiencia({
                                 <tr key={v.vida_id}>
                                   <td>{v.nome}</td>
                                   <td>{v.idade ?? "—"}</td>
-                                  <td>{v.faixa ?? "—"}</td>
+                                  <td>{v.faixa_rotulo || "—"}</td>
                                   {!seguroNovo && (
                                     <td>{formatCentavos(v.atual_centavos)}</td>
                                   )}

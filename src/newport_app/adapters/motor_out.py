@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
+from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.compilation import ErroCompilacao
 from newport_app.services.comparativo_ui import ordem_apresentacao_rascunho
@@ -143,6 +144,12 @@ def _calcular_diff_bps(atual_centavos: int, proposta_centavos: int) -> int | Non
     return round(((proposta_centavos - atual_centavos) / atual_centavos) * 10_000)
 
 
+def _rotulo_faixa(faixa: int | None) -> str | None:
+    if faixa is None or faixa < 0 or faixa >= len(ROTULOS_FAIXA):
+        return None
+    return ROTULOS_FAIXA[faixa]
+
+
 def _montar_numerico_cenario(
     cenario: ScenarioResult,
     *,
@@ -191,6 +198,7 @@ def _montar_faixas(secoes: list[SecaoComparativo]) -> list[FaixaComparativo]:
     return [
         FaixaComparativo(
             faixa=faixa,
+            rotulo=_rotulo_faixa(faixa) or "—",
             quantidade=vals["qtd"],
             atual_centavos=vals["atual"] or None,
             proposta_centavos=vals["proposta"] or None,
@@ -551,6 +559,7 @@ def _montar_secoes_cenario(
                         nome=vida.nome if vida else rv.vida_id,
                         idade=rv.idade,
                         faixa=rv.faixa,
+                        faixa_rotulo=_rotulo_faixa(rv.faixa),
                         parentesco=vida.parentesco.value if vida and vida.parentesco else None,
                         plano_atual=plano_nome,
                         subgrupo_id=None if seguro_novo else sg.subgrupo_id,

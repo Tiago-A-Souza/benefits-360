@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 from copy import deepcopy
 from datetime import date
@@ -31,6 +32,7 @@ from newport_app.models.draft import (
 from newport_app.models.snapshot import AprovarSnapshotRequest
 from newport_app.policy.registry import POLICY_SET_VERSAO_PADRAO, default_registry
 from newport_app.presentation.builder import construir_view_model
+from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.snapshot import SnapshotRepository
@@ -178,6 +180,77 @@ def assert_paridade_datas(matriz, vm) -> None:
     if matriz.validade_proposta:
         assert "/" in matriz.validade_proposta
         assert not matriz.validade_proposta.startswith("2026-")
+
+
+_CAMPOS_TECNICOS = {
+    "estudo_id",
+    "vida_id",
+    "opcao_id",
+    "cenario_id",
+    "subgrupo_id",
+    "hash_comparativo",
+    "codigo",
+    "alvo",
+    "alvo_ref",
+    "id",
+    "alvo_rotulo",
+}
+_FAIXA_NUMERO_RE = re.compile(r"(?i)\bfaixa\s*(?:[1-9]|10)\b")
+
+
+def _textos_exibidos(obj, *, skip_keys: set[str] | None = None) -> list[str]:
+    skip = skip_keys or _CAMPOS_TECNICOS
+    if hasattr(obj, "model_dump"):
+        obj = obj.model_dump()
+    textos: list[str] = []
+    if isinstance(obj, dict):
+        for chave, valor in obj.items():
+            if chave in skip:
+                continue
+            textos.extend(_textos_exibidos(valor, skip_keys=skip))
+    elif isinstance(obj, list):
+        for item in obj:
+            textos.extend(_textos_exibidos(item, skip_keys=skip))
+    elif isinstance(obj, str):
+        textos.append(obj)
+    return textos
+
+
+def assert_paridade_rotulos_faixa(matriz, vm) -> None:
+    rotulos_html: dict[int, str] = {}
+    for secao in vm.secoes_regime:
+        for pl in secao.planos_atuais:
+            for fx in pl.faixas:
+                rotulos_html.setdefault(fx.faixa, fx.rotulo)
+    for prop in matriz.propostas:
+        for fx in prop.faixas:
+            if fx.faixa in rotulos_html:
+                assert fx.rotulo == rotulos_html[fx.faixa]
+            if 0 <= fx.faixa < 10:
+                assert fx.rotulo == ROTULOS_FAIXA[fx.faixa]
+        for sec in prop.secoes:
+            for v in sec.vidas:
+                if v.faixa is None:
+                    continue
+                assert v.faixa_rotulo == ROTULOS_FAIXA[v.faixa]
+                if v.faixa in rotulos_html:
+                    assert v.faixa_rotulo == rotulos_html[v.faixa]
+                assert v.faixa_rotulo not in {str(i) for i in range(10)}
+                assert v.faixa_rotulo != str((v.faixa or 0) + 1)
+
+
+def assert_textos_matriz_sem_indice_faixa(matriz) -> None:
+    for texto in _textos_exibidos(matriz):
+        assert not _FAIXA_NUMERO_RE.search(texto), texto
+    indices = {str(i) for i in range(10)}
+    for prop in matriz.propostas:
+        for fx in prop.faixas:
+            assert fx.rotulo not in indices
+        for sec in prop.secoes:
+            for v in sec.vidas:
+                if v.faixa_rotulo:
+                    assert v.faixa_rotulo not in indices
+                    assert v.faixa_rotulo != str((v.faixa or 0) + 1)
 
 
 def assert_paridade_planos(matriz, vm) -> None:
@@ -408,6 +481,8 @@ def test_paridade_renovacao_um_subgrupo(tmp_path: Path):
     assert_paridade_planos(matriz, vm)
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
+    assert_paridade_rotulos_faixa(matriz, vm)
+    assert_textos_matriz_sem_indice_faixa(matriz)
     assert_coerencia_interna(matriz)
 
 
@@ -420,6 +495,8 @@ def test_paridade_renovacao_dois_subgrupos(tmp_path: Path):
     assert_paridade_planos(matriz, vm)
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
+    assert_paridade_rotulos_faixa(matriz, vm)
+    assert_textos_matriz_sem_indice_faixa(matriz)
     assert_coerencia_interna(matriz)
     assert len(matriz.planos_atuais) == 2
 
@@ -433,6 +510,8 @@ def test_paridade_renovacao_tres_subgrupos(tmp_path: Path):
     assert_paridade_planos(matriz, vm)
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
+    assert_paridade_rotulos_faixa(matriz, vm)
+    assert_textos_matriz_sem_indice_faixa(matriz)
     assert_coerencia_interna(matriz)
     assert len(matriz.planos_atuais) == 3
 
@@ -451,6 +530,8 @@ def test_paridade_seguro_novo(tmp_path: Path):
         assert p.subgrupos == []
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
+    assert_paridade_rotulos_faixa(matriz, vm)
+    assert_textos_matriz_sem_indice_faixa(matriz)
 
 
 def test_regressao_planos_atuais_nao_carregam_consolidado():

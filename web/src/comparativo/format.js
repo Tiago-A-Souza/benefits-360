@@ -30,16 +30,3 @@ export function classeVariacao(valor) {
   if (valor == null || valor === 0) return "cmp-valor--neutro";
   return valor < 0 ? "cmp-valor--economia" : "cmp-valor--aumento";
 }
-
-export const FAIXAS_ROTULOS = [
-  "0–18",
-  "19–23",
-  "24–28",
-  "29–33",
-  "34–38",
-  "39–43",
-  "44–48",
-  "49–53",
-  "54–58",
-  "59+",
-];
