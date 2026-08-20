@@ -2,6 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  root: ".",
+  base: "/",
+  // Com junction (C:\np) ou cwd no caminho real, impede o Vite de derivar o
+  // caminho longo do subst N: e o rollup de emitir index.html absoluto.
+  resolve: {
+    preserveSymlinks: true,
+  },
   plugins: [react()],
   server: {
     host: true,
