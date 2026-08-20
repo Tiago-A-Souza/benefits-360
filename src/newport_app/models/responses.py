@@ -134,6 +134,7 @@ class PlanoAtualComparativo(BaseModel):
     vigente_reais: str | None = None
     reajustado_reais: str | None = None
     mensal_reais: str | None = None
+    faixas: list[FaixaPlanoComparativo] = Field(default_factory=list)
 
 
 class RecorteSubgrupoComparativo(BaseModel):
@@ -146,6 +147,25 @@ class RecorteSubgrupoComparativo(BaseModel):
     proposta_reais: str | None = None
     diff_mes_reais: str | None = None
     diff_ano_reais: str | None = None
+
+
+class ColunaFaixaPropostaComparativo(BaseModel):
+    opcao_id: str
+    unitario_centavos: int | None = None
+    quantidade: int = 0
+    subtotal_centavos: int | None = None
+
+
+class FaixaPlanoComparativo(BaseModel):
+    faixa: int
+    rotulo: str
+    quantidade: int = 0
+    vigente_unitario_centavos: int | None = None
+    vigente_total_centavos: int | None = None
+    reajustado_unitario_centavos: int | None = None
+    reajustado_total_centavos: int | None = None
+    observacao_valor: str | None = None
+    propostas: list[ColunaFaixaPropostaComparativo] = Field(default_factory=list)
 
 
 class SecaoComparativo(BaseModel):

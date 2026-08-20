@@ -216,6 +216,31 @@ def _textos_exibidos(obj, *, skip_keys: set[str] | None = None) -> list[str]:
     return textos
 
 
+def assert_paridade_observacao_faixas(matriz, vm) -> None:
+    for pl in matriz.planos_atuais:
+        obs_matriz = {fx.faixa for fx in pl.faixas if fx.observacao_valor}
+        obs_html: set[int] = set()
+        unit_html: dict[int, tuple[int | None, int | None]] = {}
+        for secao in vm.secoes_regime:
+            for pvm in secao.planos_atuais:
+                if pvm.subgrupo_id != pl.subgrupo_id:
+                    continue
+                for fx in pvm.faixas:
+                    if fx.observacao_valor:
+                        obs_html.add(fx.faixa)
+                    unit_html.setdefault(
+                        fx.faixa,
+                        (fx.atual_vigente_unitario_centavos, fx.atual_reajustado_unitario_centavos),
+                    )
+        assert obs_matriz == obs_html
+        for fx in pl.faixas:
+            if fx.faixa not in unit_html:
+                continue
+            vig_u, reaj_u = unit_html[fx.faixa]
+            assert fx.vigente_unitario_centavos == vig_u
+            assert fx.reajustado_unitario_centavos == reaj_u
+
+
 def assert_paridade_rotulos_faixa(matriz, vm) -> None:
     rotulos_html: dict[int, str] = {}
     for secao in vm.secoes_regime:
@@ -482,6 +507,7 @@ def test_paridade_renovacao_um_subgrupo(tmp_path: Path):
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
     assert_paridade_rotulos_faixa(matriz, vm)
+    assert_paridade_observacao_faixas(matriz, vm)
     assert_textos_matriz_sem_indice_faixa(matriz)
     assert_coerencia_interna(matriz)
 
@@ -496,6 +522,7 @@ def test_paridade_renovacao_dois_subgrupos(tmp_path: Path):
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
     assert_paridade_rotulos_faixa(matriz, vm)
+    assert_paridade_observacao_faixas(matriz, vm)
     assert_textos_matriz_sem_indice_faixa(matriz)
     assert_coerencia_interna(matriz)
     assert len(matriz.planos_atuais) == 2
@@ -511,6 +538,7 @@ def test_paridade_renovacao_tres_subgrupos(tmp_path: Path):
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
     assert_paridade_rotulos_faixa(matriz, vm)
+    assert_paridade_observacao_faixas(matriz, vm)
     assert_textos_matriz_sem_indice_faixa(matriz)
     assert_coerencia_interna(matriz)
     assert len(matriz.planos_atuais) == 3
@@ -531,6 +559,7 @@ def test_paridade_seguro_novo(tmp_path: Path):
     assert_paridade_rotulos(matriz, vm)
     assert_paridade_datas(matriz, vm)
     assert_paridade_rotulos_faixa(matriz, vm)
+    assert_paridade_observacao_faixas(matriz, vm)
     assert_textos_matriz_sem_indice_faixa(matriz)
 
 
@@ -598,6 +627,36 @@ def test_gabarito_proposta_por_plano_vigente(tmp_path: Path):
         assert fx_vm is not None
         assert fx_vm.atual_reajustado_total_centavos == spec["total_reajustado_centavos"]
         assert soma_vidas == fx_vm.atual_reajustado_total_centavos
+    assert_paridade_observacao_faixas(matriz, vm)
+    s750 = next(p for p in matriz.planos_atuais if p.subgrupo_id == "sg-a")
+    one = next(p for p in matriz.planos_atuais if p.subgrupo_id == "sg-b")
+    assert {fx.faixa for fx in s750.faixas if fx.observacao_valor} == {1, 4}
+    assert {fx.faixa for fx in s750.faixas if not fx.observacao_valor} == {
+        fx.faixa for fx in s750.faixas if fx.faixa not in {1, 4}
+    }
+    for spec in gab["propostas"]:
+        rec_a = next(s for s in next(
+            p for p in matriz.propostas if p.opcao_id == spec["opcao_id"]
+        ).subgrupos if s.subgrupo_id == "sg-a")
+        rec_b = next(s for s in next(
+            p for p in matriz.propostas if p.opcao_id == spec["opcao_id"]
+        ).subgrupos if s.subgrupo_id == "sg-b")
+        soma_a = sum(
+            col.subtotal_centavos or 0
+            for fx in s750.faixas
+            for col in fx.propostas
+            if col.opcao_id == spec["opcao_id"]
+        )
+        soma_b = sum(
+            col.subtotal_centavos or 0
+            for fx in one.faixas
+            for col in fx.propostas
+            if col.opcao_id == spec["opcao_id"]
+        )
+        assert soma_a == spec["plano_a_centavos"] == rec_a.proposta_centavos
+        assert soma_b == spec["plano_b_centavos"] == rec_b.proposta_centavos
+    assert sum(fx.reajustado_total_centavos or 0 for fx in s750.faixas) == s750.reajustado_centavos
+    assert sum(fx.reajustado_total_centavos or 0 for fx in one.faixas) == one.reajustado_centavos
 
 
 @pytest.mark.parametrize("reajuste_bps", [1000, 1200])

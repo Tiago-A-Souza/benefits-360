@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
+from newport_app.agregacao_faixa import agregar_valores_faixa
 from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.compilation import ErroCompilacao
@@ -13,11 +14,13 @@ from newport_app.services.pendencias import bloqueios_comparativo_de_erros, pend
 from newport_app.models.responses import (
     AuditoriaItem,
     BloqueioComparativo,
+    ColunaFaixaPropostaComparativo,
     ComparativoResponse,
     ConsistenciaComparativo,
     DetalheVidaComparativo,
     EstudoResumo,
     FaixaComparativo,
+    FaixaPlanoComparativo,
     PendenciaItem,
     PlanoAtualComparativo,
     RecorteSubgrupoComparativo,
@@ -321,6 +324,87 @@ def _chave_contrato_subgrupo(slot: dict[str, int | bool] | None) -> tuple[int | 
     )
 
 
+def _montar_faixas_plano_comparativo(
+    rascunho: RascunhoEstudo,
+    resultado: MotorResult,
+    subgrupo_id: str,
+) -> list[FaixaPlanoComparativo]:
+    vigentes: dict[int, list[int]] = defaultdict(list)
+    reajustados: dict[int, list[int]] = defaultdict(list)
+    propostas: dict[int, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
+    opcao_ids: list[str] = []
+    referencia = next((c for c in resultado.cenarios), None)
+
+    if referencia is not None:
+        for secao in referencia.secoes:
+            for sg in secao.subgrupos:
+                if sg.subgrupo_id != subgrupo_id:
+                    continue
+                for rv in sg.vidas:
+                    fx = rv.faixa
+                    if fx is None or fx < 0 or fx > 9:
+                        continue
+                    vig = _centavos_valor(rv.atual_vigente_centavos)
+                    reaj = _centavos_valor(rv.atual_reajustado_centavos)
+                    if vig is not None:
+                        vigentes[fx].append(vig)
+                    if reaj is not None:
+                        reajustados[fx].append(reaj)
+
+    for cenario in resultado.cenarios:
+        opcao_id, _, _ = _metadados_coluna_cenario(rascunho, cenario.cenario_id)
+        if not opcao_id:
+            continue
+        if opcao_id not in opcao_ids:
+            opcao_ids.append(opcao_id)
+        for secao in cenario.secoes:
+            for sg in secao.subgrupos:
+                if sg.subgrupo_id != subgrupo_id:
+                    continue
+                for rv in sg.vidas:
+                    fx = rv.faixa
+                    if fx is None or fx < 0 or fx > 9:
+                        continue
+                    prop = _centavos_valor(rv.proposta_centavos)
+                    if prop is not None:
+                        propostas[fx][opcao_id].append(prop)
+
+    faixas: list[FaixaPlanoComparativo] = []
+    for fx in range(10):
+        vals_v = vigentes.get(fx, [])
+        vals_r = reajustados.get(fx, [])
+        if not vals_v and not vals_r and not any(propostas[fx].values()):
+            continue
+        unit_v, tot_v, obs_v = agregar_valores_faixa(vals_v)
+        unit_r, tot_r, obs_r = agregar_valores_faixa(vals_r)
+        cols = []
+        for op_id in opcao_ids:
+            vals_p = propostas[fx].get(op_id, [])
+            unit_p, sub_p, _ = agregar_valores_faixa(vals_p)
+            cols.append(
+                ColunaFaixaPropostaComparativo(
+                    opcao_id=op_id,
+                    unitario_centavos=unit_p,
+                    quantidade=len(vals_p),
+                    subtotal_centavos=sub_p,
+                )
+            )
+        faixas.append(
+            FaixaPlanoComparativo(
+                faixa=fx,
+                rotulo=_rotulo_faixa(fx) or "—",
+                quantidade=len(vals_v) or len(vals_r) or max((c.quantidade for c in cols), default=0),
+                vigente_unitario_centavos=unit_v,
+                vigente_total_centavos=tot_v,
+                reajustado_unitario_centavos=unit_r,
+                reajustado_total_centavos=tot_r,
+                observacao_valor=obs_v or obs_r,
+                propostas=cols,
+            )
+        )
+    return faixas
+
+
 def _montar_planos_atuais(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
@@ -376,6 +460,7 @@ def _montar_planos_atuais(
                 vigente_reais=_formatar_reais(vigente) if vigente is not None else None,
                 reajustado_reais=_formatar_reais(reajustado) if reajustado is not None else None,
                 mensal_reais=_formatar_reais(mensal) if mensal is not None else None,
+                faixas=_montar_faixas_plano_comparativo(rascunho, resultado, sg.id),
             )
         )
     return planos, pendencias

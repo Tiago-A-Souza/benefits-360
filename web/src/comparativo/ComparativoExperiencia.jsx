@@ -215,62 +215,141 @@ function CelulaPlanoAtual({ plano }) {
   );
 }
 
+function celulaFaixa({ unitario, quantidade, subtotal, sufixo }) {
+  const extra = sufixo ? ` ${sufixo}` : "";
+  if (unitario != null && quantidade > 0) {
+    return (
+      <div>
+        {formatCentavos(unitario)}
+        <small className="cmp-faixa-detalhe">
+          {" "}
+          · {quantidade} · {formatCentavos(subtotal)}
+          {extra}
+        </small>
+      </div>
+    );
+  }
+  return (
+    <div>
+      {formatCentavos(subtotal)}
+      {extra && <small className="cmp-faixa-qtd">{extra}</small>}
+    </div>
+  );
+}
+
 function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
-  const vidasRef = vidasDaProposta(propostas[0]).filter(
-    (v) => seguroNovo || v.subgrupo_id === plano?.subgrupo_id
-  );
-  const faixas = [...new Set(vidasRef.map((v) => v.faixa).filter((fx) => fx != null))].sort(
-    (a, b) => a - b
-  );
+  if (seguroNovo || !plano?.faixas?.length) {
+    const vidasRef = vidasDaProposta(propostas[0]).filter(
+      (v) => seguroNovo || v.subgrupo_id === plano?.subgrupo_id
+    );
+    const faixas = [...new Set(vidasRef.map((v) => v.faixa).filter((fx) => fx != null))].sort(
+      (a, b) => a - b
+    );
+    return (
+      <table className="conferencia cmp-matriz">
+        <CabecalhoMatriz
+          planosAtuais={plano ? [plano] : []}
+          propostas={propostas}
+          seguroNovo={seguroNovo}
+        />
+        <tbody className="cmp-matriz-dados">
+          {faixas.map((fx) => {
+            const vidasFx = vidasRef.filter((v) => v.faixa === fx);
+            return (
+              <tr key={fx}>
+                <th scope="row">
+                  {vidasFx[0]?.faixa_rotulo || "—"}
+                  {vidasFx.length > 1 && (
+                    <small className="cmp-faixa-qtd"> ({vidasFx.length} vidas)</small>
+                  )}
+                </th>
+                {propostas.map((p) => {
+                  const vidasP = vidasDaProposta(p).filter(
+                    (v) => v.faixa === fx && (seguroNovo || v.subgrupo_id === plano?.subgrupo_id)
+                  );
+                  const proposta = vidasP.reduce((s, v) => s + (v.proposta_centavos || 0), 0);
+                  return (
+                    <td key={p.opcao_id}>
+                      {formatCentavos(proposta)}
+                      {vidasP.length > 1 && (
+                        <small className="cmp-faixa-qtd"> ({vidasP.length} vidas)</small>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    );
+  }
+
   return (
     <table className="conferencia cmp-matriz">
-      {!seguroNovo && plano && (
-        <caption className="cmp-matriz-caption">
-          Plano atual — {plano.operadora} · {plano.plano_nome}
-        </caption>
-      )}
+      <caption className="cmp-matriz-caption">
+        Plano atual — {plano.operadora} · {plano.plano_nome}
+      </caption>
       <CabecalhoMatriz
-        planosAtuais={plano ? [plano] : []}
+        planosAtuais={[plano]}
         propostas={propostas}
-        seguroNovo={seguroNovo}
+        seguroNovo={false}
       />
       <tbody className="cmp-matriz-dados">
-        {faixas.map((fx) => {
-          const vidasFx = vidasRef.filter((v) => v.faixa === fx);
-          const vigente = vidasFx.reduce((s, v) => s + (v.vigente_centavos || 0), 0);
-          const reajustado = vidasFx.reduce((s, v) => s + (v.reajustado_centavos || 0), 0);
-          return (
-            <tr key={fx}>
-              <th scope="row">
-                {vidasFx[0]?.faixa_rotulo || "—"}
-                {vidasFx.length > 1 && (
-                  <small className="cmp-faixa-qtd"> ({vidasFx.length} vidas)</small>
-                )}
-              </th>
-              {!seguroNovo && (
-                <td className="cmp-col-atual">
-                  <div>{formatCentavos(vigente)} vigente</div>
-                  <div>{formatCentavos(reajustado)} reajustado</div>
-                </td>
+        {plano.faixas.map((fx) => (
+          <tr key={fx.faixa}>
+            <th scope="row">
+              {fx.rotulo}
+              {fx.quantidade > 1 && (
+                <small className="cmp-faixa-qtd"> ({fx.quantidade} vidas)</small>
               )}
-              {propostas.map((p) => {
-                const vidasP = vidasDaProposta(p).filter(
-                  (v) => v.faixa === fx && (seguroNovo || v.subgrupo_id === plano?.subgrupo_id)
-                );
-                const proposta = vidasP.reduce((s, v) => s + (v.proposta_centavos || 0), 0);
-                return (
-                  <td key={p.opcao_id}>
-                    {formatCentavos(proposta)}
-                    {vidasP.length > 1 && (
-                      <small className="cmp-faixa-qtd"> ({vidasP.length} vidas)</small>
-                    )}
-                  </td>
-                );
+              {fx.observacao_valor && (
+                <small className="cmp-faixa-obs">{fx.observacao_valor}</small>
+              )}
+            </th>
+            <td className="cmp-col-atual">
+              {celulaFaixa({
+                unitario: fx.vigente_unitario_centavos,
+                quantidade: fx.quantidade,
+                subtotal: fx.vigente_total_centavos,
+                sufixo: "vigente",
               })}
-            </tr>
-          );
-        })}
+              {celulaFaixa({
+                unitario: fx.reajustado_unitario_centavos,
+                quantidade: fx.quantidade,
+                subtotal: fx.reajustado_total_centavos,
+                sufixo: "reajustado",
+              })}
+            </td>
+            {propostas.map((p) => {
+              const col = (fx.propostas || []).find((c) => c.opcao_id === p.opcao_id);
+              return (
+                <td key={p.opcao_id}>
+                  {celulaFaixa({
+                    unitario: col?.unitario_centavos,
+                    quantidade: col?.quantidade || 0,
+                    subtotal: col?.subtotal_centavos,
+                  })}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
       </tbody>
+      <tfoot className="cmp-matriz-totais">
+        <tr>
+          <th scope="row">Totais</th>
+          <td className="cmp-col-atual">
+            <div>{formatCentavos(plano.vigente_centavos)} vigente</div>
+            <div>{formatCentavos(plano.reajustado_centavos)} reajustado</div>
+          </td>
+          {propostas.map((p) => (
+            <td key={p.opcao_id}>
+              {formatCentavos(recorteSubgrupo(p, plano.subgrupo_id)?.proposta_centavos)}
+            </td>
+          ))}
+        </tr>
+      </tfoot>
     </table>
   );
 }
