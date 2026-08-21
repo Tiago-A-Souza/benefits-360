@@ -116,7 +116,7 @@ export default function PropostaPanel({
         f.valor_centavos = conv.ok ? conv.centavos : null;
         f.proveniencia.confirmado = false;
       } else if (campo === "price_basis") {
-        f.price_basis = valor;
+        f.price_basis = valor || "desconhecido";
         f.proveniencia.confirmado = false;
       } else if (campo === "quantidade_cotada") {
         f.quantidade_cotada = valor === "" ? null : parseInt(valor, 10);
@@ -378,9 +378,19 @@ export default function PropostaPanel({
                         </td>
                         <td>
                           <select
-                            value={f.price_basis}
+                            value={
+                              f.price_basis === "inclui_iof" || f.price_basis === "exclui_iof"
+                                ? f.price_basis
+                                : ""
+                            }
                             onChange={(e) => patchFaixa(i, "price_basis", e.target.value)}
+                            className={
+                              f.price_basis !== "inclui_iof" && f.price_basis !== "exclui_iof"
+                                ? "campo-pendente"
+                                : undefined
+                            }
                           >
+                            <option value="">Selecione…</option>
                             {BASES_IOF.map((b) => (
                               <option key={b.value} value={b.value}>
                                 {b.label}

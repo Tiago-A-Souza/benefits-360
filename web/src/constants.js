@@ -33,11 +33,11 @@ export const REGIMES_COPART = [
   { value: "customizada", label: "Customizada" },
 ];
 
+/** Opções selecionáveis de price_basis na UI. desconhecido/nao_aplica
+ *  permanecem no modelo (extração / operadora), mas não são escolhas do analista. */
 export const BASES_IOF = [
   { value: "inclui_iof", label: "Inclui IOF" },
   { value: "exclui_iof", label: "Exclui IOF" },
-  { value: "desconhecido", label: "Desconhecido" },
-  { value: "nao_aplica", label: "Não se aplica" },
 ];
 
 export function novoId(prefixo) {

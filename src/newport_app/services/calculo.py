@@ -171,9 +171,11 @@ class CalculoService:
         return resp
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:
+        from newport_app.rascunho.fatura_basis import aplicar_fatura_price_basis_explicito
         from newport_app.rascunho.precedencia import aplicar_precedencia_explicita
 
         aplicar_precedencia_explicita(rascunho)
+        aplicar_fatura_price_basis_explicito(rascunho)
         self._repo.salvar_rascunho(rascunho)
         if self._on_rascunho_alterado:
             self._on_rascunho_alterado(rascunho.id, "Alteração no rascunho")

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { obterPendencias, obterRascunho, obterResumoPlanoAtual, salvarRascunho } from "./api";
 import {
-  BASES_IOF,
   MODALIDADES,
   OPERADORAS,
   REGIMES_COPART,
@@ -46,6 +45,19 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
       if (campo === "regime_copart_id") {
         ensureRegime(copia, valor);
         copia.subgrupos_atuais[idx].regime_copart_id = `regime-${valor}`;
+      } else if (campo === "tipo_fiscal") {
+        copia.subgrupos_atuais[idx].tipo_fiscal = valor;
+        // Basis explícito a partir do tipo (campo IOF saiu da UI). Só preenche
+        // quando ainda desconhecido / inválido para o tipo — não sobrescreve legado.
+        const atual = copia.subgrupos_atuais[idx].fatura_price_basis;
+        if (valor === "operadora" && (atual === "desconhecido" || !atual)) {
+          copia.subgrupos_atuais[idx].fatura_price_basis = "nao_aplica";
+        } else if (
+          valor === "seguradora" &&
+          (atual === "desconhecido" || atual === "nao_aplica" || !atual)
+        ) {
+          copia.subgrupos_atuais[idx].fatura_price_basis = "exclui_iof";
+        }
       } else {
         copia.subgrupos_atuais[idx][campo] = valor;
       }
@@ -227,20 +239,6 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
                     {REGIMES_COPART.map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="campo-form">
-                  O valor informado já inclui IOF?
-                  <select
-                    value={sg.fatura_price_basis || "desconhecido"}
-                    onChange={(e) => atualizarSubgrupo(idx, "fatura_price_basis", e.target.value)}
-                    className={sg.fatura_price_basis === "desconhecido" ? "campo-pendente" : undefined}
-                  >
-                    {BASES_IOF.map((b) => (
-                      <option key={b.value} value={b.value}>
-                        {b.label}
                       </option>
                     ))}
                   </select>

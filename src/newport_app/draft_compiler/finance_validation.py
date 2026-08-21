@@ -43,7 +43,7 @@ def validar_price_basis_usavel(
             _erro(
                 "APP-FIN-001",
                 caminho,
-                "Informe se o valor inclui IOF, exclui IOF ou não se aplica.",
+                "Informe se o valor inclui ou exclui IOF.",
             )
         )
         return False
