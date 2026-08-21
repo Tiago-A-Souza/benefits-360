@@ -1,0 +1,453 @@
+{
+  "data_referencia": "2026-07-01",
+  "reajuste_bps": 1200,
+  "planos": [
+    {
+      "subgrupo_id": "sg-a",
+      "plano_nome": "AMIL S750 - Apto.",
+      "operadora": "AMIL"
+    },
+    {
+      "subgrupo_id": "sg-b",
+      "plano_nome": "AMIL ONE S2500 - Apto.",
+      "operadora": "AMIL"
+    }
+  ],
+  "vidas": [
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 2,
+      "centavos": 58493,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 5,
+      "centavos": 81072,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 0,
+      "centavos": 40978,
+      "parentesco": "filho",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 6,
+      "centavos": 101339,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 8,
+      "centavos": 139342,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 9,
+      "centavos": 243848,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 1,
+      "centavos": 40978,
+      "parentesco": "filho",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-b",
+      "faixa": 7,
+      "centavos": 249606,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 2,
+      "centavos": 58493,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 70192,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 1,
+      "centavos": 47945,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "companheiro",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 5,
+      "centavos": 81072,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 0,
+      "centavos": 40978,
+      "parentesco": "filho",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 1,
+      "centavos": 47945,
+      "parentesco": "filho",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-b",
+      "faixa": 9,
+      "centavos": 546012,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-b",
+      "faixa": 9,
+      "centavos": 546012,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 2,
+      "centavos": 58493,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 0,
+      "centavos": 40978,
+      "parentesco": "filho",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 1,
+      "centavos": 47945,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 4,
+      "centavos": 73702,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-b",
+      "faixa": 5,
+      "centavos": 181531,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-b",
+      "faixa": 5,
+      "centavos": 181531,
+      "parentesco": "conjuge",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 2,
+      "centavos": 58493,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    },
+    {
+      "subgrupo_id": "sg-a",
+      "faixa": 3,
+      "centavos": 70192,
+      "parentesco": "titular",
+      "price_basis": "desconhecido"
+    }
+  ],
+  "propostas": [
+    {
+      "id": "op-bronze",
+      "plano_nome": "BRONZE BRASIL I Q",
+      "operadora": "Porto Seguro",
+      "regime_tipo": "sem",
+      "percentual": null,
+      "tabela": [
+        33337,
+        40428,
+        48770,
+        55834,
+        60496,
+        62477,
+        74630,
+        80342,
+        99269,
+        166863
+      ],
+      "tipo_fiscal": "seguradora"
+    },
+    {
+      "id": "op-ouro",
+      "plano_nome": "OURO MAIS I Q",
+      "operadora": "Porto Seguro",
+      "regime_tipo": "sem",
+      "percentual": null,
+      "tabela": [
+        52378,
+        63520,
+        76627,
+        87724,
+        95050,
+        98162,
+        117257,
+        126232,
+        155969,
+        262171
+      ],
+      "tipo_fiscal": "seguradora"
+    },
+    {
+      "id": "op-prata",
+      "plano_nome": "PRATA MAIS I Q",
+      "operadora": "Porto Seguro",
+      "regime_tipo": "sem",
+      "percentual": null,
+      "tabela": [
+        36854,
+        44693,
+        53915,
+        61723,
+        66877,
+        69067,
+        82502,
+        88817,
+        109740,
+        184464
+      ],
+      "tipo_fiscal": "seguradora"
+    },
+    {
+      "id": "op-especial",
+      "plano_nome": "Especial 100 R1 — Apartamento (Nacional / RJ Capital)",
+      "operadora": "SulAmérica",
+      "regime_tipo": "sem",
+      "percentual": null,
+      "tabela": [
+        34749,
+        43437,
+        53861,
+        59786,
+        63971,
+        74206,
+        88706,
+        103964,
+        123769,
+        208488
+      ],
+      "tipo_fiscal": "operadora"
+    },
+    {
+      "id": "op-direto",
+      "plano_nome": "Direto Apartamento (Nacional)",
+      "operadora": "SulAmérica",
+      "regime_tipo": "sem",
+      "percentual": null,
+      "tabela": [
+        28569,
+        35712,
+        44283,
+        49154,
+        52595,
+        61010,
+        72931,
+        85475,
+        101758,
+        171411
+      ],
+      "tipo_fiscal": "operadora"
+    },
+    {
+      "id": "op-executivo",
+      "plano_nome": "Executivo R1 Apartamento (Nacional)",
+      "operadora": "SulAmérica",
+      "regime_tipo": "percentual",
+      "percentual": 30,
+      "tabela": [
+        67704,
+        84630,
+        104941,
+        116485,
+        124639,
+        144581,
+        172832,
+        202559,
+        241147,
+        406212
+      ],
+      "tipo_fiscal": "operadora"
+    }
+  ],
+  "gabarito": [
+    {
+      "opcao_id": "op-bronze",
+      "s750": 2135464,
+      "one": 551850,
+      "consolidado": 2687314
+    },
+    {
+      "opcao_id": "op-prata",
+      "s750": 2360717,
+      "one": 610061,
+      "consolidado": 2970778
+    },
+    {
+      "opcao_id": "op-ouro",
+      "s750": 3355183,
+      "one": 867054,
+      "consolidado": 4222237
+    },
+    {
+      "opcao_id": "op-executivo",
+      "s750": 4481989,
+      "one": 1304145,
+      "consolidado": 5786134
+    }
+  ]
+}
