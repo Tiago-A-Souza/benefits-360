@@ -7,6 +7,7 @@ import {
   opcoesUnicas,
   ordenarPropostas,
   ordenarSelecao,
+  paginarPropostas,
 } from "./logica";
 
 function Pendencias({ items }) {
@@ -328,7 +329,7 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
   );
 }
 
-function MatrizComparativa({
+function ConteudoMatriz({
   planosAtuais,
   propostas,
   vista,
@@ -336,14 +337,10 @@ function MatrizComparativa({
   seguroNovo,
   faixasEstudo,
 }) {
-  if (!propostas.length) {
-    return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
-  }
-
   const vidasRef = vidasDaProposta(propostas[0]);
 
   return (
-    <div className="cmp-matriz-scroll">
+    <>
       {vista === "faixas" ? (
         <>
           <p className="cmp-matriz-separador-texto">Valores por faixa etária (soma do grupo)</p>
@@ -487,7 +484,53 @@ function MatrizComparativa({
         )}
       </table>
       )}
-    </div>
+    </>
+  );
+}
+
+function MatrizComparativa({
+  planosAtuais,
+  propostas,
+  vista,
+  mostrarNomes,
+  seguroNovo,
+  faixasEstudo,
+}) {
+  if (!propostas.length) {
+    return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
+  }
+
+  const paginas = paginarPropostas(propostas);
+  return (
+    <>
+      <div className="cmp-matriz-scroll cmp-matriz-tela">
+        <ConteudoMatriz
+          planosAtuais={planosAtuais}
+          propostas={propostas}
+          vista={vista}
+          mostrarNomes={mostrarNomes}
+          seguroNovo={seguroNovo}
+          faixasEstudo={faixasEstudo}
+        />
+      </div>
+      <div className="cmp-matriz-impressao">
+        {paginas.map((chunk) => (
+          <div
+            className="cmp-matriz-pagina-print"
+            key={chunk.map((p) => p.opcao_id).join("-")}
+          >
+            <ConteudoMatriz
+              planosAtuais={planosAtuais}
+              propostas={chunk}
+              vista={vista}
+              mostrarNomes={mostrarNomes}
+              seguroNovo={seguroNovo}
+              faixasEstudo={faixasEstudo}
+            />
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

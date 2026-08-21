@@ -1,5 +1,18 @@
 /** Filtros e ordenação usando apenas campos numéricos da API. */
 
+/** Igual a MAX_PROPOSTAS_POR_PAGINA do renderer HTML. */
+export const MAX_PROPOSTAS_POR_PAGINA = 3;
+
+export function paginarPropostas(propostas, tamanho = MAX_PROPOSTAS_POR_PAGINA) {
+  const lista = propostas || [];
+  if (!lista.length) return [[]];
+  const paginas = [];
+  for (let i = 0; i < lista.length; i += tamanho) {
+    paginas.push(lista.slice(i, i + tamanho));
+  }
+  return paginas;
+}
+
 export function filtrarPropostas(propostas, filtros) {
   return propostas.filter((p) => {
     if (!p.calculo_realizado) return false;

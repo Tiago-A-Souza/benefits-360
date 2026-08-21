@@ -4249,3 +4249,36 @@ a.btn-link {
   padding: 1rem;
 }
 
+.cmp-matriz-impressao {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  .cmp-matriz-tela {
+    display: none !important;
+  }
+
+  .cmp-matriz-impressao {
+    display: block;
+  }
+
+  .cmp-matriz-pagina-print {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .cmp-matriz-pagina-print:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .cmp-matriz-impressao .cmp-matriz {
+    min-width: 0;
+  }
+}
+
