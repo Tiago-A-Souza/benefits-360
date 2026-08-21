@@ -108,10 +108,18 @@ export function statusEtapaPorChave(chave, ctx) {
         return { concluida: false, pendencia: "Configure o plano atual" };
       }
       if (
-        !rascunho.escolhas?.baseline_escolhido?.confirmado ||
-        !rascunho.escolhas?.precedencia_atual_vida?.confirmado
+        !rascunho.escolhas?.baseline_escolhido?.confirmado
       ) {
         return { concluida: false, pendencia: "Confirme as informações do plano" };
+      }
+      const temFatura = (rascunho.vidas || []).some(
+        (v) => v.incluida !== false && v.valor_fatura?.centavos != null
+      );
+      const temTabela = (rascunho.subgrupos_atuais || []).some(
+        (sg) => (sg.tabela_atual || []).length > 0
+      );
+      if (temFatura && temTabela && !rascunho.escolhas?.precedencia_atual_vida?.confirmado) {
+        return { concluida: false, pendencia: "Confirme a origem dos valores atuais" };
       }
       const p2 = (pendencias || []).filter((p) => p.tipo === "bloqueio" && p.etapa === 2);
       if (p2.length) return { concluida: false, pendencia: p2[0].titulo };

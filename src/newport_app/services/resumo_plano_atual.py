@@ -168,6 +168,11 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
         total_reajustado_geral if tem_reajuste_global and total_reajustado_geral else None
     )
 
+    from newport_app.rascunho.precedencia import (
+        descricao_origem_valores,
+        precedencia_ambigua,
+    )
+
     return ResumoPlanoAtualResponse(
         planos=planos,
         total_vigente_centavos=total_vigente,
@@ -176,4 +181,6 @@ def montar_resumo_plano_atual(rascunho: RascunhoEstudo) -> ResumoPlanoAtualRespo
         total_reajustado_reais=_formatar_reais(total_reajustado),
         total_calculado_reais=_formatar_reais(total_vigente),
         requer_data_referencia=data_ref is None,
+        origem_valores_descricao=descricao_origem_valores(rascunho),
+        exige_escolha_precedencia=precedencia_ambigua(rascunho),
     )

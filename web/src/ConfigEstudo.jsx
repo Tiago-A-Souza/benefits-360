@@ -32,7 +32,8 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
         setConfirmacaoFinal(
           Boolean(
             r.escolhas?.baseline_escolhido?.confirmado &&
-              r.escolhas?.precedencia_atual_vida?.confirmado
+              (!resumo?.exige_escolha_precedencia ||
+                r.escolhas?.precedencia_atual_vida?.confirmado)
           )
         );
       })
@@ -72,6 +73,7 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
     setErro(null);
     const copia = structuredClone(rascunho);
     const seguroNovo = copia.formato === "novo";
+    const exigePrecedencia = Boolean(resumoAtual?.exige_escolha_precedencia);
     if (seguroNovo) {
       copia.escolhas.baseline_escolhido.confirmado = false;
       copia.escolhas.baseline_escolhido.valor = null;
@@ -79,12 +81,28 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
       copia.escolhas.precedencia_atual_vida.valor = null;
     } else {
       copia.escolhas.baseline_escolhido.confirmado = confirmacaoFinal;
-      copia.escolhas.precedencia_atual_vida.confirmado = confirmacaoFinal;
+      if (exigePrecedencia) {
+        copia.escolhas.precedencia_atual_vida.confirmado = confirmacaoFinal;
+      }
+      // Fonte única: o servidor grava valor explícito em salvar_rascunho.
     }
     try {
       await salvarRascunho(estudoId, copia);
-      setRascunho(copia);
-      setPendencias(await obterPendencias(estudoId));
+      const [r, p, resumo] = await Promise.all([
+        obterRascunho(estudoId),
+        obterPendencias(estudoId),
+        obterResumoPlanoAtual(estudoId).catch(() => null),
+      ]);
+      setRascunho(r);
+      setPendencias(p);
+      setResumoAtual(resumo);
+      setConfirmacaoFinal(
+        Boolean(
+          r.escolhas?.baseline_escolhido?.confirmado &&
+            (!resumo?.exige_escolha_precedencia ||
+              r.escolhas?.precedencia_atual_vida?.confirmado)
+        )
+      );
       setMsg(seguroNovo ? "Referência de idades salva." : "Informações do plano atual salvas.");
       onSalvo?.();
     } catch (e) {
@@ -251,7 +269,7 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
 
       <div className="bloco-secao bloco-secao--escolhas">
         <h3>Como faremos a comparação</h3>
-        <p className="muted">Escolha a referência do contrato e a origem dos valores atuais.</p>
+        <p className="muted">Escolha a referência do contrato vigente para a comparação.</p>
 
         <div className="grupo-escolhas">
           <h4 className="grupo-escolhas-titulo">Referência do contrato</h4>
@@ -291,40 +309,53 @@ export default function ConfigEstudo({ estudoId, onSalvo }) {
           </div>
 
           <h4 className="grupo-escolhas-titulo">Origem dos valores atuais</h4>
-          <div className="cartoes-escolha">
-            <label
-              className={`cartao-escolha${
-                rascunho.escolhas.precedencia_atual_vida.valor === "valor_fatura"
-                  ? " cartao-escolha--ativo"
-                  : ""
-              }`}
-            >
-              <input
-                type="radio"
-                name="precedencia"
-                checked={rascunho.escolhas.precedencia_atual_vida.valor === "valor_fatura"}
-                onChange={() => atualizarEscolha("precedencia", "valor_fatura")}
-              />
-              <strong>Valores importados do SISCOR</strong>
-              <span className="muted">Usa o valor de fatura de cada beneficiário.</span>
-            </label>
-            <label
-              className={`cartao-escolha${
-                rascunho.escolhas.precedencia_atual_vida.valor === "tabela_atual"
-                  ? " cartao-escolha--ativo"
-                  : ""
-              }`}
-            >
-              <input
-                type="radio"
-                name="precedencia"
-                checked={rascunho.escolhas.precedencia_atual_vida.valor === "tabela_atual"}
-                onChange={() => atualizarEscolha("precedencia", "tabela_atual")}
-              />
-              <strong>Tabela oficial do plano</strong>
-              <span className="muted">Usa a tabela tarifária cadastrada do contrato.</span>
-            </label>
-          </div>
+          {resumoAtual?.exige_escolha_precedencia ? (
+            <>
+              <p className="alerta">
+                {resumoAtual.origem_valores_descricao ||
+                  "Tabela e fatura coexistem — escolha qual fonte prevalece."}
+              </p>
+              <div className="cartoes-escolha">
+                <label
+                  className={`cartao-escolha${
+                    rascunho.escolhas.precedencia_atual_vida.valor === "valor_fatura"
+                      ? " cartao-escolha--ativo"
+                      : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="precedencia"
+                    checked={rascunho.escolhas.precedencia_atual_vida.valor === "valor_fatura"}
+                    onChange={() => atualizarEscolha("precedencia", "valor_fatura")}
+                  />
+                  <strong>Valores importados do SISCOR</strong>
+                  <span className="muted">Usa o valor de fatura de cada beneficiário.</span>
+                </label>
+                <label
+                  className={`cartao-escolha${
+                    rascunho.escolhas.precedencia_atual_vida.valor === "tabela_atual"
+                      ? " cartao-escolha--ativo"
+                      : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="precedencia"
+                    checked={rascunho.escolhas.precedencia_atual_vida.valor === "tabela_atual"}
+                    onChange={() => atualizarEscolha("precedencia", "tabela_atual")}
+                  />
+                  <strong>Tabela oficial do plano</strong>
+                  <span className="muted">Usa a tabela tarifária cadastrada do contrato.</span>
+                </label>
+              </div>
+            </>
+          ) : (
+            <p className="origem-valores-info muted">
+              {resumoAtual?.origem_valores_descricao ||
+                "A origem dos valores atuais será definida automaticamente conforme a base importada."}
+            </p>
+          )}
 
           <label className="campo-form campo-form--data">
             Data usada para calcular as idades

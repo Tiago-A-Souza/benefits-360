@@ -91,6 +91,8 @@ class ResumoPlanoAtualResponse(BaseModel):
     total_reajustado_reais: str | None = None
     total_calculado_reais: str | None = None
     requer_data_referencia: bool = False
+    origem_valores_descricao: str | None = None
+    exige_escolha_precedencia: bool = False
 
 
 class DetalheVidaComparativo(BaseModel):

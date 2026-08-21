@@ -35,7 +35,7 @@ _TRADUCOES: dict[str, tuple[str, str, str]] = {
     "APP-ESC-003": (
         "bloqueio",
         "Fonte do valor atual",
-        "Confirme se prevalece a tabela do plano ou o valor de fatura por vida.",
+        "Tabela e fatura coexistem na mesma faixa; confirme qual fonte prevalece.",
     ),
     "APP-FIN-001": (
         "bloqueio",

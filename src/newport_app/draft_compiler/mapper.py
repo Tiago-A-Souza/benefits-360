@@ -512,13 +512,22 @@ def mapear_effective_policy(
                 )
             )
 
-        if not precedencia.confirmado or precedencia.valor is None:
+        from newport_app.rascunho.precedencia import (
+            aplicar_precedencia_explicita,
+            precedencia_ambigua,
+        )
+
+        # Fonte única: grava valor explícito no rascunho (sem omissão no motor).
+        if not precedencia_ambigua(rascunho):
+            aplicar_precedencia_explicita(rascunho)
+            precedencia = esc.precedencia_atual_vida
+        elif not precedencia.confirmado or precedencia.valor is None:
             erros.append(
                 _erro(
                     "APP-ESC-003",
                     "/escolhas/precedencia_atual_vida/confirmado",
-                    "Confirme qual fonte prevalece em caso de diferença: "
-                    "tabela do plano atual ou valor da fatura.",
+                    "Tabela e fatura coexistem na mesma faixa; confirme qual fonte "
+                    "prevalece: tabela do plano atual ou valor da fatura.",
                 )
             )
 

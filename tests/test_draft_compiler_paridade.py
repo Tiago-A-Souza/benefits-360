@@ -353,11 +353,33 @@ def test_politica_h01_do_motor_result(tmp_path: Path):
     assert "29 vidas" in alertas[0].descricao
 
 
-def test_precedencia_nao_confirmada():
+def test_precedencia_nao_confirmada_so_bloqueia_se_ambigua():
+    """Fonte única: APP-ESC-003 não bloqueia. Ambas as fontes: bloqueia."""
     rascunho = rascunho_demo_12_vidas()
     rascunho.escolhas.precedencia_atual_vida.confirmado = False
     resultado = compile(rascunho)
-    assert any(e.codigo == "APP-ESC-003" for e in resultado.erros)
+    assert not any(e.codigo == "APP-ESC-003" for e in resultado.erros)
+    assert resultado.compilavel or any(e.codigo != "APP-ESC-003" for e in resultado.erros)
+
+    from newport_app.models.draft import (
+        ComponenteFinanceiroRascunho,
+        OrigemValorRascunho,
+        PriceBasisRascunho,
+        ProvenienciaRascunho,
+    )
+
+    prov = ProvenienciaRascunho(origem=OrigemValorRascunho.MANUAL, confirmado=True)
+    for v in rascunho.vidas:
+        v.valor_fatura = ComponenteFinanceiroRascunho(
+            centavos=50_000,
+            price_basis=PriceBasisRascunho.EXCLUI_IOF,
+            proveniencia=prov,
+        )
+    rascunho.escolhas.precedencia_atual_vida.valor = None
+    rascunho.escolhas.precedencia_atual_vida.confirmado = False
+    ambigua = compile(rascunho)
+    assert any(e.codigo == "APP-ESC-003" for e in ambigua.erros)
+    assert not ambigua.compilavel
 
 
 def test_aviso_validade_somente_com_documento():
