@@ -5,7 +5,9 @@ import {
   obterEstudo,
   obterPendencias,
   obterRascunho,
+  obterResumoPlanoAtual,
 } from "./api";
+import { textoReajusteContrato } from "./fluxo/resumoPlanoUi";
 import ComparativoPanel from "./ComparativoPanel";
 import ConfigEstudo from "./ConfigEstudo";
 import EstudoCabecalho from "./EstudoCabecalho";
@@ -30,25 +32,29 @@ export default function App() {
     rascunho: null,
     extracoes: [],
     pendencias: [],
+    resumoPlanoAtual: null,
   });
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [cestaGlobal, setCestaGlobal] = useState([]);
 
   const recarregarContexto = useCallback(async () => {
     if (!estudoId) return;
-    const [r, p, c, e, res] = await Promise.all([
+    const [r, p, c, e, res, resumoPlano] = await Promise.all([
       obterRascunho(estudoId).catch(() => null),
       obterPendencias(estudoId).catch(() => []),
       obterConferenciaSiscor(estudoId).catch(() => null),
       listarExtracoesCotacao(estudoId).catch(() => ({ extracoes: [] })),
       obterEstudo(estudoId).catch(() => null),
+      obterResumoPlanoAtual(estudoId).catch(() => null),
     ]);
     if (res) setResumo(res);
+    const resumoPlanoAtual = r?.formato === "novo" ? null : resumoPlano;
     setCtxFluxo({
       rascunho: r,
       pendencias: p,
       conferencia: c,
       extracoes: e.extracoes || [],
+      resumoPlanoAtual,
     });
   }, [estudoId]);
 
@@ -113,6 +119,8 @@ export default function App() {
   }
 
   const nPlanosVigentes = ctxFluxo.rascunho?.subgrupos_atuais?.length || 0;
+  const totalBaseComparacao = ctxFluxo.resumoPlanoAtual?.total_reajustado_reais;
+  const legendaReajusteBase = textoReajusteContrato(ctxFluxo.resumoPlanoAtual);
 
   if (tela === "lista") {
     return (
@@ -149,6 +157,15 @@ export default function App() {
                   ? ` · ${nPlanosVigentes} ${nPlanosVigentes === 1 ? "plano vigente" : "planos vigentes"}`
                   : ""}
               </div>
+              {totalBaseComparacao && (
+                <div className="side-value">
+                  <small>Base para comparação</small>
+                  <strong className="num">{totalBaseComparacao}</strong>
+                  {legendaReajusteBase && (
+                    <span className="side-meta">{legendaReajusteBase}</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -200,10 +217,21 @@ export default function App() {
         <div className="app-main">
           <main className="fluxo-conteudo">
             {chavePassoAtual === "base" && (
-              <SiscorPanel estudoId={estudoId} onAtualizado={recarregarContexto} />
+              <SiscorPanel
+                estudoId={estudoId}
+                etapaIndice={passo}
+                totalEtapas={passos.length}
+                resumoPlanoAtual={ctxFluxo.resumoPlanoAtual}
+                onAtualizado={recarregarContexto}
+              />
             )}
             {chavePassoAtual === "plano" && (
-              <ConfigEstudo estudoId={estudoId} onSalvo={recarregarContexto} />
+              <ConfigEstudo
+                estudoId={estudoId}
+                etapaIndice={passo}
+                totalEtapas={passos.length}
+                onSalvo={recarregarContexto}
+              />
             )}
             {chavePassoAtual === "cotacoes" && (
               <PropostaPanel
