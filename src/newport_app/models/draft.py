@@ -21,7 +21,6 @@ class PriceBasisRascunho(str, Enum):
 class ModalidadeRascunho(str, Enum):
     ADESAO = "adesao"
     COMPULSORIO = "compulsorio"
-    DESCONHECIDO = "desconhecido"
 
 
 class ParentescoRascunho(str, Enum):
