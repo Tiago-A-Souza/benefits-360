@@ -302,7 +302,7 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                         </select>
                       </label>
                       <label className="field">
-                        Reajuste previsto na renovação (%)
+                        Reajuste previsto na renovação{"\u00A0"}(%)
                         <input
                           type="number"
                           step="0.01"

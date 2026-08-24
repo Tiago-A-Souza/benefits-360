@@ -3886,7 +3886,96 @@ a.btn-link {
 }
 
 .estudos-modal h2 {
-  margin-top: 0;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 31, 54, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal-cartao {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.6rem 1.35rem;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-cabecalho {
+  margin-bottom: 1.15rem;
+}
+
+.modal-cabecalho .muted {
+  margin: 0.35rem 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.modal-secao {
+  margin-bottom: 1.1rem;
+}
+
+.modal-secao-titulo {
+  margin: 0 0 0.55rem;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.cartoes-escolha--empilhados {
+  grid-template-columns: 1fr;
+}
+
+.modal-cartao > .field {
+  margin-bottom: 0.9rem;
+}
+
+.modal-cartao > .field:last-of-type {
+  margin-bottom: 0;
+}
+
+.modal-cartao input[type="text"],
+.modal-cartao input[type="search"],
+.modal-cartao input:not([type]),
+.modal-cartao .field input {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  min-height: 40px;
+  color: var(--ink);
+}
+
+.modal-cartao .field input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(22, 104, 227, 0.12);
+  outline: none;
+}
+
+.modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 1.35rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
 }
 
 @media (max-width: 980px) {
@@ -3987,43 +4076,6 @@ a.btn-link {
 .tipo-em-breve {
   margin-top: 1.5rem;
   font-style: italic;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 1rem;
-}
-
-.modal-cartao {
-  background: #fff;
-  border-radius: 10px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
-
-.modal-cartao label {
-  margin-bottom: 0.85rem;
-}
-
-.modal-cartao input {
-  width: 100%;
-  padding: 0.5rem;
-  margin-top: 0.25rem;
-}
-
-.modal-acoes {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
 }
 
 .estudo-cabecalho {

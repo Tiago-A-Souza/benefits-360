@@ -409,43 +409,56 @@ export default function MeusEstudos({ onContinuar }) {
       </main>
 
       {modal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-novo-estudo-titulo">
           <form className="modal-cartao estudos-modal" onSubmit={handleCriar}>
-            <h2>Novo estudo</h2>
-            <p className="muted">Comparativo de planos de saúde empresariais.</p>
-            <fieldset>
-              <legend>Tipo de estudo</legend>
-              <label className="radio">
-                <input
-                  type="radio"
-                  name="formato"
-                  value="renovacao"
-                  checked={formato === "renovacao"}
-                  onChange={() => setFormato("renovacao")}
-                />
-                Renovação — há contrato vigente (fatura por vida)
-              </label>
-              <label className="radio">
-                <input
-                  type="radio"
-                  name="formato"
-                  value="novo"
-                  checked={formato === "novo"}
-                  onChange={() => setFormato("novo")}
-                />
-                Seguro novo — sem plano vigente (valores de fatura opcionais)
-              </label>
-            </fieldset>
-            <label>
+            <header className="modal-cabecalho">
+              <h2 id="modal-novo-estudo-titulo">Novo estudo</h2>
+              <p className="muted">Comparativo de planos de saúde empresariais.</p>
+            </header>
+
+            <div className="modal-secao">
+              <p className="modal-secao-titulo">Tipo de estudo</p>
+              <div className="cartoes-escolha cartoes-escolha--empilhados">
+                <label
+                  className={`cartao-escolha${formato === "renovacao" ? " cartao-escolha--ativo" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="formato"
+                    value="renovacao"
+                    checked={formato === "renovacao"}
+                    onChange={() => setFormato("renovacao")}
+                  />
+                  <strong>Renovação</strong>
+                  <span className="muted">Há contrato vigente (fatura por vida).</span>
+                </label>
+                <label
+                  className={`cartao-escolha${formato === "novo" ? " cartao-escolha--ativo" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="formato"
+                    value="novo"
+                    checked={formato === "novo"}
+                    onChange={() => setFormato("novo")}
+                  />
+                  <strong>Seguro novo</strong>
+                  <span className="muted">Sem plano vigente (valores de fatura opcionais).</span>
+                </label>
+              </div>
+            </div>
+
+            <label className="field">
               Nome da empresa
               <input
                 required
                 value={nomeEmpresa}
                 onChange={(ev) => setNomeEmpresa(ev.target.value)}
                 placeholder="Ex.: Acme Indústria Ltda."
+                autoFocus
               />
             </label>
-            <label>
+            <label className="field">
               Nome do estudo
               <input
                 required
@@ -458,6 +471,7 @@ export default function MeusEstudos({ onContinuar }) {
                 }
               />
             </label>
+
             <div className="modal-acoes">
               <button type="button" className="secundario" onClick={() => setModal(false)}>
                 Cancelar
