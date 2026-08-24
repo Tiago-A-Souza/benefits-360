@@ -203,6 +203,77 @@ class ExtracaoCotacaoService:
         ) or campo.centavos is not None or campo.inteiro is not None:
             reconciliar_opcao(op)
 
+    def _campo_eh_validade(
+        self, extracao: ExtracaoCotacaoCandidata, campo: ValorExtraido
+    ) -> bool:
+        if extracao.validade_oficial is not None and extracao.validade_oficial.id == campo.id:
+            return True
+        for op in extracao.opcoes:
+            if op.validade_oficial is not None and op.validade_oficial.id == campo.id:
+                return True
+        return False
+
+    def _gravar_validade_em_campo(
+        self,
+        campo: ValorExtraido | None,
+        data: date,
+        *,
+        confirmado: bool,
+        editado_por: str,
+        agora: datetime,
+    ) -> None:
+        if campo is None:
+            return
+        campo.data = data
+        campo.estado = "confirmar" if confirmado else "revisar"
+        if confirmado:
+            campo.confirmado = True
+            campo.confirmado_por = editado_por
+            campo.confirmado_em = agora
+        else:
+            campo.confirmado = False
+            campo.confirmado_por = None
+            campo.confirmado_em = None
+
+    def _propagar_validade_selecionadas(
+        self,
+        extracao: ExtracaoCotacaoCandidata,
+        data: date,
+        *,
+        confirmado: bool,
+        editado_por: str,
+    ) -> None:
+        """Validade é do documento — grava no nível da cotação e em todos os planos selecionados."""
+        from newport_app.cotacao_pdf.parsers.base import novo_campo
+
+        agora = datetime.now(timezone.utc)
+        if extracao.validade_oficial is None:
+            extracao.validade_oficial = novo_campo(
+                "Validade",
+                data=data,
+                parser_versao=extracao.documento.parser_versao,
+                documento_hash=extracao.documento.hash_sha256,
+            )
+        self._gravar_validade_em_campo(
+            extracao.validade_oficial,
+            data,
+            confirmado=confirmado,
+            editado_por=editado_por,
+            agora=agora,
+        )
+        for op in extracao.opcoes:
+            if op.excluida or not op.selecionada_para_comparativo:
+                continue
+            if op.validade_oficial is None:
+                continue
+            self._gravar_validade_em_campo(
+                op.validade_oficial,
+                data,
+                confirmado=confirmado,
+                editado_por=editado_por,
+                agora=agora,
+            )
+
     def atualizar_campo(
         self,
         extracao_id: str,
@@ -255,6 +326,13 @@ class ExtracaoCotacaoService:
                 campo.estado = "confirmar"
             if opcao is not None:
                 self._reconciliar_se_financeiro(opcao, campo)
+            if data is not None and self._campo_eh_validade(extracao, campo):
+                self._propagar_validade_selecionadas(
+                    extracao,
+                    data,
+                    confirmado=bool(campo.confirmado),
+                    editado_por=editado_por,
+                )
             self._extracoes.salvar(extracao)
             return campo
         raise CampoNaoEncontradoError(campo_id)

@@ -600,23 +600,10 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
       )}
 
       {validadePendente && (
-        <label className="campo-revisao campo-revisao--validade">
-          <span>Validade da cotação</span>
-          <input
-            type="date"
-            defaultValue=""
-            onBlur={(e) => {
-              if (op.validade_oficial?.id && e.target.value) {
-                onSalvarCampo(op.validade_oficial.id, { data: e.target.value, confirmado: true });
-              }
-            }}
-          />
-          <span className="muted revisao-plano-dica">
-            {op.validade_oficial?.evidencia?.trecho
-              ? `${op.validade_oficial.evidencia.trecho} Informe para concluir a proposta.`
-              : "Não encontrada no PDF — informe para concluir a proposta."}
-          </span>
-        </label>
+        <p className="muted revisao-plano-dica">
+          Informe a validade no bloco «Dados do documento» acima — vale para todos os planos
+          selecionados desta cotação.
+        </p>
       )}
 
       {!validadePendente && !tipoFiscalPendente && !regimePendente && (
@@ -1746,7 +1733,8 @@ export default function CotacaoPdfPanel({
                     <dt>Validade</dt>
                     <dd>
                       {detalhe.validade_oficial?.data ||
-                        selecionadas[0]?.validade_oficial?.data ||
+                        selecionadas.find((o) => o.validade_oficial?.data)?.validade_oficial
+                          ?.data ||
                         "—"}
                     </dd>
                   </div>
@@ -1767,6 +1755,36 @@ export default function CotacaoPdfPanel({
                     </dd>
                   </div>
                 </dl>
+                {(() => {
+                  const validadeAtual =
+                    detalhe.validade_oficial?.data ||
+                    selecionadas.find((o) => o.validade_oficial?.data)?.validade_oficial?.data;
+                  const campoValidadeId =
+                    detalhe.validade_oficial?.id ||
+                    selecionadas.find((o) => o.validade_oficial?.id)?.validade_oficial?.id;
+                  if (validadeAtual || !campoValidadeId) return null;
+                  return (
+                    <label className="campo-revisao campo-revisao--validade">
+                      <span>Validade da cotação</span>
+                      <input
+                        type="date"
+                        defaultValue=""
+                        onBlur={(e) => {
+                          if (e.target.value) {
+                            salvarCampo(campoValidadeId, {
+                              data: e.target.value,
+                              confirmado: true,
+                            });
+                          }
+                        }}
+                      />
+                      <span className="muted revisao-plano-dica">
+                        Não encontrada no PDF — informe uma vez; aplica a todos os{" "}
+                        {selecionadas.length} plano(s) selecionado(s) desta cotação.
+                      </span>
+                    </label>
+                  );
+                })()}
               </div>
 
               {selecionadas.map((op) => (
