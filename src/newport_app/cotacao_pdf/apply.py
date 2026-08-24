@@ -95,14 +95,13 @@ def _regime_id(campo: ValorExtraido | None, percentual: int | None = None) -> st
     mapa = {
         "sem": "regime-sem",
         "parcial": "regime-parcial",
-        "customizada": "regime-customizada",
     }
     return mapa.get(chave, f"regime-{chave}")
 
 
 def _tipo_de_regime_id(regime_id: str) -> str:
     resto = regime_id.removeprefix("regime-")
-    for tipo in ("sem", "parcial", "percentual", "customizada"):
+    for tipo in ("sem", "parcial", "percentual"):
         if resto == tipo or resto.startswith(f"{tipo}-"):
             return tipo
     return resto

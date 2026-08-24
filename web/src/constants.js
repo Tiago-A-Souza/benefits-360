@@ -27,9 +27,8 @@ export const MODALIDADES = [
 
 export const REGIMES_COPART = [
   { value: "sem", label: "Sem coparticipação" },
-  { value: "parcial", label: "Parcial" },
+  { value: "parcial", label: "Parcial (terapias)" },
   { value: "percentual", label: "Percentual" },
-  { value: "customizada", label: "Customizada" },
 ];
 
 /** Opções selecionáveis de price_basis na UI. desconhecido/nao_aplica

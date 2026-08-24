@@ -58,9 +58,9 @@ Campo: `TabelaPrecoFaixa.faixa: int` 0–9 — `models.py:39-60`.
 
 Maturidade: **implementado**.
 
-### Coparticipação (sem / parcial / percentual / customizada)
+### Coparticipação (sem / parcial / percentual)
 
-Definição: regime comercial do plano, tipado como `RegimeCopartTipo` (`types.py:33-37`).
+Definição: regime comercial do plano, tipado como `RegimeCopartTipo` (`types.py`). Rótulo de UI para `parcial`: «Parcial (terapias)» / «Coparticipação parcial (terapias)».
 
 Por que importa no cálculo: **não altera o valor do prêmio** no motor. Serve para **particionar seções** do cenário (`calculation.py` — `_rotulo_regime` / agrupamento por `RegimeCopart.tipo`). Mistura de regimes sob um mesmo bloco de apresentação é restrição de produto (B-06 em spec; seções disjuntas no resultado).
 
@@ -69,9 +69,8 @@ Por que importa no cálculo: **não altera o valor do prêmio** no motor. Serve 
 | `sem` | `sem_copart` |
 | `parcial` | `copart_parcial` |
 | `percentual` | `com_copart` |
-| `customizada` | `copart_customizada` |
 
-Código: `RegimeCopart` — `models.py:25-29`; rascunho só `id`+`tipo` — `draft.py` (sem `percentual_bps` no draft).
+Código: `RegimeCopart` — `models.py`; rascunho `id`+`tipo`(+`percentual`) — `draft.py`.
 
 Maturidade: **implementado** como classificação/seção; cálculo percentual de copart sobre procedimentos = **inexistente** no motor.
 

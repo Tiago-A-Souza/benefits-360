@@ -46,7 +46,7 @@ Faixa comercial homologada: **1–29 vidas** (alerta **H-01** acima disso). **B-
 | Seguro novo | Sem bloco “atual”; atribuição por **vida**; fora da autorização de produção | parcial (motor existe; UI otimizada para renovação) |
 | Vida | Beneficiário incluído ou não; unidade de prêmio/faixa | implementado |
 | 10 faixas ANS | Índices 0–9: ≤18…≤58, senão 59+ (`faixa.py:7-24`) | implementado |
-| Copart | `sem` / `parcial` / `percentual` / `customizada` — **particiona seções**, não calcula % sobre atos | implementado como classificação |
+| Copart | `sem` / `parcial` / `percentual` — **particiona seções**, não calcula % sobre atos | implementado como classificação |
 | Reajuste | `reajuste_bps` (ex. 11,98% → 1198); negativo → B-07 | implementado |
 | Baseline | Vigente e reajustado sempre calculados; apresentado via `EffectivePolicy.baseline_escolhido` | implementado |
 | Precedência | Fatura × tabela atual (`PrecedenciaAtualVida`); ambos + `None` → B-07 | implementado |
@@ -87,7 +87,7 @@ Espelho no draft: `ProvenienciaRascunho` (`models/draft.py:42-54`) — `origem`,
 | `vidas` | `list[VidaRascunho]` | obrigatório |
 | `subgrupos_atuais` | `list[SubgrupoAtualRascunho]` | `[]` |
 | `opcoes_proposta` | `list[OpcaoPropostaRascunho]` | `[]` |
-| `regimes_copart` | `list[RegimeCopartRascunho]` | `id` + `tipo` sem/parcial/percentual/customizada |
+| `regimes_copart` | `list[RegimeCopartRascunho]` | `id` + `tipo` sem/parcial/percentual |
 | `cenarios` | `list[CenarioRascunho]` | atribuições `alvo_tipo` subgrupo\|vida |
 | `documentos_cotacao` / `documentos_siscor` | listas tipadas | `[]` |
 | `escolhas` | `EscolhasEstudo` | `data_referencia_idade`, `baseline_escolhido`, `precedencia_atual_vida` (campos confirmáveis) |

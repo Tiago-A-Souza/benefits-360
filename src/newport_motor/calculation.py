@@ -138,7 +138,6 @@ def _rotulo_regime(tipo: RegimeCopartTipo) -> str:
         RegimeCopartTipo.SEM: "sem_copart",
         RegimeCopartTipo.PARCIAL: "copart_parcial",
         RegimeCopartTipo.PERCENTUAL: "com_copart",
-        RegimeCopartTipo.CUSTOMIZADA: "copart_customizada",
     }
     return mapa[tipo]
 

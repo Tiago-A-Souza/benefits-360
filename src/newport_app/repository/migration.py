@@ -190,6 +190,7 @@ def migrar_estudos_db(db_path: Path) -> None:
         _migrar_282(conn)
         _migrar_283(conn)
         _migrar_284(conn)
+        _migrar_285(conn)
         _migrar_301(conn, db_path=db_path)
 
 
@@ -605,6 +606,100 @@ def _migrar_284(conn: sqlite3.Connection) -> None:
     conn.execute(
         "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
         ("2.8.4", datetime.now(timezone.utc).isoformat()),
+    )
+
+
+MOTIVO_MIGRACAO_REGIME_CUSTOMIZADA = (
+    "Migração 2.8.5 — remove regime de coparticipação «customizada» órfão do catálogo"
+)
+
+
+class RegimeCustomizadaEmUsoError(RuntimeError):
+    """Subgrupo ou opção ainda aponta para um regime customizada — migração abortada."""
+
+
+def migrar_regime_customizada(conn: sqlite3.Connection) -> int:
+    """Remove entradas «customizada» do catálogo regimes_copart nos rascunhos.
+
+    Idempotente. Não toca snapshots. Aborta se algum subgrupo/opção referenciar
+    o id removido. Retorna quantos itens de catálogo foram removidos.
+    """
+    tabelas = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    if "rascunhos" not in tabelas:
+        return 0
+
+    agora = datetime.now(timezone.utc).isoformat()
+    removidos = 0
+    rows = conn.execute("SELECT id, payload FROM rascunhos").fetchall()
+    for estudo_id, payload in rows:
+        data = json.loads(payload)
+        regimes = list(data.get("regimes_copart") or [])
+        custom = [
+            r
+            for r in regimes
+            if r.get("tipo") == "customizada"
+            or str(r.get("id") or "").startswith("regime-customizada")
+        ]
+        if not custom:
+            continue
+        ids_custom = {r.get("id") for r in custom if r.get("id")}
+        for lista in ("subgrupos_atuais", "opcoes_proposta"):
+            for item in data.get(lista) or []:
+                rid = item.get("regime_copart_id")
+                if rid in ids_custom:
+                    raise RegimeCustomizadaEmUsoError(
+                        f"Estudo {estudo_id}: {lista} {item.get('id')} "
+                        f"ainda referencia {rid}"
+                    )
+        novos = [r for r in regimes if r.get("id") not in ids_custom]
+        removidos += len(regimes) - len(novos)
+        data["regimes_copart"] = novos
+        conn.execute(
+            "UPDATE rascunhos SET payload = ?, atualizado_em = ? WHERE id = ?",
+            (
+                json.dumps(data, ensure_ascii=False, separators=(",", ":")),
+                agora,
+                estudo_id,
+            ),
+        )
+        if "auditoria" in tabelas:
+            ids_txt = ", ".join(sorted(ids_custom))
+            conn.execute(
+                """
+                INSERT INTO auditoria (
+                    id, estudo_id, entidade, entidade_id, acao, detalhe, criado_em, criado_por
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(uuid.uuid4()),
+                    estudo_id,
+                    "rascunho",
+                    estudo_id,
+                    "migrar_regime_customizada",
+                    f"{MOTIVO_MIGRACAO_REGIME_CUSTOMIZADA}; removidos: {ids_txt}",
+                    agora,
+                    "migracao-2.8.5",
+                ),
+            )
+    return removidos
+
+
+def _migrar_285(conn: sqlite3.Connection) -> None:
+    """Remove «customizada» do catálogo de regimes — só órfãos."""
+    ja = conn.execute(
+        "SELECT versao FROM schema_migrations WHERE versao = ?", ("2.8.5",)
+    ).fetchone()
+    if ja is not None:
+        return
+    migrar_regime_customizada(conn)
+    conn.execute(
+        "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+        ("2.8.5", datetime.now(timezone.utc).isoformat()),
     )
 
 

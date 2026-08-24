@@ -12,9 +12,8 @@ def rotulo_regime(tipo: str, percentual: int | None = None) -> str:
         return f"Coparticipação {percentual}%"
     mapa = {
         "sem": "Sem coparticipação",
-        "parcial": "Coparticipação parcial",
+        "parcial": "Coparticipação parcial (terapias)",
         "percentual": "Coparticipação percentual",
-        "customizada": "Coparticipação customizada",
     }
     return mapa.get(tipo, tipo)
 

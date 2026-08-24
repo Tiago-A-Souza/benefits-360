@@ -167,7 +167,7 @@ Fonte: `src/newport_app/models/draft.py`.
 |--------|--------|--------|
 | `AtribuicaoRascunho` | `id`, `alvo_tipo: Literal["subgrupo","vida"]`, `alvo_id`, `opcao_plano_id` | `227-231` |
 | `CenarioRascunho` | `id`, `rotulo: str \| None`, `atribuicoes` | `234-237` |
-| `RegimeCopartRascunho` | `id`, `tipo: Literal["sem","parcial","percentual","customizada"]` | `240-242` |
+| `RegimeCopartRascunho` | `id`, `tipo: Literal["sem","parcial","percentual"]` | `240-242` |
 
 ### `RascunhoEstudo` raiz — `draft.py:245-275`
 
@@ -203,7 +203,7 @@ Fonte: `src/newport_motor/models.py` + enums em `types.py`.
 | `TipoFiscal` | `seguradora`, `operadora` | `18-20` |
 | `FormatoEstudo` | `novo`, `renovacao` | `23-25` |
 | `BaselineEscolhido` | `vigente`, `reajustado` | `28-30` |
-| `RegimeCopartTipo` | `sem`, `parcial`, `percentual`, `customizada` | `33-37` |
+| `RegimeCopartTipo` | `sem`, `parcial`, `percentual` | `33-37` |
 | `RoundingStrategy` | `por_vida_entao_soma`, `soma_entao_aplica`, `no_total` | `40-43` |
 | `PrecedenciaAtualVida` | `tabela_atual`, `valor_fatura` | `46-50` |
 | `AlvoTipo` | `vida`, `subgrupo` | `53-55` |

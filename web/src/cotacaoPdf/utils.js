@@ -15,9 +15,8 @@ export const ROTULOS_FAIXA = [
 
 const REGIME_LABELS = {
   sem: "Sem coparticipação",
-  parcial: "Coparticipação parcial",
+  parcial: "Coparticipação parcial (terapias)",
   percentual: "Coparticipação percentual",
-  customizada: "Coparticipação customizada",
 };
 
 const ESTADO_LABELS = {
@@ -84,7 +83,7 @@ export function grupoCopart(op) {
   if (regime === "sem") return "Sem coparticipação";
   if (pct != null) return `Coparticipação ${pct}%`;
   if (regime === "percentual") return "Coparticipação percentual";
-  if (regime === "parcial") return "Coparticipação parcial";
+  if (regime === "parcial") return "Coparticipação parcial (terapias)";
   return "Outros regimes";
 }
 

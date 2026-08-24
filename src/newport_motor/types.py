@@ -34,7 +34,6 @@ class RegimeCopartTipo(str, Enum):
     SEM = "sem"
     PARCIAL = "parcial"
     PERCENTUAL = "percentual"
-    CUSTOMIZADA = "customizada"
 
 
 class RoundingStrategy(str, Enum):

@@ -32,7 +32,7 @@ from newport_app.presentation.rotulos import copart_descricao, qualificar_rotulo
 from newport_app.snapshot.comparativo import ler_comparativo_congelado
 
 MAX_PROPOSTAS_POR_PAGINA = 3
-_ORDEM_REGIMES = ("sem", "parcial", "percentual", "customizada")
+_ORDEM_REGIMES = ("sem", "parcial", "percentual")
 
 
 def _percentual_tipico(rascunho: RascunhoEstudo, tipo: str) -> int | None:
