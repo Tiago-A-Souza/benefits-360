@@ -51,10 +51,13 @@ function patchCompFinanceiro(prev, campo, texto) {
 
 export default function PropostaPanel({
   estudoId,
+  etapaIndice = 3,
+  totalEtapas = 5,
   onSalvo,
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
+  extracoes = [],
   subgruposAtuais = [],
 }) {
   const [rascunho, setRascunho] = useState(null);
@@ -204,15 +207,77 @@ export default function PropostaPanel({
     }
   }
 
+  const nPdfs = extracoes.length;
+  const nOpcoesEncontradas = extracoes.reduce(
+    (s, ex) => s + (ex.opcoes?.filter((o) => !o.excluida).length || 0),
+    0
+  );
+  const operadoras = [
+    ...new Set(
+      extracoes
+        .map((ex) => ex.documento?.operadora_detectada)
+        .filter(Boolean)
+    ),
+  ];
+  const comErro = extracoes.filter((ex) => ex.estado === "erro").length;
+
   return (
-    <section className="secao-fluxo">
-      <h2>Cotações recebidas</h2>
-      <p className="lead">
-        Importe os PDFs enviados pelas operadoras. Escolha os planos desejados e adicione-os ao comparativo.
-      </p>
+    <section className="etapa-fluxo">
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">
+            Etapa {etapaIndice} de {totalEtapas}
+          </div>
+          <h1>Cotações</h1>
+          <p className="lead">
+            Importe os PDFs recebidos das operadoras, confira a leitura e escolha quais planos
+            entram no comparativo.
+          </p>
+        </div>
+      </div>
+
+      {(nPdfs > 0 || nPropostas > 0) && (
+        <div className="metrics">
+          <div className="metric">
+            <small>PDFs importados</small>
+            <strong className="num">{nPdfs}</strong>
+            <span className="hint">
+              {nPdfs === 0
+                ? "nenhum ainda"
+                : extracoes.every((e) => e.estado === "extraido" || e.descartada)
+                  ? "todos extraídos"
+                  : "em revisão"}
+            </span>
+          </div>
+          <div className="metric">
+            <small>Opções encontradas</small>
+            <strong className="num">{nOpcoesEncontradas}</strong>
+            <span className="hint">no catálogo dos PDFs</span>
+          </div>
+          <div className="metric">
+            <small>Selecionados</small>
+            <strong className="num">{nPropostas}</strong>
+            <span className="hint">no comparativo</span>
+          </div>
+          {operadoras.length > 0 && (
+            <div className="metric">
+              <small>Operadoras</small>
+              <strong className="num">{operadoras.length}</strong>
+              <span className="hint">{operadoras.join(" e ")}</span>
+            </div>
+          )}
+          <div className={`metric${comErro > 0 ? " metric--alerta" : " metric--good"}`}>
+            <small>Importações</small>
+            <strong>{comErro > 0 ? `${comErro} erro(s)` : "OK"}</strong>
+            <span className="hint">
+              {comErro > 0 ? "revise os PDFs com falha" : "sem erro de leitura"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {unicoPlanoAtual && nPropostas > 0 && (
-        <p className="ok comparativo-resumo">
+        <p className="ok comparativo-resumo-aviso">
           {nPropostas === 1
             ? `1 proposta será comparada com ${nomePlanoAtual}.`
             : `${nPropostas} propostas serão comparadas com ${nomePlanoAtual}.`}

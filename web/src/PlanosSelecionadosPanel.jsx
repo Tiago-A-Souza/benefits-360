@@ -121,7 +121,23 @@ function montarCenarios(rascunho, matriz) {
   });
 }
 
-export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
+function contarCorrespondencias(rascunho, matriz, subgrupos) {
+  let preenchidas = 0;
+  const total = rascunho.opcoes_proposta.length * subgrupos.length;
+  rascunho.opcoes_proposta.forEach((op, i) => {
+    for (const sg of subgrupos) {
+      if (matriz[i]?.[sg.id] || op.id) preenchidas += 1;
+    }
+  });
+  return { preenchidas, total };
+}
+
+export default function PlanosSelecionadosPanel({
+  estudoId,
+  etapaIndice = 4,
+  totalEtapas = 5,
+  onSalvo,
+}) {
   const [rascunho, setRascunho] = useState(null);
   const [matriz, setMatriz] = useState({});
   const [erro, setErro] = useState(null);
@@ -141,6 +157,8 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
 
   const subgrupos = subgruposComVidas(rascunho);
   const multiplosPlanosAtuais = subgrupos.length > 1;
+  const nCenarios = rascunho.opcoes_proposta.length;
+  const { preenchidas, total } = contarCorrespondencias(rascunho, matriz, subgrupos);
 
   function atualizarCelula(indiceCenario, subgrupoId, opcaoId) {
     setMatriz((prev) => ({
@@ -173,31 +191,61 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
 
   if (!multiplosPlanosAtuais) {
     return (
-      <section className="secao-fluxo">
-        <h2>Correspondência com os planos atuais</h2>
-        <p className="lead muted">
-          Com um único plano atual, as propostas são sincronizadas automaticamente na etapa
-          anterior.
-        </p>
+      <section className="etapa-fluxo">
+        <div className="page-head">
+          <div>
+            <div className="page-kicker">
+              Etapa {etapaIndice} de {totalEtapas}
+            </div>
+            <h1>Correspondência com os planos atuais</h1>
+            <p className="lead muted">
+              Com um único plano atual, as propostas são sincronizadas automaticamente na etapa
+              anterior.
+            </p>
+          </div>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="secao-fluxo">
-      <h2>Atribuição de propostas por cenário</h2>
-      <p className="lead">
-        Cada cenário representa uma coluna do comparativo e deve indicar qual proposta substitui
-        cada plano atual. Por padrão, o cenário <em>i</em> aplica a proposta <em>i</em> a todos os
-        subgrupos — ajuste célula a célula quando funcionários e diretoria recebem propostas
-        distintas.
-      </p>
+    <section className="etapa-fluxo">
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">
+            Etapa {etapaIndice} de {totalEtapas}
+          </div>
+          <h1>Correspondência com os planos atuais</h1>
+          <p className="lead">
+            Para cada cenário, indique qual proposta substitui cada plano vigente. A estrutura do
+            estudo permanece a mesma; aqui você só define as equivalências.
+          </p>
+        </div>
+        {nCenarios > 0 && (
+          <span className="badge badge--blue">
+            {nCenarios} {nCenarios === 1 ? "cenário" : "cenários"}
+          </span>
+        )}
+      </div>
+
+      <div className="notice">
+        <div className="notice-icon" aria-hidden="true">
+          i
+        </div>
+        <div>
+          <b>Como funciona</b>
+          <p>
+            Cada cenário vira uma coluna no comparativo. Por padrão, o mesmo plano é aplicado a
+            todos os subgrupos; ajuste apenas quando a proposta correta for diferente.
+          </p>
+        </div>
+      </div>
 
       {rascunho.opcoes_proposta.length === 0 && (
         <p className="alerta">Nenhum plano no comparativo — volte a «Cotações» e adicione opções.</p>
       )}
 
-      <div className="matriz-cenarios">
+      <div className="scenario-grid">
         {rascunho.opcoes_proposta.map((op, i) => {
           const celulas = matriz[i] || {};
           const preview = rotuloCenario(
@@ -206,61 +254,64 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
               opcao_plano_id: celulas[sg.id] || op.id,
             }))
           );
+          const completo = subgrupos.every((sg) => Boolean(celulas[sg.id] || op.id));
           return (
-            <article key={op.id} className="cenario-matriz-bloco">
-              <header className="cenario-matriz-cabecalho">
-                <strong>Cenário {i + 1}</strong>
-                <span className="muted">Coluna: {preview}</span>
-              </header>
-              <table className="tabela-matriz-cenarios">
-                <thead>
-                  <tr>
-                    <th scope="col">Plano atual (subgrupo)</th>
-                    <th scope="col">Proposta atribuída</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subgrupos.map((sg) => {
-                    const opId = celulas[sg.id] || op.id;
-                    const opSel = rascunho.opcoes_proposta.find((o) => o.id === opId);
-                    const acSg = acomodacaoDe(sg);
-                    const acOp = acomodacaoDe(opSel);
-                    const diverge = acSg && acOp && acSg !== acOp;
-                    return (
-                      <tr key={sg.id} className={diverge ? "matriz-linha-aviso" : undefined}>
-                        <td>
-                          <strong>{sg.plano_nome}</strong>
-                          <span className="muted"> · {sg.operadora || "—"}</span>
-                          {acSg && (
-                            <span className="muted"> · {rotuloAcomodacao(acSg)}</span>
-                          )}
-                        </td>
-                        <td>
-                          <select
-                            value={opId}
-                            onChange={(e) => atualizarCelula(i, sg.id, e.target.value)}
-                            aria-label={`Proposta para ${sg.plano_nome} no cenário ${i + 1}`}
-                          >
-                            {rascunho.opcoes_proposta.map((opcao) => (
-                              <option key={opcao.id} value={opcao.id}>
-                                {opcao.plano_nome || opcao.id}
-                                {acomodacaoDe(opcao)
-                                  ? ` (${rotuloAcomodacao(acomodacaoDe(opcao))})`
-                                  : ""}
-                              </option>
-                            ))}
-                          </select>
-                          {diverge && (
-                            <p className="alerta alerta-inline">
-                              {`«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`}
-                            </p>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <article key={op.id} className="scenario">
+              <div className="scenario-head">
+                <div>
+                  <strong>Cenário {i + 1}</strong>
+                  <small>Coluna: {preview}</small>
+                </div>
+                <span className={`badge ${completo ? "badge--ok" : "badge--alerta"}`}>
+                  {completo ? "Completo" : "Incompleto"}
+                </span>
+              </div>
+              <div className="scenario-body">
+                {subgrupos.map((sg) => {
+                  const opId = celulas[sg.id] || op.id;
+                  const opSel = rascunho.opcoes_proposta.find((o) => o.id === opId);
+                  const acSg = acomodacaoDe(sg);
+                  const acOp = acomodacaoDe(opSel);
+                  const diverge = acSg && acOp && acSg !== acOp;
+                  const vidasSg = (rascunho.vidas || []).filter(
+                    (v) => v.incluida && v.subgrupo_atual_id === sg.id
+                  ).length;
+                  return (
+                    <div
+                      key={sg.id}
+                      className={`mapping${diverge ? " mapping--aviso" : ""}`}
+                    >
+                      <div className="current">
+                        <b>{sg.plano_nome}</b>
+                        <small>
+                          {sg.operadora || "—"}
+                          {vidasSg ? ` · ${vidasSg} vidas` : ""}
+                          {acSg ? ` · ${rotuloAcomodacao(acSg)}` : ""}
+                        </small>
+                      </div>
+                      <select
+                        value={opId}
+                        onChange={(e) => atualizarCelula(i, sg.id, e.target.value)}
+                        aria-label={`Proposta para ${sg.plano_nome} no cenário ${i + 1}`}
+                      >
+                        {rascunho.opcoes_proposta.map((opcao) => (
+                          <option key={opcao.id} value={opcao.id}>
+                            {opcao.plano_nome || opcao.id}
+                            {acomodacaoDe(opcao)
+                              ? ` (${rotuloAcomodacao(acomodacaoDe(opcao))})`
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                      {diverge && (
+                        <p className="alerta alerta-inline">
+                          {`«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </article>
           );
         })}
@@ -278,14 +329,27 @@ export default function PlanosSelecionadosPanel({ estudoId, onSalvo }) {
       )}
 
       {matrizIncompleta && (
-        <p className="alerta">Complete a atribuição de proposta para cada subgrupo antes de confirmar.</p>
+        <p className="alerta">
+          Complete a atribuição de proposta para cada subgrupo antes de confirmar.
+        </p>
       )}
 
-      <button type="button" onClick={handleSalvar} disabled={matrizIncompleta}>
-        Confirmar atribuições
-      </button>
-      {msg && <p className="ok">{msg}</p>}
-      {erro && <p className="erro">{erro}</p>}
+      <div className="action-bar">
+        <div className="action-left">
+          {total > 0 && (
+            <span className="action-note">
+              {preenchidas} de {total} correspondências preenchidas
+            </span>
+          )}
+          {msg && <span className="action-note ok-inline">{msg}</span>}
+          {erro && <span className="action-note erro-inline">{erro}</span>}
+        </div>
+        <div className="action-right">
+          <button type="button" onClick={handleSalvar} disabled={matrizIncompleta}>
+            Confirmar atribuições
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

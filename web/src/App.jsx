@@ -236,15 +236,23 @@ export default function App() {
             {chavePassoAtual === "cotacoes" && (
               <PropostaPanel
                 estudoId={estudoId}
+                etapaIndice={passo}
+                totalEtapas={passos.length}
                 cestaGlobal={cestaGlobal}
                 setCestaGlobal={setCestaGlobal}
                 opcoesComparativo={ctxFluxo.rascunho?.opcoes_proposta || []}
+                extracoes={ctxFluxo.extracoes || []}
                 subgruposAtuais={ctxFluxo.rascunho?.subgrupos_atuais || []}
                 onSalvo={recarregarContexto}
               />
             )}
             {chavePassoAtual === "selecionados" && (
-              <PlanosSelecionadosPanel estudoId={estudoId} onSalvo={recarregarContexto} />
+              <PlanosSelecionadosPanel
+                estudoId={estudoId}
+                etapaIndice={passo}
+                totalEtapas={passos.length}
+                onSalvo={recarregarContexto}
+              />
             )}
             {chavePassoAtual === "comparativo" && (
               <ComparativoPanel estudoId={estudoId} onAtualizado={recarregarContexto} />

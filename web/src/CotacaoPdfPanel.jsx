@@ -228,9 +228,9 @@ function UploadZona({ carregando, dragAtivo, setDragAtivo, compacto, onUpload })
   return (
     <div
       className={[
-        "upload-zona",
-        compacto ? "upload-zona--compacto" : "",
-        dragAtivo ? "upload-zona--ativa" : "",
+        compacto ? "upload-area" : "upload-zona",
+        !compacto && dragAtivo ? "upload-zona--ativa" : "",
+        compacto && dragAtivo ? "upload-area--ativa" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -248,32 +248,48 @@ function UploadZona({ carregando, dragAtivo, setDragAtivo, compacto, onUpload })
         onUpload(pdfs);
       }}
     >
-      <div className="upload-zona-conteudo">
-        {!compacto && (
-          <span className="upload-zona-icone" aria-hidden="true">
-            ↑
-          </span>
-        )}
-        <div className="upload-zona-texto">
+      {compacto ? (
+        <>
+          <div className="upload-area-esq">
+            <div className="upload-icon" aria-hidden="true">
+              PDF
+            </div>
+            <div>
+              <h3>Adicionar outra cotação</h3>
+              <p className="muted">
+                Arraste um ou mais PDFs de operadoras para ampliar o catálogo.
+              </p>
+            </div>
+          </div>
           <FilePickerButton
             accept="application/pdf"
             multiple
             disabled={carregando}
             onFiles={onUpload}
           >
-            {carregando
-              ? "Processando PDF…"
-              : compacto
-                ? "Enviar outro PDF"
-                : "Adicionar cotação em PDF"}
+            {carregando ? "Processando PDF…" : "Escolher PDF"}
           </FilePickerButton>
-          <p className="upload-dica muted">
-            {compacto
-              ? "Arraste um PDF ou use o botão."
-              : "Arraste um ou mais PDFs ou use o botão acima."}
-          </p>
+        </>
+      ) : (
+        <div className="upload-zona-conteudo">
+          <span className="upload-zona-icone" aria-hidden="true">
+            ↑
+          </span>
+          <div className="upload-zona-texto">
+            <FilePickerButton
+              accept="application/pdf"
+              multiple
+              disabled={carregando}
+              onFiles={onUpload}
+            >
+              {carregando ? "Processando PDF…" : "Adicionar cotação em PDF"}
+            </FilePickerButton>
+            <p className="upload-dica muted">
+              Arraste um ou mais PDFs ou use o botão acima.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1323,47 +1339,67 @@ export default function CotacaoPdfPanel({
           />
 
           {temPdfs && (
-            <section className="documentos-pdf-secao" aria-label="PDFs importados">
-              <header className="documentos-pdf-secao-cabecalho">
-                <h3>PDFs importados</h3>
-                <p className="muted">Escolha planos, revise valores ou remova o arquivo.</p>
-              </header>
-              <div className="documentos-pdf-grid">
+            <section className="panel" aria-label="PDFs importados">
+              <div className="panel-head">
+                <div>
+                  <h2>Cotações recebidas</h2>
+                  <p>Gerencie os documentos ou abra uma cotação para selecionar planos.</p>
+                </div>
+              </div>
+              <div className="panel-body">
+              <div className="quotes-grid">
                 {extracoes.map((ex) => {
                   const qtd = ex.opcoes?.filter((o) => !o.excluida).length ?? 0;
                   const doc = ex.documento;
                   const resumoSel = resumoSelecaoDocumento(ex, opcoesComparativo);
                   const rotulo = rotuloDocumentoExtracao(ex);
+                  const planosSel = (opcoesComparativo || []).filter(
+                    (o) => o.extracao_id === ex.id
+                  );
                   const pendente =
                     !ex.descartada &&
-                    opcoesComparativo.filter((o) => o.extracao_id === ex.id).length === 0 &&
+                    planosSel.length === 0 &&
                     !(ex.opcoes || []).some((o) => !o.excluida && o.selecionada_para_comparativo);
+                  const badgeRotulo = ex.descartada
+                    ? "Descartada"
+                    : rotuloEstado(ex.estado);
+                  const badgeCls = ex.descartada
+                    ? "badge--alerta"
+                    : ex.estado === "extraido"
+                      ? "badge--ok"
+                      : "badge--muted";
                   return (
                     <article
                       key={ex.id}
-                      className={`documento-pdf-card${ex.descartada ? " documento-pdf-card--descartada" : ""}${pendente ? " documento-pdf-card--pendente" : ""}`}
+                      className={`quote-card${ex.descartada ? " quote-card--descartada" : ""}${pendente ? " quote-card--pendente" : ""}`}
                     >
-                      <header>
-                        <strong>{doc?.operadora_detectada || "Operadora"}</strong>
-                        <BadgeSituacao
-                          situacao={{
-                            codigo: ex.descartada
-                              ? "revisao"
-                              : ex.estado === "extraido"
-                                ? "pronto"
-                                : "revisao",
-                            rotulo: ex.descartada ? "Descartada" : rotuloEstado(ex.estado),
-                          }}
-                        />
-                      </header>
-                      <p className={`documento-pdf-selecao${pendente ? " documento-pdf-selecao--pendente" : ""}`}>
-                        {rotulo} — {resumoSel}
+                      <div className="quote-top">
+                        <div>
+                          <b>{doc?.operadora_detectada || "Operadora"}</b>
+                          <div className="cell-sub">
+                            {rotulo} · {qtd} {qtd === 1 ? "opção" : "opções"}
+                          </div>
+                        </div>
+                        <span className={`badge ${badgeCls}`}>{badgeRotulo}</span>
+                      </div>
+                      <div className="quote-file">
+                        {doc?.nome_arquivo || "arquivo.pdf"} · enviado em{" "}
+                        {formatarDataUpload(ex.criado_em)}
+                      </div>
+                      <p
+                        className={`documento-pdf-selecao${pendente ? " documento-pdf-selecao--pendente" : ""}`}
+                      >
+                        {resumoSel}
                       </p>
-                      <ul className="documento-pdf-meta">
-                        <li>{doc?.nome_arquivo || "arquivo.pdf"}</li>
-                        <li>Enviado: {formatarDataUpload(ex.criado_em)}</li>
-                        <li>{qtd} opção(ões) encontrada(s)</li>
-                      </ul>
+                      {planosSel.length > 0 && (
+                        <div className="selected-plans">
+                          {planosSel.map((op) => (
+                            <div key={op.id} className="plan-pill">
+                              <span>{op.plano_nome || op.id}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {descarteExId === ex.id ? (
                         <div className="documento-pdf-descarte">
                           <label>
@@ -1396,7 +1432,7 @@ export default function CotacaoPdfPanel({
                         </div>
                       ) : (
                         <>
-                          <div className="documento-pdf-acoes">
+                          <div className="quote-actions">
                             {ex.descartada ? (
                               <button
                                 type="button"
@@ -1452,6 +1488,7 @@ export default function CotacaoPdfPanel({
                   onFechar={() => setPdfInlineDocumentoId(null)}
                 />
               )}
+              </div>
             </section>
           )}
 
@@ -1486,14 +1523,20 @@ export default function CotacaoPdfPanel({
             />
           )}
           <div className="documento-pdf-conteudo">
-          <div className="documento-pdf-aberto-cabecalho">
-            <div>
-              <p className="muted">Documento aberto</p>
-              <h4>{docAberto?.operadora_detectada || "Cotação PDF"}</h4>
-              <p className="muted">
-                {docAberto?.template_id && <>Template {docAberto.template_id} · </>}
-                {opcoesAtivas.length} opções · enviado {formatarDataUpload(detalhe.criado_em)}
-              </p>
+          <div className="documento-pdf-aberto-cabecalho document-context">
+            <div className="doc-title">
+              <div className="file-ico" aria-hidden="true">
+                PDF
+              </div>
+              <div>
+                <b>{docAberto?.nome_arquivo || docAberto?.operadora_detectada || "Cotação PDF"}</b>
+                <small className="cell-sub">
+                  {docAberto?.operadora_detectada || "Operadora"}
+                  {docAberto?.template_id ? ` · template ${docAberto.template_id}` : ""}
+                  {` · ${opcoesAtivas.length} opções`}
+                  {` · enviado ${formatarDataUpload(detalhe.criado_em)}`}
+                </small>
+              </div>
             </div>
             <div className="documento-pdf-aberto-acoes">
               {docAberto?.id && (
