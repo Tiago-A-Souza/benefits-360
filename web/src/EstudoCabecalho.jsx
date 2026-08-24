@@ -4,9 +4,9 @@ export default function EstudoCabecalho({ resumo, onTrocarEstudo, onHistorico })
       <div className="brand-wrap">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">
-            N
+            E
           </div>
-          <span className="brand-name">Newport</span>
+          <span className="brand-name">Estudo Saúde</span>
         </div>
         {resumo && (
           <>

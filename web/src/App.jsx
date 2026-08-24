@@ -126,10 +126,7 @@ export default function App() {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} />
-        <div className="pagina pagina--larga pagina--lista">
-          <MeusEstudos onContinuar={entrarEstudo} />
-          <DiagnosticoPanel />
-        </div>
+        <MeusEstudos onContinuar={entrarEstudo} />
       </div>
     );
   }
