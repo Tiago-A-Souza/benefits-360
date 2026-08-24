@@ -96,10 +96,19 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**495 testes passando, 13 pulados** (eram 326; linha de base antes da fase 1:
+**571 testes passando, 13 pulados** (eram 326; linha de base antes da fase 1:
 483). Os 13 pulados são corpus de PDF privado indisponível: Lunvox, IVTEC,
 ATEF. **22 defeitos corrigidos** numa semana de validação com dados reais.
 **O motor não foi tocado** em nenhuma correção.
+
+**Fase 2 concluída:** etapas 5 e 6 unificadas — a matriz da etapa 5 é a tela de
+comparativo, aprovação e exportação; o wizard tem cinco etapas. Objetivo da
+sinergia entre as etapas 5 e 6 entregue.
+
+**Ata de 16/08 — ajustes prioritários:** 1 (eliminar etapa 6 / exportar da 5),
+2 (simplificar etapa 2) e 3 (segundo plano no comparativo) **concluídos**. O
+**ajuste 4 (seleção par a par)** aguarda definição do Leonardo: a estrutura já
+existe em `cenario.atribuicoes` e na etapa 4; a dúvida é de produto, não técnica.
 
 ### Três estudos reproduzidos ao centavo contra o que a Newport entregou
 
@@ -273,52 +282,31 @@ os ajustes pedidos pelo Leonardo na ata de 16/08.
 
 | # | Ajuste | Situação |
 |---|---|---|
-| 1 | Eliminar etapa 6, exportar da etapa 5 | **fase 1 concluída; fase 2 pendente** |
-| 2 | Simplificar etapa 2 removendo dois campos | **fazer com ressalva** |
-| 3 | Incluir o segundo plano no comparativo | **já pronto** |
-| 4 | Seleção par a par plano × cotação | **já pronto** |
+| 1 | Eliminar etapa 6, exportar da etapa 5 | **concluído** (fases 1 e 2) |
+| 2 | Simplificar etapa 2 removendo dois campos | **concluído** |
+| 3 | Incluir o segundo plano no comparativo | **concluído** |
+| 4 | Seleção par a par plano × cotação | **aguarda definição do Leonardo** |
 
-### Ajuste 1 — em duas fases, nesta ordem
+### Ajuste 1 — concluído em duas fases
 
-**Fase 1 — paridade da matriz. Concluída**, em seis commits ao longo de duas
-sessões, validada visualmente nas três visões da matriz contra o documento
-gerado.
+**Fase 1 — paridade da matriz.** Concluída e validada visualmente nas três visões
+da matriz contra o documento gerado.
 
-**Fase 2 — unificar a exportação.** Permanece pendente. Sua primeira tarefa
-passa a ser o segundo renderizador de faixas descrito na seção 12 do registro
-— antes de a matriz substituir a etapa 6, porque hoje ele pode entregar
-tabela pobre. Só depois disso unificar a exportação.
-
-A etapa 6 contém a governança: snapshot com hash, atestado de revisão,
-bloqueio B-01, invalidação ao alterar o rascunho. Não pode ser perdida.
-
-Solução sem custo de clique: o snapshot passa a ser gerado no botão
-«Confirmar comparativo», já existente na etapa 5, e a aprovação vira seção da
-mesma tela.
+**Fase 2 — unificar a exportação.** Concluída: snapshot no «Confirmar
+comparativo», aprovação na etapa 5, exportação a partir do comparativo
+congelado, três modos de apresentação (resumo, faixas, beneficiário).
 
 **Três testes que devem falhar:**
 - exportar sem aprovar → recusado (B-01)
 - aprovar sem marcar o atestado → recusado
 - alterar o rascunho e exportar do snapshot antigo → invalidado
 
-### Ajuste 2 — um campo pode sair, o outro não
+### Ajuste 2 — concluído
 
-**«Origem dos valores atuais» pode ser condicionada.** Só importa quando
-existem duas fontes de valor (fatura do SISCOR e tabela oficial cadastrada).
-Com uma fonte só, não há escolha — pode ser oculto.
-
-**«O valor informado já inclui IOF» NÃO pode ser removido.** Não é redundante
-com tipo fiscal — são perguntas diferentes. A Porto é seguradora (IOF incide),
-mas a tabela dela diz «valores sem IOF», então o sistema precisa somar 2,38%.
-Se outra seguradora imprimir com IOF embutido, não pode somar.
-
-Removê-lo faz o sistema adivinhar — que é exatamente o defeito recém-corrigido
-no tipo fiscal, com 2,38% de erro silencioso.
-
-**Também pedido:** remover «Desconhecido» do dropdown de IOF. Isso é bom —
-alinhado ao invariante 2.
-
----
+A caixa «Origem dos valores atuais» saiu da etapa 2; o campo permanece no
+modelo com gravação explícita. O campo «valor informado já inclui IOF» saiu da
+interface; `BASES_IOF` na cotação manual ficou com duas opções. Ver seção 8.12
+do registro técnico.
 
 ## Correções à ata de 16/08
 

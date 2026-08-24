@@ -540,6 +540,101 @@ média.
 > `builder` re-soma vida a vida a partir do snapshot e o adaptador lê os
 > subtotais do `MotorResult`.
 
+### 8.10 Unificação das etapas 5 e 6 — fase 2
+
+A etapa 6 saiu da navegação. A matriz da etapa 5 passou a ser a tela de
+comparativo, aprovação e exportação. O wizard tem cinco etapas.
+
+**Renderizador único de faixas.** `ComparativoExperiencia.jsx` tinha um segundo
+caminho para a tabela de faixas, sob a condição
+`seguroNovo || !plano?.faixas?.length`, que somava as vidas no próprio cliente e
+não exibia observação de heterogeneidade, unitária nem totais. Não era exclusivo
+de seguro novo: qualquer renovação com `faixas` vazio caía nele. O adaptador
+passou a fornecer `faixas_estudo` para seguro novo, usando `agregar_valores_faixa`
+— a mesma função do documento — e o caminho alternativo foi removido.
+
+**Versão do formato de snapshot.** `SNAPSHOT_VERSAO` existia declarada e não era
+gravada. Passou a `2.8.0`, persistida no snapshot e no `payload_nucleo`. Snapshot
+sem a versão gravada é conferido com o conjunto canônico anterior — verificado
+que nenhum dos snapshots existentes passou a divergir.
+
+**Seleção de propostas no hash.** `propostas_apresentacao` estava no payload e
+fora de `CAMPOS_PAYLOAD_CANONICO`. Como na fase 2 a seleção define as colunas do
+documento, ela entrou no conjunto canônico sob a versão 2.8.0, e alterar a
+seleção passou a superar o snapshot. Sem isso seria possível confirmar cinco
+propostas, aprovar, trocar para três e exportar sob um hash que ainda conferia.
+
+**Snapshot em formato anterior.** `comparativo_do_snapshot` devolvia
+`ComparativoResponse` com `planos_atuais` vazio ao ler payload gerado antes de
+`37cf41f`, sem erro — o mesmo padrão silencioso de 8.6. Passou a recusar com
+`SnapshotFormatoIncompativelError` e mensagem legível. Reconstruir pelo motor foi
+descartado: reabriria um documento aprovado com apresentação que ninguém aprovou.
+
+**Exportação a partir do congelado.** `ler_comparativo_congelado` é o leitor
+único, com a guarda de formato. O documento passou a nascer do `comparativo`
+congelado no snapshot aprovado, sem recálculo. O mesmo componente renderiza ao
+vivo e congelado. Terceiro modo `resumo` acrescentado aos dois existentes.
+`_montar_faixas` no adaptador foi removido — produzia número que ninguém lia.
+
+**Governança na etapa 5.** O snapshot nasce no clique de «Confirmar comparativo»,
+sem clique adicional, e a confirmação só é gravada se o congelamento der certo.
+A aprovação virou seção da própria etapa 5, com nome do revisor, atestado e
+autoaprovação justificada. Aprovar um snapshot novo passou a superar a aprovação
+anterior do mesmo estudo — antes duas podiam coexistir sem critério, e a etapa 5
+não tem seletor. O reparo de aprovações duplicadas legadas foi para a migração
+`2.8.3`, com auditoria, e saiu do GET que o executava como efeito colateral.
+
+### 8.11 Resumo executivo perdia o valor por plano de propostas de outro regime
+
+**Antes:** no modo `resumo`, a coluna de uma proposta em regime diferente do
+primeiro exibia travessão no lugar do valor por plano vigente, e o consolidado
+correto logo abaixo. No estudo Anistia com seis propostas, a Executivo R1
+(coparticipação 30%) aparecia sem os R$ 44.819,89 do S750 e os R$ 13.041,45 do
+ONE S2500, que somam exatamente o R$ 57.861,34 exibido.
+
+**Causa:** o modo `resumo`, criado na fase 2, paginava as propostas de três em
+três atravessando regimes, enquanto a busca do valor por subgrupo permanecia
+escopada à seção de regime. Os modos `faixas` e `beneficiario` já seccionavam por
+regime e não tinham o defeito.
+
+**Correção:** o resumo passou a seccionar por regime, como os outros dois modos.
+Isso também comunica ao leitor que coparticipação 30% não se compara linha a
+linha com sem coparticipação. A matriz ganhou paginação na impressão equivalente
+à do documento — com seis propostas a última coluna era cortada, o que foi o
+motivo de o defeito ter passado despercebido na validação.
+
+### 8.12 Caixa de origem dos valores atuais — ajuste 2 da ata
+
+A caixa oferecia «Valores importados do SISCOR» e «Tabela oficial do plano». Não
+existe editor de `tabela_atual` na interface; 33 das 35 renovações no banco têm a
+tabela vazia, e nenhum estudo tem as duas fontes coexistindo. Quatro estudos
+escolheram «tabela oficial» e receberam o valor de fatura, porque
+`_base_atual_vida` cai no ramo da fatura quando não há tabela — a interface pedia
+uma decisão, registrava a resposta e o sistema fazia outra coisa sem avisar.
+
+A caixa saiu da etapa 2. O campo `precedencia_atual_vida` permanece em
+`EscolhasEstudo` e em `EffectivePolicy`: removê-lo do modelo faria snapshot
+antigo reabrir sem ele, em silêncio, e `effective_policy` não tem guarda de
+formato. O valor passou a ser gravado de forma explícita quando a fonte é única,
+sem sobrescrever estudos que já tinham escolha confirmada. Quando as duas fontes
+coexistirem, a caixa volta e o `APP-ESC-003` bloqueia até a decisão — o sistema
+não escolhe sozinho.
+
+No mesmo ajuste, o campo «valor informado já inclui IOF» saiu da etapa 2 e o
+`BASES_IOF` da cotação manual ficou com duas opções. `DESCONHECIDO` e
+`NAO_APLICA` permanecem no modelo: `finance.py:30` levanta erro quando
+`price_basis` desconhecido chega ao cálculo, e isso é a proteção correta — a
+extração determina a base em 1823 de 1823 opções de PDF, e o desconhecido é o
+estado real de uma cotação manual não preenchida.
+
+---
+
+> **Cobertura.** A suíte foi de 495 para 571 testes, com os mesmos 13 pulados por
+> indisponibilidade do corpus de PDF privado. Lacunas conhecidas: não há teste de
+> tela, e as correções 8.8 e 8.9 passaram em toda a suíte com o JSX ainda
+> exibindo o comportamento antigo. Validação visual em `localhost:5173` é
+> obrigatória para qualquer alteração de renderização.
+
 ---
 
 ## 9. Governança
