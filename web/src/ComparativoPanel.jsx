@@ -21,6 +21,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
   const [carregando, setCarregando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [formatoIncompativel, setFormatoIncompativel] = useState(false);
+  const [avisoSelecaoAlterada, setAvisoSelecaoAlterada] = useState(false);
 
   async function recarregarContextoLocal() {
     if (!estudoId) return;
@@ -46,10 +47,20 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
   const jaConfirmado =
     comparativoConfirmado(rascunho) && !formatoIncompativel;
 
+  async function handleSelecaoSalva() {
+    const estavaConfirmado = comparativoConfirmado(rascunho) && !formatoIncompativel;
+    await recarregarContextoLocal();
+    if (estavaConfirmado) {
+      setAvisoSelecaoAlterada(true);
+    }
+    onAtualizado?.();
+  }
+
   async function handleCalcular() {
     setCarregando(true);
     setErro(null);
     setResultado(null);
+    setAvisoSelecaoAlterada(false);
     try {
       const p = await obterPendencias(estudoId);
       setPendencias(p);
@@ -96,6 +107,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
         opcaoIds
       );
       await recarregarContextoLocal();
+      setAvisoSelecaoAlterada(false);
       onAtualizado?.();
     } catch (e) {
       setErro(e.message);
@@ -216,6 +228,8 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
           confirmando={confirmando}
           onConfirmar={handleConfirmar}
           onRecalcular={handleCalcular}
+          onSelecaoSalva={handleSelecaoSalva}
+          avisoSelecaoAlterada={avisoSelecaoAlterada}
           recalculando={carregando}
         />
       )}

@@ -4898,6 +4898,16 @@ a.btn-link {
   border-radius: 8px;
 }
 
+.cmp-aviso-selecao-alterada {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.92rem;
+}
+
 .cmp-hero-linha {
   display: flex;
   flex-wrap: wrap;

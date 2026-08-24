@@ -23,7 +23,6 @@ export const TIPOS_FISCAIS = [
 export const MODALIDADES = [
   { value: "adesao", label: "Adesão" },
   { value: "compulsorio", label: "Compulsório" },
-  { value: "desconhecido", label: "Desconhecido" },
 ];
 
 export const REGIMES_COPART = [

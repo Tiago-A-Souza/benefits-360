@@ -62,7 +62,7 @@ Fonte: `src/newport_app/models/draft.py`.
 | Tipo | Valores | Linhas |
 |------|---------|--------|
 | `PriceBasisRascunho` | `inclui_iof`, `exclui_iof`, `desconhecido`, `nao_aplica` | `draft.py:14-18` |
-| `ModalidadeRascunho` | `adesao`, `compulsorio`, `desconhecido` | `draft.py:21-24` |
+| `ModalidadeRascunho` | `adesao`, `compulsorio` | `draft.py:21-23` |
 | `ParentescoRascunho` | `titular`, `conjuge`, `filho`, `companheiro`, `outro` | `draft.py:27-32` |
 | `OrigemValorRascunho` | `manual`, `extraido`, `calculado`, `ia` | `draft.py:35-39` |
 | `RASCUNHO_VERSAO_ATUAL` | `"1.0"` | `draft.py:11` |

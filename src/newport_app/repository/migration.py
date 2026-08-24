@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import sqlite3
 import uuid
@@ -188,6 +189,7 @@ def migrar_estudos_db(db_path: Path) -> None:
         _migrar_281(conn)
         _migrar_282(conn)
         _migrar_283(conn)
+        _migrar_284(conn)
         _migrar_301(conn, db_path=db_path)
 
 
@@ -525,6 +527,84 @@ def _migrar_283(conn: sqlite3.Connection) -> None:
     conn.execute(
         "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
         ("2.8.3", datetime.now(timezone.utc).isoformat()),
+    )
+
+
+MOTIVO_MIGRACAO_MODALIDADE_ADESAO = (
+    "Migração 2.8.4 — modalidade adesão «desconhecido» → «compulsorio»"
+)
+
+
+def migrar_modalidade_desconhecida(conn: sqlite3.Connection) -> int:
+    """Converte modalidade «desconhecido» em «compulsorio» nos rascunhos.
+
+    Idempotente. Não toca snapshots. Grava auditoria por estudo alterado.
+    Retorna quantos campos (subgrupos + opções) foram convertidos.
+    """
+    tabelas = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    if "rascunhos" not in tabelas:
+        return 0
+
+    agora = datetime.now(timezone.utc).isoformat()
+    convertidos = 0
+    rows = conn.execute("SELECT id, payload FROM rascunhos").fetchall()
+    for estudo_id, payload in rows:
+        data = json.loads(payload)
+        alterados: list[str] = []
+        for lista in ("subgrupos_atuais", "opcoes_proposta"):
+            for item in data.get(lista) or []:
+                if item.get("modalidade") != "desconhecido":
+                    continue
+                item["modalidade"] = "compulsorio"
+                convertidos += 1
+                alterados.append(f"{lista}:{item.get('id')}")
+        if not alterados:
+            continue
+        conn.execute(
+            "UPDATE rascunhos SET payload = ?, atualizado_em = ? WHERE id = ?",
+            (
+                json.dumps(data, ensure_ascii=False, separators=(",", ":")),
+                agora,
+                estudo_id,
+            ),
+        )
+        if "auditoria" in tabelas:
+            conn.execute(
+                """
+                INSERT INTO auditoria (
+                    id, estudo_id, entidade, entidade_id, acao, detalhe, criado_em, criado_por
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(uuid.uuid4()),
+                    estudo_id,
+                    "rascunho",
+                    estudo_id,
+                    "migrar_modalidade_adesao",
+                    f"{MOTIVO_MIGRACAO_MODALIDADE_ADESAO}; {', '.join(alterados)}",
+                    agora,
+                    "migracao-2.8.4",
+                ),
+            )
+    return convertidos
+
+
+def _migrar_284(conn: sqlite3.Connection) -> None:
+    """Remove «desconhecido» da adesão — converte legado para compulsório."""
+    ja = conn.execute(
+        "SELECT versao FROM schema_migrations WHERE versao = ?", ("2.8.4",)
+    ).fetchone()
+    if ja is not None:
+        return
+    migrar_modalidade_desconhecida(conn)
+    conn.execute(
+        "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+        ("2.8.4", datetime.now(timezone.utc).isoformat()),
     )
 
 
