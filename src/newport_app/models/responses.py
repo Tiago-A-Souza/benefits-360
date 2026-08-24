@@ -17,6 +17,8 @@ class EstudoResumo(BaseModel):
     status: str = "em_andamento"
     status_exibicao: str = "Em andamento"
     ultima_alteracao: str | None = None
+    total_reajustado_centavos: int | None = None
+    total_reajustado_reais: str | None = None
 
 
 class TotaisComparativo(BaseModel):

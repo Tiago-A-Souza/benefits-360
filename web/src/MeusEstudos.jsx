@@ -367,6 +367,16 @@ export default function MeusEstudos({ onContinuar }) {
                             <b>{vidas != null ? vidas : "—"}</b>
                             <span>vidas</span>
                           </div>
+                          <div
+                            className={`lista-dado lista-col-oculta num${
+                              e.total_reajustado_reais ? "" : " lista-dado--vazio"
+                            }`}
+                          >
+                            <b>{e.total_reajustado_reais || "—"}</b>
+                            <span>
+                              {e.total_reajustado_reais ? "base reajustada" : "sem contrato"}
+                            </span>
+                          </div>
                           <div className="lista-col-oculta">
                             <span
                               className={`lista-estado-pill ${

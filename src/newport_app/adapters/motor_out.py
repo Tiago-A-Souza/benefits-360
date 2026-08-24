@@ -1248,6 +1248,8 @@ def rascunho_para_resumo(
     ultima_alteracao: str | None = None,
     status: str = "em_andamento",
 ) -> EstudoResumo:
+    from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
+
     n = len(rascunho.vidas_incluidas())
     status_map = {
         "em_andamento": "Em andamento",
@@ -1255,6 +1257,8 @@ def rascunho_para_resumo(
         "aprovado": "Aprovado",
     }
     empresa = rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None
+    # Mesma função da etapa 1 — None em seguro novo / sem reajuste (nunca vigente).
+    base = montar_resumo_plano_atual(rascunho)
     return EstudoResumo(
         id=rascunho.id,
         titulo=rascunho.titulo,
@@ -1267,6 +1271,8 @@ def rascunho_para_resumo(
         status=status,
         status_exibicao=status_map.get(status, "Em andamento"),
         ultima_alteracao=ultima_alteracao,
+        total_reajustado_centavos=base.total_reajustado_centavos,
+        total_reajustado_reais=base.total_reajustado_reais,
     )
 
 
