@@ -1681,19 +1681,265 @@ button.ativo,
 /* —— Fluxo operacional (reformulação UX) —— */
 
 .pagina--fluxo {
-  max-width: 960px;
-  padding-top: 1.25rem;
-  padding-bottom: 2.5rem;
+  max-width: none;
+  padding: 0;
 }
 
-.fluxo-shell {
+.app-shell {
+  min-height: 100vh;
+  background: var(--page);
+}
+
+.topbar {
+  height: 70px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  gap: 16px;
+}
+
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+.brand-name {
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.crumb {
+  height: 26px;
+  width: 1px;
+  background: var(--line);
+}
+
+.study-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.study-mini strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 420px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  max-width: 1540px;
+  margin: 0 auto;
+  min-height: calc(100vh - 70px);
+}
+
+.app-sidebar {
+  padding: 28px 20px 32px;
+  border-right: 1px solid var(--line);
+  background: rgba(248, 250, 252, 0.72);
+  position: sticky;
+  top: 70px;
+  height: calc(100vh - 70px);
+  align-self: start;
+  overflow: auto;
+}
+
+.side-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.study-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--muted-2);
+  font-weight: 700;
+}
+
+.side-title {
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin: 6px 0 4px;
+}
+
+.side-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.steps-label {
+  margin: 26px 10px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 750;
+  color: var(--muted-2);
+}
+
+.app-sidebar .steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.app-sidebar .step {
+  position: relative;
+}
+
+.app-sidebar .step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 42px;
+  bottom: -9px;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.app-sidebar .step.done:not(:last-child)::after {
+  background: #9fc5fb;
+}
+
+.side-bottom {
+  margin-top: 24px;
+}
+
+.app-main {
+  padding: 34px 38px 40px;
+  min-width: 0;
 }
 
 .fluxo-conteudo {
-  min-height: 200px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.fluxo-shell {
+  display: contents;
+}
+
+.hide-mobile {
+  display: inline-flex;
+}
+
+.app-sidebar .diagnostico-rodape {
+  margin: 0;
+}
+
+.app-sidebar .diagnostico-toggle {
+  width: 100%;
+  text-align: left;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 9px;
+  padding: 8px 12px;
+  min-height: 36px;
+}
+
+@media (max-width: 860px) {
+  .app-body {
+    display: block;
+  }
+
+  .app-sidebar {
+    position: relative;
+    top: 0;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 15px 16px;
+  }
+
+  .side-card,
+  .steps-label,
+  .side-bottom {
+    display: none;
+  }
+
+  .app-sidebar .steps {
+    display: flex;
+    overflow: auto;
+    gap: 8px;
+  }
+
+  .app-sidebar .step {
+    min-width: 170px;
+  }
+
+  .app-sidebar .step:not(:last-child)::after {
+    display: none;
+  }
+
+  .wizard--operacional .wizard-passo {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 9px;
+  }
+
+  .app-main {
+    padding: 24px 16px 90px;
+  }
+
+  .hide-mobile {
+    display: none;
+  }
+
+  .study-mini,
+  .crumb {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .brand-name {
+    display: none;
+  }
 }
 
 .secao-fluxo {
@@ -2332,15 +2578,105 @@ a.btn-link {
 }
 
 .wizard--operacional {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.45rem;
-  margin-bottom: 0;
-  padding: 0.55rem;
-  background: #fff;
-  border: 1px solid #e3e8ee;
+  display: block;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.wizard--operacional .wizard-passo {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 27px 1fr;
+  gap: 10px;
+  text-align: left;
+  color: inherit;
+  min-height: 0;
+  font-weight: 650;
+}
+
+.wizard--operacional .wizard-passo:hover {
+  background: var(--surface);
+  transform: none;
+}
+
+.wizard--operacional .wizard-passo.ativo {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  padding: 9px;
+  color: inherit;
+}
+
+.wizard--operacional .wizard-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+.wizard--operacional .wizard-passo.concluida .wizard-num {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.wizard--operacional .wizard-passo.ativo .wizard-num {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.wizard-copy {
+  display: block;
+  min-width: 0;
+}
+
+.wizard--operacional .wizard-titulo {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 1px 0;
+}
+
+.wizard-estado {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  position: sticky;
+  bottom: 18px;
+  z-index: 35;
+  margin-top: 26px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 12px 14px;
 }
 
 .wizard-passo {
@@ -2750,7 +3086,7 @@ a.btn-link {
 
 @media (max-width: 900px) {
   .wizard--operacional {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: block;
   }
 
   .grid-compacto {
@@ -2772,7 +3108,7 @@ a.btn-link {
   }
 
   .wizard--operacional {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: block;
   }
 
   .grid-compacto,

@@ -1,29 +1,36 @@
 export default function EstudoCabecalho({ resumo, onTrocarEstudo, onHistorico }) {
-  if (!resumo) return null;
   return (
-    <header className="estudo-cabecalho">
-      <div className="estudo-cabecalho-info">
-        <h1>{resumo.empresa || resumo.titulo}</h1>
-        <p className="estudo-cabecalho-meta">
-          {resumo.titulo !== resumo.empresa && resumo.empresa ? (
-            <span>{resumo.titulo} · </span>
-          ) : null}
-          <span>{resumo.formato_exibicao || "Renovação"}</span>
-          <span> · {resumo.beneficiarios_rotulo || "0 beneficiários"}</span>
-          <span> · </span>
-          <span className={`status-pill status-pill--${resumo.status || "em_andamento"}`}>
-            {resumo.status_exibicao || "Em andamento"}
-          </span>
-        </p>
+    <header className="topbar">
+      <div className="brand-wrap">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true">
+            N
+          </div>
+          <span className="brand-name">Newport</span>
+        </div>
+        {resumo && (
+          <>
+            <div className="crumb" aria-hidden="true" />
+            <div className="study-mini">
+              <span className="muted">{resumo.titulo}</span>
+              <strong>{resumo.empresa || resumo.titulo}</strong>
+              <span className={`badge badge--${resumo.status === "aprovado" ? "ok" : "alerta"}`}>
+                {resumo.status_exibicao || "Em andamento"}
+              </span>
+            </div>
+          </>
+        )}
       </div>
-      <div className="estudo-cabecalho-acoes">
-        <button type="button" className="secundario btn-compacto" onClick={onHistorico}>
-          Histórico
-        </button>
-        <button type="button" className="secundario btn-compacto" onClick={onTrocarEstudo}>
-          Trocar estudo
-        </button>
-      </div>
+      {resumo && (
+        <div className="top-actions">
+          <button type="button" className="secundario btn-compacto hide-mobile" onClick={onHistorico}>
+            Histórico
+          </button>
+          <button type="button" className="secundario btn-compacto" onClick={onTrocarEstudo}>
+            Trocar estudo
+          </button>
+        </div>
+      )}
     </header>
   );
 }

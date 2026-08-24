@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Newport — Estudo 16 · Anistia Internacional Brasil</title>
+<style>
+  :root{
+    --navy:#0b1f36;
+    --navy-2:#17324f;
+    --blue:#1668e3;
+    --blue-2:#0f56c4;
+    --blue-50:#eef5ff;
+    --blue-100:#dceaff;
+    --green:#0f8a5f;
+    --green-50:#eaf8f2;
+    --amber:#b96b06;
+    --amber-50:#fff5e7;
+    --red:#c43a46;
+    --red-50:#fff0f1;
+    --ink:#142236;
+    --muted:#64748b;
+    --muted-2:#8c9aad;
+    --line:#dfe5ec;
+    --line-strong:#ccd5df;
+    --surface:#ffffff;
+    --surface-2:#f8fafc;
+    --surface-3:#f1f5f9;
+    --page:#f3f6f9;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.045);
+    --shadow-lg:0 18px 45px rgba(15,23,42,.10);
+    --radius:14px;
+    --radius-sm:10px;
+    --font:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;background:var(--page);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(22,104,227,.18);outline-offset:2px}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+  .muted{color:var(--muted)}
+
+  /* App chrome */
+  .topbar{height:70px;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+  .brand-wrap{display:flex;align-items:center;gap:16px;min-width:0}
+  .brand{display:flex;align-items:center;gap:10px;white-space:nowrap}
+  .brand-mark{width:34px;height:34px;border-radius:10px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;letter-spacing:-.06em}
+  .brand-name{font-weight:750;letter-spacing:-.02em}
+  .crumb{height:26px;width:1px;background:var(--line);margin:0 2px}
+  .study-mini{display:flex;align-items:center;gap:10px;min-width:0}
+  .study-mini strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+  .top-actions{display:flex;align-items:center;gap:8px}
+
+  .app{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1540px;margin:0 auto;min-height:calc(100vh - 70px)}
+  .sidebar{padding:28px 20px 32px;border-right:1px solid var(--line);background:rgba(248,250,252,.72);position:sticky;top:70px;height:calc(100vh - 70px);align-self:start;overflow:auto}
+  .side-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+  .study-eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted-2);font-weight:700}
+  .side-title{font-size:16px;line-height:1.25;font-weight:750;letter-spacing:-.02em;margin:6px 0 4px}
+  .side-meta{font-size:12px;color:var(--muted)}
+  .side-value{margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
+  .side-value small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}
+  .side-value strong{display:block;font-size:21px;letter-spacing:-.035em}
+
+  .steps-label{margin:26px 10px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:750;color:var(--muted-2)}
+  .steps{list-style:none;padding:0;margin:0;display:grid;gap:5px}
+  .step{position:relative}
+  .step:not(:last-child)::after{content:"";position:absolute;left:22px;top:42px;bottom:-9px;width:1px;background:var(--line-strong)}
+  .step.done:not(:last-child)::after{background:#9fc5fb}
+  .step-btn{position:relative;z-index:2;width:100%;border:0;background:transparent;border-radius:12px;padding:10px 10px;display:grid;grid-template-columns:27px 1fr;gap:10px;text-align:left;color:inherit;transition:.15s ease}
+  .step-btn:hover{background:var(--surface)}
+  .step.active .step-btn{background:var(--surface);box-shadow:var(--shadow);border:1px solid var(--line);padding:9px}
+  .step-dot{width:26px;height:26px;border-radius:9px;border:1px solid var(--line-strong);background:var(--surface);display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--muted);margin-top:1px}
+  .step.done .step-dot{background:var(--blue);border-color:var(--blue);color:#fff}
+  .step.active .step-dot{background:var(--navy);border-color:var(--navy);color:#fff}
+  .step-copy b{display:block;font-size:13px;font-weight:700;margin:1px 0 1px}
+  .step-copy small{display:block;color:var(--muted);font-size:11px;line-height:1.35}
+  .side-bottom{margin-top:24px;padding:0 4px;display:grid;gap:8px}
+
+  .main{padding:34px 38px 110px;min-width:0}
+  .content{max-width:1120px;margin:0 auto}
+  .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}
+  .page-head h1{font-size:27px;letter-spacing:-.035em;line-height:1.12;margin:0 0 7px;font-weight:780}
+  .page-head p{margin:0;color:var(--muted);max-width:720px;font-size:14px}
+  .page-kicker{display:flex;align-items:center;gap:8px;color:var(--blue);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.10em;margin-bottom:7px}
+  .page-kicker::before{content:"";width:18px;height:2px;background:var(--blue);border-radius:2px}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+  .panel-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+  .panel-head h2{margin:0;font-size:15.5px;letter-spacing:-.015em;font-weight:750}
+  .panel-head p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+  .panel-body{padding:20px}
+  .panel-flat{box-shadow:none}
+
+  .btn{border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:9px;padding:8px 13px;font-weight:650;font-size:12.8px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;transition:.15s ease;min-height:36px}
+  .btn:hover{border-color:#aeb9c6;background:#fbfdff;transform:translateY(-1px)}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 14px rgba(22,104,227,.18)}
+  .btn.primary:hover{background:var(--blue-2);border-color:var(--blue-2)}
+  .btn.dark{background:var(--navy);border-color:var(--navy);color:white}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+  .btn.danger{color:var(--red);border-color:#f0c6ca;background:#fff}
+  .btn.sm{padding:6px 10px;min-height:31px;font-size:12px;border-radius:8px}
+  .btn.icon{width:36px;padding:0}
+  .btn[disabled]{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:11.5px;font-weight:700;border:1px solid transparent;white-space:nowrap}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .badge.blue{background:var(--blue-50);color:var(--blue);border-color:#cce0ff}
+  .badge.green{background:var(--green-50);color:var(--green);border-color:#c9eadc}
+  .badge.amber{background:var(--amber-50);color:var(--amber);border-color:#f5ddb8}
+  .badge.red{background:var(--red-50);color:var(--red);border-color:#f3ccd0}
+  .badge.gray{background:var(--surface-3);color:var(--muted);border-color:var(--line)}
+
+  .metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:18px}
+  .metric{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;min-width:0}
+  .metric small{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:750;margin-bottom:6px}
+  .metric strong{display:block;font-size:22px;letter-spacing:-.035em;line-height:1.05}
+  .metric .hint{display:block;margin-top:5px;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .metric.good strong{color:var(--green)}
+  .metric.feature{background:var(--navy);border-color:var(--navy);color:#fff}
+  .metric.feature small,.metric.feature .hint{color:#a8b9ca}
+
+  .upload{border:1.5px dashed #b9c7d6;background:linear-gradient(180deg,#fbfdff,#f7faff);border-radius:12px;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .upload-left{display:flex;align-items:center;gap:14px}
+  .upload-icon{width:44px;height:44px;border-radius:12px;background:var(--blue-50);color:var(--blue);display:grid;place-items:center;font-size:20px;font-weight:800}
+  .upload h3{margin:0 0 3px;font-size:14px}
+  .upload p{margin:0;color:var(--muted);font-size:12px}
+
+  .file-line{display:flex;align-items:center;gap:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px}
+  .file-ico{width:34px;height:34px;border-radius:8px;background:#e9f2ff;color:var(--blue);display:grid;place-items:center;font-size:10px;font-weight:800}
+  .file-main{min-width:0;flex:1}
+  .file-main b{display:block;font-size:12.8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-main small{color:var(--muted);font-size:11.5px}
+
+  .table-wrap{overflow:auto}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.065em;color:var(--muted-2);font-weight:800;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);background:#fbfcfd;white-space:nowrap}
+  td{padding:12px;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:middle}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover td{background:#fbfdff}
+  td.right,th.right{text-align:right}
+  .cell-main{font-weight:700;color:var(--ink)}
+  .cell-sub{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+  .total-row td{font-weight:750;background:var(--surface-2);border-top:1px solid var(--line-strong)}
+  .positive{color:var(--green);font-weight:750}
+  .negative{color:var(--red);font-weight:750}
+
+  .notice{border:1px solid #cde3ff;background:var(--blue-50);border-radius:12px;padding:13px 14px;display:flex;gap:11px;align-items:flex-start;margin-bottom:16px}
+  .notice.amber{border-color:#f1d7ab;background:var(--amber-50)}
+  .notice.green{border-color:#c7e8d9;background:var(--green-50)}
+  .notice.red{border-color:#efc9cd;background:var(--red-50)}
+  .notice-icon{width:22px;height:22px;border-radius:7px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+  .notice.amber .notice-icon{background:var(--amber)}
+  .notice.green .notice-icon{background:var(--green)}
+  .notice.red .notice-icon{background:var(--red)}
+  .notice b{display:block;font-size:12.8px;margin-bottom:2px}
+  .notice p{margin:0;color:var(--muted);font-size:12px}
+
+  .action-bar{position:sticky;bottom:18px;z-index:35;margin-top:26px;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .action-left,.action-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .action-note{color:var(--muted);font-size:11.8px}
+
+  /* Form controls */
+  .field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800;margin-bottom:6px}
+  .field input,.field select{width:100%;border:1px solid var(--line-strong);border-radius:9px;background:white;padding:9px 10px;min-height:38px;color:var(--ink);transition:.15s}
+  .field input:hover,.field select:hover{border-color:#aeb9c6}
+  .field input:focus,.field select:focus{border-color:var(--blue)}
+  .form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .form-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+  .plan-card{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:#fff;overflow:hidden}
+  .plan-card-head{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:13px 15px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+  .plan-card-head .title{display:flex;align-items:center;gap:10px;min-width:0}
+  .plan-index{display:inline-grid;place-items:center;height:23px;min-width:50px;padding:0 7px;background:#eaf0f6;color:var(--muted);border-radius:7px;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+  .plan-card-head b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .plan-card-body{padding:15px}
+
+  .radio-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .radio-card{border:1px solid var(--line);border-radius:11px;padding:13px 14px;cursor:pointer;display:flex;gap:11px;align-items:flex-start;transition:.15s;background:white}
+  .radio-card:hover{border-color:#b9c7d6}
+  .radio-card.selected{border-color:var(--blue);box-shadow:0 0 0 3px rgba(22,104,227,.08);background:#fbfdff}
+  .radio-dot{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--line-strong);margin-top:2px;display:grid;place-items:center;flex:none}
+  .radio-card.selected .radio-dot{border-color:var(--blue)}
+  .radio-card.selected .radio-dot::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--blue)}
+  .radio-copy b{display:block;font-size:12.5px;margin-bottom:2px}
+  .radio-copy span{color:var(--muted);font-size:11.5px}
+
+  .money-strip{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:16px;margin-top:14px}
+  .money-box small{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;margin-bottom:4px}
+  .money-box strong{font-size:19px;letter-spacing:-.025em}
+  .money-arrow{color:var(--muted-2);font-size:18px}
+
+  /* Stage 3 */
+  .segmented{display:inline-flex;border:1px solid var(--line);background:var(--surface-2);padding:3px;border-radius:10px;gap:2px}
+  .segmented button{border:0;background:transparent;padding:7px 11px;border-radius:7px;color:var(--muted);font-weight:700;font-size:12px}
+  .segmented button.active{background:white;color:var(--ink);box-shadow:0 1px 3px rgba(15,23,42,.08)}
+  .quotes-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .quote-card{border:1px solid var(--line);border-radius:12px;padding:15px;background:white;display:flex;flex-direction:column;min-height:196px}
+  .quote-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .quote-top b{font-size:13.5px}
+  .quote-file{margin:11px 0;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .selected-plans{display:grid;gap:6px;margin-top:4px}
+  .plan-pill{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:11.5px}
+  .quote-actions{display:flex;gap:6px;margin-top:auto;padding-top:12px;flex-wrap:wrap}
+  .selector-view{display:none}
+  .selector-view.active{display:block}
+  .documents-view.hidden{display:none}
+  .document-context{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2);margin-bottom:14px}
+  .doc-title{display:flex;align-items:center;gap:10px;min-width:0}
+  .doc-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .filter-row{display:grid;grid-template-columns:minmax(220px,1.5fr) repeat(2,minmax(150px,.7fr)) auto;gap:8px;margin-bottom:14px}
+  .filter-row input,.filter-row select{border:1px solid var(--line-strong);border-radius:9px;background:white;padding:9px 10px;min-height:38px}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 15px}
+  .chip{border:1px solid #bed4f5;background:var(--blue-50);color:var(--blue-2);padding:6px 8px;border-radius:999px;font-size:11.5px;font-weight:650}
+  .check{width:16px;height:16px;accent-color:var(--blue)}
+  .group-title{font-size:12px;font-weight:800;margin:18px 0 7px;color:var(--navy)}
+
+  /* Stage 4 */
+  .scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .scenario{border:1px solid var(--line);border-radius:12px;background:white;overflow:hidden}
+  .scenario-head{padding:12px 14px;background:var(--surface-2);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .scenario-head strong{font-size:12.8px}
+  .scenario-head small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+  .scenario-body{padding:5px 14px 10px}
+  .mapping{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr);gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .mapping:last-child{border-bottom:0}
+  .mapping .current b{display:block;font-size:12px}
+  .mapping .current small{color:var(--muted);font-size:10.8px}
+  .mapping select{width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:8px 9px;background:white;font-size:11.8px}
+
+  /* Stage 5 */
+  .summary-band{border:1px solid var(--line);border-radius:14px;background:white;box-shadow:var(--shadow);margin-bottom:18px}
+  .summary-top{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid var(--line)}
+  .summary-title{display:flex;align-items:center;gap:10px}
+  .summary-title b{font-size:16px;letter-spacing:-.02em}
+  .summary-metrics{display:grid;grid-template-columns:repeat(4,auto) 1fr;gap:10px;align-items:center;padding:13px 18px}
+  .mini-stat{padding:0 14px;border-right:1px solid var(--line)}
+  .mini-stat:first-child{padding-left:0}
+  .mini-stat small{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+  .mini-stat strong{font-size:13px}
+  .reference-price{text-align:right}
+  .reference-price small{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+  .reference-price strong{font-size:20px;letter-spacing:-.03em}
+
+  .catalog-filters{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) minmax(190px,1.25fr);gap:8px;margin-bottom:12px}
+  .catalog-filters select,.catalog-filters input{width:100%;border:1px solid var(--line-strong);border-radius:9px;background:#fff;padding:9px 10px}
+  .proposal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+  .proposal{border:1px solid var(--line);border-radius:12px;background:white;padding:15px;min-height:160px;display:flex;flex-direction:column;transition:.15s}
+  .proposal:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.07)}
+  .proposal.selected{border-color:#9bc1f9;box-shadow:0 0 0 3px rgba(22,104,227,.06)}
+  .proposal .op{color:var(--muted);font-size:11.5px;margin-top:3px}
+  .proposal .price{font-size:19px;font-weight:800;letter-spacing:-.03em;margin-top:17px}
+  .proposal .delta{font-size:12px;margin-top:2px}
+  .proposal-foot{margin-top:auto;padding-top:12px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .proposal-foot span{color:var(--muted);font-size:10.8px}
+  .select-toggle{border:1px solid var(--line-strong);background:white;border-radius:8px;padding:6px 8px;font-size:11.5px;font-weight:700}
+  .proposal.selected .select-toggle{background:var(--blue-50);border-color:#bed4f5;color:var(--blue)}
+
+  .tabs{display:flex;gap:3px;border-bottom:1px solid var(--line);padding:0 18px;background:var(--surface-2)}
+  .tab{border:0;background:transparent;padding:12px 12px 10px;color:var(--muted);font-weight:700;font-size:12px;border-bottom:2px solid transparent}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);background:white}
+  .comparison-scroll{overflow:auto;max-width:100%}
+  .comparison{min-width:980px}
+  .comparison th,.comparison td{text-align:right}
+  .comparison th:first-child,.comparison td:first-child{text-align:left;position:sticky;left:0;z-index:2;background:inherit}
+  .comparison thead th:first-child{background:#fbfcfd}
+  .comparison .current-col{background:#f2f7ff}
+  .comparison thead .current-col{background:#e9f2ff;color:var(--blue)}
+  .comparison .section-row td{background:var(--surface-2);text-align:left!important;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:800;color:var(--muted);padding-top:9px;padding-bottom:9px}
+
+  .tech-list{display:grid;gap:8px}
+  .tech-row{border:1px solid var(--line);border-radius:10px;background:white;padding:11px 12px;display:grid;grid-template-columns:24px minmax(0,1.4fr) minmax(120px,.5fr) minmax(110px,.45fr);gap:10px;align-items:center}
+  .chev{color:var(--muted);font-size:16px}
+  .tech-row b{font-size:12.3px}
+  .tech-row small{color:var(--muted);font-size:11px;display:block;margin-top:2px}
+  .tech-row .price{text-align:right;font-weight:800}
+  .tech-row .delta{text-align:right;font-size:11.5px}
+
+  .screen{display:none}
+  .screen.active{display:block;animation:fade .16s ease}
+  @keyframes fade{from{opacity:.25;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  /* Toast */
+  .toast{position:fixed;right:26px;bottom:26px;background:var(--navy);color:white;border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-lg);z-index:100;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s}
+  .toast.show{opacity:1;transform:none}
+  .toast .ok{width:22px;height:22px;border-radius:7px;background:var(--green);display:grid;place-items:center;font-weight:900;font-size:11px}
+  .toast small{color:#bdcada;display:block;margin-top:1px}
+
+  @media(max-width:1180px){
+    .app{grid-template-columns:235px minmax(0,1fr)}
+    .main{padding:30px 26px 100px}
+    .metrics{grid-template-columns:repeat(3,1fr)}
+    .quotes-grid,.proposal-grid{grid-template-columns:repeat(2,1fr)}
+    .form-grid{grid-template-columns:repeat(2,1fr)}
+    .catalog-filters{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:860px){
+    .topbar{padding:0 16px}.study-mini,.crumb{display:none}
+    .app{display:block}.sidebar{position:relative;top:0;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:15px 16px}.side-card,.steps-label,.side-bottom{display:none}
+    .steps{display:flex;overflow:auto;gap:8px}.step{min-width:170px}.step:not(:last-child)::after{display:none}.step-btn{background:var(--surface);border:1px solid var(--line);padding:9px}
+    .main{padding:24px 16px 90px}.page-head{flex-direction:column}.metrics{grid-template-columns:repeat(2,1fr)}
+    .quotes-grid,.proposal-grid,.scenario-grid{grid-template-columns:1fr}
+    .catalog-filters{grid-template-columns:1fr 1fr}.filter-row{grid-template-columns:1fr 1fr}.filter-row input{grid-column:1/-1}
+    .summary-metrics{grid-template-columns:1fr 1fr}.mini-stat{border-right:0;padding:0}.reference-price{text-align:left}
+    .tech-row{grid-template-columns:22px 1fr}.tech-row .price,.tech-row .delta{text-align:left;grid-column:2}
+  }
+  @media(max-width:560px){
+    .top-actions .hide-mobile{display:none}.brand-name{display:none}
+    .metrics,.form-grid,.form-grid.two,.radio-cards,.catalog-filters,.filter-row{grid-template-columns:1fr}
+    .upload{align-items:flex-start;flex-direction:column}.money-strip{grid-template-columns:1fr}.money-arrow{transform:rotate(90deg)}
+    .action-bar{bottom:8px;align-items:stretch;flex-direction:column}.action-left,.action-right{justify-content:space-between}.action-right .btn.primary{flex:1}
+    .mapping{grid-template-columns:1fr}.summary-metrics{grid-template-columns:1fr}.mini-stat{padding-bottom:8px;border-bottom:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand-wrap">
+    <div class="brand"><div class="brand-mark">N</div><span class="brand-name">Newport</span></div>
+    <div class="crumb"></div>
+    <div class="study-mini"><span class="muted">Estudo 16</span><strong>Anistia Internacional Brasil</strong><span class="badge blue">Em andamento</span></div>
+  </div>
+  <div class="top-actions">
+    <button class="btn ghost sm hide-mobile" data-toast="Histórico aberto">Histórico</button>
+    <button class="btn sm" data-toast="Seletor de estudos aberto">Trocar estudo</button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-card">
+      <div class="study-eyebrow">Renovação · Estudo 16</div>
+      <div class="side-title">Anistia Internacional Brasil</div>
+      <div class="side-meta">41 beneficiários · 2 planos vigentes</div>
+      <div class="side-value">
+        <small>Base para comparação</small>
+        <strong class="num">R$ 48.479,31</strong>
+        <span class="side-meta">contrato reajustado em 12%</span>
+      </div>
+    </div>
+    <div class="steps-label">Etapas do estudo</div>
+    <ol class="steps" id="steps">
+      <li class="step active" data-stage="1"><button class="step-btn"><span class="step-dot">1</span><span class="step-copy"><b>Base atual</b><small>41 vidas · 0 exceções</small></span></button></li>
+      <li class="step" data-stage="2"><button class="step-btn"><span class="step-dot">2</span><span class="step-copy"><b>Plano atual</b><small>2 planos · reajuste 12%</small></span></button></li>
+      <li class="step" data-stage="3"><button class="step-btn"><span class="step-dot">3</span><span class="step-copy"><b>Cotações</b><small>3 PDFs · 6 planos</small></span></button></li>
+      <li class="step" data-stage="4"><button class="step-btn"><span class="step-dot">4</span><span class="step-copy"><b>Correspondência</b><small>6 cenários</small></span></button></li>
+      <li class="step" data-stage="5"><button class="step-btn"><span class="step-dot">5</span><span class="step-copy"><b>Comparativo</b><small>6 propostas calculadas</small></span></button></li>
+    </ol>
+    <div class="side-bottom">
+      <button class="btn ghost" data-toast="Diagnóstico do estudo aberto">Diagnóstico</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content">
+
+      <!-- ETAPA 1 -->
+      <section class="screen active" id="stage-1">
+        <div class="page-head">
+          <div>
+            <div class="page-kicker">Etapa 1 de 5</div>
+            <h1>Base atual</h1>
+            <p>Revise a base importada do SISCOR antes de avançar. O sistema usa beneficiários, vínculo, plano e valor atual para montar o estudo.</p>
+          </div>
+          <span class="badge green">Base validada</span>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><small>Vidas</small><strong class="num">41</strong><span class="hint">todos os beneficiários</span></div>
+          <div class="metric"><small>Titulares</small><strong class="num">27</strong><span class="hint">65,9% da base</span></div>
+          <div class="metric"><small>Dependentes</small><strong class="num">14</strong><span class="hint">34,1% da base</span></div>
+          <div class="metric"><small>Planos</small><strong class="num">2</strong><span class="hint">grupos vigentes</span></div>
+          <div class="metric good"><small>Exceções</small><strong class="num">0</strong><span class="hint">nenhuma pendência</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div><h2>Base importada</h2><p>Arquivo processado e pronto para o estudo.</p></div>
+            <button class="btn sm" data-toast="Escolha uma nova planilha para substituir a base">Substituir planilha</button>
+          </div>
+          <div class="panel-body">
+            <div class="file-line">
+              <div class="file-ico">XLSX</div>
+              <div class="file-main"><b>POSICAO_CADASTRAL_ANISTIA.xlsx</b><small>Importada em 20/08/2026 às 19:12 · SISCOR</small></div>
+              <span class="badge green">Processado</span>
+            </div>
+            <div class="notice green" style="margin-top:14px">
+              <div class="notice-icon">✓</div>
+              <div><b>41 vidas lidas, nenhuma descartada</b><p>A base está consistente e não há exceções para revisar antes de continuar.</p></div>
+            </div>
+            <div class="table-wrap">
+              <table class="num">
+                <thead><tr><th>Plano vigente</th><th class="right">Titulares</th><th class="right">Dependentes</th><th class="right">Vidas</th><th class="right">Valor atual</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="cell-main">AMIL S750 — Apto.</span><span class="cell-sub">Apartamento</span></td><td class="right">24</td><td class="right">12</td><td class="right">36</td><td class="right">R$ 26.238,22</td></tr>
+                  <tr><td><span class="cell-main">AMIL ONE S2500 — Apto.</span><span class="cell-sub">Apartamento</span></td><td class="right">3</td><td class="right">2</td><td class="right">5</td><td class="right">R$ 17.046,92</td></tr>
+                  <tr class="total-row"><td>Total da base</td><td class="right">27</td><td class="right">14</td><td class="right">41</td><td class="right">R$ 43.285,14</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-flat">
+          <div class="panel-body">
+            <div class="upload">
+              <div class="upload-left"><div class="upload-icon">↑</div><div><h3>Quer substituir a base?</h3><p>Arraste outra planilha .xlsx do SISCOR aqui ou escolha um arquivo.</p></div></div>
+              <button class="btn" data-toast="Seletor de arquivo aberto">Escolher arquivo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-left"><button class="btn" data-toast="Lista de beneficiários aberta">Ver beneficiários</button><span class="action-note">41 beneficiários confirmados</span></div>
+          <div class="action-right"><button class="btn primary next-stage" data-next="2">Continuar para plano atual →</button></div>
+        </div>
+      </section>
+
+      <!-- ETAPA 2 -->
+      <section class="screen" id="stage-2">
+        <div class="page-head">
+          <div>
+            <div class="page-kicker">Etapa 2 de 5</div>
+            <h1>Plano atual</h1>
+            <p>Confirme os dados do contrato vigente e defina qual referência será usada para comparar as novas cotações.</p>
+          </div>
+          <span class="badge green">2 planos identificados</span>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><div><h2>Planos vigentes</h2><p>Edite somente o que estiver diferente do contrato atual.</p></div><span class="badge gray">Dados editáveis</span></div>
+          <div class="panel-body">
+            <div class="plan-card">
+              <div class="plan-card-head"><div class="title"><span class="plan-index">Plano 1</span><b>AMIL S750 — Apto.</b></div><span class="badge blue">36 vidas</span></div>
+              <div class="plan-card-body">
+                <div class="form-grid">
+                  <div class="field"><label>Operadora</label><input value="AMIL"></div>
+                  <div class="field"><label>Nome do plano</label><input value="AMIL S750 - Apto."></div>
+                  <div class="field"><label>Tipo fiscal</label><select><option>Operadora (Amil, Hapvida)</option></select></div>
+                  <div class="field"><label>Adesão dos funcionários</label><select><option>Compulsório</option></select></div>
+                  <div class="field"><label>Regime de coparticipação</label><select><option>Sem coparticipação</option></select></div>
+                  <div class="field"><label>Reajuste previsto na renovação (%)</label><input type="number" value="12"></div>
+                </div>
+              </div>
+            </div>
+            <div class="plan-card">
+              <div class="plan-card-head"><div class="title"><span class="plan-index">Plano 2</span><b>AMIL ONE S2500 — Apto.</b></div><span class="badge blue">5 vidas</span></div>
+              <div class="plan-card-body">
+                <div class="form-grid">
+                  <div class="field"><label>Operadora</label><input value="AMIL"></div>
+                  <div class="field"><label>Nome do plano</label><input value="AMIL ONE S2500 - Apto."></div>
+                  <div class="field"><label>Tipo fiscal</label><select><option>Operadora (Amil, Hapvida)</option></select></div>
+                  <div class="field"><label>Adesão dos funcionários</label><select><option>Compulsório</option></select></div>
+                  <div class="field"><label>Regime de coparticipação</label><select><option>Sem coparticipação</option></select></div>
+                  <div class="field"><label>Reajuste previsto na renovação (%)</label><input type="number" value="12"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><div><h2>Referência da comparação</h2><p>Escolha qual valor do contrato vigente será usado como base.</p></div></div>
+          <div class="panel-body">
+            <div class="radio-cards" id="reference-cards">
+              <div class="radio-card" data-ref="vigente"><div class="radio-dot"></div><div class="radio-copy"><b>Contrato vigente</b><span>Usa os valores atuais, sem aplicar o reajuste negociado.</span></div></div>
+              <div class="radio-card selected" data-ref="reajustado"><div class="radio-dot"></div><div class="radio-copy"><b>Contrato reajustado</b><span>Inclui o reajuste informado para a renovação.</span></div></div>
+            </div>
+            <div class="form-grid two" style="margin-top:14px">
+              <div class="field"><label>Origem dos valores atuais</label><input value="Fatura importada do SISCOR (coluna VALOR)" readonly></div>
+              <div class="field"><label>Data usada para calcular as idades</label><input type="date" value="2026-07-01"></div>
+            </div>
+            <div class="money-strip num">
+              <div class="money-box"><small>Total vigente na base</small><strong>R$ 43.285,14</strong></div>
+              <div class="money-arrow">→</div>
+              <div class="money-box"><small>Total reajustado (+12%)</small><strong>R$ 48.479,31</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-left"><button class="btn prev-stage" data-prev="1">← Base atual</button><span class="action-note">Alterações só entram no estudo após salvar</span></div>
+          <div class="action-right"><button class="btn" data-toast="Plano atual salvo">Salvar plano atual</button><button class="btn primary next-stage" data-next="3">Salvar e continuar →</button></div>
+        </div>
+      </section>
+
+      <!-- ETAPA 3 -->
+      <section class="screen" id="stage-3">
+        <div class="page-head">
+          <div>
+            <div class="page-kicker">Etapa 3 de 5</div>
+            <h1>Cotações</h1>
+            <p>Importe os PDFs recebidos das operadoras, confira a leitura e escolha quais planos entram no comparativo.</p>
+          </div>
+          <button class="btn primary" data-toast="Seletor de PDFs aberto">+ Adicionar cotação</button>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><small>PDFs importados</small><strong class="num">3</strong><span class="hint">todos extraídos</span></div>
+          <div class="metric"><small>Opções encontradas</small><strong class="num">58</strong><span class="hint">22 + 2 + 34</span></div>
+          <div class="metric"><small>Selecionados</small><strong class="num">6</strong><span class="hint">no comparativo</span></div>
+          <div class="metric"><small>Operadoras</small><strong class="num">2</strong><span class="hint">SulAmérica e Porto</span></div>
+          <div class="metric good"><small>Importações</small><strong>OK</strong><span class="hint">sem erro de leitura</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div><h2>Cotações recebidas</h2><p>Gerencie os documentos ou abra uma cotação para selecionar planos.</p></div>
+            <div class="segmented" id="quote-tabs"><button class="active" data-view="documents">Documentos</button><button data-view="selector">Selecionar planos</button></div>
+          </div>
+          <div class="panel-body documents-view" id="documents-view">
+            <div class="quotes-grid">
+              <article class="quote-card">
+                <div class="quote-top"><div><b>Porto Seguro</b><div class="cell-sub">2470431 · 34 opções</div></div><span class="badge green">Extraído</span></div>
+                <div class="quote-file">PORTO.pdf · enviado em 20/08, 20:41</div>
+                <div class="selected-plans">
+                  <div class="plan-pill"><span>BRONZE BRASIL I Q</span><span>×</span></div>
+                  <div class="plan-pill"><span>OURO MAIS I Q</span><span>×</span></div>
+                  <div class="plan-pill"><span>PRATA MAIS I Q</span><span>×</span></div>
+                </div>
+                <div class="quote-actions"><button class="btn sm open-selector">Editar seleção</button><button class="btn sm ghost" data-toast="PDF da Porto aberto">Ver PDF</button></div>
+              </article>
+              <article class="quote-card">
+                <div class="quote-top"><div><b>SulAmérica</b><div class="cell-sub">SULAMÉRICA SEM CP · 2 opções</div></div><span class="badge green">Extraído</span></div>
+                <div class="quote-file">SULAMÉRICA SEM CP.pdf · enviado em 20/08, 20:41</div>
+                <div class="selected-plans"><div class="plan-pill"><span>Especial 100 R1 — Apartamento</span><span>×</span></div></div>
+                <div class="quote-actions"><button class="btn sm open-selector">Editar seleção</button><button class="btn sm ghost" data-toast="PDF da SulAmérica aberto">Ver PDF</button></div>
+              </article>
+              <article class="quote-card">
+                <div class="quote-top"><div><b>SulAmérica</b><div class="cell-sub">SULAMÉRICA COM AJUSTES · 22 opções</div></div><span class="badge green">Extraído</span></div>
+                <div class="quote-file">SULAMÉRICA COM AJUSTES.pdf · enviado em 20/08, 20:41</div>
+                <div class="selected-plans">
+                  <div class="plan-pill"><span>Direto Apartamento (Nacional)</span><span>×</span></div>
+                  <div class="plan-pill"><span>Executivo R1 Apartamento</span><span>×</span></div>
+                </div>
+                <div class="quote-actions"><button class="btn sm open-selector">Editar seleção</button><button class="btn sm ghost" data-toast="PDF da SulAmérica aberto">Ver PDF</button></div>
+              </article>
+            </div>
+            <div class="upload" style="margin-top:14px">
+              <div class="upload-left"><div class="upload-icon">PDF</div><div><h3>Adicionar outra cotação</h3><p>Arraste um ou mais PDFs de operadoras para ampliar o catálogo.</p></div></div>
+              <button class="btn" data-toast="Seletor de PDFs aberto">Escolher PDF</button>
+            </div>
+          </div>
+
+          <div class="panel-body selector-view" id="selector-view">
+            <div class="document-context">
+              <div class="doc-title"><div class="file-ico">PDF</div><div><b>SULAMÉRICA COM AJUSTES.pdf</b><small class="cell-sub">SulAmérica · template sulamerica-pme-ajustes-dual · 22 opções</small></div></div>
+              <button class="btn sm back-documents">← Voltar aos documentos</button>
+            </div>
+            <div class="notice amber">
+              <div class="notice-icon">!</div>
+              <div><b>Escolha o grupo de beneficiários para simular</b><p>A estimativa de mensalidade aparece depois que o grupo é selecionado.</p></div>
+            </div>
+            <div class="form-grid two" style="margin-bottom:12px">
+              <div class="field"><label>Grupo de beneficiários</label><select><option>Todos os 41 beneficiários</option><option>AMIL S750 — 36 vidas</option><option>AMIL ONE S2500 — 5 vidas</option></select></div>
+              <div class="field"><label>Referência</label><input value="Contrato reajustado · R$ 48.479,31" readonly></div>
+            </div>
+            <div><b style="font-size:12px">Selecionados: 2 de 22</b></div>
+            <div class="chips"><span class="chip">Direto Apartamento (Nacional) ×</span><span class="chip">Executivo R1 Apartamento (Nacional) ×</span></div>
+            <div class="filter-row"><input placeholder="Buscar plano…"><select><option>Acomodação: todas</option></select><select><option>Coparticipação: todas</option></select><button class="btn">Mais filtros</button></div>
+
+            <div class="group-title">Sem coparticipação</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th style="width:36px"></th><th>Plano</th><th>Acomodação</th><th>Coparticipação</th><th class="right">Mensal estimado</th><th class="right">Δ R$</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><input class="check" type="checkbox"></td><td><span class="cell-main">Direto Enfermaria Nacional</span></td><td>Enfermaria</td><td>Sem coparticipação</td><td class="right num">R$ 21.980,40</td><td class="right positive">-R$ 26.498,91</td><td><span class="badge gray">Disponível</span></td></tr>
+                  <tr><td><input class="check" type="checkbox" checked></td><td><span class="cell-main">Direto Apartamento (Nacional)</span></td><td>Apartamento</td><td>Sem coparticipação</td><td class="right num">R$ 24.416,14</td><td class="right positive">-R$ 24.063,17</td><td><span class="badge green">No comparativo</span></td></tr>
+                  <tr><td><input class="check" type="checkbox"></td><td><span class="cell-main">Classico Vital Enfermaria (Nacional)</span></td><td>Enfermaria</td><td>Sem coparticipação</td><td class="right num">R$ 27.903,82</td><td class="right positive">-R$ 20.575,49</td><td><span class="badge gray">Disponível</span></td></tr>
+                  <tr><td><input class="check" type="checkbox"></td><td><span class="cell-main">Especial 100 R1</span></td><td>Apartamento</td><td>Sem coparticipação</td><td class="right num">R$ 29.697,36</td><td class="right positive">-R$ 18.781,95</td><td><span class="badge gray">Disponível</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="group-title">Coparticipação 30%</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th style="width:36px"></th><th>Plano</th><th>Acomodação</th><th>Coparticipação</th><th class="right">Mensal estimado</th><th class="right">Δ R$</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><input class="check" type="checkbox"></td><td><span class="cell-main">Direto Apartamento (Nacional)</span></td><td>Apartamento</td><td>Coparticipação 30%</td><td class="right num">R$ 22.403,50</td><td class="right positive">-R$ 26.075,81</td><td><span class="badge gray">Disponível</span></td></tr>
+                  <tr><td><input class="check" type="checkbox" checked></td><td><span class="cell-main">Executivo R1 Apartamento (Nacional)</span></td><td>Apartamento</td><td>Coparticipação 30%</td><td class="right num">R$ 57.861,34</td><td class="right negative">+R$ 9.382,03</td><td><span class="badge green">No comparativo</span></td></tr>
+                  <tr><td><input class="check" type="checkbox"></td><td><span class="cell-main">Executivo R2 Apartamento (Nacional)</span></td><td>Apartamento</td><td>Coparticipação 30%</td><td class="right num">R$ 61.208,12</td><td class="right negative">+R$ 12.728,81</td><td><span class="badge gray">Disponível</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" data-toast="Seleção revisada: 2 planos">Revisar alterações (2)</button></div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-left"><button class="btn prev-stage" data-prev="2">← Plano atual</button><span class="action-note">6 planos selecionados em 3 PDFs</span></div>
+          <div class="action-right"><button class="btn primary next-stage" data-next="4">Continuar para correspondência →</button></div>
+        </div>
+      </section>
+
+      <!-- ETAPA 4 -->
+      <section class="screen" id="stage-4">
+        <div class="page-head">
+          <div>
+            <div class="page-kicker">Etapa 4 de 5</div>
+            <h1>Correspondência com os planos atuais</h1>
+            <p>Para cada cenário, indique qual proposta substitui cada plano vigente. A estrutura do estudo permanece a mesma; aqui você só define as equivalências.</p>
+          </div>
+          <span class="badge blue">6 cenários</span>
+        </div>
+
+        <div class="notice">
+          <div class="notice-icon">i</div>
+          <div><b>Como funciona</b><p>Cada cenário vira uma coluna no comparativo. Por padrão, o mesmo plano é aplicado aos dois subgrupos; ajuste apenas quando a proposta correta for diferente.</p></div>
+        </div>
+
+        <div class="scenario-grid">
+          <article class="scenario">
+            <div class="scenario-head"><div><strong>Cenário 1</strong><small>Coluna: BRONZE BRASIL I Q</small></div><span class="badge green">Completo</span></div>
+            <div class="scenario-body">
+              <div class="mapping"><div class="current"><b>AMIL S750 — Apto.</b><small>AMIL · 36 vidas</small></div><select><option>BRONZE BRASIL I Q (Apartamento)</option></select></div>
+              <div class="mapping"><div class="current"><b>AMIL ONE S2500 — Apto.</b><small>AMIL · 5 vidas</small></div><select><option>BRONZE BRASIL I Q (Apartamento)</option></select></div>
+            </div>
+          </article>
+          <article class="scenario">
+            <div class="scenario-head"><div><strong>Cenário 2</strong><small>Coluna: OURO MAIS I Q</small></div><span class="badge green">Completo</span></div>
+            <div class="scenario-body">
+              <div class="mapping"><div class="current"><b>AMIL S750 — Apto.</b><small>AMIL · 36 vidas</small></div><select><option>OURO MAIS I Q (Apartamento)</option></select></div>
+              <div class="mapping"><div class="current"><b>AMIL ONE S2500 — Apto.</b><small>AMIL · 5 vidas</small></div><select><option>OURO MAIS I Q (Apartamento)</option></select></div>
+            </div>
+          </article>
+          <article class="scenario">
+            <div class="scenario-head"><div><strong>Cenário 3</strong><small>Coluna: PRATA MAIS I Q</small></div><span class="badge green">Completo</span></div>
+            <div class="scenario-body">
+              <div class="mapping"><div class="current"><b>AMIL S750 — Apto.</b><small>AMIL · 36 vidas</small></div><select><option>PRATA MAIS I Q (Apartamento)</option></select></div>
+              <div class="mapping"><div class="current"><b>AMIL ONE S2500 — Apto.</b><small>AMIL · 5 vidas</small></div><select><option>PRATA MAIS I Q (Apartamento)</option></select></div>
+            </div>
+          </article>
+          <article class="scenario">
+            <div class="scenario-head"><div><strong>Cenário 4</strong><small>Coluna: Especial 100 R1</small></div><span class="badge green">Completo</span></div>
+            <div class="scenario-body">
+              <div class="mapping"><div class="current"><b>AMIL S750 — Apto.</b><small>AMIL · 36 vidas</small></div><select><option>Especial 100 R1 — Apartamento (Nacional / RJ Capital)</option></select></div>
+              <div class="mapping"><div class="current"><b>AMIL ONE S2500 — Apto.</b><small>AMIL · 5 vidas</small></div><select><option>Especial 100 R1 — Apartamento (Nacional / RJ Capital)</option></select></div>
+            </div>
+          </article>
+          <article class="scenario">
+            <div class="scenario-head"><div><strong>Cenário 5</strong><small>Coluna: Direto Apartamento (Nacional)</small></div><span class="badge green">Completo</span></div>
+            <div class="scenario-body">
+              <div class="mapping"><div class="current"><b>AMIL S750 — Apto.</b><small>AMIL · 36 vidas</small></div><select><option>Direto Apartamento (Nacional) (Apartamento)</option></select></div>
+              <div class="mapping"><div class="current"><b>AMIL ONE S2500 — Apto.</b><small>AMIL · 5 vidas</small></div><select><option>Direto Apartamento (Nacional) (Apartamento)</option></select></div>
+            </div>
+          </article>
+          <article class="scenario">
+            <div class="scenario-head"><div><strong>Cenário 6</strong><small>Coluna: Executivo R1 Apartamento (Nacional)</small></div><span class="badge green">Completo</span></div>
+            <div class="scenario-body">
+              <div class="mapping"><div class="current"><b>AMIL S750 — Apto.</b><small>AMIL · 36 vidas</small></div><select><option>Executivo R1 Apartamento (Nacional) (Apartamento)</option></select></div>
+              <div class="mapping"><div class="current"><b>AMIL ONE S2500 — Apto.</b><small>AMIL · 5 vidas</small></div><select><option>Executivo R1 Apartamento (Nacional) (Apartamento)</option></select></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-left"><button class="btn prev-stage" data-prev="3">← Cotações</button><span class="action-note">12 de 12 correspondências preenchidas</span></div>
+          <div class="action-right"><button class="btn" data-toast="Atribuições salvas">Salvar atribuições</button><button class="btn primary next-stage" data-next="5">Confirmar e ver comparativo →</button></div>
+        </div>
+      </section>
+
+      <!-- ETAPA 5 -->
+      <section class="screen" id="stage-5">
+        <div class="page-head">
+          <div>
+            <div class="page-kicker">Etapa 5 de 5</div>
+            <h1>Comparativo</h1>
+            <p>Revise as propostas calculadas, escolha o que entra no documento e confirme o comparativo antes da exportação.</p>
+          </div>
+          <div style="display:flex;gap:8px"><button class="btn" data-toast="Cálculos atualizados">Recalcular</button><span class="badge green">Consistente 6/6</span></div>
+        </div>
+
+        <div class="summary-band num">
+          <div class="summary-top"><div class="summary-title"><span class="badge blue">Comparativo</span><b>Estudo 16</b></div><div class="muted" style="font-size:12px">Catálogo completo · selecione propostas para o documento</div></div>
+          <div class="summary-metrics">
+            <div class="mini-stat"><small>Calculadas</small><strong>6</strong></div>
+            <div class="mini-stat"><small>No documento</small><strong>6</strong></div>
+            <div class="mini-stat"><small>Beneficiários</small><strong>41</strong></div>
+            <div class="mini-stat"><small>Validade</small><strong>02/07/2026</strong></div>
+            <div class="reference-price"><small>Referência · 2 planos vigentes</small><strong>R$ 48.479,31</strong></div>
+          </div>
+        </div>
+
+        <div class="panel panel-flat">
+          <div class="panel-head"><div><h2>Propostas calculadas</h2><p>6/6 visíveis · ordenadas por menor mensalidade.</p></div><span class="badge blue">6 no documento</span></div>
+          <div class="panel-body">
+            <div class="catalog-filters"><select><option>Coparticipação: todas</option></select><select><option>Acomodação: todas</option></select><select><option>Operadora: todas</option></select><select><option>Diferença: todas</option></select><select><option>Ordenar: menor mensalidade</option></select></div>
+            <div class="proposal-grid num" id="proposal-grid">
+              <article class="proposal selected"><div><b>Direto Apartamento (Nacional)</b><div class="op">SulAmérica</div></div><div class="price">R$ 24.416,14 <span style="font-size:11px;font-weight:600;color:var(--muted)">/ mês</span></div><div class="delta positive">-R$ 24.063,17 · -49,6%</div><div class="proposal-foot"><span>Sem coparticipação</span><button class="select-toggle">No documento</button></div></article>
+              <article class="proposal selected"><div><b>BRONZE BRASIL I Q</b><div class="op">Porto Seguro · Apartamento</div></div><div class="price">R$ 26.873,14 <span style="font-size:11px;font-weight:600;color:var(--muted)">/ mês</span></div><div class="delta positive">-R$ 21.606,17 · -44,6%</div><div class="proposal-foot"><span>Sem coparticipação</span><button class="select-toggle">No documento</button></div></article>
+              <article class="proposal selected"><div><b>Especial 100 R1 — Apartamento</b><div class="op">SulAmérica · Nacional / RJ Capital</div></div><div class="price">R$ 29.697,36 <span style="font-size:11px;font-weight:600;color:var(--muted)">/ mês</span></div><div class="delta positive">-R$ 18.781,95 · -38,7%</div><div class="proposal-foot"><span>Sem coparticipação</span><button class="select-toggle">No documento</button></div></article>
+              <article class="proposal selected"><div><b>PRATA MAIS I Q</b><div class="op">Porto Seguro · Apartamento</div></div><div class="price">R$ 29.707,78 <span style="font-size:11px;font-weight:600;color:var(--muted)">/ mês</span></div><div class="delta positive">-R$ 18.771,53 · -38,7%</div><div class="proposal-foot"><span>Sem coparticipação</span><button class="select-toggle">No documento</button></div></article>
+              <article class="proposal selected"><div><b>OURO MAIS I Q</b><div class="op">Porto Seguro · Apartamento</div></div><div class="price">R$ 42.222,37 <span style="font-size:11px;font-weight:600;color:var(--muted)">/ mês</span></div><div class="delta positive">-R$ 6.256,94 · -12,9%</div><div class="proposal-foot"><span>Sem coparticipação</span><button class="select-toggle">No documento</button></div></article>
+              <article class="proposal selected"><div><b>Executivo R1 Apartamento</b><div class="op">SulAmérica · Nacional</div></div><div class="price">R$ 57.861,34 <span style="font-size:11px;font-weight:600;color:var(--muted)">/ mês</span></div><div class="delta negative">+R$ 9.382,03 · +19,4%</div><div class="proposal-foot"><span>Coparticipação 30%</span><button class="select-toggle">No documento</button></div></article>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="tabs"><button class="tab active">Resumo executivo</button><button class="tab">Faixas etárias</button><button class="tab">Por beneficiário</button></div>
+          <div class="comparison-scroll">
+            <table class="comparison num">
+              <thead><tr><th>Indicador</th><th class="current-col">Contrato atual</th><th>BRONZE BRASIL I Q<br><span class="cell-sub">Porto Seguro</span></th><th>PRATA MAIS I Q<br><span class="cell-sub">Porto Seguro</span></th><th>Direto Apartamento<br><span class="cell-sub">SulAmérica</span></th></tr></thead>
+              <tbody>
+                <tr><td class="cell-main">Acomodação</td><td class="current-col">—</td><td>Apartamento</td><td>Apartamento</td><td>Apartamento</td></tr>
+                <tr><td class="cell-main">Coparticipação</td><td class="current-col">Sem coparticipação</td><td>Sem coparticipação</td><td>Sem coparticipação</td><td>Sem coparticipação</td></tr>
+                <tr><td class="cell-main">Custo total mensal</td><td class="current-col"><b>R$ 48.479,31</b></td><td><b>R$ 26.873,14</b></td><td><b>R$ 29.707,78</b></td><td><b>R$ 24.416,14</b></td></tr>
+                <tr><td class="cell-main">Variação do custo</td><td class="current-col">Referência</td><td class="positive">-R$ 21.606,17<br><span class="cell-sub positive">-44,6%</span></td><td class="positive">-R$ 18.771,53<br><span class="cell-sub positive">-38,7%</span></td><td class="positive">-R$ 24.063,17<br><span class="cell-sub positive">-49,6%</span></td></tr>
+                <tr class="section-row"><td colspan="5">Resumo executivo</td></tr>
+                <tr><td class="cell-main">AMIL S750 — Apto.</td><td class="current-col">R$ 29.386,76</td><td>R$ 21.354,64</td><td>R$ 23.607,17</td><td>R$ 18.912,97</td></tr>
+                <tr><td class="cell-main">AMIL ONE S2500 — Apto.</td><td class="current-col">R$ 19.092,55</td><td>R$ 5.518,50</td><td>R$ 6.100,61</td><td>R$ 5.503,17</td></tr>
+                <tr class="total-row"><td>Consolidado</td><td class="current-col">R$ 48.479,31</td><td>R$ 26.873,14</td><td>R$ 29.707,78</td><td>R$ 24.416,14</td></tr>
+                <tr><td class="cell-main">Diferença anual</td><td class="current-col">—</td><td class="positive">-R$ 259.274,04</td><td class="positive">-R$ 225.258,36</td><td class="positive">-R$ 288.758,04</td></tr>
+                <tr><td class="cell-main">Validade da cotação</td><td class="current-col">—</td><td>02/07/2026</td><td>02/07/2026</td><td>10/04/2026</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="notice amber">
+          <div class="notice-icon">!</div>
+          <div><b>Quantidade acima da faixa homologada</b><p>Este estudo possui 41 vidas; a faixa operacional homologada atualmente é de até 29. O comparativo pode ser calculado, mas exige revisão adicional antes da aprovação.</p></div>
+        </div>
+
+        <div class="panel panel-flat">
+          <div class="panel-head"><div><h2>Detalhamento técnico</h2><p>Expanda cada proposta para revisar valores por beneficiário (uso interno).</p></div><span class="badge gray">6 propostas</span></div>
+          <div class="panel-body">
+            <div class="tech-list num">
+              <div class="tech-row"><span class="chev">›</span><div><b>Direto Apartamento (Nacional)</b><small>SulAmérica · Sem coparticipação</small></div><div class="price">R$ 24.416,14/mês</div><div class="delta positive">-R$ 24.063,17 · -49,6%</div></div>
+              <div class="tech-row"><span class="chev">›</span><div><b>BRONZE BRASIL I Q</b><small>Porto Seguro · Apartamento · Sem coparticipação</small></div><div class="price">R$ 26.873,14/mês</div><div class="delta positive">-R$ 21.606,17 · -44,6%</div></div>
+              <div class="tech-row"><span class="chev">›</span><div><b>Especial 100 R1 — Apartamento</b><small>SulAmérica · Sem coparticipação</small></div><div class="price">R$ 29.697,36/mês</div><div class="delta positive">-R$ 18.781,95 · -38,7%</div></div>
+              <div class="tech-row"><span class="chev">›</span><div><b>PRATA MAIS I Q</b><small>Porto Seguro · Apartamento · Sem coparticipação</small></div><div class="price">R$ 29.707,78/mês</div><div class="delta positive">-R$ 18.771,53 · -38,7%</div></div>
+              <div class="tech-row"><span class="chev">›</span><div><b>OURO MAIS I Q</b><small>Porto Seguro · Apartamento · Sem coparticipação</small></div><div class="price">R$ 42.222,37/mês</div><div class="delta positive">-R$ 6.256,94 · -12,9%</div></div>
+              <div class="tech-row"><span class="chev">›</span><div><b>Executivo R1 Apartamento</b><small>SulAmérica · Coparticipação 30%</small></div><div class="price">R$ 57.861,34/mês</div><div class="delta negative">+R$ 9.382,03 · +19,4%</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-left"><button class="btn prev-stage" data-prev="4">← Correspondência</button><span class="action-note">6 propostas selecionadas para o documento</span></div>
+          <div class="action-right"><button class="btn" data-toast="Prévia do cliente aberta">Pré-visualizar</button><button class="btn dark" data-toast="Comparativo confirmado">Confirmar comparativo</button><button class="btn primary" data-toast="Documento pronto para exportação">Gerar documento</button></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"><div class="ok">✓</div><div><b id="toast-title">Ação concluída</b><small>Protótipo visual — nenhuma alteração real foi feita.</small></div></div>
+
+<script>
+  const screens=[...document.querySelectorAll('.screen')];
+  const steps=[...document.querySelectorAll('.step')];
+  const toast=document.getElementById('toast');
+  const toastTitle=document.getElementById('toast-title');
+  let toastTimer;
+
+  function showToast(title){
+    toastTitle.textContent=title||'Ação concluída';
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>toast.classList.remove('show'),2200);
+  }
+
+  function goStage(n){
+    screens.forEach(s=>s.classList.toggle('active',s.id===`stage-${n}`));
+    steps.forEach(step=>{
+      const stage=+step.dataset.stage;
+      step.classList.toggle('active',stage===n);
+      step.classList.toggle('done',stage<n);
+      const dot=step.querySelector('.step-dot');
+      dot.textContent=stage<n?'✓':stage;
+    });
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  steps.forEach(step=>step.querySelector('button').addEventListener('click',()=>goStage(+step.dataset.stage)));
+  document.querySelectorAll('.next-stage').forEach(b=>b.addEventListener('click',()=>goStage(+b.dataset.next)));
+  document.querySelectorAll('.prev-stage').forEach(b=>b.addEventListener('click',()=>goStage(+b.dataset.prev)));
+  document.querySelectorAll('[data-toast]').forEach(b=>b.addEventListener('click',()=>showToast(b.dataset.toast)));
+
+  document.querySelectorAll('#reference-cards .radio-card').forEach(card=>card.addEventListener('click',()=>{
+    document.querySelectorAll('#reference-cards .radio-card').forEach(x=>x.classList.remove('selected'));
+    card.classList.add('selected');
+    showToast(card.dataset.ref==='reajustado'?'Referência: contrato reajustado':'Referência: contrato vigente');
+  }));
+
+  const quoteTabButtons=[...document.querySelectorAll('#quote-tabs button')];
+  const docs=document.getElementById('documents-view');
+  const selector=document.getElementById('selector-view');
+  function setQuoteView(view){
+    quoteTabButtons.forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+    docs.classList.toggle('hidden',view==='selector');
+    selector.classList.toggle('active',view==='selector');
+  }
+  quoteTabButtons.forEach(b=>b.addEventListener('click',()=>setQuoteView(b.dataset.view)));
+  document.querySelectorAll('.open-selector').forEach(b=>b.addEventListener('click',()=>setQuoteView('selector')));
+  document.querySelectorAll('.back-documents').forEach(b=>b.addEventListener('click',()=>setQuoteView('documents')));
+
+  document.querySelectorAll('.select-toggle').forEach(btn=>btn.addEventListener('click',()=>{
+    const card=btn.closest('.proposal');
+    card.classList.toggle('selected');
+    const selected=card.classList.contains('selected');
+    btn.textContent=selected?'No documento':'Adicionar';
+    showToast(selected?'Proposta adicionada ao documento':'Proposta removida do documento');
+  }));
+
+  document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
+    tab.parentElement.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    tab.classList.add('active');
+    if(tab.textContent.trim()!=='Resumo executivo') showToast(`${tab.textContent.trim()} — visualização demonstrativa`);
+  }));
+</script>
+</body>
+</html>
