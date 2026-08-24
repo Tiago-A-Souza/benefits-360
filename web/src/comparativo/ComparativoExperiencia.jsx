@@ -543,6 +543,8 @@ export default function ComparativoExperiencia({
   confirmando = false,
   onConfirmar,
   onRecalcular,
+  onSelecaoSalva,
+  avisoSelecaoAlterada = false,
   recalculando,
   origemCongelada = false,
 }) {
@@ -603,11 +605,12 @@ export default function ComparativoExperiencia({
       setSalvandoSelecao(true);
       try {
         await salvarSelecaoApresentacao(estudoId, novaSelecao);
+        await onSelecaoSalva?.();
       } finally {
         setSalvandoSelecao(false);
       }
     },
-    [estudoId, origemCongelada]
+    [estudoId, origemCongelada, onSelecaoSalva]
   );
 
   function toggleSelecao(opcaoId) {
@@ -996,6 +999,11 @@ export default function ComparativoExperiencia({
           {!resultado.hash_comparativo && (
             <p className="muted">
               A versão do comparativo será validada no servidor ao confirmar.
+            </p>
+          )}
+          {avisoSelecaoAlterada && !confirmado && selecao.length > 0 && (
+            <p className="cmp-aviso-selecao-alterada" role="status">
+              Seleção alterada — confirme o comparativo novamente antes de exportar.
             </p>
           )}
           <p className="cmp-secao-sub muted">

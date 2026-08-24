@@ -14,6 +14,7 @@ from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.seed.ficticio import rascunho_demo_12_vidas
 from newport_app.services.comparativo_confirmacao import comparativo_revisao_confirmada
+from tests.test_comparativo_multiplas_propostas import _rascunho_quatro_propostas
 
 
 def _rascunho_pronto():
@@ -128,6 +129,68 @@ def test_passos_visiveis_dois_planos():
     assert chaves.index("selecionados") == 3
     assert chaves.index("comparativo") == 4
     assert "apresentacao" not in chaves
+
+
+def test_confirmar_apos_mudar_selecao_sem_recalcular(client: TestClient, repo):
+    """Fluxo calcular → selecionar → confirmar — sem recálculo intermediário."""
+    rascunho = _rascunho_quatro_propostas()
+    sincronizar_cenarios(rascunho)
+    repo.salvar_rascunho(rascunho)
+    estudo_id = rascunho.id
+
+    hash_cmp = _calcular_hash(client, estudo_id)
+    res_sel = client.put(
+        f"/api/estudos/{estudo_id}/comparativo/selecao-apresentacao",
+        json={"opcao_ids": ["op-1", "op-2"]},
+    )
+    assert res_sel.status_code == 200
+
+    salvo = repo.obter_rascunho(estudo_id)
+    assert salvo is not None
+    assert salvo.confirmacao_comparativo is None
+
+    res = client.post(
+        f"/api/estudos/{estudo_id}/comparativo/confirmar",
+        json={"hash_comparativo": hash_cmp, "opcao_ids": ["op-1", "op-2"]},
+    )
+    assert res.status_code == 200
+    depois = repo.obter_rascunho(estudo_id)
+    assert depois is not None
+    assert comparativo_revisao_confirmada(depois)
+    assert depois.selecao_apresentacao.ordem == ["op-1", "op-2"]
+
+
+def test_reconfirmar_apos_mudar_selecao_sem_recalcular(client: TestClient, repo):
+    """Confirmar → mudar seleção → confirmar de novo — sem recalcular."""
+    rascunho = _rascunho_quatro_propostas()
+    sincronizar_cenarios(rascunho)
+    repo.salvar_rascunho(rascunho)
+    estudo_id = rascunho.id
+
+    hash_cmp = _calcular_hash(client, estudo_id)
+    client.post(
+        f"/api/estudos/{estudo_id}/comparativo/confirmar",
+        json={"hash_comparativo": hash_cmp, "opcao_ids": ["op-1"]},
+    )
+    assert comparativo_revisao_confirmada(repo.obter_rascunho(estudo_id))
+
+    client.put(
+        f"/api/estudos/{estudo_id}/comparativo/selecao-apresentacao",
+        json={"opcao_ids": ["op-1", "op-2"]},
+    )
+    salvo = repo.obter_rascunho(estudo_id)
+    assert salvo is not None
+    assert not comparativo_revisao_confirmada(salvo)
+
+    res = client.post(
+        f"/api/estudos/{estudo_id}/comparativo/confirmar",
+        json={"hash_comparativo": hash_cmp, "opcao_ids": ["op-1", "op-2"]},
+    )
+    assert res.status_code == 200
+    depois = repo.obter_rascunho(estudo_id)
+    assert depois is not None
+    assert comparativo_revisao_confirmada(depois)
+    assert depois.selecao_apresentacao.ordem == ["op-1", "op-2"]
 
 
 def test_confirmar_exige_selecao(client: TestClient, repo):
