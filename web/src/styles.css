@@ -2111,6 +2111,353 @@ button.ativo,
   box-shadow: none;
 }
 
+.page-head-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* —— Etapa 5: faixa de indicadores / propostas —— */
+
+.summary-band {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  margin-bottom: 18px;
+}
+
+.summary-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.summary-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.summary-title b {
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.summary-hint {
+  font-size: 12px;
+}
+
+.summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 0;
+  padding: 4px 0;
+}
+
+.mini-stat {
+  padding: 14px 18px;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+
+.mini-stat small {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.mini-stat strong {
+  display: block;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.reference-price {
+  text-align: right;
+  padding: 14px 18px;
+  min-width: 180px;
+}
+
+.reference-price small {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.reference-price strong {
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.summary-modos {
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.catalog-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.catalog-filters .field {
+  margin: 0;
+}
+
+.proposal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.proposal {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.proposal.selected {
+  border-color: #9ec0f5;
+  box-shadow: 0 0 0 1px #9ec0f5 inset;
+  background: linear-gradient(180deg, #fbfdff, #f5f9ff);
+}
+
+.proposal .op {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.proposal .price {
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.proposal .delta {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.proposal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.select-toggle {
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.proposal.selected .select-toggle {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  background: var(--surface-3);
+  border-radius: 10px;
+}
+
+.tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tab.active,
+.tab:hover {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.cmp-matriz-regime {
+  margin-bottom: 1.25rem;
+}
+
+.cmp-matriz-regime:last-child {
+  margin-bottom: 0;
+}
+
+.cmp-matriz-regime-titulo {
+  margin: 0 0 0.65rem;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+}
+
+.panel.cmp-matriz-secao,
+.panel.cmp-cards-secao,
+.panel.cmp-filtros,
+.panel.cmp-confirmacao-secao,
+.panel.cmp-detalhes-tecnicos,
+.panel.cmp-auditoria-secao,
+.panel.gov-aprovacao {
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.panel.cmp-matriz-secao .cmp-matriz-cabecalho {
+  margin-bottom: 0;
+}
+
+.panel.cmp-matriz-secao .cmp-matriz-scroll {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.gov-aprovacao-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gov-aprovacao-corpo .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--muted-2);
+}
+
+.gov-aprovacao-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.gov-banner {
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.gov-banner-titulo {
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.cmp-pendencias-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cmp-pendencia-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.cmp-pendencia-cabecalho {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cmp-pendencia-item > p {
+  grid-column: 2;
+  margin: 0;
+  font-size: 13px;
+}
+
+.cmp-pendencia-item .cmp-bloqueio-codigo {
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .summary-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mini-stat {
+    border-right: 0;
+  }
+
+  .reference-price {
+    text-align: left;
+    grid-column: 1 / -1;
+  }
+
+  .proposal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page-head {
+    flex-direction: column;
+  }
+
+  .proposal-grid,
+  .catalog-filters,
+  .summary-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
 .file-line {
   display: flex;
   align-items: center;

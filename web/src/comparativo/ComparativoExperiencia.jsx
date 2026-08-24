@@ -13,11 +13,14 @@ import {
 function Pendencias({ items }) {
   if (!items?.length) return <p className="ok">Nenhuma pendência bloqueante nesta verificação.</p>;
   return (
-    <ul className="pendencias">
+    <ul className="pendencias cmp-pendencias-lista">
       {items.map((p, i) => (
-        <li key={i} className={`pendencia pendencia--${p.tipo}`}>
-          <strong>{p.titulo}</strong>
-          <p>{p.descricao}</p>
+        <li key={p.codigo || i} className={`pendencia pendencia--${p.tipo} cmp-pendencia-item`}>
+          <div className="cmp-pendencia-cabecalho">
+            {p.codigo && <span className="cmp-bloqueio-codigo">{p.codigo}</span>}
+            <strong>{p.titulo}</strong>
+          </div>
+          {p.descricao && <p>{p.descricao}</p>}
           {p.acao_sugerida && <p className="acao">{p.acao_sugerida}</p>}
         </li>
       ))}
@@ -40,30 +43,30 @@ function CardProposta({ proposta, selecionada, onToggle, compacto, seguroNovo, s
 
   return (
     <article
-      className={`cmp-card${selecionada ? " cmp-card--selecionada" : ""}${compacto ? " cmp-card--compacto" : ""}`}
+      className={`proposal cmp-card${selecionada ? " selected cmp-card--selecionada" : ""}${compacto ? " cmp-card--compacto" : ""}`}
     >
       <div className="cmp-card-bloco cmp-card-bloco--topo">
-        <h4 className="cmp-card-nome">{proposta.plano_nome}</h4>
-        <p className="cmp-card-meta">
+        <b className="cmp-card-nome">{proposta.plano_nome}</b>
+        <div className="op cmp-card-meta">
           {proposta.operadora}
           {proposta.acomodacao ? ` · ${proposta.acomodacao}` : ""}
-        </p>
+        </div>
       </div>
 
       <div className="cmp-card-bloco cmp-card-bloco--valor">
-        <div className="cmp-card-mensal">
+        <div className="price cmp-card-mensal">
           <span className="cmp-card-mensal-valor">
             {formatCentavos(n?.proposta_mensal_centavos)}
           </span>
           <span className="cmp-card-mensal-rotulo">/ mês</span>
         </div>
         {seguroNovo ? (
-          <div className={`cmp-card-diff ${diffCls}`}>
+          <div className={`delta cmp-card-diff ${diffCls}`}>
             <span>{formatCentavos(n?.diff_mes_centavos)}</span>
             <span className="cmp-card-diff-vs">vs menor proposta</span>
           </div>
         ) : (
-          <div className={`cmp-card-diff ${diffCls}`}>
+          <div className={`delta cmp-card-diff ${diffCls}`}>
             <span>{formatCentavos(n?.diff_mes_centavos)}</span>
             <span className="cmp-card-diff-sep" aria-hidden>
               ·
@@ -74,15 +77,19 @@ function CardProposta({ proposta, selecionada, onToggle, compacto, seguroNovo, s
         )}
       </div>
 
-      <div className="cmp-card-bloco cmp-card-bloco--rodape">
+      <div className="proposal-foot cmp-card-bloco cmp-card-bloco--rodape">
         <span className="cmp-card-chip">{rotuloCopartCurto(proposta.regime_coparticipacao)}</span>
         {!somenteLeitura && (
           <button
             type="button"
-            className={selecionada ? "cmp-card-btn cmp-card-btn--ativo" : "cmp-card-btn"}
+            className={
+              selecionada
+                ? "select-toggle cmp-card-btn cmp-card-btn--ativo"
+                : "select-toggle cmp-card-btn"
+            }
             onClick={() => onToggle(proposta.opcao_id)}
           >
-            {selecionada ? "Remover" : "Adicionar"}
+            {selecionada ? "No documento" : "Adicionar"}
           </button>
         )}
       </div>
@@ -119,6 +126,33 @@ function valorUnico(itens, campo) {
 
 function somarCampo(itens, campo) {
   return (itens || []).reduce((acc, x) => acc + (x?.[campo] || 0), 0);
+}
+
+/** Seções da matriz por grupo_regime — mesmo critério do HTML de apresentação. */
+function agruparPropostasPorRegime(propostas) {
+  const buckets = { sem_copart: [], com_copart: [] };
+  for (const p of propostas || []) {
+    const chave = p.grupo_regime === "com_copart" ? "com_copart" : "sem_copart";
+    buckets[chave].push(p);
+  }
+  const secoes = [];
+  if (buckets.sem_copart.length) {
+    secoes.push({
+      chave: "sem_copart",
+      rotulo: "Sem coparticipação",
+      propostas: buckets.sem_copart,
+    });
+  }
+  if (buckets.com_copart.length) {
+    const rotulo =
+      valorUnico(buckets.com_copart, "regime_coparticipacao") || "Com coparticipação";
+    secoes.push({
+      chave: "com_copart",
+      rotulo,
+      propostas: buckets.com_copart,
+    });
+  }
+  return secoes;
 }
 
 function CabecalhoMatriz({ planosAtuais, propostas, seguroNovo }) {
@@ -500,28 +534,17 @@ function MatrizComparativa({
     return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
   }
 
-  const paginas = paginarPropostas(propostas);
+  const secoes = agruparPropostasPorRegime(propostas);
+
   return (
     <>
       <div className="cmp-matriz-scroll cmp-matriz-tela">
-        <ConteudoMatriz
-          planosAtuais={planosAtuais}
-          propostas={propostas}
-          vista={vista}
-          mostrarNomes={mostrarNomes}
-          seguroNovo={seguroNovo}
-          faixasEstudo={faixasEstudo}
-        />
-      </div>
-      <div className="cmp-matriz-impressao">
-        {paginas.map((chunk) => (
-          <div
-            className="cmp-matriz-pagina-print"
-            key={chunk.map((p) => p.opcao_id).join("-")}
-          >
+        {secoes.map((secao) => (
+          <div key={secao.chave} className="cmp-matriz-regime">
+            <h4 className="cmp-matriz-regime-titulo">{secao.rotulo}</h4>
             <ConteudoMatriz
               planosAtuais={planosAtuais}
-              propostas={chunk}
+              propostas={secao.propostas}
               vista={vista}
               mostrarNomes={mostrarNomes}
               seguroNovo={seguroNovo}
@@ -529,6 +552,27 @@ function MatrizComparativa({
             />
           </div>
         ))}
+      </div>
+      <div className="cmp-matriz-impressao">
+        {secoes.map((secao) => {
+          const paginas = paginarPropostas(secao.propostas);
+          return paginas.map((chunk) => (
+            <div
+              className="cmp-matriz-pagina-print"
+              key={`${secao.chave}-${chunk.map((p) => p.opcao_id).join("-")}`}
+            >
+              <h4 className="cmp-matriz-regime-titulo">{secao.rotulo}</h4>
+              <ConteudoMatriz
+                planosAtuais={planosAtuais}
+                propostas={chunk}
+                vista={vista}
+                mostrarNomes={mostrarNomes}
+                seguroNovo={seguroNovo}
+                faixasEstudo={faixasEstudo}
+              />
+            </div>
+          ));
+        })}
       </div>
     </>
   );
@@ -538,6 +582,8 @@ export default function ComparativoExperiencia({
   estudoId,
   resultado,
   rascunho = null,
+  etapaIndice = 5,
+  totalEtapas = 5,
   rotuloEtapa = "Comparativo",
   confirmado = false,
   confirmando = false,
@@ -648,496 +694,498 @@ export default function ComparativoExperiencia({
 
   return (
     <div className="cmp-experiencia">
-      <header className="cmp-hero cmp-hero--compact">
-        <div className="cmp-hero-linha cmp-hero-linha--titulo">
-          <div className="cmp-hero-identidade">
-            <span className="cmp-etapa">{rotuloEtapa}</span>
-            <h2 className="cmp-hero-titulo">{resultado.titulo || "Análise comparativa"}</h2>
+      <div className="page-head">
+        <div>
+          <div className="page-kicker">
+            Etapa {etapaIndice} de {totalEtapas}
           </div>
-          <div className="cmp-hero-acoes-topo">
-            {onRecalcular && (
-              <button
-                type="button"
-                className="secundario cmp-btn-recalc"
-                onClick={onRecalcular}
-                disabled={recalculando}
-              >
-                {recalculando ? "Calculando…" : "Recalcular"}
-              </button>
-            )}
-            {resultado.consistencia && modo === "analise" && (
-              <div
-                className={
-                  resultado.consistencia.consistente
-                    ? "cmp-status cmp-status--ok"
-                    : "cmp-status cmp-status--erro"
-                }
-                title={resultado.consistencia.mensagem || undefined}
-              >
-                {resultado.consistencia.consistente ? "Consistente" : "Inconsistente"}
-                <span className="cmp-status-det">
-                  {resultado.consistencia.resultados_apresentados}/
-                  {resultado.consistencia.propostas_selecionadas}
-                </span>
-              </div>
-            )}
-            {salvandoSelecao && <span className="cmp-salvando">Salvando…</span>}
+          <h1>Comparativo</h1>
+          <p className="lead">
+            Revise as propostas calculadas, escolha o que entra no documento e confirme o
+            comparativo antes da exportação.
+          </p>
+        </div>
+        <div className="page-head-acoes">
+          {onRecalcular && (
+            <button
+              type="button"
+              className="secundario"
+              onClick={onRecalcular}
+              disabled={recalculando}
+            >
+              {recalculando ? "Calculando…" : "Recalcular"}
+            </button>
+          )}
+          {resultado.consistencia && (
+            <span
+              className={`badge ${resultado.consistencia.consistente ? "badge--ok" : "badge--alerta"}`}
+              title={resultado.consistencia.mensagem || undefined}
+            >
+              {resultado.consistencia.consistente ? "Consistente" : "Inconsistente"}{" "}
+              {resultado.consistencia.resultados_apresentados}/
+              {resultado.consistencia.propostas_selecionadas ?? resultado.consistencia.resultados_esperados}
+            </span>
+          )}
+          {salvandoSelecao && <span className="muted">Salvando…</span>}
+        </div>
+      </div>
+
+      <div className="summary-band num">
+        <div className="summary-top">
+          <div className="summary-title">
+            <span className="badge badge--blue">{rotuloEtapa}</span>
+            <b>{resultado.titulo || "Análise comparativa"}</b>
+          </div>
+          <div className="muted summary-hint">
+            {origemCongelada
+              ? "Matriz congelada no snapshot aprovado"
+              : modo === "analise"
+                ? "Catálogo completo · selecione propostas para o documento"
+                : "Espelho do material ao cliente · somente selecionados"}
           </div>
         </div>
-
-        <div className="cmp-hero-linha cmp-hero-linha--dados">
-          <div className="cmp-kpis">
-            <div className="cmp-kpi">
-              <span className="cmp-kpi-valor">{todas.length}</span>
-              <span className="cmp-kpi-rotulo">Calculadas</span>
-            </div>
-            <div className="cmp-kpi cmp-kpi--ativo">
-              <span className="cmp-kpi-valor">{selecionadas.length}</span>
-              <span className="cmp-kpi-rotulo">No documento</span>
-            </div>
-            <div className="cmp-kpi">
-              <span className="cmp-kpi-valor">{resultado.beneficiarios_calculados}</span>
-              <span className="cmp-kpi-rotulo">Beneficiários</span>
-            </div>
-            {resultado.validade_proposta && (
-              <div className="cmp-kpi">
-                <span className="cmp-kpi-valor cmp-kpi-valor--sm">{resultado.validade_proposta}</span>
-                <span className="cmp-kpi-rotulo">Validade</span>
-              </div>
-            )}
+        <div className="summary-metrics">
+          <div className="mini-stat">
+            <small>Calculadas</small>
+            <strong className="num">{todas.length}</strong>
           </div>
-
+          <div className="mini-stat">
+            <small>No documento</small>
+            <strong className="num">{selecionadas.length}</strong>
+          </div>
+          <div className="mini-stat">
+            <small>Beneficiários</small>
+            <strong className="num">{resultado.beneficiarios_calculados ?? "—"}</strong>
+          </div>
+          {resultado.validade_proposta && (
+            <div className="mini-stat">
+              <small>Validade</small>
+              <strong className="num">{resultado.validade_proposta}</strong>
+            </div>
+          )}
           {planosAtuais.length > 0 && (
             <div
-              className="cmp-ref-bar"
+              className="reference-price"
               title={planosAtuais.map((p) => `${p.plano_nome} · ${p.operadora}`).join(" | ")}
             >
-              <span className="cmp-ref-etiq">Referência</span>
-              <p className="cmp-ref-texto">
-                {planosAtuais.length === 1 ? (
-                  <>
-                    <strong>{planosAtuais[0].plano_nome}</strong>
-                    <span className="cmp-ref-sep">·</span>
-                    <span>{planosAtuais[0].operadora}</span>
-                    {planosAtuais[0].acomodacao && (
-                      <>
-                        <span className="cmp-ref-sep">·</span>
-                        <span>{planosAtuais[0].acomodacao}</span>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <strong>{planosAtuais.length} planos vigentes</strong>
-                )}
-              </p>
-              <span className="cmp-ref-valor">
+              <small>
+                Referência ·{" "}
+                {planosAtuais.length === 1
+                  ? planosAtuais[0].plano_nome
+                  : `${planosAtuais.length} planos vigentes`}
+              </small>
+              <strong className="num">
                 {formatCentavos(somarCampo(planosAtuais, "mensal_centavos"))}
-              </span>
+              </strong>
             </div>
           )}
         </div>
-
-        <div className="cmp-hero-linha cmp-hero-linha--modos">
-          {origemCongelada ? (
-            <p className="cmp-modo-hint muted">
-              Matriz congelada no snapshot aprovado · as três visões reproduzem o documento
-            </p>
-          ) : (
-            <>
-              <div className="cmp-segmento" role="tablist" aria-label="Modo de visualização">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={modo === "analise"}
-                  title="Catálogo completo, filtros e auditoria"
-                  className={modo === "analise" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
-                  onClick={() => setModo("analise")}
-                >
-                  Análise Newport
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={modo === "previa"}
-                  title="Somente planos selecionados para o cliente"
-                  className={modo === "previa" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
-                  onClick={() => setModo("previa")}
-                >
-                  Prévia do cliente
-                </button>
-              </div>
-              <p className="cmp-modo-hint muted">
-                {modo === "analise"
-                  ? "Catálogo completo · selecione propostas para o documento"
-                  : "Espelho do material ao cliente · somente selecionados"}
-              </p>
-            </>
-          )}
-        </div>
-      </header>
+        {!origemCongelada && (
+          <div className="summary-modos">
+            <div className="cmp-segmento" role="tablist" aria-label="Modo de visualização">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modo === "analise"}
+                className={modo === "analise" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
+                onClick={() => setModo("analise")}
+              >
+                Análise Newport
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modo === "previa"}
+                className={modo === "previa" ? "cmp-seg cmp-seg--ativo" : "cmp-seg"}
+                onClick={() => setModo("previa")}
+              >
+                Prévia do cliente
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {modo === "analise" && (
-        <section className="cmp-filtros">
-          <div className="cmp-filtros-bar">
-            <h3 className="cmp-secao-titulo">Refinar catálogo</h3>
-            <span className="cmp-filtros-pill">
-              {catalogo.length}/{todas.length} visíveis
-            </span>
+        <section className="panel panel-flat cmp-filtros">
+          <div className="panel-head">
+            <div>
+              <h2>Refinar catálogo</h2>
+              <p>
+                {catalogo.length}/{todas.length} visíveis
+                {filtrosAtivos > 0 ? ` · ${filtrosAtivos} filtro(s)` : ""}
+              </p>
+            </div>
             {filtrosAtivos > 0 && (
-              <>
-                <span className="cmp-filtros-pill cmp-filtros-pill--ativo">
-                  {filtrosAtivos} filtro(s)
-                </span>
-                <button type="button" className="cmp-btn-limpar" onClick={limparFiltros}>
-                  Limpar
-                </button>
-              </>
+              <button type="button" className="secundario btn-compacto" onClick={limparFiltros}>
+                Limpar filtros
+              </button>
             )}
           </div>
-          <div className="cmp-filtros-grid">
-            <div className="cmp-filtro">
-              <span className="cmp-filtro-label">Coparticipação</span>
-              <select
-                value={filtros.grupoRegime}
-                onChange={(e) => setFiltros((f) => ({ ...f, grupoRegime: e.target.value }))}
-              >
-                <option value="">Todas</option>
-                <option value="sem_copart">Sem coparticipação</option>
-                <option value="com_copart">Com coparticipação</option>
-              </select>
-            </div>
-            <div className="cmp-filtro">
-              <span className="cmp-filtro-label">Acomodação</span>
-              <select
-                value={filtros.acomodacao}
-                onChange={(e) => setFiltros((f) => ({ ...f, acomodacao: e.target.value }))}
-              >
-                <option value="">Todas</option>
-                {acomodacoes.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="cmp-filtro">
-              <span className="cmp-filtro-label">Operadora</span>
-              <select
-                value={filtros.operadora}
-                onChange={(e) => setFiltros((f) => ({ ...f, operadora: e.target.value }))}
-              >
-                <option value="">Todas</option>
-                {operadoras.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="cmp-filtro">
-              <span className="cmp-filtro-label">Diferença</span>
-              <select
-                value={filtros.semantica}
-                onChange={(e) => setFiltros((f) => ({ ...f, semantica: e.target.value }))}
-              >
-                <option value="">Todas</option>
-                <option value="economia">Economia</option>
-                <option value="aumento">Aumento</option>
-              </select>
-            </div>
-            <div className="cmp-filtro cmp-filtro--preco">
-              <span className="cmp-filtro-label">Faixa de preço (R$)</span>
-              <div className="cmp-filtro-faixa">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Mín"
-                  value={filtros.precoMin}
-                  onChange={(e) => setFiltros((f) => ({ ...f, precoMin: e.target.value }))}
-                />
-                <span aria-hidden>—</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Máx"
-                  value={filtros.precoMax}
-                  onChange={(e) => setFiltros((f) => ({ ...f, precoMax: e.target.value }))}
-                />
+          <div className="panel-body">
+            <div className="cmp-filtros-grid catalog-filters">
+              <div className="cmp-filtro field">
+                <label className="cmp-filtro-label">Coparticipação</label>
+                <select
+                  value={filtros.grupoRegime}
+                  onChange={(e) => setFiltros((f) => ({ ...f, grupoRegime: e.target.value }))}
+                >
+                  <option value="">Todas</option>
+                  <option value="sem_copart">Sem coparticipação</option>
+                  <option value="com_copart">Com coparticipação</option>
+                </select>
               </div>
-            </div>
-            <div className="cmp-filtro cmp-filtro--ordem">
-              <span className="cmp-filtro-label">Ordenar por</span>
-              <select value={ordenacao} onChange={(e) => setOrdenacao(e.target.value)}>
-                <option value="menor_mensalidade">Menor mensalidade</option>
-                {!seguroNovo && (
-                  <>
-                    <option value="menor_aumento">Menor aumento / maior economia</option>
-                    <option value="mais_proximo">Mais próximo do contrato atual</option>
-                  </>
-                )}
-              </select>
+              <div className="cmp-filtro field">
+                <label className="cmp-filtro-label">Acomodação</label>
+                <select
+                  value={filtros.acomodacao}
+                  onChange={(e) => setFiltros((f) => ({ ...f, acomodacao: e.target.value }))}
+                >
+                  <option value="">Todas</option>
+                  {acomodacoes.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="cmp-filtro field">
+                <label className="cmp-filtro-label">Operadora</label>
+                <select
+                  value={filtros.operadora}
+                  onChange={(e) => setFiltros((f) => ({ ...f, operadora: e.target.value }))}
+                >
+                  <option value="">Todas</option>
+                  {operadoras.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="cmp-filtro field">
+                <label className="cmp-filtro-label">Diferença</label>
+                <select
+                  value={filtros.semantica}
+                  onChange={(e) => setFiltros((f) => ({ ...f, semantica: e.target.value }))}
+                >
+                  <option value="">Todas</option>
+                  <option value="economia">Economia</option>
+                  <option value="aumento">Aumento</option>
+                </select>
+              </div>
+              <div className="cmp-filtro cmp-filtro--preco field">
+                <label className="cmp-filtro-label">Faixa de preço (R$)</label>
+                <div className="cmp-filtro-faixa">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Mín"
+                    value={filtros.precoMin}
+                    onChange={(e) => setFiltros((f) => ({ ...f, precoMin: e.target.value }))}
+                  />
+                  <span aria-hidden>—</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Máx"
+                    value={filtros.precoMax}
+                    onChange={(e) => setFiltros((f) => ({ ...f, precoMax: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="cmp-filtro cmp-filtro--ordem field">
+                <label className="cmp-filtro-label">Ordenar por</label>
+                <select value={ordenacao} onChange={(e) => setOrdenacao(e.target.value)}>
+                  <option value="menor_mensalidade">Menor mensalidade</option>
+                  {!seguroNovo && (
+                    <>
+                      <option value="menor_aumento">Menor aumento / maior economia</option>
+                      <option value="mais_proximo">Mais próximo do contrato atual</option>
+                    </>
+                  )}
+                </select>
+              </div>
             </div>
           </div>
         </section>
       )}
 
-      <section className="cmp-cards-secao">
-        <header className="cmp-secao-cabecalho cmp-secao-cabecalho--cards">
+      <section className="panel panel-flat cmp-cards-secao">
+        <header className="panel-head">
           <div>
-            <h3 className="cmp-secao-titulo">
+            <h2>
               {modo === "analise" ? "Propostas calculadas" : "Planos no documento"}
-              <span className="cmp-contagem">{exibirCards.length}</span>
-            </h3>
-            <p className="cmp-secao-sub muted">
+            </h2>
+            <p>
               {modo === "analise"
-                ? "Clique em Adicionar para incluir na matriz — a seleção é salva automaticamente."
+                ? `${catalogo.length}/${todas.length} visíveis · clique em Adicionar para incluir na matriz.`
                 : "Material que será entregue ao cliente."}
             </p>
           </div>
           {modo === "analise" && selecionadas.length > 0 && (
-            <span className="cmp-cards-resumo">
-              {selecionadas.length} no documento
-            </span>
+            <span className="badge badge--blue">{selecionadas.length} no documento</span>
           )}
         </header>
-        <div className="cmp-cards-grid">
-          {exibirCards.map((p) => (
-            <CardProposta
-              key={p.opcao_id}
-              proposta={p}
-              selecionada={selecao.includes(p.opcao_id)}
-              onToggle={toggleSelecao}
-              compacto={modo === "previa"}
-              seguroNovo={seguroNovo}
-              somenteLeitura={origemCongelada}
-            />
-          ))}
+        <div className="panel-body">
+          <div className="cmp-cards-grid proposal-grid">
+            {exibirCards.map((p) => (
+              <CardProposta
+                key={p.opcao_id}
+                proposta={p}
+                selecionada={selecao.includes(p.opcao_id)}
+                onToggle={toggleSelecao}
+                compacto={modo === "previa"}
+                seguroNovo={seguroNovo}
+                somenteLeitura={origemCongelada}
+              />
+            ))}
+          </div>
+          {modo === "previa" && !exibirCards.length && (
+            <p className="muted">
+              Nenhum plano selecionado — volte à Análise Newport e adicione propostas à comparação.
+            </p>
+          )}
         </div>
-        {modo === "previa" && !exibirCards.length && (
-          <p className="muted">
-            Nenhum plano selecionado — volte à Análise Newport e adicione propostas à comparação.
-          </p>
-        )}
       </section>
 
-      <section className="cmp-matriz-secao">
-        <header className="cmp-matriz-cabecalho">
+      <section className="panel cmp-matriz-secao">
+        <header className="panel-head cmp-matriz-cabecalho">
           <div>
-            <h3 className="cmp-secao-titulo">Matriz comparativa</h3>
-            <p className="cmp-secao-sub muted">
+            <h2>Matriz comparativa</h2>
+            <p>
               {seguroNovo
                 ? `Comparativo entre propostas · ${selecionadas.length} proposta(s) selecionada(s)`
                 : `Contrato atual na primeira coluna · ${selecionadas.length} proposta(s) selecionada(s)`}
             </p>
           </div>
-          <div className="cmp-vistas">
+          <div className="cmp-vistas tabs">
             <button
               type="button"
-              className={vista === "resumo" ? "cmp-vista cmp-vista--ativa" : "cmp-vista"}
+              className={vista === "resumo" ? "cmp-vista cmp-vista--ativa tab active" : "cmp-vista tab"}
               onClick={() => setVista("resumo")}
             >
               Resumo executivo
             </button>
             <button
               type="button"
-              className={vista === "faixas" ? "cmp-vista cmp-vista--ativa" : "cmp-vista"}
+              className={vista === "faixas" ? "cmp-vista cmp-vista--ativa tab active" : "cmp-vista tab"}
               onClick={() => setVista("faixas")}
             >
               Faixas etárias
             </button>
             <button
               type="button"
-              className={vista === "beneficiarios" ? "cmp-vista cmp-vista--ativa" : "cmp-vista"}
+              className={
+                vista === "beneficiarios" ? "cmp-vista cmp-vista--ativa tab active" : "cmp-vista tab"
+              }
               onClick={() => setVista("beneficiarios")}
             >
               Por beneficiário
             </button>
           </div>
         </header>
-        {vista === "beneficiarios" && (modo === "analise" || origemCongelada) && (
-          <label className="cmp-aviso-pii">
-            <input
-              type="checkbox"
-              checked={mostrarNomes}
-              onChange={(e) => setMostrarNomes(e.target.checked)}
-            />
-            Exibir nomes de beneficiários (dados pessoais — uso interno)
-          </label>
-        )}
-        <MatrizComparativa
-          planosAtuais={planosAtuais}
-          propostas={selecionadas}
-          vista={vista}
-          mostrarNomes={(modo === "analise" || origemCongelada) && mostrarNomes}
-          seguroNovo={seguroNovo}
-          faixasEstudo={resultado.faixas_estudo || []}
-        />
+        <div className="panel-body">
+          {vista === "beneficiarios" && (modo === "analise" || origemCongelada) && (
+            <label className="cmp-aviso-pii">
+              <input
+                type="checkbox"
+                checked={mostrarNomes}
+                onChange={(e) => setMostrarNomes(e.target.checked)}
+              />
+              Exibir nomes de beneficiários (dados pessoais — uso interno)
+            </label>
+          )}
+          <MatrizComparativa
+            planosAtuais={planosAtuais}
+            propostas={selecionadas}
+            vista={vista}
+            mostrarNomes={(modo === "analise" || origemCongelada) && mostrarNomes}
+            seguroNovo={seguroNovo}
+            faixasEstudo={resultado.faixas_estudo || []}
+          />
+        </div>
       </section>
 
       {resultado?.calculo_realizado && onConfirmar && (
-        <section className="cmp-confirmacao-secao">
-          <h3 className="cmp-secao-titulo">Confirmar revisão</h3>
-          {!resultado.consistencia?.consistente && (
-            <>
-              <BloqueiosComparativo
-                consistencia={resultado.consistencia}
-                rascunho={rascunho}
-              />
-              {!resultado.consistencia?.bloqueios?.length && (
-                <p className="erro">
-                  {resultado.consistencia?.mensagem ||
-                    "O comparativo está inconsistente — corrija pendências antes de confirmar."}
-                </p>
-              )}
-            </>
-          )}
-          {!resultado.hash_comparativo && (
-            <p className="muted">
-              A versão do comparativo será validada no servidor ao confirmar.
-            </p>
-          )}
-          <p className="cmp-secao-sub muted">
-            {selecao.length === 0
-              ? "Adicione ao menos uma proposta na matriz (botão «Adicionar» nos cards)."
-              : confirmado
-                ? "Comparativo confirmado. Aprove abaixo para liberar a exportação ao cliente."
-                : `${selecao.length} proposta(s) selecionada(s) para o material ao cliente.`}
-          </p>
-          <button
-            type="button"
-            className="cmp-btn-principal"
-            disabled={!podeConfirmar}
-            onClick={() => onConfirmar(selecao)}
-          >
-            {confirmando
-              ? "Confirmando e congelando…"
-              : "Confirmar comparativo"}
-          </button>
+        <section className="panel cmp-confirmacao-secao">
+          <div className="panel-head">
+            <div>
+              <h2>Confirmar revisão</h2>
+              <p>
+                {selecao.length === 0
+                  ? "Adicione ao menos uma proposta na matriz (botão «Adicionar» nos cards)."
+                  : confirmado
+                    ? "Comparativo confirmado. Aprove abaixo para liberar a exportação ao cliente."
+                    : `${selecao.length} proposta(s) selecionada(s) para o material ao cliente.`}
+              </p>
+            </div>
+          </div>
+          <div className="panel-body">
+            {!resultado.consistencia?.consistente && (
+              <>
+                <BloqueiosComparativo
+                  consistencia={resultado.consistencia}
+                  rascunho={rascunho}
+                />
+                {!resultado.consistencia?.bloqueios?.length && (
+                  <p className="erro">
+                    {resultado.consistencia?.mensagem ||
+                      "O comparativo está inconsistente — corrija pendências antes de confirmar."}
+                  </p>
+                )}
+              </>
+            )}
+            {!resultado.hash_comparativo && (
+              <p className="muted">
+                A versão do comparativo será validada no servidor ao confirmar.
+              </p>
+            )}
+            <button
+              type="button"
+              className="cmp-btn-principal"
+              disabled={!podeConfirmar}
+              onClick={() => onConfirmar(selecao)}
+            >
+              {confirmando
+                ? "Confirmando e congelando…"
+                : "Confirmar comparativo"}
+            </button>
+          </div>
         </section>
       )}
 
       {modo === "analise" && (
         <>
-          <section className="cmp-detalhes-tecnicos">
-            <header className="cmp-secao-cabecalho cmp-secao-cabecalho--cards">
+          <section className="panel panel-flat cmp-detalhes-tecnicos">
+            <header className="panel-head">
               <div>
-                <h3 className="cmp-secao-titulo">
-                  Detalhamento técnico
-                  <span className="cmp-contagem">{catalogo.length}</span>
-                </h3>
-                <p className="cmp-secao-sub muted">
-                  Expanda cada proposta para revisar valores por beneficiário (uso interno).
-                </p>
+                <h2>Detalhamento técnico</h2>
+                <p>Expanda cada proposta para revisar valores por beneficiário (uso interno).</p>
               </div>
+              <span className="badge badge--muted">{catalogo.length} propostas</span>
             </header>
-            <div className="cmp-detalhes-lista">
-              {catalogo.map((p) => {
-                const n = p.numerico;
-                const diffCls = classeVariacao(n?.diff_mes_centavos ?? n?.diff_bps);
-                return (
-                  <details key={p.opcao_id} className="cmp-detalhe">
-                    <summary className="cmp-detalhe-sum">
-                      <span className="cmp-detalhe-chevron" aria-hidden />
-                      <div className="cmp-detalhe-info">
-                        <span className="cmp-detalhe-nome">{p.plano_nome}</span>
-                        <span className="cmp-detalhe-meta">
-                          {p.operadora}
-                          {p.acomodacao ? ` · ${p.acomodacao}` : ""}
-                          {" · "}
-                          {rotuloCopartCurto(p.regime_coparticipacao)}
-                        </span>
-                      </div>
-                      <div className="cmp-detalhe-valores">
-                        <span className="cmp-detalhe-preco">
-                          {formatCentavos(n?.proposta_mensal_centavos)}
-                          <small>/mês</small>
-                        </span>
-                        <span className={`cmp-detalhe-diff ${diffCls}`}>
-                          {formatCentavos(n?.diff_mes_centavos)} · {formatBps(n?.diff_bps)}
-                        </span>
-                      </div>
-                      {p.pendencias?.length > 0 && (
-                        <span className="cmp-detalhe-alerta" title="Pendências nesta proposta">
-                          {p.pendencias.length}
-                        </span>
-                      )}
-                    </summary>
-                    <div className="cmp-detalhe-corpo">
-                      {p.pendencias?.length > 0 && <Pendencias items={p.pendencias} />}
-                      {vidasDaProposta(p).length > 0 ? (
-                        <div className="cmp-detalhe-tabela-scroll">
-                          <table className="conferencia cmp-detalhe-tabela">
-                            <thead>
-                              <tr>
-                                <th>Beneficiário</th>
-                                <th>Idade</th>
-                                <th>Faixa</th>
-                                {!seguroNovo && <th>Atual</th>}
-                                <th>Proposta</th>
-                                {!seguroNovo && <th>Diff</th>}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {vidasDaProposta(p).map((v) => (
-                                <tr key={v.vida_id}>
-                                  <td>{v.nome}</td>
-                                  <td>{v.idade ?? "—"}</td>
-                                  <td>{v.faixa_rotulo || "—"}</td>
-                                  {!seguroNovo && (
-                                    <td>{formatCentavos(v.atual_centavos)}</td>
-                                  )}
-                                  <td>{formatCentavos(v.proposta_centavos)}</td>
-                                  {!seguroNovo && (
-                                    <td className={classeVariacao(v.diff_mes_centavos)}>
-                                      {formatCentavos(v.diff_mes_centavos)}
-                                    </td>
-                                  )}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+            <div className="panel-body">
+              <div className="cmp-detalhes-lista tech-list">
+                {catalogo.map((p) => {
+                  const n = p.numerico;
+                  const diffCls = classeVariacao(n?.diff_mes_centavos ?? n?.diff_bps);
+                  return (
+                    <details key={p.opcao_id} className="cmp-detalhe tech-row">
+                      <summary className="cmp-detalhe-sum">
+                        <span className="cmp-detalhe-chevron" aria-hidden />
+                        <div className="cmp-detalhe-info">
+                          <span className="cmp-detalhe-nome">{p.plano_nome}</span>
+                          <span className="cmp-detalhe-meta">
+                            {p.operadora}
+                            {p.acomodacao ? ` · ${p.acomodacao}` : ""}
+                            {" · "}
+                            {rotuloCopartCurto(p.regime_coparticipacao)}
+                          </span>
                         </div>
-                      ) : (
-                        <p className="muted cmp-detalhe-vazio">Sem detalhamento por beneficiário.</p>
-                      )}
-                    </div>
-                  </details>
-                );
-              })}
+                        <div className="cmp-detalhe-valores">
+                          <span className="cmp-detalhe-preco">
+                            {formatCentavos(n?.proposta_mensal_centavos)}
+                            <small>/mês</small>
+                          </span>
+                          <span className={`cmp-detalhe-diff ${diffCls}`}>
+                            {formatCentavos(n?.diff_mes_centavos)}
+                            {n?.diff_bps != null && !seguroNovo && (
+                              <> · {formatBps(n.diff_bps)}</>
+                            )}
+                          </span>
+                          {(p.pendencias?.length > 0 || p.auditoria?.length > 0) && (
+                            <span className="cmp-detalhe-alerta" title="Pendências nesta proposta">
+                              {p.pendencias?.length || "!"}
+                            </span>
+                          )}
+                        </div>
+                      </summary>
+                      <div className="cmp-detalhe-corpo">
+                        {p.pendencias?.length > 0 && <Pendencias items={p.pendencias} />}
+                        {vidasDaProposta(p).length > 0 ? (
+                          <div className="cmp-detalhe-tabela-scroll">
+                            <table className="conferencia cmp-detalhe-tabela">
+                              <thead>
+                                <tr>
+                                  <th>Beneficiário</th>
+                                  <th>Idade</th>
+                                  <th>Faixa</th>
+                                  {!seguroNovo && <th>Atual</th>}
+                                  <th>Proposta</th>
+                                  {!seguroNovo && <th>Diff</th>}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {vidasDaProposta(p).map((v) => (
+                                  <tr key={v.vida_id}>
+                                    <td>{v.nome}</td>
+                                    <td>{v.idade ?? "—"}</td>
+                                    <td>{v.faixa_rotulo || "—"}</td>
+                                    {!seguroNovo && (
+                                      <td>{formatCentavos(v.atual_centavos)}</td>
+                                    )}
+                                    <td>{formatCentavos(v.proposta_centavos)}</td>
+                                    {!seguroNovo && (
+                                      <td className={classeVariacao(v.diff_mes_centavos)}>
+                                        {formatCentavos(v.diff_mes_centavos)}
+                                      </td>
+                                    )}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="muted cmp-detalhe-vazio">Sem detalhamento por beneficiário.</p>
+                        )}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
             </div>
           </section>
 
-          <section className="cmp-auditoria-secao">
-            <h3 className="cmp-secao-titulo">Pendências e alertas</h3>
-            <Pendencias items={resultado.pendencias} />
-            <button type="button" className="link cmp-link-auditoria" onClick={() => setAuditoriaAberta((v) => !v)}>
-              {auditoriaAberta ? "Ocultar" : "Mostrar"} auditoria técnica
-            </button>
-            {auditoriaAberta && (
-              <table className="auditoria">
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Nível</th>
-                    <th>Detalhe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resultado.auditoria.map((a, i) => (
-                    <tr key={i}>
-                      <td>{a.codigo}</td>
-                      <td>{a.severidade}</td>
-                      <td>{a.mensagem}</td>
+          <section className="panel cmp-auditoria-secao">
+            <div className="panel-head">
+              <div>
+                <h2>Pendências e alertas</h2>
+                <p>Códigos à esquerda · texto operacional à direita.</p>
+              </div>
+            </div>
+            <div className="panel-body">
+              <Pendencias items={resultado.pendencias} />
+              <button type="button" className="link cmp-link-auditoria" onClick={() => setAuditoriaAberta((v) => !v)}>
+                {auditoriaAberta ? "Ocultar" : "Mostrar"} auditoria técnica
+              </button>
+              {auditoriaAberta && (
+                <table className="auditoria">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Nível</th>
+                      <th>Detalhe</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody>
+                    {resultado.auditoria.map((a, i) => (
+                      <tr key={i}>
+                        <td>{a.codigo}</td>
+                        <td>{a.severidade}</td>
+                        <td>{a.mensagem}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </section>
         </>
       )}
     </div>
   );
 }
+

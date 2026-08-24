@@ -255,7 +255,12 @@ export default function App() {
               />
             )}
             {chavePassoAtual === "comparativo" && (
-              <ComparativoPanel estudoId={estudoId} onAtualizado={recarregarContexto} />
+              <ComparativoPanel
+                estudoId={estudoId}
+                etapaIndice={passo}
+                totalEtapas={passos.length}
+                onAtualizado={recarregarContexto}
+              />
             )}
           </main>
 

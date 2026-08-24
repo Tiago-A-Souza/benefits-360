@@ -114,62 +114,68 @@ export function AprovacaoLocalForm({
   const ocupado = carregando || enviando;
 
   return (
-    <section className="secao-inline cartao--aviso gov-secao">
-      <h3>Aprovação local provisória</h3>
-      <p className="muted">
-        O comparativo foi congelado. Atestar a revisão libera a exportação ao
-        cliente.
-      </p>
-      <label>
-        Nome do revisor
-        <input
-          type="text"
-          value={revisor}
-          onChange={(e) => setRevisor(e.target.value)}
-          placeholder="Seu nome"
-        />
-      </label>
-      <label>
-        Justificativa (obrigatória se autoaprovação)
-        <textarea
-          value={justificativa}
-          onChange={(e) => setJustificativa(e.target.value)}
-          rows={2}
-        />
-      </label>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={autoAprovacao}
-          onChange={(e) => setAutoAprovacao(e.target.checked)}
-        />
-        Estou aprovando meu próprio estudo (autoaprovação provisória)
-      </label>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={confirmo}
-          onChange={(e) => setConfirmo(e.target.checked)}
-        />
-        Confirmo que revisei integralmente o conteúdo do snapshot
-      </label>
-      <button type="button" onClick={handleAprovar} disabled={ocupado}>
-        {enviando ? "Aprovando…" : "Aprovar snapshot"}
-      </button>
-      {hashSha256 && (
-        <>
-          <button
-            type="button"
-            className="secundario"
-            onClick={() => setDetalhesAbertos(!detalhesAbertos)}
-          >
-            {detalhesAbertos ? "Ocultar" : "Ver"} detalhes técnicos (hash)
+    <section className="panel gov-secao gov-aprovacao">
+      <div className="panel-head">
+        <div>
+          <h2>Aprovação local provisória</h2>
+          <p>
+            O comparativo foi congelado. Atestar a revisão libera a exportação ao
+            cliente.
+          </p>
+        </div>
+      </div>
+      <div className="panel-body gov-aprovacao-corpo">
+        <label className="field">
+          Nome do revisor
+          <input
+            type="text"
+            value={revisor}
+            onChange={(e) => setRevisor(e.target.value)}
+            placeholder="Seu nome"
+          />
+        </label>
+        <label className="field">
+          Justificativa (obrigatória se autoaprovação)
+          <textarea
+            value={justificativa}
+            onChange={(e) => setJustificativa(e.target.value)}
+            rows={2}
+          />
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={autoAprovacao}
+            onChange={(e) => setAutoAprovacao(e.target.checked)}
+          />
+          Estou aprovando meu próprio estudo (autoaprovação provisória)
+        </label>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={confirmo}
+            onChange={(e) => setConfirmo(e.target.checked)}
+          />
+          Confirmo que revisei integralmente o conteúdo do snapshot
+        </label>
+        <div className="gov-aprovacao-acoes">
+          <button type="button" className="cmp-btn-principal" onClick={handleAprovar} disabled={ocupado}>
+            {enviando ? "Aprovando…" : "Aprovar snapshot"}
           </button>
-          {detalhesAbertos && (
-            <pre className="json-preview">Hash: {hashSha256}</pre>
+          {hashSha256 && (
+            <button
+              type="button"
+              className="secundario"
+              onClick={() => setDetalhesAbertos(!detalhesAbertos)}
+            >
+              {detalhesAbertos ? "Ocultar" : "Ver"} detalhes técnicos (hash)
+            </button>
           )}
-        </>
-      )}
+        </div>
+        {detalhesAbertos && hashSha256 && (
+          <pre className="json-preview">Hash: {hashSha256}</pre>
+        )}
+      </div>
     </section>
   );
 }

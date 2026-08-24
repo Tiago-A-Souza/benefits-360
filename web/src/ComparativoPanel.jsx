@@ -13,7 +13,7 @@ import GovernancaComparativo from "./apresentacao/GovernancaComparativo";
 import { comparativoConfirmado } from "./fluxo/stepStatus";
 import { tituloPasso } from "./fluxo/passos";
 
-export default function ComparativoPanel({ estudoId, onAtualizado }) {
+export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapas = 5, onAtualizado }) {
   const [pendencias, setPendencias] = useState([]);
   const [rascunho, setRascunho] = useState(null);
   const [resultado, setResultado] = useState(null);
@@ -109,61 +109,80 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
   const pronto = bloqueios.length === 0;
 
   return (
-    <section className="cmp-pagina">
+    <section className="etapa-fluxo cmp-pagina">
       {!resultado?.calculo_realizado && (
-        <header className="cmp-hero cmp-hero--pre cmp-hero--compact">
-          <div className="cmp-hero-linha cmp-hero-linha--titulo">
-            <div className="cmp-hero-identidade">
-              <span className="cmp-etapa">{rotuloEtapa}</span>
-              <h2 className="cmp-hero-titulo">Comparativo financeiro</h2>
+        <>
+          <div className="page-head">
+            <div>
+              <div className="page-kicker">
+                Etapa {etapaIndice} de {totalEtapas}
+              </div>
+              <h1>Comparativo</h1>
+              <p className="lead">
+                Revise as propostas calculadas, escolha o que entra no documento e confirme o
+                comparativo antes da exportação.
+              </p>
             </div>
-          </div>
-
-          <div className="cmp-hero-linha cmp-hero-linha--pre">
-            <div className="cmp-pre-status">
+            <div className="page-head-acoes">
               {jaConfirmado && (
-                <span className="cmp-pre-badge cmp-pre-badge--ok">
-                  Comparativo confirmado — aprove abaixo para exportar
-                </span>
+                <span className="badge badge--ok">Comparativo confirmado</span>
               )}
               {!jaConfirmado && pronto && alertas.length === 0 && (
-                <span className="cmp-pre-badge cmp-pre-badge--ok">Pronto para calcular</span>
+                <span className="badge badge--ok">Pronto para calcular</span>
               )}
               {!jaConfirmado && pronto && alertas.length > 0 && (
-                <span className="cmp-pre-badge cmp-pre-badge--alerta">
+                <span className="badge badge--alerta">
                   {alertas.length} alerta(s) — cálculo permitido
                 </span>
               )}
               {!jaConfirmado && !pronto && (
-                <div className="cmp-pre-bloqueios">
-                  <span className="cmp-pre-badge cmp-pre-badge--erro">
-                    {bloqueios.length} pendência(s) bloqueante(s)
-                  </span>
-                  <ul className="cmp-pre-lista">
-                    {bloqueios.slice(0, 2).map((p, i) => (
-                      <li key={i}>{p.titulo}</li>
-                    ))}
-                    {bloqueios.length > 2 && (
-                      <li className="muted">+ {bloqueios.length - 2} outra(s)</li>
-                    )}
-                  </ul>
-                </div>
+                <span className="badge badge--alerta">
+                  {bloqueios.length} pendência(s) bloqueante(s)
+                </span>
               )}
             </div>
-            <button
-              type="button"
-              className="cmp-btn-principal cmp-btn-calcular"
-              onClick={handleCalcular}
-              disabled={carregando || !pronto}
-            >
-              {carregando ? "Calculando…" : "Calcular comparativo"}
-            </button>
           </div>
 
-          <p className="cmp-pre-hint muted">
-            Processa todas as propostas dos cenários · selecione, confirme e aprove para exportar
-          </p>
-        </header>
+          {!jaConfirmado && !pronto && (
+            <div className="notice notice--amber">
+              <div className="notice-icon" aria-hidden="true">
+                !
+              </div>
+              <div>
+                <b>Pendências bloqueantes</b>
+                <ul className="cmp-pre-lista">
+                  {bloqueios.slice(0, 4).map((p, i) => (
+                    <li key={i}>
+                      {p.codigo ? `${p.codigo} · ` : ""}
+                      {p.titulo}
+                    </li>
+                  ))}
+                  {bloqueios.length > 4 && (
+                    <li className="muted">+ {bloqueios.length - 4} outra(s)</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <div className="action-bar">
+            <div className="action-left">
+              <span className="action-note">
+                Processa todas as propostas dos cenários · selecione, confirme e aprove para exportar
+              </span>
+            </div>
+            <div className="action-right">
+              <button
+                type="button"
+                className="cmp-btn-principal"
+                onClick={handleCalcular}
+                disabled={carregando || !pronto}
+              >
+                {carregando ? "Calculando…" : "Calcular comparativo"}
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {erro && <p className="erro cmp-erro-global">{erro}</p>}
@@ -180,7 +199,8 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
 
       {jaConfirmado && !resultado?.calculo_realizado && (
         <p className="ok cmp-confirmacao-banner">
-          Comparativo confirmado — aprove abaixo para liberar a exportação.
+          Comparativo confirmado — aprove abaixo para liberar a exportação, ou recalcule para revisar
+          a matriz.
         </p>
       )}
 
@@ -189,6 +209,8 @@ export default function ComparativoPanel({ estudoId, onAtualizado }) {
           estudoId={estudoId}
           resultado={resultado}
           rascunho={rascunho}
+          etapaIndice={etapaIndice}
+          totalEtapas={totalEtapas}
           rotuloEtapa={rotuloEtapa}
           confirmado={jaConfirmado}
           confirmando={confirmando}
