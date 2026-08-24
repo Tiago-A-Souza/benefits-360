@@ -15,7 +15,6 @@ import HistoricoPanel from "./HistoricoPanel";
 import MeusEstudos from "./MeusEstudos";
 import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import PropostaPanel from "./PropostaPanel";
-import DiagnosticoPanel from "./DiagnosticoPanel";
 import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
 import { linhaEstadoPasso } from "./fluxo/linhasEstado";
@@ -206,9 +205,6 @@ export default function App() {
               })}
             </ol>
           </nav>
-          <div className="side-bottom">
-            <DiagnosticoPanel />
-          </div>
         </aside>
 
         <div className="app-main">

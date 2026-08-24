@@ -33,20 +33,24 @@ def test_registrar_e_listar_eventos(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert caminho_diagnostico_jsonl().is_file()
 
 
-def test_api_diagnostico(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_api_post_diagnostico_grava_evento(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """POST /api/diagnostico permanece (gravação); GET do painel foi removido."""
     monkeypatch.setenv("NEWPORT_DATA_DIR", str(tmp_path))
-    registrar_evento(
-        estudo_id="demo-12",
-        etapa="cotacao_pdf",
-        evento="extracao_zero_opcoes",
-        detalhe={"template_id": "omint-ocr-v1", "alertas": ["PDF-OMINT-OCR"]},
-    )
     app = create_app(seed_demos=False)
     client = TestClient(app)
-    res = client.get("/api/diagnostico?limite=50")
+    assert client.get("/api/diagnostico?limite=50").status_code in (404, 405)
+    res = client.post(
+        "/api/diagnostico",
+        json={
+            "estudo_id": "demo-12",
+            "etapa": "cotacao_pdf",
+            "evento": "extracao_zero_opcoes",
+            "detalhe": {"template_id": "omint-ocr-v1", "alertas": ["PDF-OMINT-OCR"]},
+        },
+    )
     assert res.status_code == 200
-    data = res.json()
-    assert any(e["evento"] == "extracao_zero_opcoes" for e in data["eventos"])
+    assert res.json().get("ok") is True
+    assert any(e["evento"] == "extracao_zero_opcoes" for e in listar_eventos(limite=50))
 
 
 def test_importacao_pdf_registra_diagnostico(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

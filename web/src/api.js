@@ -86,11 +86,6 @@ export async function obterConfig() {
   return res.json();
 }
 
-export async function obterDiagnostico(limite = 200) {
-  const res = await fetch(`${API}/diagnostico?limite=${limite}`);
-  return tratarResposta(res, "Não foi possível carregar o diagnóstico.");
-}
-
 export async function obterEstudo(estudoId) {
   const res = await fetch(`${API}/estudos/${estudoId}`);
   return tratarResposta(res, "Não foi possível carregar o estudo.");

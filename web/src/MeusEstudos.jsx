@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { criarEstudo, listarEstudos } from "./api";
-import DiagnosticoPanel from "./DiagnosticoPanel";
 
 function formatarData(iso) {
   if (!iso) return "—";
@@ -263,10 +262,6 @@ export default function MeusEstudos({ onContinuar }) {
             </button>
           </li>
         </ul>
-
-        <div className="side-bottom lista-rail-diag">
-          <DiagnosticoPanel />
-        </div>
       </aside>
 
       <main className="lista-main">

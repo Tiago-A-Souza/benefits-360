@@ -1918,12 +1918,6 @@ button.tabela-faixas-acao:focus {
   background: rgba(159, 197, 251, 0.55);
 }
 
-.side-bottom {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .app-sidebar .wizard--operacional .wizard-passo {
   color: #e8eef6;
 }
@@ -1965,28 +1959,6 @@ button.tabela-faixas-acao:focus {
   color: var(--navy);
 }
 
-.app-sidebar .diagnostico-rodape {
-  margin: 0;
-}
-
-.app-sidebar .diagnostico-toggle {
-  width: 100%;
-  text-align: left;
-  text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  border-radius: 9px;
-  padding: 8px 12px;
-  min-height: 36px;
-}
-
-.app-sidebar .diagnostico-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.22);
-  color: #fff;
-}
-
 .app-main {
   padding: 34px 38px 40px;
   min-width: 0;
@@ -2020,8 +1992,7 @@ button.tabela-faixas-acao:focus {
   }
 
   .side-card,
-  .steps-label,
-  .side-bottom {
+  .steps-label {
     display: none;
   }
 
@@ -3636,10 +3607,6 @@ a.btn-link {
 
 .lista-pt--verde {
   background: var(--green);
-}
-
-.lista-rail-diag {
-  margin-top: auto;
 }
 
 .lista-main {
@@ -6095,45 +6062,6 @@ a.btn-link {
 
 .recuperacao-manual-btn {
   margin-top: 0.75rem;
-}
-
-.diagnostico-rodape {
-  margin-top: 1.5rem;
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--borda-suave, #e2e8f0);
-}
-
-.diagnostico-painel {
-  margin-top: 0.75rem;
-  max-height: 280px;
-  overflow: auto;
-}
-
-.diagnostico-cabecalho {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.diagnostico-acoes {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.diagnostico-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 0.8rem;
-}
-
-.diagnostico-lista li {
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--borda-suave, #eef2f7);
-  word-break: break-word;
 }
 
 .gov-banner {

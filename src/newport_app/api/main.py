@@ -161,6 +161,13 @@ class NovoEstudoRequest(BaseModel):
     formato: Literal["renovacao", "novo"] = "renovacao"
 
 
+class RegistrarDiagnosticoRequest(BaseModel):
+    estudo_id: str | None = None
+    etapa: str
+    evento: str
+    detalhe: dict | None = None
+
+
 class AtualizarLinhaSiscorRequest(BaseModel):
     segurado: str | None = None
     nascimento: str | None = None
@@ -269,18 +276,6 @@ def create_app(
             "versao": API_VERSAO,
             "limite_upload_bytes": LIMITE_UPLOAD_BYTES,
         }
-
-    @app.get("/api/diagnostico")
-    def listar_diagnostico(limite: int = Query(default=200, ge=1, le=1000)) -> dict:
-        from newport_app.diagnostico import listar_eventos
-
-        return {"eventos": listar_eventos(limite=limite)}
-
-    class RegistrarDiagnosticoRequest(BaseModel):
-        estudo_id: str | None = None
-        etapa: str
-        evento: str
-        detalhe: dict | None = None
 
     @app.post("/api/diagnostico")
     def registrar_diagnostico_api(body: RegistrarDiagnosticoRequest) -> dict:
