@@ -15,7 +15,7 @@ from newport_app.models.presentation import (
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
-RENDERER_VERSAO = "html@2.8.1"
+RENDERER_VERSAO = "html@2.9.0"
 _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     re.IGNORECASE,
@@ -341,16 +341,15 @@ def _render_resumo(
     return "".join(partes)
 
 
-def render_html(model: PresentationViewModel) -> str:
-    css = """
+_CSS_BASE = """
     * { box-sizing: border-box; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; color: #1a1a1a; background: #f4f6f8; }
-    .page { max-width: 1400px; margin: 0 auto; padding: 24px; background: #fff; min-height: 100vh; }
+    .page { max-width: 1400px; margin: 0 auto; padding: 24px; background: #fff; min-height: 40vh; }
     @page { size: landscape; margin: 12mm; }
     @media print {
       body { background: #fff; }
       .page { page-break-after: always; max-width: none; padding: 12px; }
-      .no-print { display: none; }
+      .no-print { display: none !important; }
       .secao-regime { page-break-inside: avoid; }
     }
     header { border-bottom: 3px solid #0b5cab; padding-bottom: 12px; margin-bottom: 20px; }
@@ -374,23 +373,68 @@ def render_html(model: PresentationViewModel) -> str:
     .totais-secao { margin-top: 12px; }
     .ressalvas { font-size: 0.9rem; color: #444; margin-top: 20px; }
     .pagina-faixas { margin-bottom: 24px; page-break-inside: avoid; }
-    """
+"""
 
-    partes = [
-        "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='utf-8'>",
-        f"<title>{html.escape(model.titulo)}</title>",
-        f"<style>{css}</style></head><body>",
-    ]
+_CSS_ABAS = """
+    /* Radios no mesmo name: abas + «todas». «Voltar» = label de tab-resumo. */
+    .doc-tab-input {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    .doc-controles {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+      padding: 12px 24px; background: #0b5cab; color: #fff;
+    }
+    .doc-abas { display: flex; flex-wrap: wrap; gap: 6px; }
+    .doc-aba {
+      display: inline-block; padding: 8px 14px; border-radius: 6px;
+      background: rgba(255,255,255,0.12); color: #fff; cursor: pointer;
+      font-weight: 600; font-size: 0.9rem; border: 2px solid transparent;
+    }
+    .doc-aba:hover { background: rgba(255,255,255,0.22); }
+    .doc-btn-todas, .doc-btn-voltar {
+      margin-left: auto; padding: 8px 14px; border-radius: 6px;
+      background: #fff; color: #0b5cab; cursor: pointer; font-weight: 700;
+      border: 2px solid #fff;
+    }
+    .doc-btn-voltar { display: none; margin-left: auto; }
+    #tab-resumo:checked ~ .doc-controles label[for="tab-resumo"],
+    #tab-faixas:checked ~ .doc-controles label[for="tab-faixas"],
+    #tab-benef:checked ~ .doc-controles label[for="tab-benef"] {
+      background: #fff; color: #0b5cab;
+    }
+    #tab-resumo:focus-visible ~ .doc-controles label[for="tab-resumo"],
+    #tab-faixas:focus-visible ~ .doc-controles label[for="tab-faixas"],
+    #tab-benef:focus-visible ~ .doc-controles label[for="tab-benef"],
+    #tab-todas:focus-visible ~ .doc-controles label[for="tab-todas"],
+    #tab-resumo:focus-visible ~ .doc-controles label.doc-btn-voltar {
+      outline: 3px solid #93c5fd; outline-offset: 2px;
+    }
+    .visao { display: none; }
+    #tab-resumo:checked ~ .doc-corpo .visao-resumo,
+    #tab-faixas:checked ~ .doc-corpo .visao-faixas,
+    #tab-benef:checked ~ .doc-corpo .visao-benef { display: block; }
+    #tab-todas:checked ~ .doc-corpo .visao { display: block !important; }
+    #tab-todas:checked ~ .doc-controles .doc-abas { opacity: 0.45; pointer-events: none; }
+    #tab-todas:checked ~ .doc-controles .doc-btn-todas { display: none; }
+    #tab-todas:checked ~ .doc-controles .doc-btn-voltar { display: inline-block; }
+    .visao-titulo {
+      margin: 16px 24px 0; font-size: 1.05rem; color: #0b5cab; font-weight: 700;
+    }
+    @media print {
+      .doc-controles, .doc-tab-input { display: none !important; }
+      .visao-titulo { margin: 8px 0; }
+      /* Impressão = o que está visível (display das .visao permanece). */
+    }
+"""
 
-    pagina_idx = 0
 
-    def nova_pagina(conteudo: list[str]) -> None:
-        nonlocal pagina_idx
-        partes.append(f"<div class='page'>")
-        partes.extend(conteudo)
-        partes.append("</div>")
-        pagina_idx += 1
-
+def _montar_cabecalho(
+    model: PresentationViewModel,
+    *,
+    aviso_pii: bool,
+) -> list[str]:
     cabecalho = [
         "<header>",
         f"<h1>{html.escape(model.titulo)}</h1>",
@@ -403,12 +447,11 @@ def render_html(model: PresentationViewModel) -> str:
         for aviso in model.avisos_acomodacao:
             cabecalho.append(f"<li>{html.escape(aviso)}</li>")
         cabecalho.append("</ul></div>")
-    if model.modo == "beneficiario":
+    if aviso_pii:
         cabecalho.append(
             "<div class='aviso-pii'>Este material contém nomes de beneficiários. "
             "Mantenha em armazenamento privado.</div>"
         )
-
     tg = model.totais_gerais
     rotulos = _mapa_rotulos_propostas(model)
     seguro_novo = model.formato == "novo"
@@ -431,13 +474,19 @@ def render_html(model: PresentationViewModel) -> str:
                         f"<div><strong>Δ mensal {html.escape(rotulo)}</strong>{_cel(diff)}</div>"
                     )
         cabecalho.append("</div>")
+    return cabecalho
 
-    nova_pagina(cabecalho)
+
+def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
+    """Blocos de página da visão (sem cabeçalho global)."""
+    paginas: list[list[str]] = []
+    rotulos = _mapa_rotulos_propostas(model)
+    seguro_novo = model.formato == "novo"
 
     if model.modo == "resumo":
         for secao in model.secoes_regime:
             for pagina in secao.paginas_faixas:
-                nova_pagina(
+                paginas.append(
                     [
                         _render_resumo(
                             model,
@@ -449,48 +498,49 @@ def render_html(model: PresentationViewModel) -> str:
                     ]
                 )
 
-    for secao in model.secoes_regime:
-        for pagina in secao.paginas_faixas:
-            if model.modo != "faixas":
-                continue
-            bloco = [
-                f"<section class='secao-regime'>",
-                f"<h2>{html.escape(secao.regime_rotulo)}</h2>",
-                _render_cabecalho_propostas_pagina(secao.propostas, pagina.propostas_ids),
-            ]
-            for plano in secao.planos_atuais:
+    if model.modo == "faixas":
+        for secao in model.secoes_regime:
+            for pagina in secao.paginas_faixas:
+                bloco = [
+                    "<section class='secao-regime'>",
+                    f"<h2>{html.escape(secao.regime_rotulo)}</h2>",
+                    _render_cabecalho_propostas_pagina(secao.propostas, pagina.propostas_ids),
+                ]
+                for plano in secao.planos_atuais:
+                    bloco.append(
+                        "<div class='pagina-faixas'>"
+                        + _render_tabela_faixas(
+                            plano,
+                            secao.propostas,
+                            pagina.propostas_ids,
+                            rotulos,
+                            seguro_novo=seguro_novo,
+                        )
+                        + "</div>"
+                    )
                 bloco.append(
-                    "<div class='pagina-faixas'>"
-                    + _render_tabela_faixas(
-                        plano,
-                        secao.propostas,
+                    _render_totais_secao(
+                        secao,
                         pagina.propostas_ids,
                         rotulos,
                         seguro_novo=seguro_novo,
                     )
-                    + "</div>"
                 )
-            bloco.append(
-                _render_totais_secao(
-                    secao,
-                    pagina.propostas_ids,
-                    rotulos,
-                    seguro_novo=seguro_novo,
-                )
-            )
-            bloco.append("</section>")
-            nova_pagina(bloco)
+                bloco.append("</section>")
+                paginas.append(bloco)
 
     if model.modo == "beneficiario" and model.beneficiarios:
         op_ids = model.propostas_selecionadas
-        rotulos = _mapa_rotulos_propostas(model)
-        seguro_novo = model.formato == "novo"
+        agregados = all(
+            (b.nome or "").startswith("Beneficiário ·") for b in model.beneficiarios
+        )
+        col_rotulo = "Beneficiário" if agregados else "Nome"
         for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA):
             chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
             bloco = ["<section class='secao-regime'><h2>Detalhamento por beneficiário</h2>"]
             bloco.append("<table><thead><tr>")
             cab = (
-                "<th>Nome</th><th>Idade</th><th>Faixa</th><th>Parentesco</th>"
+                f"<th>{col_rotulo}</th><th>Idade</th><th>Faixa</th><th>Parentesco</th>"
                 "<th>Plano atual</th>"
             )
             if not seguro_novo:
@@ -524,13 +574,111 @@ def render_html(model: PresentationViewModel) -> str:
                     )
                 bloco.append("</tr>")
             bloco.append("</tbody></table></section>")
-            nova_pagina(bloco)
+            paginas.append(bloco)
 
     if model.ressalvas:
-        partes.append("<div class='page'><section class='ressalvas'><h3>Ressalvas comerciais</h3><ul>")
+        res = ["<section class='ressalvas'><h3>Ressalvas comerciais</h3><ul>"]
         for r in model.ressalvas:
-            partes.append(f"<li>{html.escape(r)}</li>")
-        partes.append("</ul></section></div>")
+            res.append(f"<li>{html.escape(r)}</li>")
+        res.append("</ul></section>")
+        paginas.append(res)
 
-    partes.append("</body></html>")
+    return paginas
+
+
+def _html_paginas(
+    model: PresentationViewModel,
+    *,
+    aviso_pii: bool,
+    incluir_cabecalho: bool = True,
+) -> str:
+    blocos: list[str] = []
+    if incluir_cabecalho:
+        blocos.append("<div class='page'>" + "".join(_montar_cabecalho(model, aviso_pii=aviso_pii)) + "</div>")
+    for pagina in _paginas_corpo_visao(model):
+        blocos.append("<div class='page'>" + "".join(pagina) + "</div>")
+    return "".join(blocos)
+
+
+def render_html(model: PresentationViewModel) -> str:
+    aviso_pii = model.modo == "beneficiario" and not all(
+        (b.nome or "").startswith("Beneficiário ·") for b in model.beneficiarios
+    )
+    partes = [
+        "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='utf-8'>",
+        f"<title>{html.escape(model.titulo)}</title>",
+        f"<style>{_CSS_BASE}</style></head><body>",
+        _html_paginas(model, aviso_pii=aviso_pii),
+        "</body></html>",
+    ]
     return "".join(partes)
+
+
+def render_html_completo(
+    vm_resumo: PresentationViewModel,
+    vm_faixas: PresentationViewModel,
+    vm_beneficiario: PresentationViewModel,
+) -> str:
+    """Documento cliente com três visões — abas e «ver as três» em CSS puro (radios)."""
+    titulo = vm_resumo.titulo
+    cab_only = "<div class='page'>" + "".join(_montar_cabecalho(vm_resumo, aviso_pii=False)) + "</div>"
+    corpo_resumo = "".join(
+        "<div class='page'>" + "".join(p) + "</div>" for p in _paginas_corpo_visao(vm_resumo)
+    )
+    corpo_faixas = "".join(
+        "<div class='page'>" + "".join(p) + "</div>" for p in _paginas_corpo_visao(vm_faixas)
+    )
+    corpo_benef = "".join(
+        "<div class='page'>" + "".join(p) + "</div>"
+        for p in _paginas_corpo_visao(vm_beneficiario)
+    )
+
+    return "".join(
+        [
+            "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='utf-8'>",
+            f"<title>{html.escape(titulo)}</title>",
+            f"<style>{_CSS_BASE}{_CSS_ABAS}</style></head><body>",
+            # Radios irmãos do nav/corpo: :checked ~ .doc-corpo .visao-* (CSS puro, sem JS).
+            '<input type="radio" name="doc-visao" id="tab-resumo" class="doc-tab-input" checked '
+            'aria-label="Resumo executivo">',
+            '<input type="radio" name="doc-visao" id="tab-faixas" class="doc-tab-input" '
+            'aria-label="Faixas etárias">',
+            '<input type="radio" name="doc-visao" id="tab-benef" class="doc-tab-input" '
+            'aria-label="Por beneficiário">',
+            '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
+            'aria-label="Ver as três visões">',
+            '<nav class="doc-controles no-print" aria-label="Visões do documento">',
+            '<div class="doc-abas" role="tablist" aria-label="Visões">',
+            '<label class="doc-aba" for="tab-resumo" role="tab" aria-controls="visao-resumo">'
+            "Resumo executivo</label>",
+            '<label class="doc-aba" for="tab-faixas" role="tab" aria-controls="visao-faixas">'
+            "Faixas etárias</label>",
+            '<label class="doc-aba" for="tab-benef" role="tab" aria-controls="visao-benef">'
+            "Por beneficiário</label>",
+            "</div>",
+            '<label class="doc-btn-todas" for="tab-todas">Ver as três visões</label>',
+            # Mesmo grupo: «Voltar» seleciona resumo (estado anunciado pelo radio).
+            '<label class="doc-btn-voltar" for="tab-resumo">Voltar às abas</label>',
+            "</nav>",
+            '<div class="doc-corpo">',
+            cab_only,
+            '<section class="visao visao-resumo" id="visao-resumo" role="tabpanel" '
+            'aria-labelledby="tit-resumo">',
+            '<h2 class="visao-titulo" id="tit-resumo">Resumo executivo</h2>',
+            corpo_resumo,
+            "</section>",
+            '<section class="visao visao-faixas" id="visao-faixas" role="tabpanel" '
+            'aria-labelledby="tit-faixas">',
+            '<h2 class="visao-titulo" id="tit-faixas">Faixas etárias</h2>',
+            corpo_faixas,
+            "</section>",
+            '<section class="visao visao-benef" id="visao-benef" role="tabpanel" '
+            'aria-labelledby="tit-benef">',
+            '<h2 class="visao-titulo" id="tit-benef">Por beneficiário</h2>',
+            corpo_benef,
+            "</section>",
+            "</div>",
+            "</body></html>",
+        ]
+    )
+

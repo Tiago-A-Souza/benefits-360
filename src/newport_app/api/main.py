@@ -989,13 +989,15 @@ def create_app(
                 snap.payload,
                 body.propostas_selecionadas or None,
             )
+            modo_vm = "resumo" if body.modo == "completo" else body.modo
             return construir_view_model(
                 snap,
-                modo=body.modo,
+                modo=modo_vm,
                 propostas_selecionadas=propostas,
                 ressalvas=body.ressalvas,
                 titulo=body.titulo,
                 exibir_todas_faixas=body.exibir_todas_faixas,
+                beneficiarios_agregados=body.modo == "completo",
             )
         except SnapshotNaoEncontradoError:
             raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None

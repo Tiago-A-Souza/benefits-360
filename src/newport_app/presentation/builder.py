@@ -269,12 +269,16 @@ def construir_view_model(
     ressalvas: list[str] | None = None,
     titulo: str | None = None,
     exibir_todas_faixas: bool = False,
+    beneficiarios_agregados: bool = False,
 ) -> PresentationViewModel:
     """Monta o ViewModel a partir do comparativo congelado.
 
     ``exibir_todas_faixas`` é ignorado: o payload congelado só traz faixas
     preenchidas, o mesmo recorte da matriz. O parâmetro permanece para não
     quebrar clientes antigos (default False).
+
+    ``beneficiarios_agregados``: omite nomes reais (rótulo por faixa) — uso no
+    documento cliente com três visões.
     """
     del exibir_todas_faixas
     comparativo = ler_comparativo_congelado(snap.payload)
@@ -365,20 +369,25 @@ def construir_view_model(
                 )
             sg = subgrupos_map.get(dados.subgrupo_id or "")
             faixa = dados.faixa
+            faixa_rotulo = (
+                dados.faixa_rotulo
+                or (
+                    ROTULOS_FAIXA[faixa]
+                    if faixa is not None and 0 <= faixa < 10
+                    else None
+                )
+            )
+            if beneficiarios_agregados:
+                rotulo_vida = f"Beneficiário · {faixa_rotulo or 'faixa não informada'}"
+            else:
+                rotulo_vida = dados.nome
             beneficiarios.append(
                 BeneficiarioApresentacao(
                     vida_id=dados.vida_id,
-                    nome=dados.nome,
+                    nome=rotulo_vida,
                     idade=dados.idade,
                     faixa=faixa,
-                    faixa_rotulo=(
-                        dados.faixa_rotulo
-                        or (
-                            ROTULOS_FAIXA[faixa]
-                            if faixa is not None and 0 <= faixa < 10
-                            else None
-                        )
-                    ),
+                    faixa_rotulo=faixa_rotulo,
                     parentesco=dados.parentesco,
                     plano_atual=dados.plano_atual or (sg.plano_nome if sg else None),
                     subgrupo_id=dados.subgrupo_id,

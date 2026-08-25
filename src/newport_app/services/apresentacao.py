@@ -14,10 +14,14 @@ from newport_app.models.snapshot import (
 )
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.delivery_storage import LocalFileDeliveryStorage
-from newport_app.presentation.html_renderer import RENDERER_VERSAO, render_html
+from newport_app.presentation.html_renderer import (
+    RENDERER_VERSAO,
+    render_html,
+    render_html_completo,
+)
 from newport_app.presentation.motor_por_proposta import PropostaNaoCalculavelError
-from newport_app.services.comparativo_ui import resolver_propostas_apresentacao_snapshot
 from newport_app.repository.snapshot import SnapshotRepository
+from newport_app.services.comparativo_ui import resolver_propostas_apresentacao_snapshot
 from newport_app.services.snapshot import AprovacaoInvalidaError, SnapshotService
 from newport_app.snapshot.hashing import hash_sha256_objeto
 
@@ -66,16 +70,58 @@ class ApresentacaoService:
                 "Selecione propostas na tela 5 antes de gerar a apresentação."
             )
 
-        vm = construir_view_model(
-            snap,
-            modo=req.modo,
-            propostas_selecionadas=propostas,
-            ressalvas=req.ressalvas,
-            titulo=req.titulo,
-            exibir_todas_faixas=req.exibir_todas_faixas,
-        )
-        html_content = render_html(vm)
-        digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})
+        if req.modo == "completo":
+            vm_resumo = construir_view_model(
+                snap,
+                modo="resumo",
+                propostas_selecionadas=propostas,
+                ressalvas=req.ressalvas,
+                titulo=req.titulo,
+            )
+            vm_faixas = construir_view_model(
+                snap,
+                modo="faixas",
+                propostas_selecionadas=propostas,
+                ressalvas=req.ressalvas,
+                titulo=req.titulo,
+            )
+            vm_benef = construir_view_model(
+                snap,
+                modo="beneficiario",
+                propostas_selecionadas=propostas,
+                ressalvas=req.ressalvas,
+                titulo=req.titulo,
+                beneficiarios_agregados=True,
+            )
+            html_content = render_html_completo(vm_resumo, vm_faixas, vm_benef)
+            digest = hash_sha256_objeto(
+                {
+                    "html": html_content,
+                    "modo": "completo",
+                    "vm_resumo": vm_resumo.model_dump(mode="json"),
+                    "vm_faixas": vm_faixas.model_dump(mode="json"),
+                    "vm_beneficiario": vm_benef.model_dump(mode="json"),
+                }
+            )
+            aviso = None
+        else:
+            vm = construir_view_model(
+                snap,
+                modo=req.modo,
+                propostas_selecionadas=propostas,
+                ressalvas=req.ressalvas,
+                titulo=req.titulo,
+                exibir_todas_faixas=req.exibir_todas_faixas,
+            )
+            html_content = render_html(vm)
+            digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})
+            aviso = None
+            if req.modo == "beneficiario":
+                aviso = (
+                    "O arquivo contém nomes de beneficiários. "
+                    "Armazene apenas em local privado."
+                )
+
         nome = f"apresentacao_{req.modo}_{snapshot_id[:8]}.html"
         caminho = self._storage.salvar(
             html_content.encode("utf-8"),
@@ -95,12 +141,6 @@ class ApresentacaoService:
             gerado_em=datetime.now(timezone.utc),
         )
         self._repo.salvar_entregavel(ent)
-        aviso = None
-        if req.modo == "beneficiario":
-            aviso = (
-                "O arquivo contém nomes de beneficiários. "
-                "Armazene apenas em local privado."
-            )
         rel = str(Path(caminho).relative_to(self._entregaveis_dir))
         return GerarApresentacaoResponse(
             entregavel_id=ent.id,
