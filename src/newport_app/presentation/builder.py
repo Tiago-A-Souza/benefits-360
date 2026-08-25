@@ -28,6 +28,10 @@ from newport_app.models.responses import (
 )
 from newport_app.models.snapshot import SnapshotCalculo
 from newport_app.presentation.formatacao import formatar_data_br
+from newport_app.presentation.reajuste import (
+    rotulo_reajuste_consolidado_dos_planos,
+    rotulo_reajuste_exibicao,
+)
 from newport_app.presentation.rotulos import copart_descricao, qualificar_rotulos_propostas, rotulo_regime
 from newport_app.snapshot.comparativo import ler_comparativo_congelado
 
@@ -189,6 +193,11 @@ def _mapear_plano(
         faixas=faixas,
         subtotal_vigente_centavos=plano.vigente_centavos,
         subtotal_reajustado_centavos=plano.reajustado_centavos,
+        reajuste_percentual_exibicao=rotulo_reajuste_exibicao(
+            vigente_centavos=plano.vigente_centavos,
+            reajustado_centavos=plano.reajustado_centavos,
+            reajuste_bps_informado=sg.reajuste_bps if sg else None,
+        ),
     )
 
 
@@ -418,4 +427,9 @@ def construir_view_model(
         totais_gerais=totais_gerais,
         secoes_regime=secoes_vm,
         beneficiarios=beneficiarios,
+        reajuste_consolidado_percentual_exibicao=(
+            None
+            if seguro_novo
+            else rotulo_reajuste_consolidado_dos_planos(comparativo.planos_atuais, rascunho)
+        ),
     )

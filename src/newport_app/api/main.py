@@ -53,6 +53,7 @@ from newport_app.models.snapshot import (
     SnapshotCalculo,
 )
 from newport_app.models.responses import (
+    ComparativoComExibicao,
     ComparativoResponse,
     ConfirmarComparativoRequest,
     ConfirmarComparativoResponse,
@@ -801,10 +802,16 @@ def create_app(
             },
         )
 
-    @app.post("/api/estudos/{estudo_id}/calcular", response_model=ComparativoResponse)
-    def calcular_estudo(estudo_id: str) -> ComparativoResponse:
+    @app.post("/api/estudos/{estudo_id}/calcular", response_model=ComparativoComExibicao)
+    def calcular_estudo(estudo_id: str) -> ComparativoComExibicao:
         try:
-            return service.calcular(estudo_id)
+            comparativo = service.calcular(estudo_id)
+            rascunho = repository.obter_rascunho(estudo_id)
+            if rascunho is None:
+                raise EstudoNaoEncontradoError(estudo_id)
+            from newport_app.presentation.reajuste import anexar_exibicao_reajuste
+
+            return anexar_exibicao_reajuste(comparativo, rascunho)
         except EstudoNaoEncontradoError:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         except RascunhoNaoCompilavelError as exc:
@@ -920,9 +927,9 @@ def create_app(
 
     @app.get(
         "/api/estudos/{estudo_id}/snapshots/{snapshot_id}/comparativo",
-        response_model=ComparativoResponse,
+        response_model=ComparativoComExibicao,
     )
-    def comparativo_do_snapshot(estudo_id: str, snapshot_id: str) -> ComparativoResponse:
+    def comparativo_do_snapshot(estudo_id: str, snapshot_id: str) -> ComparativoComExibicao:
         try:
             snap = snapshot_service.obter_snapshot(snapshot_id)
         except SnapshotNaoEncontradoError:
@@ -930,7 +937,11 @@ def create_app(
         if snap.estudo_id != estudo_id:
             raise HTTPException(status_code=404, detail="Snapshot não encontrado") from None
         try:
-            return snapshot_service.comparativo_do_snapshot(snapshot_id)
+            from newport_app.presentation.reajuste import anexar_exibicao_reajuste
+
+            comparativo = snapshot_service.comparativo_do_snapshot(snapshot_id)
+            rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
+            return anexar_exibicao_reajuste(comparativo, rascunho)
         except SnapshotFormatoIncompativelError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
 

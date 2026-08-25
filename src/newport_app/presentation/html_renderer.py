@@ -26,6 +26,17 @@ def _cel(valor: int | None) -> str:
     return html.escape(formatar_reais(valor))
 
 
+def _cel_contrato_atual(
+    reajustado_centavos: int | None,
+    percentual: str | None,
+) -> str:
+    """Documento: só reajustado + percentual; vigente não aparece."""
+    valor = _cel(reajustado_centavos)
+    if percentual:
+        return f"{valor} <small>{html.escape(percentual)}</small>"
+    return valor
+
+
 def _mapa_rotulos_propostas(model: PresentationViewModel) -> dict[str, str]:
     """Resolve nomes comerciais; fallback numerado — nunca expõe id interno."""
     rotulos: dict[str, str] = {}
@@ -110,7 +121,7 @@ def _render_tabela_faixas(
     partes.append("<table><thead><tr>")
     partes.append("<th>Faixa</th><th>Tit.</th><th>Dep.</th><th>Vidas</th>")
     if not seguro_novo:
-        partes.append("<th>Atual vigente</th><th>Atual reajustado</th>")
+        partes.append("<th>Contrato atual</th>")
     for op_id in op_ids:
         rotulo = _rotulo_proposta(op_id, propostas, rotulos)
         partes.append(
@@ -119,14 +130,22 @@ def _render_tabela_faixas(
     partes.append("<th>Obs.</th></tr></thead><tbody>")
 
     for fx in plano.faixas:
-        partes.append(_render_linha_faixa(fx, op_ids, seguro_novo=seguro_novo))
+        partes.append(
+            _render_linha_faixa(
+                fx,
+                op_ids,
+                seguro_novo=seguro_novo,
+                reajuste_percentual=plano.reajuste_percentual_exibicao,
+            )
+        )
     partes.append("</tbody>")
 
     colspan_base = 4
     partes.append(f"<tfoot><tr><td colspan='{colspan_base}'><strong>Totais</strong></td>")
     if not seguro_novo:
-        partes.append(f"<td>{_cel(plano.subtotal_vigente_centavos)}</td>")
-        partes.append(f"<td>{_cel(plano.subtotal_reajustado_centavos)}</td>")
+        partes.append(
+            f"<td>{_cel_contrato_atual(plano.subtotal_reajustado_centavos, plano.reajuste_percentual_exibicao)}</td>"
+        )
     for op_id in op_ids:
         subtotal = sum(
             col.subtotal_centavos or 0
@@ -144,21 +163,13 @@ def _render_linha_faixa(
     op_ids: list[str],
     *,
     seguro_novo: bool = False,
+    reajuste_percentual: str | None = None,
 ) -> str:
     partes = [
         f"<tr><td>{html.escape(fx.rotulo)}</td>",
         f"<td>{fx.qtd_titulares}</td><td>{fx.qtd_dependentes}</td><td>{fx.qtd_total}</td>",
     ]
     if not seguro_novo:
-        vigente = fx.atual_vigente_total_centavos
-        if fx.atual_vigente_unitario_centavos is not None and fx.qtd_total > 0:
-            cel_vig = (
-                f"{_cel(fx.atual_vigente_unitario_centavos)}"
-                f"<br><small>total {_cel(vigente)}</small>"
-            )
-        else:
-            cel_vig = _cel(vigente)
-
         reaj = fx.atual_reajustado_total_centavos
         if fx.atual_reajustado_unitario_centavos is not None and fx.qtd_total > 0:
             cel_reaj = (
@@ -167,7 +178,9 @@ def _render_linha_faixa(
             )
         else:
             cel_reaj = _cel(reaj)
-        partes.append(f"<td>{cel_vig}</td><td>{cel_reaj}</td>")
+        if reajuste_percentual:
+            cel_reaj = f"{cel_reaj} <small>{html.escape(reajuste_percentual)}</small>"
+        partes.append(f"<td>{cel_reaj}</td>")
 
     for op_id in op_ids:
         col = next((c for c in fx.propostas if c.opcao_id == op_id), None)
@@ -274,17 +287,18 @@ def _render_resumo(
     if not seguro_novo:
         for plano in planos:
             partes.append(f"<tr><td>{html.escape(plano.plano_nome)}</td>")
-            vigente = _cel(plano.subtotal_vigente_centavos)
-            reaj = _cel(plano.subtotal_reajustado_centavos)
-            partes.append(f"<td>{vigente} vigente<br><small>{reaj} reajustado</small></td>")
+            partes.append(
+                f"<td>{_cel_contrato_atual(plano.subtotal_reajustado_centavos, plano.reajuste_percentual_exibicao)}</td>"
+            )
             for op_id in op_ids:
                 partes.append(f"<td>{_cel_subtotal_plano(plano, op_id)}</td>")
             partes.append("</tr>")
         if planos:
             partes.append("<tr><td>Consolidado</td>")
-            vigente_c = sum((p.subtotal_vigente_centavos or 0) for p in planos) or None
             reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
-            partes.append(f"<td>{_cel(vigente_c)} vigente<br><small>{_cel(reaj_c)} reajustado</small></td>")
+            partes.append(
+                f"<td>{_cel_contrato_atual(reaj_c, model.reajuste_consolidado_percentual_exibicao)}</td>"
+            )
             for op_id in op_ids:
                 total = secao.totais.propostas.get(op_id)
                 if total is None:
@@ -470,28 +484,38 @@ def render_html(model: PresentationViewModel) -> str:
     if model.modo == "beneficiario" and model.beneficiarios:
         op_ids = model.propostas_selecionadas
         rotulos = _mapa_rotulos_propostas(model)
+        seguro_novo = model.formato == "novo"
         for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA):
             chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
             bloco = ["<section class='secao-regime'><h2>Detalhamento por beneficiário</h2>"]
             bloco.append("<table><thead><tr>")
-            bloco.append(
+            cab = (
                 "<th>Nome</th><th>Idade</th><th>Faixa</th><th>Parentesco</th>"
-                "<th>Plano atual</th><th>Vigente</th><th>Reajustado</th>"
+                "<th>Plano atual</th>"
             )
+            if not seguro_novo:
+                cab += "<th>Contrato atual</th>"
+            bloco.append(cab)
             for op_id in chunk:
                 rotulo = rotulos.get(op_id, "Proposta")
                 bloco.append(f"<th>{html.escape(rotulo)}<br><small>Valor · Δ</small></th>")
             bloco.append("</tr></thead><tbody>")
+            pct_por_subgrupo: dict[str, str | None] = {}
+            for secao in model.secoes_regime:
+                for pl in secao.planos_atuais:
+                    pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
             for b in model.beneficiarios:
-                bloco.append(
+                pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+                linha = (
                     f"<tr><td>{html.escape(b.nome)}</td>"
                     f"<td>{b.idade if b.idade is not None else '—'}</td>"
                     f"<td>{html.escape(b.faixa_rotulo or '—')}</td>"
                     f"<td>{html.escape(b.parentesco or '—')}</td>"
                     f"<td>{html.escape(b.plano_atual or '—')}</td>"
-                    f"<td>{_cel(b.atual_vigente_centavos)}</td>"
-                    f"<td>{_cel(b.atual_reajustado_centavos)}</td>"
                 )
+                if not seguro_novo:
+                    linha += f"<td>{_cel_contrato_atual(b.atual_reajustado_centavos, pct)}</td>"
+                bloco.append(linha)
                 for op_id in chunk:
                     col = next((c for c in b.propostas if c.opcao_id == op_id), None)
                     bloco.append(

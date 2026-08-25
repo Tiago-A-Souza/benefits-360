@@ -140,9 +140,9 @@ def _centavos_valor(valor) -> int | None:
 
 
 def _calcular_diff_bps(atual_centavos: int, proposta_centavos: int) -> int | None:
-    if atual_centavos == 0:
-        return None
-    return round(((proposta_centavos - atual_centavos) / atual_centavos) * 10_000)
+    from newport_app.presentation.reajuste import bps_variacao
+
+    return bps_variacao(atual_centavos, proposta_centavos)
 
 
 def _rotulo_faixa(faixa: int | None) -> str | None:
