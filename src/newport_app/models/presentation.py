@@ -120,6 +120,8 @@ class PresentationViewModel(BaseModel):
     aviso_rascunho_interno: str = (
         "RASCUNHO INTERNO — políticas provisórias sujeitas a homologação."
     )
+    vidas_calculadas: int | None = None
+    qtd_planos_vigentes: int | None = None
     totais_gerais: TotaisGeraisApresentacao = Field(default_factory=TotaisGeraisApresentacao)
     secoes_regime: list[SecaoRegimeApresentacao] = Field(default_factory=list)
     beneficiarios: list[BeneficiarioApresentacao] = Field(default_factory=list)

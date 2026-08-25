@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.models.draft import RascunhoEstudo
@@ -270,6 +270,7 @@ def construir_view_model(
     titulo: str | None = None,
     exibir_todas_faixas: bool = False,
     beneficiarios_agregados: bool = False,
+    aprovado_em: datetime | None = None,
 ) -> PresentationViewModel:
     """Monta o ViewModel a partir do comparativo congelado.
 
@@ -279,6 +280,9 @@ def construir_view_model(
 
     ``beneficiarios_agregados``: omite nomes reais (rótulo por faixa) — uso no
     documento cliente com três visões.
+
+    ``aprovado_em``: data da revisão Newport (B-01). Sem aprovação viva a
+    geração de HTML é recusada no serviço; testes unitários podem omitir.
     """
     del exibir_todas_faixas
     comparativo = ler_comparativo_congelado(snap.payload)
@@ -288,6 +292,11 @@ def construir_view_model(
     propostas_sel = [por_id[op_id] for op_id in propostas_ids]
     vidas = _vidas_unicas(propostas_sel)
     seguro_novo = comparativo.formato == "novo" or rascunho.formato == "novo"
+    data_revisao = formatar_data_br(aprovado_em) if aprovado_em is not None else ""
+    vidas_calculadas = comparativo.beneficiarios_calculados or None
+    qtd_planos = len(comparativo.planos_atuais) if not seguro_novo else None
+    if qtd_planos == 0:
+        qtd_planos = None
     regimes_ordem = _coletar_regimes(rascunho, propostas_sel)
     total_atual = _total_atual_congelado(comparativo, rascunho, seguro_novo=seguro_novo)
 
@@ -423,16 +432,22 @@ def construir_view_model(
 
     from newport_app.rascunho.acomodacao import coletar_divergencias_acomodacao
 
+    nome_cliente = None
+    if rascunho.empresa_cliente and (rascunho.empresa_cliente.nome or "").strip():
+        nome_cliente = rascunho.empresa_cliente.nome.strip()
+
     return PresentationViewModel(
         titulo=titulo or rascunho.titulo,
-        subtitulo=rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None,
-        data_apresentacao=datetime.now(timezone.utc).strftime("%d/%m/%Y"),
+        subtitulo=nome_cliente,
+        data_apresentacao=data_revisao or "",
         estudo_id=snap.estudo_id,
         modo=modo,
         formato=rascunho.formato,
         propostas_selecionadas=propostas_ids,
         ressalvas=ressalvas or [],
         avisos_acomodacao=coletar_divergencias_acomodacao(rascunho),
+        vidas_calculadas=vidas_calculadas,
+        qtd_planos_vigentes=qtd_planos,
         totais_gerais=totais_gerais,
         secoes_regime=secoes_vm,
         beneficiarios=beneficiarios,

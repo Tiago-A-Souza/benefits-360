@@ -77,6 +77,7 @@ class ApresentacaoService:
                 propostas_selecionadas=propostas,
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
+                aprovado_em=aprov.aprovado_em,
             )
             vm_faixas = construir_view_model(
                 snap,
@@ -84,6 +85,7 @@ class ApresentacaoService:
                 propostas_selecionadas=propostas,
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
+                aprovado_em=aprov.aprovado_em,
             )
             vm_benef = construir_view_model(
                 snap,
@@ -92,6 +94,7 @@ class ApresentacaoService:
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
                 beneficiarios_agregados=True,
+                aprovado_em=aprov.aprovado_em,
             )
             html_content = render_html_completo(vm_resumo, vm_faixas, vm_benef)
             digest = hash_sha256_objeto(
@@ -112,6 +115,7 @@ class ApresentacaoService:
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
                 exibir_todas_faixas=req.exibir_todas_faixas,
+                aprovado_em=aprov.aprovado_em,
             )
             html_content = render_html(vm)
             digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})
