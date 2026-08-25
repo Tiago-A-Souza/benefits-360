@@ -141,6 +141,12 @@ class PlanoAtualComparativo(BaseModel):
     faixas: list[FaixaPlanoComparativo] = Field(default_factory=list)
 
 
+class PlanoAtualComExibicao(PlanoAtualComparativo):
+    """Plano na tela — percentual derivado fora do payload hasheado."""
+
+    reajuste_percentual_exibicao: str | None = None
+
+
 class RecorteSubgrupoComparativo(BaseModel):
     subgrupo_id: str
     plano_nome: str
@@ -267,3 +273,10 @@ class ComparativoResponse(BaseModel):
     pendencias: list[PendenciaItem] = Field(default_factory=list)
     auditoria: list[AuditoriaItem] = Field(default_factory=list)
     hash_comparativo: str | None = None
+
+
+class ComparativoComExibicao(ComparativoResponse):
+    """Resposta da API de tela — não entra no payload_nucleo / hash."""
+
+    planos_atuais: list[PlanoAtualComExibicao] = Field(default_factory=list)
+    reajuste_consolidado_percentual_exibicao: str | None = None

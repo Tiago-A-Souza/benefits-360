@@ -102,7 +102,11 @@ def test_html_faixas_sem_nomes(stack):
     conteudo = caminho.read_text(encoding="utf-8")
     assert "Beneficiário fictício" not in conteudo
     assert "1970" not in conteudo
-    assert "http://" not in conteudo and "https://" not in conteudo
+    # Sem CDN externo; o único https permitido é o site da marca no rodapé.
+    assert "fonts.googleapis.com" not in conteudo
+    assert "cdn." not in conteudo.lower()
+    assert conteudo.count("https://") == 1
+    assert "newportconsultoria.com.br" in conteudo
     assert "<style>" in conteudo
     assert res.modo == "faixas"
 

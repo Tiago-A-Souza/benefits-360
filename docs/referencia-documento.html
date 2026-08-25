@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anistia Internacional Brasil · Comparativo de Saúde · NewPort</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --grafite:#232932;   --grafite-2:#3A3F47;   --grafite-3:#5B5B58;
+  --ouro:#BF995B;      --ouro-cl:#F6F0E6;     --ouro-esc:#A68055;
+  --ciano:#37B5FF;     --ciano-cl:#EAF7FF;
+  --papel:#FFFFFF;     --papel-2:#F7F7F5;     --papel-3:#EFEEEA;
+  --risco:#DEDCD6;
+  --verde:#1E7A5A;     --verde-cl:#E9F4EF;
+  --vinho:#A8323C;     --vinho-cl:#FBEDEE;
+  --sans:'Poppins',system-ui,sans-serif;
+  --serif:'Playfair Display',Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
+  font-size:14px;font-weight:400;line-height:1.55;-webkit-font-smoothing:antialiased}
+.n{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.folha{max-width:1180px;margin:0 auto;background:var(--papel);
+  box-shadow:0 1px 3px rgba(35,41,50,.07),0 12px 40px rgba(35,41,50,.06)}
+
+/* ---------- capa ---------- */
+.capa{background:var(--grafite);color:#fff;padding:44px 56px 40px;position:relative;overflow:hidden}
+.capa::after{content:"";position:absolute;right:-90px;bottom:-140px;width:340px;height:340px;
+  border-radius:50%;border:1.5px solid rgba(191,153,91,.22)}
+.capa::before{content:"";position:absolute;right:10px;bottom:-90px;width:200px;height:200px;
+  border-radius:50%;border:1.5px solid rgba(55,181,255,.18)}
+.marca{display:flex;align-items:flex-end;gap:14px;margin-bottom:38px;position:relative;z-index:2}
+.marca .wm{font-family:var(--serif);font-size:34px;font-weight:600;color:var(--ouro);line-height:.9;letter-spacing:-.01em}
+.marca .sub{font-size:12px;font-weight:500;letter-spacing:.34em;color:#fff;padding-bottom:5px}
+.capa .eyebrow{font-size:11px;font-weight:600;letter-spacing:.28em;color:var(--ouro);margin:0 0 12px;position:relative;z-index:2}
+.capa h1{margin:0;font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1.05;position:relative;z-index:2}
+.capa h1 em{display:block;font-style:normal;font-weight:300;color:#B9BEC6;font-size:24px;letter-spacing:-.02em;margin-top:6px}
+.capa .lead{margin:26px 0 0;font-size:13.5px;font-weight:300;color:#C9CDD3;max-width:56ch;position:relative;z-index:2}
+.capa .fatos{display:flex;flex-wrap:wrap;gap:0;margin-top:32px;position:relative;z-index:2}
+.capa .ft{padding-right:38px;margin-right:38px;border-right:1px solid rgba(255,255,255,.14)}
+.capa .ft:last-child{border-right:0;margin-right:0;padding-right:0}
+.capa .ft b{display:block;font-size:26px;font-weight:700;letter-spacing:-.035em;line-height:1}
+.capa .ft span{display:block;font-size:10.5px;font-weight:500;letter-spacing:.16em;color:#8E949D;margin-top:6px}
+
+/* ---------- rascunho ---------- */
+.rascunho{background:var(--ouro-cl);border-bottom:1px solid rgba(191,153,91,.4);
+  padding:11px 56px;font-size:12px;font-weight:500;color:var(--ouro-esc);letter-spacing:.03em}
+
+/* ---------- abas sem script ---------- */
+.abas-in{position:absolute;opacity:0;pointer-events:none}
+.nav{display:flex;align-items:center;gap:0;flex-wrap:wrap;padding:0 56px;background:var(--papel);
+  border-bottom:1px solid var(--risco);position:sticky;top:0;z-index:20}
+.nav label{padding:17px 0;margin-right:34px;font-size:12px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--grafite-3);cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:color .13s,border-color .13s}
+.nav label:hover{color:var(--grafite)}
+.nav .todas{margin-left:auto;margin-right:0;border:1px solid var(--risco);border-radius:2px;
+  padding:8px 15px;font-size:11px;letter-spacing:.12em;align-self:center}
+.nav .todas:hover{border-color:var(--ouro);color:var(--ouro-esc);background:var(--ouro-cl)}
+#t-res:checked~.nav label[for=t-res],
+#t-fai:checked~.nav label[for=t-fai],
+#t-ben:checked~.nav label[for=t-ben]{color:var(--grafite);border-bottom-color:var(--ouro)}
+#t-all:checked~.nav .todas{background:var(--grafite);border-color:var(--grafite);color:#fff}
+#t-all:checked~.nav .todas .abrir{display:none}
+.nav .todas .voltar{display:none}
+#t-all:checked~.nav .todas .voltar{display:inline}
+.visao{display:none}
+#t-res:checked~.corpo .v-res,
+#t-fai:checked~.corpo .v-fai,
+#t-ben:checked~.corpo .v-ben,
+#t-all:checked~.corpo .visao{display:block}
+
+/* ---------- seções ---------- */
+.corpo{padding:0 56px 64px}
+@media(max-width:720px){.capa,.nav,.corpo,.rascunho{padding-left:22px;padding-right:22px}}
+.tit{padding:44px 0 22px}
+.tit .n1{display:block;font-size:11px;font-weight:600;letter-spacing:.26em;color:var(--ouro);margin-bottom:9px}
+.tit h2{margin:0;font-size:29px;font-weight:800;letter-spacing:-.035em;line-height:1.05;text-transform:uppercase}
+.tit h2 span{display:block;font-weight:300;color:var(--grafite-3)}
+.tit p{margin:12px 0 0;font-size:13.5px;font-weight:300;color:var(--grafite-2);max-width:74ch}
+.regime{display:flex;align-items:center;gap:14px;margin:34px 0 16px}
+.regime b{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--grafite);white-space:nowrap}
+.regime i{flex:1;height:1px;background:var(--risco)}
+.regime em{font-style:normal;font-size:11.5px;font-weight:400;color:var(--grafite-3);white-space:nowrap}
+
+/* ---------- tabelas ---------- */
+.rolo{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:13px 14px;text-align:right;white-space:nowrap;vertical-align:top}
+th:first-child,td:first-child{text-align:left;white-space:normal;padding-left:0}
+th:last-child,td:last-child{padding-right:0}
+thead th{background:var(--grafite);color:#fff;font-size:10.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;padding-top:12px;padding-bottom:12px;vertical-align:bottom}
+thead th:first-child{padding-left:16px}
+thead th:last-child{padding-right:16px}
+thead th .op{display:block;font-size:12.5px;font-weight:600;letter-spacing:-.01em;text-transform:none;margin-bottom:3px}
+thead th .od{display:block;font-size:10px;font-weight:400;letter-spacing:.1em;color:#9AA0A8}
+th.atual{background:var(--ouro)}
+th.atual .od{color:#F2E7D5}
+td.atual{background:var(--ouro-cl)}
+tbody td{border-bottom:1px solid var(--risco)}
+tbody tr:last-child td{border-bottom:0}
+tr.plano td:first-child{font-weight:600}
+tr.plano .vidas{display:block;font-size:11.5px;font-weight:400;color:var(--grafite-3);margin-top:2px}
+tr.total td{border-top:2px solid var(--grafite);border-bottom:0;font-weight:700;font-size:14.5px;background:var(--papel-2)}
+tr.total td.atual{background:#F1E7D6}
+.pct{display:block;font-size:11px;font-weight:500;margin-top:2px}
+.ajuste{font-size:11px;font-weight:600;color:var(--ouro-esc);margin-left:5px}
+.neg{color:var(--verde)} .pos{color:var(--vinho)}
+.uni{display:block;font-size:11px;font-weight:400;color:var(--grafite-3);margin-top:2px}
+.obs{display:block;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ouro-esc);margin-top:4px}
+
+/* ---------- destaque ---------- */
+.recomenda{display:flex;gap:0;flex-wrap:wrap;margin:30px 0 0;border:1px solid var(--risco)}
+.rc{flex:1;min-width:190px;padding:20px 22px;border-right:1px solid var(--risco)}
+.rc:last-child{border-right:0}
+.rc.melhor{background:var(--grafite);color:#fff}
+.rc .rt{display:block;font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--grafite-3);margin-bottom:8px}
+.rc.melhor .rt{color:var(--ouro)}
+.rc .rv{display:block;font-size:23px;font-weight:700;letter-spacing:-.035em;line-height:1}
+.rc .rn{display:block;font-size:12px;font-weight:400;color:var(--grafite-3);margin-top:6px}
+.rc.melhor .rn{color:#B9BEC6}
+
+.nota{margin:34px 0 0;padding:16px 20px;background:var(--papel-2);border-left:2px solid var(--ouro);
+  font-size:12.5px;font-weight:300;color:var(--grafite-2)}
+.nota b{font-weight:600;color:var(--grafite)}
+
+/* ---------- rodapé ---------- */
+.pe{background:var(--grafite);color:#8E949D;padding:30px 56px;display:flex;justify-content:space-between;
+  gap:20px;flex-wrap:wrap;font-size:11.5px;font-weight:300}
+.pe .wm{font-family:var(--serif);font-size:19px;color:var(--ouro);display:block;margin-bottom:4px}
+.pe a{color:var(--ciano);text-decoration:none}
+
+@media print{
+  body{background:#fff}
+  .folha{box-shadow:none;max-width:none}
+  .nav{display:none}
+  .capa::after,.capa::before{display:none}
+  .rolo{overflow:visible}
+  thead{display:table-header-group}
+  .tit{page-break-after:avoid}
+  table{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="folha">
+
+  <header class="capa">
+    <div class="marca"><span class="wm">NewPort</span><span class="sub">BENEFÍCIOS</span></div>
+    <p class="eyebrow">Comparativo de benefícios · Saúde</p>
+    <h1>Anistia Internacional Brasil<em>Renovação 2026 · estudo 21</em></h1>
+    <p class="lead">Tranquilidade, segurança e praticidade na escolha de benefícios.</p>
+    <div class="fatos n">
+      <div class="ft"><b>41</b><span>VIDAS</span></div>
+      <div class="ft"><b>2</b><span>PLANOS VIGENTES</span></div>
+      <div class="ft"><b>R$ 47.613,62</b><span>BASE MENSAL REAJUSTADA</span></div>
+      <div class="ft"><b>6</b><span>PROPOSTAS</span></div>
+    </div>
+  </header>
+
+  <div class="rascunho">RASCUNHO INTERNO — políticas provisórias sujeitas a homologação.</div>
+
+  <input class="abas-in" type="radio" name="v" id="t-res" checked>
+  <input class="abas-in" type="radio" name="v" id="t-fai">
+  <input class="abas-in" type="radio" name="v" id="t-ben">
+  <input class="abas-in" type="radio" name="v" id="t-all">
+
+  <nav class="nav">
+    <label for="t-res">Resumo executivo</label>
+    <label for="t-fai">Faixas etárias</label>
+    <label for="t-ben">Por beneficiário</label>
+    <label class="todas" for="t-all"><span class="abrir">Ver as três visões</span><span class="voltar">Voltar às abas</span></label>
+    <label class="todas" for="t-res" style="display:none"></label>
+  </nav>
+
+  <div class="corpo">
+
+    <!-- ============ RESUMO ============ -->
+    <section class="visao v-res">
+      <div class="tit">
+        <span class="n1">01</span>
+        <h2>Comparativo<span>Financeiro</span></h2>
+        <p>O contrato atual está apresentado com o reajuste de 10% já aplicado. As propostas são comparadas contra esse valor.</p>
+      </div>
+
+      <div class="regime"><b>Sem coparticipação</b><i></i><em>5 propostas</em></div>
+      <div class="rolo">
+        <table class="n">
+          <thead><tr>
+            <th>Indicador</th>
+            <th class="atual"><span class="op">Contrato atual</span><span class="od">2 PLANOS</span></th>
+            <th><span class="op">P420 Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Prata Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Ouro Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Direto Apartamento</span><span class="od">SULAMÉRICA</span></th>
+            <th><span class="op">Executivo R2</span><span class="od">SULAMÉRICA</span></th>
+          </tr></thead>
+          <tbody>
+            <tr class="plano">
+              <td>AMIL S750 — Apto.<span class="vidas">36 vidas</span></td>
+              <td class="atual">R$ 28.862,01<span class="ajuste">+10%</span></td>
+              <td>R$ 18.630,24</td><td>R$ 23.607,17</td><td>R$ 33.551,83</td><td>R$ 18.912,97</td><td>R$ 57.323,43</td>
+            </tr>
+            <tr class="plano">
+              <td>AMIL ONE S2500 — Apto.<span class="vidas">5 vidas</span></td>
+              <td class="atual">R$ 18.751,61<span class="ajuste">+10%</span></td>
+              <td>R$ 4.814,49</td><td>R$ 6.100,61</td><td>R$ 8.670,54</td><td>R$ 5.503,17</td><td>R$ 16.679,70</td>
+            </tr>
+            <tr class="total">
+              <td>Consolidado</td>
+              <td class="atual">R$ 47.613,62<span class="ajuste">+10%</span></td>
+              <td>R$ 23.444,73</td><td>R$ 29.707,78</td><td>R$ 42.222,37</td><td>R$ 24.416,14</td><td>R$ 74.003,13</td>
+            </tr>
+            <tr>
+              <td>Diferença mensal</td><td class="atual">referência</td>
+              <td class="neg">−R$ 24.168,89<span class="pct neg">−50,8%</span></td>
+              <td class="neg">−R$ 17.905,84<span class="pct neg">−37,6%</span></td>
+              <td class="neg">−R$ 5.391,25<span class="pct neg">−11,3%</span></td>
+              <td class="neg">−R$ 23.197,48<span class="pct neg">−48,7%</span></td>
+              <td class="pos">+R$ 26.389,51<span class="pct pos">+55,4%</span></td>
+            </tr>
+            <tr>
+              <td>Diferença anual</td><td class="atual">—</td>
+              <td class="neg">−R$ 290.026,68</td><td class="neg">−R$ 214.870,08</td><td class="neg">−R$ 64.695,00</td>
+              <td class="neg">−R$ 278.369,76</td><td class="pos">+R$ 316.674,12</td>
+            </tr>
+            <tr>
+              <td>Validade da cotação</td><td class="atual">—</td>
+              <td>02/07/2026</td><td>02/07/2026</td><td>02/07/2026</td><td>10/04/2026</td><td>06/03/2026</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="regime"><b>Coparticipação 30%</b><i></i><em>1 proposta · não se compara linha a linha com as anteriores</em></div>
+      <div class="rolo">
+        <table class="n">
+          <thead><tr>
+            <th>Indicador</th>
+            <th class="atual"><span class="op">Contrato atual</span><span class="od">2 PLANOS</span></th>
+            <th><span class="op">P420 Q Copar 30</span><span class="od">PORTO SEGURO</span></th>
+            <th style="width:44%;background:var(--papel)"></th>
+          </tr></thead>
+          <tbody>
+            <tr class="plano"><td>AMIL S750 — Apto.</td><td class="atual">R$ 28.862,01<span class="ajuste">+10%</span></td><td>R$ 15.276,89</td><td></td></tr>
+            <tr class="plano"><td>AMIL ONE S2500 — Apto.</td><td class="atual">R$ 18.751,61<span class="ajuste">+10%</span></td><td>R$ 3.947,88</td><td></td></tr>
+            <tr class="total"><td>Consolidado</td><td class="atual">R$ 47.613,62<span class="ajuste">+10%</span></td><td>R$ 19.224,77</td><td></td></tr>
+            <tr><td>Diferença mensal</td><td class="atual">referência</td><td class="neg">−R$ 28.388,85<span class="pct neg">−59,6%</span></td><td></td></tr>
+            <tr><td>Diferença anual</td><td class="atual">—</td><td class="neg">−R$ 340.666,20</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="recomenda">
+        <div class="rc melhor"><span class="rt">Maior economia</span><span class="rv">R$ 340.666,20</span><span class="rn">ao ano · P420 Q Copar 30</span></div>
+        <div class="rc"><span class="rt">Sem coparticipação</span><span class="rv">R$ 290.026,68</span><span class="rn">ao ano · P420 Q</span></div>
+        <div class="rc"><span class="rt">Base atual</span><span class="rv">R$ 571.363,44</span><span class="rn">ao ano · contrato reajustado</span></div>
+      </div>
+
+      <p class="nota"><b>Coparticipação.</b> A proposta com coparticipação de 30% apresenta a menor mensalidade, mas o beneficiário passa a pagar parte do valor a cada utilização. A comparação de mensalidade isolada não reflete o custo total.</p>
+    </section>
+
+    <!-- ============ FAIXAS ============ -->
+    <section class="visao v-fai">
+      <div class="tit">
+        <span class="n1">02</span>
+        <h2>Distribuição<span>Por faixa etária</span></h2>
+        <p>Valores por faixa da ANS, para cada plano vigente. Faixas sem vidas não são exibidas.</p>
+      </div>
+
+      <div class="regime"><b>AMIL S750 — Apartamento</b><i></i><em>36 vidas · sem coparticipação</em></div>
+      <div class="rolo">
+        <table class="n">
+          <thead><tr>
+            <th>Faixa</th><th>Vidas</th>
+            <th class="atual"><span class="op">Contrato atual</span><span class="od">REAJUSTADO</span></th>
+            <th><span class="op">P420 Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Prata Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Ouro Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><td>0 a 18</td><td>3</td><td class="atual">R$ 1.351,58<span class="uni">R$ 450,53 cada</span></td><td>R$ 895,53<span class="uni">R$ 298,51 cada</span></td><td>R$ 1.131,93<span class="uni">R$ 377,31 cada</span></td><td>R$ 1.608,75<span class="uni">R$ 536,25 cada</span></td></tr>
+            <tr><td>19 a 23</td><td>4</td><td class="atual">R$ 2.032,94<span class="obs">valores individuais diferentes</span></td><td>R$ 1.085,72</td><td>R$ 1.830,28</td><td>R$ 2.601,28</td></tr>
+            <tr><td>24 a 28</td><td>4</td><td class="atual">R$ 2.573,69<span class="uni">R$ 643,42 cada</span></td><td>R$ 1.309,36</td><td>R$ 2.207,92</td><td>R$ 3.138,04</td></tr>
+            <tr><td>29 a 33</td><td>10</td><td class="atual">R$ 7.721,12<span class="uni">R$ 772,11 cada</span></td><td>R$ 3.746,10</td><td>R$ 6.319,20</td><td>R$ 8.981,20</td></tr>
+            <tr><td>34 a 38</td><td>10</td><td class="atual">R$ 8.068,61<span class="obs">valores individuais diferentes</span></td><td>R$ 4.058,60</td><td>R$ 6.846,90</td><td>R$ 9.731,20</td></tr>
+            <tr><td>39 a 43</td><td>2</td><td class="atual">R$ 1.783,58<span class="uni">R$ 891,79 cada</span></td><td>R$ 838,56</td><td>R$ 1.414,22</td><td>R$ 2.009,96</td></tr>
+            <tr><td>44 a 48</td><td>1</td><td class="atual">R$ 1.114,73</td><td>R$ 500,84</td><td>R$ 844,66</td><td>R$ 1.200,48</td></tr>
+            <tr><td>54 a 58</td><td>1</td><td class="atual">R$ 1.532,76</td><td>R$ 666,20</td><td>R$ 1.123,52</td><td>R$ 1.596,81</td></tr>
+            <tr><td>59+</td><td>1</td><td class="atual">R$ 2.683,00</td><td>R$ 1.119,88</td><td>R$ 1.888,54</td><td>R$ 2.684,11</td></tr>
+            <tr class="total"><td>Totais</td><td>36</td><td class="atual">R$ 28.862,01</td><td>R$ 18.630,24</td><td>R$ 23.607,17</td><td>R$ 33.551,83</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="regime"><b>AMIL ONE S2500 — Apartamento</b><i></i><em>5 vidas · sem coparticipação</em></div>
+      <div class="rolo">
+        <table class="n">
+          <thead><tr>
+            <th>Faixa</th><th>Vidas</th>
+            <th class="atual"><span class="op">Contrato atual</span><span class="od">REAJUSTADO</span></th>
+            <th><span class="op">P420 Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Prata Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Ouro Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><td>39 a 43</td><td>2</td><td class="atual">R$ 3.993,68<span class="uni">R$ 1.996,84 cada</span></td><td>R$ 838,56</td><td>R$ 1.414,22</td><td>R$ 2.009,96</td></tr>
+            <tr><td>49 a 53</td><td>1</td><td class="atual">R$ 2.745,67</td><td>R$ 538,86</td><td>R$ 909,31</td><td>R$ 1.292,36</td></tr>
+            <tr><td>59+</td><td>2</td><td class="atual">R$ 12.012,26<span class="uni">R$ 6.006,13 cada</span></td><td>R$ 2.239,76</td><td>R$ 3.777,08</td><td>R$ 5.368,22</td></tr>
+            <tr class="total"><td>Totais</td><td>5</td><td class="atual">R$ 18.751,61</td><td>R$ 4.814,49</td><td>R$ 6.100,61</td><td>R$ 8.670,54</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ BENEFICIÁRIO ============ -->
+    <section class="visao v-ben">
+      <div class="tit">
+        <span class="n1">03</span>
+        <h2>Detalhamento<span>Por beneficiário</span></h2>
+        <p>Uma linha por vida, identificada pela faixa etária e pelo plano vigente. Nomes não são exibidos neste material.</p>
+      </div>
+      <div class="rolo">
+        <table class="n">
+          <thead><tr>
+            <th>Beneficiário</th><th>Plano vigente</th>
+            <th class="atual"><span class="op">Contrato atual</span><span class="od">REAJUSTADO</span></th>
+            <th><span class="op">P420 Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Prata Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+            <th><span class="op">Ouro Mais I Q</span><span class="od">PORTO SEGURO</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><td>29 a 33</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 772,11</td><td>R$ 374,61</td><td>R$ 631,92</td><td>R$ 898,12</td></tr>
+            <tr><td>34 a 38</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 810,72</td><td>R$ 405,86</td><td>R$ 684,69</td><td>R$ 973,12</td></tr>
+            <tr><td>24 a 28</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 643,42</td><td>R$ 327,34</td><td>R$ 551,98</td><td>R$ 784,51</td></tr>
+            <tr><td>0 a 18</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 450,53</td><td>R$ 298,51</td><td>R$ 377,31</td><td>R$ 536,25</td></tr>
+            <tr><td>19 a 23</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 450,53</td><td>R$ 271,43</td><td>R$ 457,57</td><td>R$ 650,32</td></tr>
+            <tr><td>44 a 48</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 1.114,73</td><td>R$ 500,84</td><td>R$ 844,66</td><td>R$ 1.200,48</td></tr>
+            <tr><td>59+</td><td>AMIL S750 — Apto.</td><td class="atual">R$ 2.683,00</td><td>R$ 1.119,88</td><td>R$ 1.888,54</td><td>R$ 2.684,11</td></tr>
+            <tr><td>49 a 53</td><td>AMIL ONE S2500 — Apto.</td><td class="atual">R$ 2.745,67</td><td>R$ 538,86</td><td>R$ 909,31</td><td>R$ 1.292,36</td></tr>
+            <tr><td>59+</td><td>AMIL ONE S2500 — Apto.</td><td class="atual">R$ 6.006,13</td><td>R$ 1.119,88</td><td>R$ 1.888,54</td><td>R$ 2.684,11</td></tr>
+            <tr><td>39 a 43</td><td>AMIL ONE S2500 — Apto.</td><td class="atual">R$ 1.996,84</td><td>R$ 419,28</td><td>R$ 707,11</td><td>R$ 1.004,98</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota"><b>Amostra.</b> Este protótipo exibe dez das 41 linhas. O documento real traz todas.</p>
+    </section>
+
+  </div>
+
+  <footer class="pe">
+    <div><span class="wm">NewPort</span>Consultoria de Benefícios · <a href="https://newportconsultoria.com.br">newportconsultoria.com.br</a></div>
+    <div>Anistia Internacional Brasil · estudo 21 · congelado em 25/08/2026<br>Referência interna aa8e7f07</div>
+  </footer>
+</div>
+</body>
+</html>

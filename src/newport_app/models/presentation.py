@@ -54,6 +54,7 @@ class PlanoAtualApresentacao(BaseModel):
     faixas: list[FaixaApresentacao] = Field(default_factory=list)
     subtotal_vigente_centavos: int | None = None
     subtotal_reajustado_centavos: int | None = None
+    reajuste_percentual_exibicao: str | None = None
 
 
 class BeneficiarioPropostaColuna(BaseModel):
@@ -119,6 +120,9 @@ class PresentationViewModel(BaseModel):
     aviso_rascunho_interno: str = (
         "RASCUNHO INTERNO — políticas provisórias sujeitas a homologação."
     )
+    vidas_calculadas: int | None = None
+    qtd_planos_vigentes: int | None = None
     totais_gerais: TotaisGeraisApresentacao = Field(default_factory=TotaisGeraisApresentacao)
     secoes_regime: list[SecaoRegimeApresentacao] = Field(default_factory=list)
     beneficiarios: list[BeneficiarioApresentacao] = Field(default_factory=list)
+    reajuste_consolidado_percentual_exibicao: str | None = None

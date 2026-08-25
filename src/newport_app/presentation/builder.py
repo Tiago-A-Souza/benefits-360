@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.models.draft import RascunhoEstudo
@@ -28,6 +28,10 @@ from newport_app.models.responses import (
 )
 from newport_app.models.snapshot import SnapshotCalculo
 from newport_app.presentation.formatacao import formatar_data_br
+from newport_app.presentation.reajuste import (
+    rotulo_reajuste_consolidado_dos_planos,
+    rotulo_reajuste_exibicao,
+)
 from newport_app.presentation.rotulos import copart_descricao, qualificar_rotulos_propostas, rotulo_regime
 from newport_app.snapshot.comparativo import ler_comparativo_congelado
 
@@ -189,6 +193,11 @@ def _mapear_plano(
         faixas=faixas,
         subtotal_vigente_centavos=plano.vigente_centavos,
         subtotal_reajustado_centavos=plano.reajustado_centavos,
+        reajuste_percentual_exibicao=rotulo_reajuste_exibicao(
+            vigente_centavos=plano.vigente_centavos,
+            reajustado_centavos=plano.reajustado_centavos,
+            reajuste_bps_informado=sg.reajuste_bps if sg else None,
+        ),
     )
 
 
@@ -260,12 +269,20 @@ def construir_view_model(
     ressalvas: list[str] | None = None,
     titulo: str | None = None,
     exibir_todas_faixas: bool = False,
+    beneficiarios_agregados: bool = False,
+    aprovado_em: datetime | None = None,
 ) -> PresentationViewModel:
     """Monta o ViewModel a partir do comparativo congelado.
 
     ``exibir_todas_faixas`` é ignorado: o payload congelado só traz faixas
     preenchidas, o mesmo recorte da matriz. O parâmetro permanece para não
     quebrar clientes antigos (default False).
+
+    ``beneficiarios_agregados``: omite nomes reais (rótulo por faixa) — uso no
+    documento cliente com três visões.
+
+    ``aprovado_em``: data da revisão Newport (B-01). Sem aprovação viva a
+    geração de HTML é recusada no serviço; testes unitários podem omitir.
     """
     del exibir_todas_faixas
     comparativo = ler_comparativo_congelado(snap.payload)
@@ -275,6 +292,11 @@ def construir_view_model(
     propostas_sel = [por_id[op_id] for op_id in propostas_ids]
     vidas = _vidas_unicas(propostas_sel)
     seguro_novo = comparativo.formato == "novo" or rascunho.formato == "novo"
+    data_revisao = formatar_data_br(aprovado_em) if aprovado_em is not None else ""
+    vidas_calculadas = comparativo.beneficiarios_calculados or None
+    qtd_planos = len(comparativo.planos_atuais) if not seguro_novo else None
+    if qtd_planos == 0:
+        qtd_planos = None
     regimes_ordem = _coletar_regimes(rascunho, propostas_sel)
     total_atual = _total_atual_congelado(comparativo, rascunho, seguro_novo=seguro_novo)
 
@@ -356,20 +378,25 @@ def construir_view_model(
                 )
             sg = subgrupos_map.get(dados.subgrupo_id or "")
             faixa = dados.faixa
+            faixa_rotulo = (
+                dados.faixa_rotulo
+                or (
+                    ROTULOS_FAIXA[faixa]
+                    if faixa is not None and 0 <= faixa < 10
+                    else None
+                )
+            )
+            if beneficiarios_agregados:
+                rotulo_vida = f"Beneficiário · {faixa_rotulo or 'faixa não informada'}"
+            else:
+                rotulo_vida = dados.nome
             beneficiarios.append(
                 BeneficiarioApresentacao(
                     vida_id=dados.vida_id,
-                    nome=dados.nome,
+                    nome=rotulo_vida,
                     idade=dados.idade,
                     faixa=faixa,
-                    faixa_rotulo=(
-                        dados.faixa_rotulo
-                        or (
-                            ROTULOS_FAIXA[faixa]
-                            if faixa is not None and 0 <= faixa < 10
-                            else None
-                        )
-                    ),
+                    faixa_rotulo=faixa_rotulo,
                     parentesco=dados.parentesco,
                     plano_atual=dados.plano_atual or (sg.plano_nome if sg else None),
                     subgrupo_id=dados.subgrupo_id,
@@ -405,17 +432,28 @@ def construir_view_model(
 
     from newport_app.rascunho.acomodacao import coletar_divergencias_acomodacao
 
+    nome_cliente = None
+    if rascunho.empresa_cliente and (rascunho.empresa_cliente.nome or "").strip():
+        nome_cliente = rascunho.empresa_cliente.nome.strip()
+
     return PresentationViewModel(
         titulo=titulo or rascunho.titulo,
-        subtitulo=rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None,
-        data_apresentacao=datetime.now(timezone.utc).strftime("%d/%m/%Y"),
+        subtitulo=nome_cliente,
+        data_apresentacao=data_revisao or "",
         estudo_id=snap.estudo_id,
         modo=modo,
         formato=rascunho.formato,
         propostas_selecionadas=propostas_ids,
         ressalvas=ressalvas or [],
         avisos_acomodacao=coletar_divergencias_acomodacao(rascunho),
+        vidas_calculadas=vidas_calculadas,
+        qtd_planos_vigentes=qtd_planos,
         totais_gerais=totais_gerais,
         secoes_regime=secoes_vm,
         beneficiarios=beneficiarios,
+        reajuste_consolidado_percentual_exibicao=(
+            None
+            if seguro_novo
+            else rotulo_reajuste_consolidado_dos_planos(comparativo.planos_atuais, rascunho)
+        ),
     )

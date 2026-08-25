@@ -188,7 +188,7 @@ export function ExportarHtmlApresentacao({
   carregando,
   onErro,
 }) {
-  const [modo, setModo] = useState("resumo");
+  const [modo, setModo] = useState("completo");
   const [preview, setPreview] = useState(null);
   const [entregavel, setEntregavel] = useState(null);
   const [ocupado, setOcupado] = useState(false);
@@ -252,11 +252,21 @@ export function ExportarHtmlApresentacao({
           <input
             type="radio"
             name={`modo-html-${snapshotId || "gov"}`}
+            value="completo"
+            checked={modo === "completo"}
+            onChange={() => setModo("completo")}
+          />
+          Documento completo (três visões, sem nomes)
+        </label>
+        <label className="radio">
+          <input
+            type="radio"
+            name={`modo-html-${snapshotId || "gov"}`}
             value="resumo"
             checked={modo === "resumo"}
             onChange={() => setModo("resumo")}
           />
-          Resumo executivo
+          Só resumo executivo
         </label>
         <label className="radio">
           <input
@@ -266,7 +276,7 @@ export function ExportarHtmlApresentacao({
             checked={modo === "faixas"}
             onChange={() => setModo("faixas")}
           />
-          Faixas etárias (sem nomes)
+          Só faixas etárias
         </label>
         <label className="radio">
           <input
@@ -276,7 +286,7 @@ export function ExportarHtmlApresentacao({
             checked={modo === "beneficiario"}
             onChange={() => setModo("beneficiario")}
           />
-          Por beneficiário (contém nomes)
+          Por beneficiário com nomes (uso interno)
         </label>
       </fieldset>
 
@@ -311,7 +321,7 @@ export function ExportarHtmlApresentacao({
 
       {preview && (
         <div className="preview-apresentacao">
-          <h4>Pré-visualização ({preview.modo})</h4>
+          <h4>Pré-visualização ({preview.modo}{modo === "completo" ? " · documento completo" : ""})</h4>
           <p>Seções: {preview.secoes_regime?.length ?? 0}</p>
           {preview.modo === "beneficiario" && (
             <p>Beneficiários: {preview.beneficiarios?.length ?? 0}</p>

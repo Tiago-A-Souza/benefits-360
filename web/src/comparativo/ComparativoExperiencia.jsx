@@ -243,12 +243,62 @@ function SeparadorMatriz({ rotulo }) {
   );
 }
 
-function CelulaPlanoAtual({ plano }) {
+function CelulaPlanoAtual({ plano, percentual }) {
+  const [aberto, setAberto] = useState(false);
+  const reajustado = formatCentavos(plano?.reajustado_centavos);
+  const vigente = formatCentavos(plano?.vigente_centavos);
+  const temVigente = plano?.vigente_centavos != null;
+
   return (
-    <>
-      <div>{formatCentavos(plano?.vigente_centavos)} vigente</div>
-      <div>{formatCentavos(plano?.reajustado_centavos)} reajustado</div>
-    </>
+    <div className="cmp-cel-reajuste">
+      <button
+        type="button"
+        className="cmp-cel-reajuste__botao"
+        aria-expanded={aberto}
+        aria-label={
+          temVigente
+            ? `Contrato reajustado ${reajustado}${percentual ? ` ${percentual}` : ""}. Ativar para ver o valor vigente.`
+            : `Contrato reajustado ${reajustado}`
+        }
+        disabled={!temVigente}
+        onClick={() => setAberto((v) => !v)}
+      >
+        <span className="cmp-cel-reajuste__valor">{reajustado}</span>
+        {percentual ? <span className="cmp-cel-reajuste__pct">{percentual}</span> : null}
+      </button>
+      {aberto && temVigente && (
+        <div className="cmp-cel-reajuste__caixa" role="region" aria-label="Valor vigente">
+          Antes: {vigente}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CelulaVigenteOculto({ vigente, vigenteUnitario, quantidade }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <div className="cmp-cel-reajuste cmp-cel-reajuste--faixa">
+      <button
+        type="button"
+        className="cmp-cel-reajuste__botao cmp-cel-reajuste__botao--link"
+        aria-expanded={aberto}
+        aria-label="Ver valor vigente desta faixa"
+        onClick={() => setAberto((v) => !v)}
+      >
+        {aberto ? "Ocultar vigente" : "Ver vigente"}
+      </button>
+      {aberto && (
+        <div className="cmp-cel-reajuste__caixa" role="region" aria-label="Valor vigente">
+          {celulaFaixa({
+            unitario: vigenteUnitario,
+            quantidade,
+            subtotal: vigente,
+            sufixo: "vigente",
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -311,17 +361,20 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
             {!seguroNovo && (
               <td className="cmp-col-atual">
                 {celulaFaixa({
-                  unitario: fx.vigente_unitario_centavos,
-                  quantidade: fx.quantidade,
-                  subtotal: fx.vigente_total_centavos,
-                  sufixo: "vigente",
-                })}
-                {celulaFaixa({
                   unitario: fx.reajustado_unitario_centavos,
                   quantidade: fx.quantidade,
                   subtotal: fx.reajustado_total_centavos,
-                  sufixo: "reajustado",
                 })}
+                {plano.reajuste_percentual_exibicao ? (
+                  <div className="cmp-cel-reajuste__pct">{plano.reajuste_percentual_exibicao}</div>
+                ) : null}
+                {fx.vigente_total_centavos != null && (
+                  <CelulaVigenteOculto
+                    vigente={fx.vigente_total_centavos}
+                    vigenteUnitario={fx.vigente_unitario_centavos}
+                    quantidade={fx.quantidade}
+                  />
+                )}
               </td>
             )}
             {propostas.map((p) => {
@@ -344,8 +397,10 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
           <th scope="row">Totais</th>
           {!seguroNovo && (
             <td className="cmp-col-atual">
-              <div>{formatCentavos(plano.vigente_centavos)} vigente</div>
-              <div>{formatCentavos(plano.reajustado_centavos)} reajustado</div>
+              <CelulaPlanoAtual
+                plano={plano}
+                percentual={plano.reajuste_percentual_exibicao}
+              />
             </td>
           )}
           {propostas.map((p) => (
@@ -370,6 +425,7 @@ function ConteudoMatriz({
   mostrarNomes,
   seguroNovo,
   faixasEstudo,
+  reajusteConsolidadoPct,
 }) {
   const vidasRef = vidasDaProposta(propostas[0]);
 
@@ -419,7 +475,10 @@ function ConteudoMatriz({
                   <tr key={pl.subgrupo_id}>
                     <th scope="row">{pl.plano_nome}</th>
                     <td className="cmp-col-atual">
-                      <CelulaPlanoAtual plano={pl} />
+                      <CelulaPlanoAtual
+                        plano={pl}
+                        percentual={pl.reajuste_percentual_exibicao}
+                      />
                     </td>
                     {propostas.map((p) => (
                       <td key={p.opcao_id}>
@@ -432,10 +491,13 @@ function ConteudoMatriz({
                 <tr>
                   <th scope="row">Consolidado</th>
                   <td className="cmp-col-atual">
-                    <div>{formatCentavos(somarCampo(planosAtuais, "vigente_centavos"))} vigente</div>
-                    <div>
-                      {formatCentavos(somarCampo(planosAtuais, "reajustado_centavos"))} reajustado
-                    </div>
+                    <CelulaPlanoAtual
+                      plano={{
+                        vigente_centavos: somarCampo(planosAtuais, "vigente_centavos"),
+                        reajustado_centavos: somarCampo(planosAtuais, "reajustado_centavos"),
+                      }}
+                      percentual={reajusteConsolidadoPct}
+                    />
                   </td>
                   {propostas.map((p) => (
                     <td key={p.opcao_id}>
@@ -529,6 +591,7 @@ function MatrizComparativa({
   mostrarNomes,
   seguroNovo,
   faixasEstudo,
+  reajusteConsolidadoPct,
 }) {
   if (!propostas.length) {
     return <p className="muted">Selecione ao menos uma proposta para montar a matriz comparativa.</p>;
@@ -549,6 +612,7 @@ function MatrizComparativa({
               mostrarNomes={mostrarNomes}
               seguroNovo={seguroNovo}
               faixasEstudo={faixasEstudo}
+              reajusteConsolidadoPct={reajusteConsolidadoPct}
             />
           </div>
         ))}
@@ -569,6 +633,7 @@ function MatrizComparativa({
                 mostrarNomes={mostrarNomes}
                 seguroNovo={seguroNovo}
                 faixasEstudo={faixasEstudo}
+                reajusteConsolidadoPct={reajusteConsolidadoPct}
               />
             </div>
           ));
@@ -1008,6 +1073,7 @@ export default function ComparativoExperiencia({
             mostrarNomes={(modo === "analise" || origemCongelada) && mostrarNomes}
             seguroNovo={seguroNovo}
             faixasEstudo={resultado.faixas_estudo || []}
+            reajusteConsolidadoPct={resultado.reajuste_consolidado_percentual_exibicao}
           />
         </div>
       </section>
