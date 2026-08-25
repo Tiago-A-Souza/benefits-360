@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { obterPendencias, obterRascunho, obterResumoPlanoAtual, salvarRascunho } from "./api";
 import {
   MODALIDADES,
-  OPERADORAS,
   REGIMES_COPART,
   TIPOS_FISCAIS,
   ensureRegime,
@@ -226,7 +225,10 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                   <header className="plan-card-head">
                     <div className="plan-card-title">
                       <span className="plan-index">Plano {idx + 1}</span>
-                      <b>{sg.plano_nome || `Plano ${idx + 1}`}</b>
+                      <b>
+                        {[sg.operadora, sg.plano_nome].filter((p) => (p || "").trim()).join(" · ") ||
+                          `Plano ${idx + 1}`}
+                      </b>
                     </div>
                     {vidas != null && (
                       <span className="badge badge--blue">
@@ -236,21 +238,6 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                   </header>
                   <div className="plan-card-body">
                     <div className="form-grid">
-                      <label className="field">
-                        Operadora
-                        <input
-                          value={sg.operadora || ""}
-                          onChange={(e) => atualizarSubgrupo(idx, "operadora", e.target.value)}
-                          list="operadoras-list"
-                        />
-                      </label>
-                      <label className="field">
-                        Nome do plano
-                        <input
-                          value={sg.plano_nome || ""}
-                          onChange={(e) => atualizarSubgrupo(idx, "plano_nome", e.target.value)}
-                        />
-                      </label>
                       <label className="field">
                         Tipo fiscal
                         <select
@@ -496,11 +483,6 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
         </div>
       </div>
 
-      <datalist id="operadoras-list">
-        {OPERADORAS.map((o) => (
-          <option key={o} value={o} />
-        ))}
-      </datalist>
     </section>
   );
 }
