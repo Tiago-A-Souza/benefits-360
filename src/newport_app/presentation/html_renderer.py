@@ -724,7 +724,7 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .folha{max-width:1180px;margin:0 auto;background:var(--papel);
   box-shadow:0 1px 3px rgba(35,41,50,.07),0 12px 40px rgba(35,41,50,.06)}
 .capa{background:var(--grafite);color:#fff;padding:44px 56px 40px;position:relative;overflow:hidden}
-.capa .logo{height:42px;width:auto;display:block}
+.capa .logo{height:92px;width:auto;display:block}
 .marca{margin-bottom:38px;position:relative;z-index:2}
 .capa .eyebrow{font-size:11px;font-weight:600;letter-spacing:.28em;color:var(--ouro);margin:0 0 12px}
 .capa h1{margin:0;font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
@@ -823,7 +823,7 @@ tfoot tr td.atual{background:#F1E7D6}
 .ressalvas{margin-top:24px;font-size:13px;color:var(--grafite-2)}
 .pe{background:var(--grafite);color:#8E949D;padding:30px 56px;display:flex;justify-content:space-between;
   gap:20px;flex-wrap:wrap;font-size:11.5px;font-weight:300}
-.pe .logo-pe{height:28px;width:auto;display:block;margin-bottom:8px}
+.pe .logo-pe{height:40px;width:auto;display:block;margin-bottom:8px}
 .pe a{color:var(--ciano);text-decoration:none}
 @media(max-width:720px){
   .capa,.doc-controles,.corpo,.doc-corpo,.rascunho,.aviso-pii,.aviso-acomodacao,.pe{padding-left:22px;padding-right:22px}
