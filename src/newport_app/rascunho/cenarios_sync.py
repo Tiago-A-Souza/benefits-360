@@ -39,13 +39,22 @@ def _nome_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
     return opcao_id
 
 
-def propostas_fora_dos_cenarios(rascunho: RascunhoEstudo) -> list[str]:
-    """IDs de opções da etapa 3 que não aparecem em nenhuma atribuição de cenário."""
-    usadas: set[str] = set()
+def opcoes_usadas_nos_cenarios(rascunho: RascunhoEstudo) -> list[str]:
+    """Opções distintas referenciadas em alguma atribuição, ordem de primeira aparição."""
+    usadas: list[str] = []
+    vistos: set[str] = set()
     for cenario in rascunho.cenarios:
         for atr in cenario.atribuicoes:
-            if atr.opcao_plano_id:
-                usadas.add(atr.opcao_plano_id)
+            oid = atr.opcao_plano_id
+            if oid and oid not in vistos:
+                vistos.add(oid)
+                usadas.append(oid)
+    return usadas
+
+
+def propostas_fora_dos_cenarios(rascunho: RascunhoEstudo) -> list[str]:
+    """IDs de opções da etapa 3 que não aparecem em nenhuma atribuição de cenário."""
+    usadas = set(opcoes_usadas_nos_cenarios(rascunho))
     return [op.id for op in rascunho.opcoes_proposta if op.id not in usadas]
 
 

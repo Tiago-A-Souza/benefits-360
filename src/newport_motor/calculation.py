@@ -259,6 +259,36 @@ def calcular_grade_opcao_subgrupo(
     return grade
 
 
+def cenario_coluna_da_grade(
+    grade: list[ResultadoSubgrupo],
+    opcao_id: str,
+    *,
+    regime_tipo: RegimeCopartTipo,
+    baseline: str,
+) -> ScenarioResult | None:
+    """Monta um ScenarioResult uniforme a partir das células da grade da opção.
+
+    Não recalcula: apenas agrupa e consolida células já produzidas por
+    ``calcular_grade_opcao_subgrupo``. Usado pela apresentação (coluna por plano).
+    """
+    cells = [c for c in grade if c.opcao_plano_id == opcao_id]
+    if not cells:
+        return None
+    secao = ScenarioSectionResult(
+        regime_tipo=regime_tipo,
+        rotulo_derivado=_rotulo_regime(regime_tipo),
+        subgrupos=list(cells),
+    )
+    _consolidar_secao(secao, baseline)
+    cenario = ScenarioResult(
+        cenario_id=f"col-{opcao_id}",
+        baseline_apresentado=baseline,
+        secoes=[secao],
+    )
+    _consolidar_cenario(cenario)
+    return cenario
+
+
 def _calcular_subgrupo_renovacao(
     estudo: EstudoInput,
     subgrupo: SubgrupoAtual,

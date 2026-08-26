@@ -808,6 +808,13 @@ documento.
 | Cabeçalho da coluna de contrato atual repete o rótulo | «CONTRATO ATUAL / CONTRATO ATUAL / vários planos» |
 | `_th_proposta(..., [], ...)` no modo beneficiário | terceira superfície do 8.2 — ver abaixo |
 
+### Resolvido nesta branch — acomodação do cabeçalho em cenário misto
+
+Com coluna = cenário, o cabeçalho usava a acomodação da primeira atribuição.
+Com coluna = plano (grade `opção × subgrupo` no motor), acomodação e
+coparticipação vêm da própria opção da coluna; inverter a ordem das
+atribuições não altera o cabeçalho.
+
 ### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
 
 `html_renderer.py:698` chama `_th_proposta(op_id, [], rotulos)` no modo

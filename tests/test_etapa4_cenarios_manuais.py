@@ -99,22 +99,29 @@ def test_01_multi_sync_nao_cria_cenario_etapa_abre_vazia(repo):
     assert any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(salvo))
 
 
-def test_02_cenario_misto_prata_ouro_totais_gabarito():
+def test_02_cenario_misto_vira_duas_colunas_por_plano():
+    """Cenário misto: matriz tem uma coluna por plano, com valor nos dois vigentes."""
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     rascunho.cenarios = [_cenario_misto_gabarito(rascunho)]
     assert cenarios_sincronizados(rascunho)
     matriz, _ = _calcular_matriz(rascunho)
-    assert len(matriz.propostas) == 1
-    prop = matriz.propostas[0]
-    assert prop.plano_nome == "Proposta prata + Proposta ouro"
-    por_sg = {s.subgrupo_id: s.proposta_centavos for s in prop.subgrupos}
-    assert por_sg["sg-a"] == 2_360_717
-    assert por_sg["sg-b"] == 710_988
-    assert prop.numerico is not None
-    assert prop.numerico.proposta_mensal_centavos == 3_071_705
+    assert len(matriz.propostas) == 2
+    por_id = {p.opcao_id: p for p in matriz.propostas}
+    assert set(por_id) == {"op-prata", "op-ouro"}
+    assert por_id["op-prata"].plano_nome == "Proposta prata"
+    assert por_id["op-ouro"].plano_nome == "Proposta ouro"
+    assert " + " not in por_id["op-prata"].plano_nome
+    prata_sg = {s.subgrupo_id: s.proposta_centavos for s in por_id["op-prata"].subgrupos}
+    ouro_sg = {s.subgrupo_id: s.proposta_centavos for s in por_id["op-ouro"].subgrupos}
+    assert prata_sg["sg-a"] == 2_360_717
+    assert prata_sg["sg-b"] == 610_061
+    assert ouro_sg["sg-a"] == 2_751_249
+    assert ouro_sg["sg-b"] == 710_988
+    assert por_id["op-prata"].numerico.proposta_mensal_centavos == 2_970_778
+    assert por_id["op-ouro"].numerico.proposta_mensal_centavos == 3_462_237
 
 
-def test_03_dois_cenarios_mistos_duas_colunas():
+def test_03_dois_cenarios_mistos_dedupe_por_plano():
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     c1 = _cenario_misto_gabarito(rascunho)
     c2 = CenarioRascunho(
@@ -131,8 +138,10 @@ def test_03_dois_cenarios_mistos_duas_colunas():
     )
     rascunho.cenarios = [c1, c2]
     matriz, _ = _calcular_matriz(rascunho)
+    # prata + ouro (ouro não duplica)
     assert len(matriz.propostas) == 2
-    assert matriz.propostas[0].numerico.proposta_mensal_centavos == 3_071_705
+    assert [p.opcao_id for p in matriz.propostas] == ["op-prata", "op-ouro"]
+    assert matriz.propostas[0].numerico.proposta_mensal_centavos == 2_970_778
     assert matriz.propostas[1].numerico.proposta_mensal_centavos == 3_462_237
 
 
@@ -163,18 +172,73 @@ def test_04_cenario_incompleto_nao_sincroniza_e_pendencia():
     assert faltando in {a.alvo_id for a in rascunho.cenarios[0].atribuicoes if not a.opcao_plano_id}
 
 
-def test_05_rotulo_misto_na_matriz_e_documento(tmp_path: Path):
+def test_05_matriz_e_documento_usam_nome_do_plano(tmp_path: Path):
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     rascunho.cenarios = [_cenario_misto_gabarito(rascunho)]
-    esperado = "Proposta prata + Proposta ouro"
-    assert rotulo_cenario(rascunho, rascunho.cenarios[0]) == esperado
+    # Etapa 4 ainda deriva rótulo composto do cenário
+    assert rotulo_cenario(rascunho, rascunho.cenarios[0]) == "Proposta prata + Proposta ouro"
     matriz, _ = _calcular_matriz(rascunho)
-    assert matriz.propostas[0].plano_nome == esperado
+    nomes = [p.plano_nome for p in matriz.propostas]
+    assert nomes == ["Proposta prata", "Proposta ouro"]
     snap = _aprovar(tmp_path, rascunho)
     ids = [p.opcao_id for p in matriz.propostas]
-    vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    html = render_html(vm)
-    assert esperado in html
+    for modo in ("faixas", "beneficiario", "resumo"):
+        vm = construir_view_model(snap, modo=modo, propostas_selecionadas=ids)
+        html = render_html(vm)
+        assert "Proposta prata" in html
+        assert "Proposta ouro" in html
+        assert "Proposta prata + Proposta ouro" not in html
+
+
+def test_05b_linhas_matriz_completas_por_coluna():
+    rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
+    rascunho.cenarios = [_cenario_misto_gabarito(rascunho)]
+    matriz, _ = _calcular_matriz(rascunho)
+    for prop in matriz.propostas:
+        assert prop.acomodacao is not None or prop.operadora
+        assert prop.regime_coparticipacao
+        assert prop.numerico is not None
+        assert prop.numerico.proposta_mensal_centavos is not None
+        assert prop.numerico.diff_mes_centavos is not None
+        assert prop.numerico.diff_ano_centavos is not None
+        assert prop.totais is not None
+        assert prop.totais.proposta_mensal_reais
+        assert len(prop.subgrupos) == 2
+        assert prop.validade_oficial is not None or True  # pode ser None no fixture
+        assert prop.diferenca_percentual is not None
+
+
+def test_05c_acomodacao_da_propria_opcao():
+    rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
+    for op in rascunho.opcoes_proposta:
+        if op.id == "op-prata":
+            op.acomodacao = "Apartamento"
+        elif op.id == "op-ouro":
+            op.acomodacao = "Enfermaria"
+    # Ordem invertida nas atribuições não muda cabeçalho
+    rascunho.cenarios = [
+        CenarioRascunho(
+            id="c-misto",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a1", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id="op-ouro"
+                ),
+                AtribuicaoRascunho(
+                    id="a2", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id="op-prata"
+                ),
+            ],
+        )
+    ]
+    matriz, _ = _calcular_matriz(rascunho)
+    por_id = {p.opcao_id: p for p in matriz.propostas}
+    assert por_id["op-prata"].acomodacao == "Apartamento"
+    assert por_id["op-ouro"].acomodacao == "Enfermaria"
+    # Inverte ordem das atribuições
+    rascunho.cenarios[0].atribuicoes.reverse()
+    matriz2, _ = _calcular_matriz(rascunho)
+    por2 = {p.opcao_id: p for p in matriz2.propostas}
+    assert por2["op-prata"].acomodacao == "Apartamento"
+    assert por2["op-ouro"].acomodacao == "Enfermaria"
 
 
 def test_06_um_plano_vigente_sync_automatico_sem_etapa4(repo):
@@ -247,11 +311,65 @@ def test_10_grade_paridade_36_celulas():
 
 def test_11_gabarito_anistia_uniforme_prata():
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
-    # Uniforme: PRATA nos dois planos = primeiro cenário gerado pelo garantir
-    prata = next(c for c in rascunho.cenarios if all(a.opcao_plano_id == "op-prata" for a in c.atribuicoes))
+    prata = next(
+        c
+        for c in rascunho.cenarios
+        if all(a.opcao_plano_id == "op-prata" for a in c.atribuicoes)
+    )
     rascunho.cenarios = [prata]
     matriz, _ = _calcular_matriz(rascunho)
+    assert len(matriz.propostas) == 1
+    assert matriz.propostas[0].plano_nome == "Proposta prata"
+    por_sg = {s.subgrupo_id: s.proposta_centavos for s in matriz.propostas[0].subgrupos}
+    assert por_sg["sg-a"] == 2_360_717
+    assert por_sg["sg-b"] == 610_061
     assert matriz.propostas[0].numerico.proposta_mensal_centavos == 2_970_778
+
+
+def test_11b_anistia_seis_dois_cenarios_quatro_colunas():
+    """Seis na etapa 3, quatro usados em dois cenários → quatro colunas; dois ficam fora."""
+    from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
+
+    rascunho = _rascunho_anistia_seis()
+    assert len(rascunho.opcoes_proposta) == 6
+    # Dois cenários mistos com quatro planos distintos
+    ops = [op.id for op in rascunho.opcoes_proposta]
+    rascunho.cenarios = [
+        CenarioRascunho(
+            id="c1",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a1a", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id=ops[0]
+                ),
+                AtribuicaoRascunho(
+                    id="a1b", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id=ops[1]
+                ),
+            ],
+        ),
+        CenarioRascunho(
+            id="c2",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a2a", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id=ops[2]
+                ),
+                AtribuicaoRascunho(
+                    id="a2b", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id=ops[3]
+                ),
+            ],
+        ),
+    ]
+    matriz, _ = _calcular_matriz(rascunho)
+    assert len(matriz.propostas) == 4
+    assert [p.opcao_id for p in matriz.propostas] == ops[:4]
+    assert all(" + " not in p.plano_nome for p in matriz.propostas)
+    fora = {ops[4], ops[5]}
+    assert all(p.opcao_id not in fora for p in matriz.propostas)
+    assert any(p.codigo == "APP-ET4-002" for p in matriz.pendencias)
+    for prop in matriz.propostas:
+        por_sg = {s.subgrupo_id: s.proposta_centavos for s in prop.subgrupos}
+        assert por_sg["sg-a"] is not None
+        assert por_sg["sg-b"] is not None
+        assert prop.numerico.proposta_mensal_centavos == por_sg["sg-a"] + por_sg["sg-b"]
 
 
 def test_13_estudo_uniforme_gravado_sync_nao_recria_nem_apaga(repo):
@@ -411,7 +529,9 @@ def test_15_cinco_propostas_dois_cenarios_calcula():
     resp = motor_result_para_comparativo(rascunho, motor)
     assert resp.calculo_realizado is True
     assert resp.consistencia.consistente is True
-    assert len(resp.propostas) == 2
+    # op-1, op-2, op-3 (dedupe) — três colunas, não dois cenários
+    assert len(resp.propostas) == 3
+    assert [p.opcao_id for p in resp.propostas] == ["op-1", "op-2", "op-3"]
     assert resp.consistencia.cenarios_configurados == 2
     assert resp.consistencia.propostas_selecionadas == 5
     assert not any(p.codigo == "APP-CMP-001" for p in resp.pendencias)

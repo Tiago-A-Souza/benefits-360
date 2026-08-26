@@ -634,8 +634,21 @@ def test_planos_atuais_completos_se_primeira_proposta_nao_calcula():
     rascunho = _rascunho_n_subgrupos(2, extra_opcoes=1)
     matriz_ok, motor = _calcular_matriz(rascunho)
     primeiro = rascunho.cenarios[0].id
+    # Remove o cenário e as células da grade da 1ª opção → coluna sem cálculo.
+    op_primeira = next(
+        a.opcao_plano_id
+        for a in rascunho.cenarios[0].atribuicoes
+        if a.opcao_plano_id
+    )
     motor_parcial = motor.model_copy(
-        update={"cenarios": [c for c in motor.cenarios if c.cenario_id != primeiro]}
+        update={
+            "cenarios": [c for c in motor.cenarios if c.cenario_id != primeiro],
+            "grade_opcao_subgrupo": [
+                c
+                for c in motor.grade_opcao_subgrupo
+                if c.opcao_plano_id != op_primeira
+            ],
+        }
     )
     matriz = montar_comparativo(rascunho, motor_result=motor_parcial)
     assert len(matriz.planos_atuais) == 2

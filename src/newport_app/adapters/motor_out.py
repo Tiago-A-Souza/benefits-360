@@ -37,8 +37,9 @@ from newport_app.presentation.textos import (
     plural_beneficiarios,
     rotulos_diferenca,
 )
+from newport_motor.calculation import cenario_coluna_da_grade
 from newport_motor.result import MotorResult, ScenarioResult
-from newport_motor.types import SeveridadeValidacao
+from newport_motor.types import RegimeCopartTipo, SeveridadeValidacao
 
 _TRADUCOES: dict[str, tuple[str, str, str, str | None]] = {
     "B-08": (
@@ -300,45 +301,72 @@ def _montar_faixas_plano_comparativo(
     resultado: MotorResult,
     subgrupo_id: str,
 ) -> list[FaixaPlanoComparativo]:
+    from newport_app.rascunho.cenarios_sync import opcoes_usadas_nos_cenarios
+
     vigentes: dict[int, list[int]] = defaultdict(list)
     reajustados: dict[int, list[int]] = defaultdict(list)
     propostas: dict[int, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
-    opcao_ids: list[str] = []
-    referencia = next((c for c in resultado.cenarios), None)
+    opcao_ids = opcoes_usadas_nos_cenarios(rascunho)
 
-    if referencia is not None:
-        for secao in referencia.secoes:
-            for sg in secao.subgrupos:
-                if sg.subgrupo_id != subgrupo_id:
-                    continue
-                for rv in sg.vidas:
-                    fx = rv.faixa
-                    if fx is None or fx < 0 or fx > 9:
-                        continue
-                    vig = _centavos_valor(rv.atual_vigente_centavos)
-                    reaj = _centavos_valor(rv.atual_reajustado_centavos)
-                    if vig is not None:
-                        vigentes[fx].append(vig)
-                    if reaj is not None:
-                        reajustados[fx].append(reaj)
+    # Vigente/reajustado: qualquer célula da grade (ou cenário) daquele subgrupo.
+    fonte_vidas = None
+    for cel in resultado.grade_opcao_subgrupo:
+        if cel.subgrupo_id == subgrupo_id and cel.vidas:
+            fonte_vidas = cel
+            break
+    if fonte_vidas is None:
+        for cenario in resultado.cenarios:
+            for secao in cenario.secoes:
+                for sg in secao.subgrupos:
+                    if sg.subgrupo_id == subgrupo_id and sg.vidas:
+                        fonte_vidas = sg
+                        break
+                if fonte_vidas is not None:
+                    break
+            if fonte_vidas is not None:
+                break
 
-    for cenario in resultado.cenarios:
-        opcao_id, _, _ = _metadados_coluna_cenario(rascunho, cenario.cenario_id)
-        if not opcao_id:
-            continue
-        if opcao_id not in opcao_ids:
-            opcao_ids.append(opcao_id)
-        for secao in cenario.secoes:
-            for sg in secao.subgrupos:
-                if sg.subgrupo_id != subgrupo_id:
+    if fonte_vidas is not None:
+        for rv in fonte_vidas.vidas:
+            fx = rv.faixa
+            if fx is None or fx < 0 or fx > 9:
+                continue
+            vig = _centavos_valor(rv.atual_vigente_centavos)
+            reaj = _centavos_valor(rv.atual_reajustado_centavos)
+            if vig is not None:
+                vigentes[fx].append(vig)
+            if reaj is not None:
+                reajustados[fx].append(reaj)
+
+    if resultado.grade_opcao_subgrupo:
+        for cel in resultado.grade_opcao_subgrupo:
+            if cel.subgrupo_id != subgrupo_id or not cel.opcao_plano_id:
+                continue
+            for rv in cel.vidas:
+                fx = rv.faixa
+                if fx is None or fx < 0 or fx > 9:
                     continue
-                for rv in sg.vidas:
-                    fx = rv.faixa
-                    if fx is None or fx < 0 or fx > 9:
+                prop = _centavos_valor(rv.proposta_centavos)
+                if prop is not None:
+                    propostas[fx][cel.opcao_plano_id].append(prop)
+    else:
+        for cenario in resultado.cenarios:
+            opcao_id, _, _ = _metadados_coluna_cenario(rascunho, cenario.cenario_id)
+            if not opcao_id:
+                continue
+            if opcao_id not in opcao_ids:
+                opcao_ids.append(opcao_id)
+            for secao in cenario.secoes:
+                for sg in secao.subgrupos:
+                    if sg.subgrupo_id != subgrupo_id:
                         continue
-                    prop = _centavos_valor(rv.proposta_centavos)
-                    if prop is not None:
-                        propostas[fx][opcao_id].append(prop)
+                    for rv in sg.vidas:
+                        fx = rv.faixa
+                        if fx is None or fx < 0 or fx > 9:
+                            continue
+                        prop = _centavos_valor(rv.proposta_centavos)
+                        if prop is not None:
+                            propostas[fx][opcao_id].append(prop)
 
     faixas: list[FaixaPlanoComparativo] = []
     for fx in range(10):
@@ -788,104 +816,164 @@ def _pendencias_proposta(
     ]
 
 
+def _regime_tipo_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
+    op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
+    if op is None or not op.regime_copart_id:
+        return "sem"
+    reg = next((r for r in rascunho.regimes_copart if r.id == op.regime_copart_id), None)
+    if reg is None:
+        return "sem"
+    return reg.tipo
+
+
+def _montar_proposta_de_cenario_motor(
+    rascunho: RascunhoEstudo,
+    *,
+    opcao_id: str,
+    cenario_id: str,
+    plano_nome: str,
+    regime_tipo: str,
+    cenario_motor: ScenarioResult | None,
+    seguro_novo: bool,
+) -> ResultadoPropostaComparativo:
+    op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
+    calculo_realizado = cenario_motor is not None
+    if cenario_motor is None:
+        return ResultadoPropostaComparativo(
+            opcao_id=opcao_id,
+            cenario_id=cenario_id,
+            plano_nome=plano_nome or "Proposta sem nome",
+            operadora=op.operadora if op else "",
+            acomodacao=op.acomodacao if op else None,
+            validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
+            regime_coparticipacao=(
+                _rotulo_regime(regime_tipo)
+                if regime_tipo == "misto"
+                else (
+                    _regime_label_rascunho(
+                        rascunho, op.regime_copart_id if op else None
+                    )
+                    or _rotulo_regime(regime_tipo)
+                )
+            ),
+            regime_tipo=regime_tipo,
+            grupo_regime=_grupo_regime(regime_tipo),
+            totais=None,
+            numerico=None,
+            diferenca_percentual=None,
+            faixas=[],
+            destaques=[],
+            secoes=[],
+            subgrupos=[],
+            pendencias=_pendencias_proposta(calculo_realizado=False),
+            calculo_realizado=False,
+        )
+
+    secoes, _ = _montar_secoes_cenario(rascunho, cenario_motor)
+    recortes = _montar_recortes_subgrupo(rascunho, cenario_motor)
+    totais = _montar_totais_cenario(
+        cenario_motor, rascunho, seguro_novo=seguro_novo
+    )
+    numerico = _montar_numerico_cenario(cenario_motor, seguro_novo=seguro_novo)
+    diff_pct = None
+    if (
+        not seguro_novo
+        and numerico
+        and numerico.atual_mensal_centavos is not None
+    ):
+        diff_pct = _formatar_percentual(
+            numerico.atual_mensal_centavos,
+            numerico.proposta_mensal_centavos or 0,
+        )
+    return ResultadoPropostaComparativo(
+        opcao_id=opcao_id,
+        cenario_id=cenario_id,
+        plano_nome=plano_nome or "Proposta sem nome",
+        operadora=op.operadora if op else "",
+        acomodacao=op.acomodacao if op else None,
+        validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
+        regime_coparticipacao=(
+            _rotulo_regime(regime_tipo)
+            if regime_tipo == "misto"
+            else (
+                _regime_label_rascunho(
+                    rascunho, op.regime_copart_id if op else None
+                )
+                or _rotulo_regime(regime_tipo)
+            )
+        ),
+        regime_tipo=regime_tipo,
+        grupo_regime=_grupo_regime(regime_tipo),
+        totais=totais,
+        numerico=numerico,
+        diferenca_percentual=diff_pct,
+        faixas=[],
+        destaques=[],
+        secoes=secoes,
+        subgrupos=recortes,
+        pendencias=_pendencias_proposta(calculo_realizado=True),
+        calculo_realizado=True,
+    )
+
+
 def _montar_propostas(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
 ) -> list[ResultadoPropostaComparativo]:
-    cenarios_motor = {c.cenario_id: c for c in resultado.cenarios}
-    propostas: list[ResultadoPropostaComparativo] = []
-    seguro_novo = rascunho.formato == "novo"
+    from newport_app.rascunho.cenarios_sync import opcoes_usadas_nos_cenarios
 
+    seguro_novo = rascunho.formato == "novo"
+    propostas: list[ResultadoPropostaComparativo] = []
+
+    # Renovação com grade: uma coluna por plano usado (não por cenário).
+    if not seguro_novo and resultado.grade_opcao_subgrupo:
+        baseline = _baseline_escolhido(rascunho)
+        for opcao_id in opcoes_usadas_nos_cenarios(rascunho):
+            regime_tipo = _regime_tipo_opcao(rascunho, opcao_id)
+            try:
+                regime_enum = RegimeCopartTipo(regime_tipo)
+            except ValueError:
+                regime_enum = RegimeCopartTipo.SEM
+            cenario_motor = cenario_coluna_da_grade(
+                resultado.grade_opcao_subgrupo,
+                opcao_id,
+                regime_tipo=regime_enum,
+                baseline=baseline,
+            )
+            op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
+            plano_nome = (op.plano_nome if op and op.plano_nome else None) or opcao_id
+            propostas.append(
+                _montar_proposta_de_cenario_motor(
+                    rascunho,
+                    opcao_id=opcao_id,
+                    cenario_id=f"col-{opcao_id}",
+                    plano_nome=plano_nome,
+                    regime_tipo=regime_tipo,
+                    cenario_motor=cenario_motor,
+                    seguro_novo=False,
+                )
+            )
+        _calcular_destaques(propostas, seguro_novo=False)
+        qualificar_rotulos_propostas(rascunho, propostas)
+        return propostas
+
+    # Seguro novo (ou renovação sem grade): uma coluna por cenário.
+    cenarios_motor = {c.cenario_id: c for c in resultado.cenarios}
     for cenario_rasc in rascunho.cenarios:
         opcao_id, plano_nome, regime_tipo = _metadados_coluna_cenario(
             rascunho, cenario_rasc.id
         )
         if not opcao_id:
             continue
-        op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
-        cenario_motor = cenarios_motor.get(cenario_rasc.id)
-        calculo_realizado = cenario_motor is not None
-
-        if cenario_motor is None:
-            propostas.append(
-                ResultadoPropostaComparativo(
-                    opcao_id=opcao_id,
-                    cenario_id=cenario_rasc.id,
-                    plano_nome=plano_nome or "Proposta sem nome",
-                    operadora=op.operadora if op else "",
-                    acomodacao=op.acomodacao if op else None,
-                    validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
-                    regime_coparticipacao=(
-                        _rotulo_regime(regime_tipo)
-                        if regime_tipo == "misto"
-                        else (
-                            _regime_label_rascunho(
-                                rascunho, op.regime_copart_id if op else None
-                            )
-                            or _rotulo_regime(regime_tipo)
-                        )
-                    ),
-                    regime_tipo=regime_tipo,
-                    grupo_regime=_grupo_regime(regime_tipo),
-                    totais=None,
-                    numerico=None,
-                    diferenca_percentual=None,
-                    faixas=[],
-                    destaques=[],
-                    secoes=[],
-                    subgrupos=[],
-                    pendencias=_pendencias_proposta(calculo_realizado=False),
-                    calculo_realizado=False,
-                )
-            )
-            continue
-
-        secoes, _ = _montar_secoes_cenario(rascunho, cenario_motor)
-        recortes = _montar_recortes_subgrupo(rascunho, cenario_motor)
-        totais = _montar_totais_cenario(
-            cenario_motor, rascunho, seguro_novo=seguro_novo
-        )
-        numerico = _montar_numerico_cenario(cenario_motor, seguro_novo=seguro_novo)
-        diff_pct = None
-        if (
-            not seguro_novo
-            and numerico
-            and numerico.atual_mensal_centavos is not None
-        ):
-            diff_pct = _formatar_percentual(
-                numerico.atual_mensal_centavos,
-                numerico.proposta_mensal_centavos or 0,
-            )
-
         propostas.append(
-            ResultadoPropostaComparativo(
+            _montar_proposta_de_cenario_motor(
+                rascunho,
                 opcao_id=opcao_id,
                 cenario_id=cenario_rasc.id,
-                plano_nome=plano_nome or "Proposta sem nome",
-                operadora=op.operadora if op else "",
-                acomodacao=op.acomodacao if op else None,
-                validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
-                regime_coparticipacao=(
-                    _rotulo_regime(regime_tipo)
-                    if regime_tipo == "misto"
-                    else (
-                        _regime_label_rascunho(
-                            rascunho, op.regime_copart_id if op else None
-                        )
-                        or _rotulo_regime(regime_tipo)
-                    )
-                ),
+                plano_nome=plano_nome,
                 regime_tipo=regime_tipo,
-                grupo_regime=_grupo_regime(regime_tipo),
-                totais=totais,
-                numerico=numerico,
-                diferenca_percentual=diff_pct,
-                faixas=[],
-                destaques=[],
-                secoes=secoes,
-                subgrupos=recortes,
-                pendencias=_pendencias_proposta(calculo_realizado=True),
-                calculo_realizado=True,
+                cenario_motor=cenarios_motor.get(cenario_rasc.id),
+                seguro_novo=seguro_novo,
             )
         )
 
@@ -1127,12 +1215,20 @@ def _avaliar_consistencia(
 
     Após a etapa 4 manual, N propostas selecionadas e M cenários (M≠N) é válido.
     Exige: ao menos um cenário; cada cenário completo produz um resultado no motor.
+    Colunas apresentadas = planos usados (grade), não M cenários.
     """
+    from newport_app.rascunho.cenarios_sync import opcoes_usadas_nos_cenarios
+
     erros_compilacao = erros_compilacao or []
     n_propostas = len(rascunho.opcoes_proposta)
     n_cenarios = len(rascunho.cenarios)
     n_resultados_motor = len(resultado.cenarios)
     n_resultados = len([p for p in propostas if p.calculo_realizado])
+    n_colunas_esperadas = (
+        len(opcoes_usadas_nos_cenarios(rascunho))
+        if rascunho.formato != "novo" and resultado.grade_opcao_subgrupo
+        else n_cenarios
+    )
 
     mensagem: str | None = None
     consistente = True
@@ -1169,10 +1265,10 @@ def _avaliar_consistencia(
             f"Configurados {n_cenarios} cenário(s), mas o motor retornou "
             f"{n_resultados_motor} resultado(s)."
         )
-    elif n_resultados != n_cenarios:
+    elif n_resultados != n_colunas_esperadas:
         consistente = False
         mensagem = (
-            f"Esperados {n_cenarios} resultado(s) apresentados, "
+            f"Esperados {n_colunas_esperadas} resultado(s) apresentados, "
             f"mas apenas {n_resultados} pôde(m) ser montado(s)."
         )
 
