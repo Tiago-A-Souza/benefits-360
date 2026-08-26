@@ -255,6 +255,9 @@ def test_renovacao_dois_subgrupos_totais_proprios(tmp_path: Path):
         }
     )
     sincronizar_cenarios(rascunho)
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    garantir_cenarios_uniformes_multi(rascunho)
     cmp = _calcular_comparativo(rascunho)
     assert cmp.formato == "renovacao"
     assert len(cmp.planos_atuais) == 2

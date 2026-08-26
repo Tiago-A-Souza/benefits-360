@@ -249,6 +249,10 @@ def gerar_rascunho(celula: CelulaEstrutural) -> RascunhoEstudo:
         escolhas=escolhas,
     )
     sincronizar_cenarios(rascunho)
+    if celula.formato == "renovacao" and celula.n_planos > 1:
+        from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+        garantir_cenarios_uniformes_multi(rascunho)
     return rascunho
 
 

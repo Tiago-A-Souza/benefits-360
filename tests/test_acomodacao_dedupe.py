@@ -237,7 +237,10 @@ def test_alerta_acomodacao_divergente_matriz_comparativo_html(tmp_path: Path):
     )
     aplicar_extracao_confirmada(rascunho, _extracao("doc-1", "ext-1", [op]))
     sincronizar_cenarios(rascunho)
-    # Default aplica a mesma proposta (QC) aos dois subgrupos → diverge no de apt
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    garantir_cenarios_uniformes_multi(rascunho)
+    # Fixture uniforme: mesma proposta (QC) nos dois subgrupos → diverge no de apt
     msgs = coletar_divergencias_acomodacao(rascunho)
     assert msgs
     assert any("ADVANCE 600" in m and "Apartamento" in m and "Enfermaria" in m for m in msgs)

@@ -56,6 +56,10 @@ def _rascunho_dois_subgrupos(n_opcoes: int = 2):
         if i >= len(base.vidas) // 2:
             vida.subgrupo_atual_id = "sg-2"
     base.cenarios = []
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    sincronizar_cenarios(base)
+    garantir_cenarios_uniformes_multi(base)
     return base
 
 

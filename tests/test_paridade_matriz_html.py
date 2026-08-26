@@ -416,6 +416,10 @@ def _rascunho_n_subgrupos(n: int, *, extra_opcoes: int = 0):
         }
     )
     sincronizar_cenarios(rascunho)
+    if n > 1:
+        from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+        garantir_cenarios_uniformes_multi(rascunho)
     return rascunho
 
 
@@ -522,6 +526,9 @@ def _rascunho_dois_planos_gabarito(*, reajuste_bps: int) -> RascunhoEstudo:
         ),
     )
     sincronizar_cenarios(rascunho)
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    garantir_cenarios_uniformes_multi(rascunho)
     return rascunho
 
 

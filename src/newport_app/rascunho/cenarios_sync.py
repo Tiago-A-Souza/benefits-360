@@ -40,10 +40,11 @@ def _nome_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
 
 
 def rotulo_cenario(rascunho: RascunhoEstudo, cenario: CenarioRascunho) -> str:
-    """Rótulo da coluna do comparativo — único ou pacote misto."""
-    if cenario.rotulo:
-        return cenario.rotulo
+    """Rótulo da coluna do comparativo — sempre derivado das atribuições atuais.
 
+    Não usa ``cenario.rotulo`` em cache: após misturar cotações o rótulo gravado
+    fica stale (ex.: «PRATA» quando a coluna é «PRATA + OURO»).
+    """
     op_ids: list[str] = []
     vistos: set[str] = set()
     for atr in cenario.atribuicoes:
@@ -68,13 +69,17 @@ def opcao_referencia_cenario(cenario: CenarioRascunho) -> str | None:
 
 
 def podar_cenarios_orfaos(rascunho: RascunhoEstudo) -> None:
-    """Remove cenários/atribuições que não correspondem mais a opções do comparativo."""
+    """Remove atribuições cuja proposta saiu da seleção; mantém slots ainda vazios."""
     opcoes_ids = {op.id for op in rascunho.opcoes_proposta}
     limpos: list[CenarioRascunho] = []
     for cenario in rascunho.cenarios:
-        atribuicoes = [
-            a for a in cenario.atribuicoes if a.opcao_plano_id in opcoes_ids
-        ]
+        atribuicoes: list[AtribuicaoRascunho] = []
+        for a in cenario.atribuicoes:
+            if not a.opcao_plano_id:
+                # Slot incompleto (etapa 4 multi) — não é órfão.
+                atribuicoes.append(a)
+            elif a.opcao_plano_id in opcoes_ids:
+                atribuicoes.append(a)
         if atribuicoes:
             limpos.append(cenario.model_copy(update={"atribuicoes": atribuicoes}))
     rascunho.cenarios = limpos
@@ -116,67 +121,15 @@ def sincronizar_cenarios_subgrupo_unico(rascunho: RascunhoEstudo) -> None:
 
 
 def sincronizar_cenarios_multiplos_subgrupos(rascunho: RascunhoEstudo) -> None:
-    """Um cenário por proposta; cada cenário cobre todos os subgrupos com vidas."""
+    """Renovação com vários planos: cenários são montados na etapa 4.
+
+    Não cria nem pré-preenche. A poda de órfãos já rodou em ``sincronizar_cenarios``.
+    Estudos gravados (uniforme ou misto) permanecem intactos.
+    """
     if rascunho.formato == "novo" or len(rascunho.subgrupos_atuais) <= 1:
         return
-
-    if not rascunho.opcoes_proposta:
-        rascunho.cenarios = []
-        return
-
-    subgrupos_ids = subgrupos_com_vidas(rascunho)
-    if not subgrupos_ids:
-        return
-
-    opcoes_ids = {op.id for op in rascunho.opcoes_proposta}
-    novos: list[CenarioRascunho] = []
-
-    for indice, op in enumerate(rascunho.opcoes_proposta):
-        existente: CenarioRascunho | None = (
-            rascunho.cenarios[indice] if indice < len(rascunho.cenarios) else None
-        )
-
-        atribuicoes: list[AtribuicaoRascunho] = []
-        for sg_id in subgrupos_ids:
-            atr_existente = None
-            if existente:
-                atr_existente = next(
-                    (
-                        a
-                        for a in existente.atribuicoes
-                        if a.alvo_tipo == "subgrupo" and a.alvo_id == sg_id
-                    ),
-                    None,
-                )
-            opcao_celula = op.id
-            if (
-                atr_existente
-                and atr_existente.opcao_plano_id
-                and atr_existente.opcao_plano_id in opcoes_ids
-            ):
-                opcao_celula = atr_existente.opcao_plano_id
-
-            atribuicoes.append(
-                AtribuicaoRascunho(
-                    id=atr_existente.id if atr_existente else _novo_id("a"),
-                    alvo_tipo="subgrupo",
-                    alvo_id=sg_id,
-                    opcao_plano_id=opcao_celula,
-                )
-            )
-
-        cenario_novo = CenarioRascunho(
-            id=existente.id if existente else _novo_id("c"),
-            rotulo=None,
-            atribuicoes=atribuicoes,
-        )
-        novos.append(
-            cenario_novo.model_copy(
-                update={"rotulo": rotulo_cenario(rascunho, cenario_novo)}
-            )
-        )
-
-    rascunho.cenarios = novos
+    # Intencionalmente vazio — ver docstring.
+    return
 
 
 def sincronizar_cenarios_seguro_novo(rascunho: RascunhoEstudo) -> None:
@@ -264,7 +217,8 @@ def _cenarios_sincronizados_renovacao(rascunho: RascunhoEstudo) -> bool:
                 return False
         return True
 
-    if len(rascunho.cenarios) != len(opcoes):
+    # Multi: o usuário monta N≥1 cenários (não precisa ser 1 por cotação).
+    if not rascunho.cenarios:
         return False
 
     for cenario in rascunho.cenarios:
@@ -313,7 +267,10 @@ def cenarios_sincronizados(rascunho: RascunhoEstudo) -> bool:
 
 
 def sincronizar_cenarios(rascunho: RascunhoEstudo) -> RascunhoEstudo:
-    """Poda órfãos; recria cenários automaticamente conforme o formato do estudo."""
+    """Poda órfãos; sync automático só em seguro novo e renovação de 1 plano.
+
+    Renovação com vários planos: cenários vêm da etapa 4 (não são gerados aqui).
+    """
     podar_cenarios_orfaos(rascunho)
     if rascunho.formato == "novo":
         sincronizar_cenarios_seguro_novo(rascunho)
@@ -322,3 +279,41 @@ def sincronizar_cenarios(rascunho: RascunhoEstudo) -> RascunhoEstudo:
     elif len(rascunho.subgrupos_atuais) > 1:
         sincronizar_cenarios_multiplos_subgrupos(rascunho)
     return rascunho
+
+
+def garantir_cenarios_uniformes_multi(rascunho: RascunhoEstudo) -> None:
+    """Fixtures/testes: um cenário por proposta, mesma cotação em todos os planos.
+
+    Não usado pelo sync de produção (etapa 4 monta à mão).
+    """
+    if rascunho.formato == "novo" or len(rascunho.subgrupos_atuais) <= 1:
+        return
+    if not rascunho.opcoes_proposta:
+        rascunho.cenarios = []
+        return
+    subgrupos_ids = subgrupos_com_vidas(rascunho)
+    if not subgrupos_ids:
+        return
+    novos: list[CenarioRascunho] = []
+    for indice, op in enumerate(rascunho.opcoes_proposta):
+        existente = rascunho.cenarios[indice] if indice < len(rascunho.cenarios) else None
+        atribuicoes = [
+            AtribuicaoRascunho(
+                id=_novo_id("a"),
+                alvo_tipo="subgrupo",
+                alvo_id=sg_id,
+                opcao_plano_id=op.id,
+            )
+            for sg_id in subgrupos_ids
+        ]
+        cenario_novo = CenarioRascunho(
+            id=existente.id if existente else _novo_id("c"),
+            rotulo=None,
+            atribuicoes=atribuicoes,
+        )
+        novos.append(
+            cenario_novo.model_copy(
+                update={"rotulo": rotulo_cenario(rascunho, cenario_novo)}
+            )
+        )
+    rascunho.cenarios = novos

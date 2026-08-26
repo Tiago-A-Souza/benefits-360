@@ -199,6 +199,9 @@ def _rascunho_anistia_seis() -> RascunhoEstudo:
         ),
     )
     sincronizar_cenarios(rascunho)
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    garantir_cenarios_uniformes_multi(rascunho)
     return rascunho
 
 

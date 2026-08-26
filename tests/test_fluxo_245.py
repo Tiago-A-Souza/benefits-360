@@ -82,7 +82,13 @@ def test_renovacao_dois_planos_e_duas_propostas(client: TestClient):
     if not any(r["id"] == "regime-parcial" for r in rascunho["regimes_copart"]):
         rascunho["regimes_copart"].append({"id": "regime-parcial", "tipo": "parcial"})
 
-    rascunho["cenarios"] = []
+    # Multi: sync não pré-preenche — cenários vêm da etapa 4 (ou fixture).
+    from newport_app.models.draft import RascunhoEstudo
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    modelo = RascunhoEstudo.model_validate(rascunho)
+    garantir_cenarios_uniformes_multi(modelo)
+    rascunho = modelo.model_dump(mode="json")
 
     put = client.put("/api/estudos/demo-12", json=rascunho)
     assert put.status_code == 200

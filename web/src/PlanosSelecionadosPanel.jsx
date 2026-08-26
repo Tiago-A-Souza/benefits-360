@@ -33,30 +33,6 @@ function rotuloAcomodacao(canonico) {
   return "—";
 }
 
-function avisosAcomodacaoMatriz(rascunho, matriz) {
-  const subgrupos = subgruposComVidas(rascunho);
-  const msgs = [];
-  const vistos = new Set();
-  rascunho.opcoes_proposta.forEach((opColuna, i) => {
-    const celulas = matriz[i] || {};
-    for (const sg of subgrupos) {
-      const opId = celulas[sg.id] || opColuna.id;
-      const op = rascunho.opcoes_proposta.find((o) => o.id === opId);
-      if (!op) continue;
-      const acSg = acomodacaoDe(sg);
-      const acOp = acomodacaoDe(op);
-      if (!acSg || !acOp || acSg === acOp) continue;
-      const msg =
-        `«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída «${op.plano_nome}» é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`;
-      if (!vistos.has(msg)) {
-        vistos.add(msg);
-        msgs.push(msg);
-      }
-    }
-  });
-  return msgs;
-}
-
 function rotuloCenario(rascunho, atribuicoes) {
   const opIds = [];
   const vistos = new Set();
@@ -72,64 +48,57 @@ function rotuloCenario(rascunho, atribuicoes) {
   return opIds.map(nome).join(" + ");
 }
 
-function extrairMatriz(rascunho) {
-  const subgrupos = subgruposComVidas(rascunho);
-  const matriz = {};
-  rascunho.opcoes_proposta.forEach((op, i) => {
-    const cenario =
-      rascunho.cenarios[i] ||
-      rascunho.cenarios.find((c) =>
-        c.atribuicoes.some((a) => a.opcao_plano_id === op.id)
-      );
-    matriz[i] = {};
-    for (const sg of subgrupos) {
-      const atr = cenario?.atribuicoes?.find((a) => a.alvo_id === sg.id);
-      matriz[i][sg.id] = atr?.opcao_plano_id || op.id;
-    }
-  });
-  return matriz;
+function cenarioVazio(subgrupos) {
+  return {
+    id: novoId("c"),
+    rotulo: null,
+    atribuicoes: subgrupos.map((sg) => ({
+      id: novoId("a"),
+      alvo_tipo: "subgrupo",
+      alvo_id: sg.id,
+      opcao_plano_id: "",
+    })),
+  };
 }
 
-function montarCenarios(rascunho, matriz) {
-  const { opcoes_proposta, cenarios } = rascunho;
-  if (!opcoes_proposta.length) return cenarios;
-
-  const subgrupos = subgruposComVidas(rascunho);
-  if (!subgrupos.length) return cenarios;
-
-  return opcoes_proposta.map((op, i) => {
-    const existente =
-      cenarios[i] ||
-      cenarios.find((c) => c.atribuicoes.some((a) => a.opcao_plano_id === op.id));
-    const celulas = matriz[i] || {};
-
-    const atribuicoes = subgrupos.map((sg) => {
-      const atrExistente = existente?.atribuicoes.find((a) => a.alvo_id === sg.id);
-      return {
-        id: atrExistente?.id || novoId("a"),
-        alvo_tipo: "subgrupo",
-        alvo_id: sg.id,
-        opcao_plano_id: celulas[sg.id] || op.id,
-      };
-    });
-
-    return {
-      id: existente?.id || cenarios[i]?.id || novoId("c"),
-      rotulo: rotuloCenario(rascunho, atribuicoes),
-      atribuicoes,
-    };
-  });
+function garantirCenariosIniciais(rascunho, subgrupos) {
+  if ((rascunho.cenarios || []).length > 0) return rascunho.cenarios;
+  return [cenarioVazio(subgrupos)];
 }
 
-function contarCorrespondencias(rascunho, matriz, subgrupos) {
-  let preenchidas = 0;
-  const total = rascunho.opcoes_proposta.length * subgrupos.length;
-  rascunho.opcoes_proposta.forEach((op, i) => {
-    for (const sg of subgrupos) {
-      if (matriz[i]?.[sg.id] || op.id) preenchidas += 1;
+function lacunasCenario(cenario, subgrupos, opcoes) {
+  const opIds = new Set((opcoes || []).map((o) => o.id));
+  const faltando = [];
+  for (const sg of subgrupos) {
+    const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
+    if (!atr?.opcao_plano_id || !opIds.has(atr.opcao_plano_id)) {
+      faltando.push(sg.plano_nome || sg.id);
     }
-  });
-  return { preenchidas, total };
+  }
+  return faltando;
+}
+
+function avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos) {
+  const msgs = [];
+  const vistos = new Set();
+  for (const cenario of cenarios) {
+    for (const sg of subgrupos) {
+      const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
+      if (!atr?.opcao_plano_id) continue;
+      const op = rascunho.opcoes_proposta.find((o) => o.id === atr.opcao_plano_id);
+      if (!op) continue;
+      const acSg = acomodacaoDe(sg);
+      const acOp = acomodacaoDe(op);
+      if (!acSg || !acOp || acSg === acOp) continue;
+      const msg =
+        `«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída «${op.plano_nome}» é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`;
+      if (!vistos.has(msg)) {
+        vistos.add(msg);
+        msgs.push(msg);
+      }
+    }
+  }
+  return msgs;
 }
 
 export default function PlanosSelecionadosPanel({
@@ -139,7 +108,7 @@ export default function PlanosSelecionadosPanel({
   onSalvo,
 }) {
   const [rascunho, setRascunho] = useState(null);
-  const [matriz, setMatriz] = useState({});
+  const [cenarios, setCenarios] = useState([]);
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -147,7 +116,9 @@ export default function PlanosSelecionadosPanel({
     if (!estudoId) return;
     obterRascunho(estudoId)
       .then((r) => {
-        setMatriz(extrairMatriz(r));
+        const sgs = subgruposComVidas(r);
+        const iniciais = garantirCenariosIniciais(r, sgs);
+        setCenarios(iniciais);
         setRascunho({ ...r });
       })
       .catch((e) => setErro(e.message));
@@ -157,24 +128,77 @@ export default function PlanosSelecionadosPanel({
 
   const subgrupos = subgruposComVidas(rascunho);
   const multiplosPlanosAtuais = subgrupos.length > 1;
-  const nCenarios = rascunho.opcoes_proposta.length;
-  const { preenchidas, total } = contarCorrespondencias(rascunho, matriz, subgrupos);
+  const opcoes = rascunho.opcoes_proposta || [];
 
-  function atualizarCelula(indiceCenario, subgrupoId, opcaoId) {
-    setMatriz((prev) => ({
-      ...prev,
-      [indiceCenario]: { ...prev[indiceCenario], [subgrupoId]: opcaoId },
-    }));
+  const lacunasPorCenario = cenarios.map((c) =>
+    lacunasCenario(c, subgrupos, opcoes)
+  );
+  const incompleto = lacunasPorCenario.some((l) => l.length > 0);
+  const mensagemFalta = incompleto
+    ? lacunasPorCenario
+        .map((faltando, i) =>
+          faltando.length
+            ? `Cenário ${i + 1}: falta escolher cotação para ${faltando.join(", ")}`
+            : null
+        )
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+
+  function atualizarAtribuicao(indiceCenario, subgrupoId, opcaoId) {
+    setCenarios((prev) =>
+      prev.map((c, i) => {
+        if (i !== indiceCenario) return c;
+        const atribuicoes = (c.atribuicoes || []).map((a) =>
+          a.alvo_id === subgrupoId ? { ...a, opcao_plano_id: opcaoId } : a
+        );
+        const temSlot = atribuicoes.some((a) => a.alvo_id === subgrupoId);
+        if (!temSlot) {
+          atribuicoes.push({
+            id: novoId("a"),
+            alvo_tipo: "subgrupo",
+            alvo_id: subgrupoId,
+            opcao_plano_id: opcaoId,
+          });
+        }
+        return {
+          ...c,
+          atribuicoes,
+          rotulo: rotuloCenario(rascunho, atribuicoes),
+        };
+      })
+    );
+    setMsg(null);
+  }
+
+  function adicionarCenario() {
+    setCenarios((prev) => [...prev, cenarioVazio(subgrupos)]);
+    setMsg(null);
+  }
+
+  function removerCenario(indice) {
+    setCenarios((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== indice);
+    });
+    setMsg(null);
   }
 
   async function handleSalvar() {
     setErro(null);
+    if (incompleto) {
+      setErro(mensagemFalta || "Complete todas as escolhas antes de confirmar.");
+      return;
+    }
     try {
       const copia = structuredClone(rascunho);
-      copia.cenarios = montarCenarios(copia, matriz);
+      copia.cenarios = cenarios.map((c) => ({
+        ...c,
+        rotulo: rotuloCenario(rascunho, c.atribuicoes || []),
+      }));
       await salvarRascunho(estudoId, copia);
       setRascunho(copia);
-      setMatriz(extrairMatriz(copia));
+      setCenarios(copia.cenarios);
       setMsg("Atribuições confirmadas.");
       onSalvo?.();
     } catch (e) {
@@ -182,12 +206,7 @@ export default function PlanosSelecionadosPanel({
     }
   }
 
-  const matrizIncompleta =
-    multiplosPlanosAtuais &&
-    rascunho.opcoes_proposta.some(
-      (_, i) => subgrupos.some((sg) => !matriz[i]?.[sg.id])
-    );
-  const avisosAcomodacao = avisosAcomodacaoMatriz(rascunho, matriz);
+  const avisosAcomodacao = avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos);
 
   if (!multiplosPlanosAtuais) {
     return (
@@ -217,13 +236,13 @@ export default function PlanosSelecionadosPanel({
           </div>
           <h1>Correspondência com os planos atuais</h1>
           <p className="lead">
-            Para cada cenário, indique qual proposta substitui cada plano vigente. A estrutura do
-            estudo permanece a mesma; aqui você só define as equivalências.
+            Monte cada coluna do comparativo. Em um mesmo cenário, cada plano vigente pode
+            apontar para uma cotação diferente — por exemplo S750 em Prata e ONE S2500 em Ouro.
           </p>
         </div>
-        {nCenarios > 0 && (
+        {cenarios.length > 0 && (
           <span className="badge badge--blue">
-            {nCenarios} {nCenarios === 1 ? "cenário" : "cenários"}
+            {cenarios.length} {cenarios.length === 1 ? "cenário" : "cenários"}
           </span>
         )}
       </div>
@@ -233,43 +252,56 @@ export default function PlanosSelecionadosPanel({
           i
         </div>
         <div>
-          <b>Como funciona</b>
+          <b>Um cenário = uma coluna no comparativo</b>
           <p>
-            Cada cenário vira uma coluna no comparativo. Por padrão, o mesmo plano é aplicado a
-            todos os subgrupos; ajuste apenas quando a proposta correta for diferente.
+            Escolha, plano a plano, qual cotação da etapa anterior entra nessa coluna. Não é
+            obrigatório usar a mesma cotação em todos os planos — misturar é o caso normal
+            quando os planos vigentes têm níveis diferentes.
           </p>
         </div>
       </div>
 
-      {rascunho.opcoes_proposta.length === 0 && (
+      {opcoes.length === 0 && (
         <p className="alerta">Nenhum plano no comparativo — volte a «Cotações» e adicione opções.</p>
       )}
 
       <div className="scenario-grid">
-        {rascunho.opcoes_proposta.map((op, i) => {
-          const celulas = matriz[i] || {};
-          const preview = rotuloCenario(
-            rascunho,
-            subgrupos.map((sg) => ({
-              opcao_plano_id: celulas[sg.id] || op.id,
-            }))
-          );
-          const completo = subgrupos.every((sg) => Boolean(celulas[sg.id] || op.id));
+        {cenarios.map((cenario, i) => {
+          const faltando = lacunasPorCenario[i] || [];
+          const completo = faltando.length === 0;
+          const preview = rotuloCenario(rascunho, cenario.atribuicoes || []);
+          const vazioTotal = (cenario.atribuicoes || []).every((a) => !a.opcao_plano_id);
           return (
-            <article key={op.id} className="scenario">
+            <article key={cenario.id} className="scenario">
               <div className="scenario-head">
                 <div>
                   <strong>Cenário {i + 1}</strong>
-                  <small>Coluna: {preview}</small>
+                  <small>
+                    {vazioTotal
+                      ? "Escolha uma cotação para cada plano vigente abaixo"
+                      : `Coluna: ${preview}`}
+                  </small>
                 </div>
-                <span className={`badge ${completo ? "badge--ok" : "badge--alerta"}`}>
-                  {completo ? "Completo" : "Incompleto"}
-                </span>
+                <div className="scenario-head-actions">
+                  <span className={`badge ${completo ? "badge--ok" : "badge--alerta"}`}>
+                    {completo ? "Completo" : "Incompleto"}
+                  </span>
+                  {cenarios.length > 1 && (
+                    <button
+                      type="button"
+                      className="secundario scenario-remover"
+                      onClick={() => removerCenario(i)}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="scenario-body">
                 {subgrupos.map((sg) => {
-                  const opId = celulas[sg.id] || op.id;
-                  const opSel = rascunho.opcoes_proposta.find((o) => o.id === opId);
+                  const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
+                  const opId = atr?.opcao_plano_id || "";
+                  const opSel = opcoes.find((o) => o.id === opId);
                   const acSg = acomodacaoDe(sg);
                   const acOp = acomodacaoDe(opSel);
                   const diverge = acSg && acOp && acSg !== acOp;
@@ -291,10 +323,11 @@ export default function PlanosSelecionadosPanel({
                       </div>
                       <select
                         value={opId}
-                        onChange={(e) => atualizarCelula(i, sg.id, e.target.value)}
-                        aria-label={`Proposta para ${sg.plano_nome} no cenário ${i + 1}`}
+                        onChange={(e) => atualizarAtribuicao(i, sg.id, e.target.value)}
+                        aria-label={`Cotação para ${sg.plano_nome} no cenário ${i + 1}`}
                       >
-                        {rascunho.opcoes_proposta.map((opcao) => (
+                        <option value="">Escolha a cotação…</option>
+                        {opcoes.map((opcao) => (
                           <option key={opcao.id} value={opcao.id}>
                             {opcao.plano_nome || opcao.id}
                             {acomodacaoDe(opcao)
@@ -317,6 +350,12 @@ export default function PlanosSelecionadosPanel({
         })}
       </div>
 
+      <div className="action-bar action-bar--cenarios">
+        <button type="button" className="secundario" onClick={adicionarCenario}>
+          Adicionar cenário
+        </button>
+      </div>
+
       {avisosAcomodacao.length > 0 && (
         <div className="alerta">
           <strong>Acomodação divergente</strong>
@@ -328,24 +367,15 @@ export default function PlanosSelecionadosPanel({
         </div>
       )}
 
-      {matrizIncompleta && (
-        <p className="alerta">
-          Complete a atribuição de proposta para cada subgrupo antes de confirmar.
-        </p>
-      )}
+      {mensagemFalta && <p className="alerta">{mensagemFalta}</p>}
 
       <div className="action-bar">
         <div className="action-left">
-          {total > 0 && (
-            <span className="action-note">
-              {preenchidas} de {total} correspondências preenchidas
-            </span>
-          )}
           {msg && <span className="action-note ok-inline">{msg}</span>}
           {erro && <span className="action-note erro-inline">{erro}</span>}
         </div>
         <div className="action-right">
-          <button type="button" onClick={handleSalvar} disabled={matrizIncompleta}>
+          <button type="button" onClick={handleSalvar} disabled={incompleto || !opcoes.length}>
             Confirmar atribuições
           </button>
         </div>

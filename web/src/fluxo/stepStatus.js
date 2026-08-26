@@ -57,7 +57,7 @@ export function cenariosSincronizados(rascunho) {
     );
   }
 
-  if (cenarios.length !== ops.length) return false;
+  if (!cenarios.length) return false;
 
   return cenarios.every((cenario) => {
     const atribPorSg = new Map();

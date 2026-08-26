@@ -244,6 +244,9 @@ def test_renovacao_dois_subgrupos_totais_proprios(tmp_path: Path):
         }
     )
     sincronizar_cenarios(rascunho)
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    garantir_cenarios_uniformes_multi(rascunho)
     snap = _aprovar(tmp_path, rascunho)
     vm = construir_view_model(
         snap, modo="faixas", propostas_selecionadas=["op-1", "op-2"]

@@ -126,7 +126,8 @@ def test_proposta_manual_sincroniza_igual_pdf(repo):
     assert cenarios_sincronizados(salvo)
 
 
-def test_anistia_dois_planos_sincroniza_automaticamente(repo):
+def test_anistia_dois_planos_sync_nao_cria_cenarios(repo):
+    """Multi: sync não pré-preenche — etapa 4 monta."""
     rascunho = _rascunho_atef(2)
     sg2 = deepcopy(rascunho.subgrupos_atuais[0])
     sg2.id = "sg-2"
@@ -140,16 +141,40 @@ def test_anistia_dois_planos_sincroniza_automaticamente(repo):
     repo.salvar_rascunho(rascunho)
     salvo = repo.obter_rascunho(rascunho.id)
     assert salvo is not None
+    assert salvo.cenarios == []
+    assert not cenarios_sincronizados(salvo)
+    assert any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(salvo))
+
+
+def test_anistia_cenarios_gravados_permanecem_intactos(repo):
+    """Estudo já no formato uniforme: sync não recria nem apaga."""
+    rascunho = _rascunho_atef(2)
+    sg2 = deepcopy(rascunho.subgrupos_atuais[0])
+    sg2.id = "sg-2"
+    sg2.plano_nome = "Plano atual B"
+    rascunho.subgrupos_atuais.append(sg2)
+    for i, vida in enumerate(rascunho.vidas):
+        if i >= len(rascunho.vidas) // 2:
+            vida.subgrupo_atual_id = "sg-2"
+    from newport_app.rascunho.cenarios_sync import garantir_cenarios_uniformes_multi
+
+    garantir_cenarios_uniformes_multi(rascunho)
+    ids_antes = [c.id for c in rascunho.cenarios]
+    atrib_antes = [
+        [(a.alvo_id, a.opcao_plano_id) for a in c.atribuicoes] for c in rascunho.cenarios
+    ]
+
+    repo.salvar_rascunho(rascunho)
+    salvo = repo.obter_rascunho(rascunho.id)
+    assert salvo is not None
+    assert [c.id for c in salvo.cenarios] == ids_antes
+    assert [
+        [(a.alvo_id, a.opcao_plano_id) for a in c.atribuicoes] for c in salvo.cenarios
+    ] == atrib_antes
     assert cenarios_sincronizados(salvo)
-    assert len(salvo.cenarios) == 2
-    for i, cenario in enumerate(salvo.cenarios):
-        assert len(cenario.atribuicoes) == 2
-        assert {a.alvo_id for a in cenario.atribuicoes} == {"sg-1", "sg-2"}
-        assert all(a.opcao_plano_id == f"op-{i + 1}" for a in cenario.atribuicoes)
-    assert not any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(salvo))
 
 
-def test_anistia_estrutura_parcial_nao_sincronizada(repo):
+def test_anistia_estrutura_parcial_permanece_pendente(repo):
     rascunho = _rascunho_atef(2)
     sg2 = deepcopy(rascunho.subgrupos_atuais[0])
     sg2.id = "sg-2"
@@ -185,8 +210,9 @@ def test_anistia_estrutura_parcial_nao_sincronizada(repo):
     repo.salvar_rascunho(rascunho)
     salvo = repo.obter_rascunho(rascunho.id)
     assert salvo is not None
-    assert cenarios_sincronizados(salvo)
-    assert not any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(salvo))
+    # Sync multi não completa mais — permanece pendente para a etapa 4.
+    assert not cenarios_sincronizados(salvo)
+    assert any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(salvo))
 
 
 def test_get_rascunho_sincroniza_em_memoria_sem_persistir_orfaos(repo):

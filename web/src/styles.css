@@ -3081,6 +3081,28 @@ label.field select {
   margin-top: 2px;
 }
 
+.scenario-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.scenario-remover {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.action-bar--cenarios {
+  justify-content: flex-start;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.action-bar--cenarios .secundario {
+  font-weight: 500;
+}
+
 .scenario-body {
   padding: 5px 14px 10px;
 }
