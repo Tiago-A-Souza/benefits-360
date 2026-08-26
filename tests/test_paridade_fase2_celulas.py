@@ -1,30 +1,34 @@
 """Fase 2 — paridade estrutural nas células geradas (48 − inválidas).
 
 Duas camadas × quatro modos. Defeitos de produto: xfail(strict), sem correção.
+
+Preparação (rascunho → matriz → snapshot aprovado) é **uma vez por célula**
+(fixture module-scoped). Os quatro modos só leem o estado compartilhado.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from newport_app.models.draft import RascunhoEstudo
+from newport_app.models.responses import ComparativoResponse
+from newport_app.models.snapshot import SnapshotCalculo
 from newport_app.presentation.builder import construir_view_model
+from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.html_renderer import render_html, render_html_completo
-from newport_app.presentation.paridade_estrutural import (
-    assert_paridade_estrutural,
-    divergencias_estruturais,
-)
+from newport_app.presentation.paridade_estrutural import divergencias_estruturais
 from newport_app.presentation.paridade_html import (
-    assert_paridade_html_vm,
     divergencias_celulas_pos,
     divergencias_html_vm,
     inventariar_html,
     inventariar_vm,
     valores_principais_vm,
 )
-from newport_app.presentation.formatacao import formatar_reais
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from tests.gerador_celulas_estruturais import (
     CelulaEstrutural,
@@ -37,6 +41,7 @@ from tests.test_paridade_matriz_html import _aprovar, _calcular_matriz
 
 _APROV = datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc)
 _MODOS = ("resumo", "faixas", "beneficiario", "completo")
+_CELULAS_VALIDAS = enumerar_celulas_validas()
 
 # Defeitos de produto conhecidos nesta grade:
 # - beneficiario: html_renderer._render_beneficiarios chama
@@ -48,11 +53,15 @@ _MODOS = ("resumo", "faixas", "beneficiario", "completo")
 _XFAIL_POR_ID: dict[str, str] = {}
 
 
-def _xfail_mark(test_id: str):
-    motivo = _XFAIL_POR_ID.get(test_id)
-    if not motivo:
-        return ()
-    return (pytest.mark.xfail(reason=motivo, strict=True),)
+@dataclass(frozen=True)
+class CelulaPreparada:
+    """Estado compartilhado entre modos — somente leitura."""
+
+    celula: CelulaEstrutural
+    rascunho: RascunhoEstudo
+    matriz: ComparativoResponse
+    snap: SnapshotCalculo
+    ids: tuple[str, ...]
 
 
 def test_contagem_celulas_gerador():
@@ -63,31 +72,60 @@ def test_contagem_celulas_gerador():
     assert len(validas) + len(invalidas) == 48
     assert len(validas) == 36
     assert len(invalidas) == 12
-    # Ênfases do diagnóstico presentes nas válidas.
     nomes = {c.nome for c in validas}
     assert "renovacao_3_3_3" in nomes or "renovacao_3_3_6" in nomes
-    assert "novo_0_2_3" in nomes  # multi-regime + 3 propostas
-    assert "novo_0_1_6" in nomes  # 6+ propostas
-    assert "renovacao_3_2_3" in nomes  # 3 planos × 2+ regimes
-    assert "novo_0_1_3" in nomes  # IVTEC real (3 propostas)
+    assert "novo_0_2_3" in nomes
+    assert "novo_0_1_6" in nomes
+    assert "renovacao_3_2_3" in nomes
+    assert "novo_0_1_3" in nomes
 
 
-def _preparar(tmp_path: Path, celula: CelulaEstrutural):
+def _preparar(tmp_path: Path, celula: CelulaEstrutural) -> CelulaPreparada:
     rascunho = gerar_rascunho(celula)
     sincronizar_cenarios(rascunho)
     matriz, _ = _calcular_matriz(rascunho)
     snap = _aprovar(tmp_path, rascunho)
-    ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
+    ids = tuple(p.opcao_id for p in matriz.propostas if p.calculo_realizado)
     assert ids, f"{celula.nome}: nenhuma proposta calculada"
     assert len(ids) == celula.n_propostas
-    return rascunho, matriz, snap, ids
+    return CelulaPreparada(
+        celula=celula,
+        rascunho=rascunho,
+        matriz=matriz,
+        snap=snap,
+        ids=ids,
+    )
 
 
-def _vm(snap, modo: str, ids: list[str]):
+def _assinatura_compartilhada(prep: CelulaPreparada) -> dict[str, Any]:
+    """Retrato do estado compartilhado — modos não podem alterá-lo."""
+    return {
+        "ids": prep.ids,
+        "matriz_id": id(prep.matriz),
+        "snap_id": id(prep.snap),
+        "rascunho_id": id(prep.rascunho),
+        "rotulos_prop": tuple(
+            (p.opcao_id, p.plano_nome) for p in prep.matriz.propostas
+        ),
+        "rotulos_planos": tuple(
+            (p.subgrupo_id, p.plano_nome) for p in prep.matriz.planos_atuais
+        ),
+        "snap_hash": prep.snap.hash_sha256,
+        "n_planos_payload": len(
+            (prep.snap.payload.get("comparativo") or {}).get("planos_atuais") or []
+        ),
+        "rascunho_subgrupos": tuple(
+            (sg.id, sg.plano_nome) for sg in prep.rascunho.subgrupos_atuais
+        ),
+    }
+
+
+def _vm(snap: SnapshotCalculo, modo: str, ids: tuple[str, ...]):
+    # list(ids) — cópia rasa; não reutiliza buffer mutável entre modos.
     return construir_view_model(
         snap,
         modo=modo,
-        propostas_selecionadas=ids,
+        propostas_selecionadas=list(ids),
         beneficiarios_agregados=(modo != "beneficiario"),
         aprovado_em=_APROV,
     )
@@ -110,7 +148,6 @@ def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
     if falta_fx:
         divs.append(f"completo: faixas ausentes no HTML: {falta_fx}")
 
-    # Planos do resumo: só linhas da tabela Indicador (não h3 da visão faixas).
     if iv_r.planos:
         falta_pl_r = sorted(iv_r.planos - ih_r.planos_linha_resumo)
         if falta_pl_r:
@@ -172,49 +209,57 @@ def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
     return divs
 
 
-def _rodar_celula_modo(
-    tmp_path: Path, celula: CelulaEstrutural, modo: str
-) -> list[str]:
-    rascunho, matriz, snap, ids = _preparar(tmp_path, celula)
+def _rodar_modo(prep: CelulaPreparada, modo: str) -> list[str]:
+    """Só lê prep; VM/HTML são locais ao modo."""
+    antes = _assinatura_compartilhada(prep)
     divs: list[str] = []
     if modo == "completo":
-        vm_r = _vm(snap, "resumo", ids)
-        vm_f = _vm(snap, "faixas", ids)
-        vm_b = _vm(snap, "beneficiario", ids)
+        vm_r = _vm(prep.snap, "resumo", prep.ids)
+        vm_f = _vm(prep.snap, "faixas", prep.ids)
+        vm_b = _vm(prep.snap, "beneficiario", prep.ids)
         for rotulo, vm in (("resumo", vm_r), ("faixas", vm_f), ("beneficiario", vm_b)):
-            d = divergencias_estruturais(matriz, vm, rascunho=rascunho)
+            d = divergencias_estruturais(prep.matriz, vm, rascunho=prep.rascunho)
             divs.extend(f"camada1/{rotulo}: {x}" for x in d)
         html = render_html_completo(vm_r, vm_f, vm_b)
-        divs.extend(f"camada2/completo: {x}" for x in divergencias_html_completo(vm_r, vm_f, vm_b, html))
-        return divs
+        divs.extend(
+            f"camada2/completo: {x}"
+            for x in divergencias_html_completo(vm_r, vm_f, vm_b, html)
+        )
+    else:
+        vm = _vm(prep.snap, modo, prep.ids)
+        d1 = divergencias_estruturais(prep.matriz, vm, rascunho=prep.rascunho)
+        divs.extend(f"camada1: {x}" for x in d1)
+        html = render_html(vm)
+        d2 = divergencias_html_vm(vm, html)
+        divs.extend(f"camada2: {x}" for x in d2)
 
-    vm = _vm(snap, modo, ids)
-    d1 = divergencias_estruturais(matriz, vm, rascunho=rascunho)
-    divs.extend(f"camada1: {x}" for x in d1)
-    html = render_html(vm)
-    d2 = divergencias_html_vm(vm, html)
-    divs.extend(f"camada2: {x}" for x in d2)
+    depois = _assinatura_compartilhada(prep)
+    assert antes == depois, (
+        f"modo={modo} mutou estado compartilhado da célula {prep.celula.nome}: "
+        f"antes={antes!r} depois={depois!r}"
+    )
     return divs
 
 
-def _params_celula_modo():
-    for celula in enumerar_celulas_validas():
-        for modo in _MODOS:
-            tid = f"{modo}-{celula.nome}"
-            yield pytest.param(
-                celula,
-                modo,
-                id=tid,
-                marks=_xfail_mark(tid),
-            )
+@pytest.fixture(scope="module", params=_CELULAS_VALIDAS, ids=lambda c: c.nome)
+def celula_preparada(request, tmp_path_factory) -> CelulaPreparada:
+    """Calcula e aprova uma vez por célula; modos compartilham só leitura."""
+    celula: CelulaEstrutural = request.param
+    path = tmp_path_factory.mktemp(f"fase2-{celula.nome}")
+    return _preparar(path, celula)
 
 
-@pytest.mark.parametrize("celula,modo", list(_params_celula_modo()))
-def test_paridade_celula_estrutural(
-    tmp_path: Path, celula: CelulaEstrutural, modo: str
-):
-    divs = _rodar_celula_modo(tmp_path / celula.nome / modo, celula, modo)
-    assert not divs, f"{celula.nome}/{modo} falhou:\n- " + "\n- ".join(divs)
+@pytest.mark.parametrize("modo", list(_MODOS))
+def test_paridade_celula_estrutural(celula_preparada: CelulaPreparada, modo: str):
+    tid = f"{modo}-{celula_preparada.celula.nome}"
+    motivo = _XFAIL_POR_ID.get(tid)
+    if motivo:
+        pytest.xfail(motivo)
+
+    divs = _rodar_modo(celula_preparada, modo)
+    assert not divs, (
+        f"{celula_preparada.celula.nome}/{modo} falhou:\n- " + "\n- ".join(divs)
+    )
 
 
 def test_coleta_divergencias_fase2(tmp_path: Path):
@@ -222,8 +267,9 @@ def test_coleta_divergencias_fase2(tmp_path: Path):
     relatorio: list[str] = []
     n_falha = 0
     for celula in enumerar_celulas_validas():
+        prep = _preparar(tmp_path / celula.nome, celula)
         for modo in _MODOS:
-            divs = _rodar_celula_modo(tmp_path / celula.nome / modo, celula, modo)
+            divs = _rodar_modo(prep, modo)
             if divs:
                 n_falha += 1
                 relatorio.append(f"### {celula.nome} / modo={modo}")
@@ -233,3 +279,13 @@ def test_coleta_divergencias_fase2(tmp_path: Path):
     print(f"CASOS_MODO_COM_FALHA={n_falha}")
     print("\n".join(relatorio) if relatorio else "NENHUMA_FALHA")
     assert True
+
+
+def test_modos_nao_escrevem_estado_compartilhado(celula_preparada: CelulaPreparada):
+    """Trava explícita: os quatro modos só leem matriz/snap/rascunho."""
+    base = _assinatura_compartilhada(celula_preparada)
+    for modo in _MODOS:
+        _rodar_modo(celula_preparada, modo)
+        assert _assinatura_compartilhada(celula_preparada) == base, (
+            f"após modo={modo} o estado compartilhado divergiu"
+        )
