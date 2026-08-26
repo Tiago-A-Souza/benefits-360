@@ -178,7 +178,11 @@ def test_ivtec_seguro_novo_faixas_totais_e_html(tmp_path: Path):
     assert totais["op-bronze"] != totais["op-prata"]
     assert vm.totais_gerais.atual_centavos is None
     assert vm.totais_gerais.baseline_rotulo is None
-    assert vm.totais_gerais.diff_mensal == {}
+    # Diffs vs menor proposta — preenchidos no builder a partir do numerico.
+    assert vm.totais_gerais.diff_mensal["op-bronze"] == 0
+    assert vm.totais_gerais.diff_mensal["op-prata"] == 565_204 - 374_189
+    assert vm.totais_gerais.diff_anual["op-bronze"] == 0
+    assert vm.totais_gerais.diff_anual["op-prata"] == 12 * (565_204 - 374_189)
 
     html = render_html(vm)
     assert "Plano atual" not in html

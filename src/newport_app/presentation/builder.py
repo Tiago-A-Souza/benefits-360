@@ -208,6 +208,7 @@ def _montar_proposta_meta(
     *,
     seguro_novo: bool,
 ) -> PropostaApresentacao:
+    del seguro_novo  # diffs vêm do numerico em ambos os formatos
     op = next((o for o in rascunho.opcoes_proposta if o.id == prop.opcao_id), None)
     regime = None
     if op is not None:
@@ -232,12 +233,9 @@ def _montar_proposta_meta(
             op.total_recorrente.centavos if op and op.total_recorrente else None
         ),
         total_mensal_centavos=numerico.proposta_mensal_centavos if numerico else None,
-        diff_mensal_centavos=(
-            None if seguro_novo else (numerico.diff_mes_centavos if numerico else None)
-        ),
-        diff_anual_centavos=(
-            None if seguro_novo else (numerico.diff_ano_centavos if numerico else None)
-        ),
+        # Em seguro novo o numerico já traz diff vs a proposta mais barata.
+        diff_mensal_centavos=numerico.diff_mes_centavos if numerico else None,
+        diff_anual_centavos=numerico.diff_ano_centavos if numerico else None,
     )
 
 
@@ -336,7 +334,7 @@ def construir_view_model(
             totais_sec.propostas[p.opcao_id] = (
                 numerico.proposta_mensal_centavos if numerico else None
             )
-            if not seguro_novo and numerico:
+            if numerico:
                 totais_sec.diff_mensal[p.opcao_id] = numerico.diff_mes_centavos
                 totais_sec.diff_anual[p.opcao_id] = numerico.diff_ano_centavos
 
@@ -423,7 +421,7 @@ def construir_view_model(
         totais_gerais.propostas[op_id] = (
             numerico.proposta_mensal_centavos if numerico else None
         )
-        if not seguro_novo and numerico:
+        if numerico:
             totais_gerais.diff_mensal[op_id] = numerico.diff_mes_centavos
             totais_gerais.diff_anual[op_id] = numerico.diff_ano_centavos
 

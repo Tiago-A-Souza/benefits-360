@@ -61,30 +61,15 @@ _CASOS = [
     ("novo_0_1_2", _rascunho_ivtec_novo),
 ]
 
-# Defeito conhecido (camada 2): resumo seguro novo descarta a estrutura do VM.
-_XFAIL_RESUMO_NOVO_HTML = pytest.mark.xfail(
-    reason=(
-        "Resumo seguro novo: o VM carrega as faixas do estudo, mas o HTML "
-        "renderiza só a linha «Diferença vs menor» (classe 5×1). Com duas "
-        "propostas (IVTEC) omite também o total mensal da proposta que não "
-        "é a menor (ex.: R$ 5.652,04)."
-    ),
-    strict=True,
-)
-
-
+# Defeitos do resumo seguro novo corrigidos — xfail removido.
 def _params_html_vm():
     for rotulo, factory in _CASOS:
         for modo in ("resumo", "faixas", "beneficiario"):
-            marks = ()
-            if modo == "resumo" and rotulo in {"novo_0_1_1", "novo_0_1_2"}:
-                marks = (_XFAIL_RESUMO_NOVO_HTML,)
             yield pytest.param(
                 rotulo,
                 factory,
                 modo,
                 id=f"{modo}-{rotulo}",
-                marks=marks,
             )
 
 

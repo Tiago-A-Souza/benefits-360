@@ -41,6 +41,14 @@ def _cel_diff(valor: int | None) -> str:
     return texto
 
 
+def _cel_diff_ou_referencia(valor: int | None) -> str:
+    """Diferença zero (proposta mais barata / única) → «referência», não R$ 0,00."""
+    if valor is None:
+        return ""
+    if valor == 0:
+        return "referência"
+    return _cel_diff(valor)
+
 def _cel_contrato_atual(
     reajustado_centavos: int | None,
     percentual: str | None,
@@ -337,76 +345,97 @@ def _render_resumo(
             f"<div class='regime'><b>{html.escape(secao.regime_rotulo)}</b><i></i>"
             f"<em>{n_prop} proposta{'s' if n_prop != 1 else ''}</em></div>"
         )
-    partes.append("<div class='rolo'><table><thead><tr><th>Indicador</th>")
-    if not seguro_novo:
-        od = f"{model.qtd_planos_vigentes} PLANOS" if model.qtd_planos_vigentes else ""
+
+    if seguro_novo:
+        # Estrutura = uma linha por proposta do modelo (não há planos vigentes).
         partes.append(
-            "<th class='atual'><span class='op'>Contrato atual</span>"
-            + (f"<span class='od' data-l='{html.escape(od, quote=True)}'></span>" if od else "")
-            + "</th>"
+            "<div class='rolo'><table><thead><tr>"
+            "<th>Proposta</th><th>Total mensal</th>"
+            "<th>Diferença vs menor (mês)</th>"
+            "<th>Diferença vs menor (ano)</th>"
+            "</tr></thead><tbody>"
         )
+        for op_id in op_ids:
+            prop = next((p for p in secao.propostas if p.opcao_id == op_id), None)
+            nome = rotulos.get(op_id) or (prop.plano_nome if prop else op_id)
+            operadora = prop.operadora if prop else ""
+            total = secao.totais.propostas.get(op_id)
+            if total is None:
+                total = model.totais_gerais.propostas.get(op_id)
+            if total is None and prop is not None:
+                total = prop.total_mensal_centavos
+            diff_m = secao.totais.diff_mensal.get(op_id)
+            if diff_m is None:
+                diff_m = model.totais_gerais.diff_mensal.get(op_id)
+            if diff_m is None and prop is not None:
+                diff_m = prop.diff_mensal_centavos
+            diff_a = secao.totais.diff_anual.get(op_id)
+            if diff_a is None:
+                diff_a = model.totais_gerais.diff_anual.get(op_id)
+            if diff_a is None and prop is not None:
+                diff_a = prop.diff_anual_centavos
+            od = (
+                f"<span class='od' data-l='{html.escape(operadora, quote=True)}'></span>"
+                if operadora
+                else ""
+            )
+            partes.append(
+                f"<tr><td><span class='op'>{html.escape(nome)}</span>{od}</td>"
+                f"<td>{_cel(total)}</td>"
+                f"<td>{_cel_diff_ou_referencia(diff_m)}</td>"
+                f"<td>{_cel_diff_ou_referencia(diff_a)}</td></tr>"
+            )
+        partes.append("</tbody></table></div></section>")
+        return "".join(partes)
+
+    partes.append("<div class='rolo'><table><thead><tr><th>Indicador</th>")
+    od = f"{model.qtd_planos_vigentes} PLANOS" if model.qtd_planos_vigentes else ""
+    partes.append(
+        "<th class='atual'><span class='op'>Contrato atual</span>"
+        + (f"<span class='od' data-l='{html.escape(od, quote=True)}'></span>" if od else "")
+        + "</th>"
+    )
     for op_id in op_ids:
         partes.append(_th_proposta(op_id, secao.propostas, rotulos))
     partes.append("</tr></thead><tbody>")
 
-    if not seguro_novo:
-        for plano in planos:
-            vidas = _vidas_plano(plano)
-            # Vidas via data-attr + CSS para o texto da 1ª célula = só o nome do plano.
-            vidas_attr = f" data-vidas='{vidas}'" if vidas > 0 else ""
-            partes.append(
-                f"<tr><td{vidas_attr}>{html.escape(plano.plano_nome)}</td>"
-            )
-            partes.append(
-                f"<td class='atual'>{_cel_contrato_atual(plano.subtotal_reajustado_centavos, plano.reajuste_percentual_exibicao)}</td>"
-            )
-            for op_id in op_ids:
-                partes.append(f"<td>{_cel_subtotal_plano(plano, op_id)}</td>")
-            partes.append("</tr>")
-        # Um plano só: consolidado é redundante — omitir.
-        if len(planos) >= 2:
-            partes.append("<tr><td><strong>Consolidado</strong></td>")
-            reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
-            partes.append(
-                f"<td class='atual'><strong>{_cel_contrato_atual(reaj_c, model.reajuste_consolidado_percentual_exibicao)}</strong></td>"
-            )
-            for op_id in op_ids:
-                total = secao.totais.propostas.get(op_id)
-                if total is None:
-                    total = model.totais_gerais.propostas.get(op_id)
-                partes.append(f"<td><strong>{_cel(total)}</strong></td>")
-            partes.append("</tr>")
+    for plano in planos:
+        vidas = _vidas_plano(plano)
+        # Vidas via data-attr + CSS para o texto da 1ª célula = só o nome do plano.
+        vidas_attr = f" data-vidas='{vidas}'" if vidas > 0 else ""
+        partes.append(
+            f"<tr><td{vidas_attr}>{html.escape(plano.plano_nome)}</td>"
+        )
+        partes.append(
+            f"<td class='atual'>{_cel_contrato_atual(plano.subtotal_reajustado_centavos, plano.reajuste_percentual_exibicao)}</td>"
+        )
+        for op_id in op_ids:
+            partes.append(f"<td>{_cel_subtotal_plano(plano, op_id)}</td>")
+        partes.append("</tr>")
+    # Um plano só: consolidado é redundante — omitir.
+    if len(planos) >= 2:
+        partes.append("<tr><td><strong>Consolidado</strong></td>")
+        reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
+        partes.append(
+            f"<td class='atual'><strong>{_cel_contrato_atual(reaj_c, model.reajuste_consolidado_percentual_exibicao)}</strong></td>"
+        )
+        for op_id in op_ids:
+            total = secao.totais.propostas.get(op_id)
+            if total is None:
+                total = model.totais_gerais.propostas.get(op_id)
+            partes.append(f"<td><strong>{_cel(total)}</strong></td>")
+        partes.append("</tr>")
 
-    partes.append(
-        "<tr><td>"
-        + ("Diferença vs menor (mês)" if seguro_novo else "Diferença mensal")
-        + "</td>"
-    )
-    if not seguro_novo:
-        partes.append("<td class='atual'>referência</td>")
-    totais_todas = [
-        model.totais_gerais.propostas.get(i) for i in model.propostas_selecionadas
-    ]
-    validos_todas = [t for t in totais_todas if t is not None]
-    menor_global = min(validos_todas) if validos_todas else None
+    partes.append("<tr><td>Diferença mensal</td>")
+    partes.append("<td class='atual'>referência</td>")
     for op_id in op_ids:
-        if seguro_novo:
-            total = model.totais_gerais.propostas.get(op_id)
-            diff = (
-                (total - menor_global)
-                if total is not None and menor_global is not None
-                else None
-            )
-            partes.append(f"<td>{_cel_diff(diff)}</td>")
-        else:
-            partes.append(f"<td>{_cel_diff(model.totais_gerais.diff_mensal.get(op_id))}</td>")
+        partes.append(f"<td>{_cel_diff(model.totais_gerais.diff_mensal.get(op_id))}</td>")
     partes.append("</tr>")
 
-    if not seguro_novo:
-        partes.append("<tr><td>Diferença anual</td><td class='atual'></td>")
-        for op_id in op_ids:
-            partes.append(f"<td>{_cel_diff(model.totais_gerais.diff_anual.get(op_id))}</td>")
-        partes.append("</tr>")
+    partes.append("<tr><td>Diferença anual</td><td class='atual'></td>")
+    for op_id in op_ids:
+        partes.append(f"<td>{_cel_diff(model.totais_gerais.diff_anual.get(op_id))}</td>")
+    partes.append("</tr>")
 
     partes.append("</tbody></table></div></section>")
     return "".join(partes)

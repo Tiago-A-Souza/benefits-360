@@ -232,6 +232,15 @@ def inventariar_html(html_doc: str) -> InventarioRender:
                         if t and not _RE_REAIS.search(t) and t not in {"", "—"}:
                             # Heurística frouxa demais — planos no benef. via match no assert.
                             pass
+        elif primeiro_th == "Proposta":
+            for tbody in _filhos(table, "tbody"):
+                for tr in _filhos(tbody, "tr"):
+                    cells = _celulas_linha(tr)
+                    if not cells:
+                        continue
+                    rotulo = _texto(cells[0])
+                    if rotulo:
+                        propostas.add(rotulo)
         elif primeiro_th == "Indicador":
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
@@ -415,13 +424,14 @@ def divergencias_html_vm(vm: PresentationViewModel, html_doc: str) -> list[str]:
                 + ("…" if len(principais_ausentes) > 8 else "")
             )
 
-    # Se o resumo não tem planos reais, as faixas do VM são a estrutura de linha
-    # disponível — omiti-las no HTML é descarte (classe N faixas × 1 linha).
-    if vm.modo == "resumo" and not iv.planos and iv.faixas and not ih.faixas:
-        divs.append(
-            f"resumo sem estrutura de faixas do modelo: modelo_faixas={sorted(iv.faixas)} "
-            f"html_linhas={len(ih.linhas)} ({sorted(ih.linhas)})"
-        )
+    # Resumo sem planos vigentes: as linhas estruturais são as propostas.
+    if vm.modo == "resumo" and not iv.planos and iv.propostas:
+        falta_linhas = sorted(iv.propostas - ih.linhas - ih.propostas)
+        if falta_linhas:
+            divs.append(
+                f"resumo sem linhas de proposta do modelo: ausentes={falta_linhas} "
+                f"html_linhas={sorted(ih.linhas)}"
+            )
 
     inventados = sorted(ih.valores_centavos - valores_modelo)
     if inventados:
