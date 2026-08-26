@@ -806,6 +806,16 @@ documento.
 | `round()` bancário em `_calcular_diff_bps` | 1 bps de diferença em fronteira exata |
 | Paginação da matriz para impressão | última coluna cortada com 5 propostas |
 | Cabeçalho da coluna de contrato atual repete o rótulo | «CONTRATO ATUAL / CONTRATO ATUAL / vários planos» |
+| `_th_proposta(..., [], ...)` no modo beneficiário | terceira superfície do 8.2 — ver abaixo |
+
+### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
+
+`html_renderer.py:698` chama `_th_proposta(op_id, [], rotulos)` no modo
+beneficiário. Com a lista vazia, o cabeçalho não recebe o
+`PropostaApresentacao` e perde a operadora. O nome vem do mapa de rótulos,
+então o valor não erra — mas duas propostas com o mesmo nome base não são
+desambiguadas nessa visão. É a terceira superfície do item 8.2. Correção:
+passar `secao.propostas` em vez de lista vazia.
 
 ### Segundo renderizador de faixas etárias no frontend
 
