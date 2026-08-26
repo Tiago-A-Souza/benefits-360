@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from newport_motor.calculation import agregar_por_opcao_no_cenario, calcular_cenario
+from newport_motor.calculation import (
+    agregar_por_opcao_no_cenario,
+    calcular_cenario,
+    calcular_grade_opcao_subgrupo,
+)
 from newport_motor.models import EstudoInput
 from newport_motor.policy import EffectivePolicy
 from newport_motor.reconciliation import (
@@ -96,6 +100,9 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
                 )
             )
 
+    # Grade completa: uma vez por motor, irmã dos cenários (não por cenário).
+    grade = calcular_grade_opcao_subgrupo(estudo, policy)
+
     if (
         estudo.vidas_incluidas()
         and not cenarios_result
@@ -114,6 +121,7 @@ def calcular(estudo: EstudoInput, policy: EffectivePolicy) -> MotorResult:
     return MotorResult(
         estudo_id=estudo.id,
         cenarios=cenarios_result,
+        grade_opcao_subgrupo=grade,
         validacoes=validacoes,
         politicas_efetivas=policy.as_snapshot_dict(),
         bloqueios_abertos=bloqueios,

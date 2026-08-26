@@ -216,6 +216,49 @@ def calcular_cenario(
     return cenario
 
 
+def calcular_grade_opcao_subgrupo(
+    estudo: EstudoInput,
+    policy: EffectivePolicy,
+) -> list[ResultadoSubgrupo]:
+    """Subtotal de cada opção usada em algum cenário × cada subgrupo com vidas.
+
+    Calculada uma vez por chamada do motor. Reusa `_calcular_subgrupo_renovacao`
+    (mesma fórmula das atribuições). Em seguro novo retorna [].
+    """
+    if estudo.formato != FormatoEstudo.RENOVACAO:
+        return []
+
+    opcoes_usadas: list[str] = []
+    vistos: set[str] = set()
+    for cenario in estudo.cenarios:
+        for atr in cenario.atribuicoes:
+            oid = atr.opcao_plano_id
+            if oid and oid not in vistos:
+                vistos.add(oid)
+                opcoes_usadas.append(oid)
+
+    if not opcoes_usadas:
+        return []
+
+    vidas_por_sg: dict[str, int] = {}
+    for vida in estudo.vidas_incluidas():
+        if vida.subgrupo_atual_id:
+            vidas_por_sg[vida.subgrupo_atual_id] = vidas_por_sg.get(vida.subgrupo_atual_id, 0) + 1
+
+    subgrupos_com_vidas = [
+        sg for sg in estudo.subgrupos_atuais if vidas_por_sg.get(sg.id, 0) > 0
+    ]
+
+    grade: list[ResultadoSubgrupo] = []
+    for opcao_id in opcoes_usadas:
+        opcao = estudo.opcao_por_id(opcao_id)
+        if opcao is None:
+            continue
+        for subgrupo in subgrupos_com_vidas:
+            grade.append(_calcular_subgrupo_renovacao(estudo, subgrupo, opcao, policy))
+    return grade
+
+
 def _calcular_subgrupo_renovacao(
     estudo: EstudoInput,
     subgrupo: SubgrupoAtual,

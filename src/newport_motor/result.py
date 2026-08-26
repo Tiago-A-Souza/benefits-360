@@ -66,6 +66,10 @@ class ScenarioResult(BaseModel):
 class MotorResult(BaseModel):
     estudo_id: str
     cenarios: list[ScenarioResult] = Field(default_factory=list)
+    # Grade completa: cada opção usada × cada subgrupo com vidas (renovação).
+    # Irmã de `cenarios` — não altera significado dos ScenarioResult.
+    # Seguro novo: lista vazia (não há subgrupo atual).
+    grade_opcao_subgrupo: list[ResultadoSubgrupo] = Field(default_factory=list)
     validacoes: list[Validacao] = Field(default_factory=list)
     politicas_efetivas: dict[str, object] = Field(default_factory=dict)
     bloqueios_abertos: list[str] = Field(default_factory=list)
