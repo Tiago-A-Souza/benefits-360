@@ -130,7 +130,8 @@ def test_comparativo_quatro_propostas_motor_out():
         assert proposta.secoes[0].vidas
 
 
-def test_comparativo_inconsistente_bloqueia():
+def test_comparativo_menos_cenarios_que_propostas_calcula():
+    """Etapa 4 manual: 4 propostas na etapa 3 e 2 cenários completos — válido."""
     rascunho = _rascunho_quatro_propostas()
     rascunho.cenarios = rascunho.cenarios[:2]
     compilado = compile(rascunho)
@@ -140,9 +141,15 @@ def test_comparativo_inconsistente_bloqueia():
     )
     resp = motor_result_para_comparativo(rascunho, motor)
     assert resp.consistencia is not None
-    assert resp.consistencia.consistente is False
-    assert resp.calculo_realizado is False
-    assert any(p.codigo == "APP-CMP-001" for p in resp.pendencias)
+    assert resp.consistencia.consistente is True
+    assert resp.calculo_realizado is True
+    assert len(resp.propostas) == 2
+    assert resp.consistencia.cenarios_configurados == 2
+    assert resp.consistencia.propostas_selecionadas == 4
+    assert not any(p.codigo == "APP-CMP-001" for p in resp.pendencias)
+    # Alerta informativo: 2 propostas da etapa 3 ficaram fora (1 plano → sync
+    # não se aplica; aqui 1 subgrupo, então APP-ET4-002 não dispara).
+    assert len(rascunho.subgrupos_atuais) == 1
 
 
 @pytest.fixture

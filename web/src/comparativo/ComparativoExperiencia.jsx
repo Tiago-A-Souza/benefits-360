@@ -791,7 +791,9 @@ export default function ComparativoExperiencia({
             >
               {resultado.consistencia.consistente ? "Consistente" : "Inconsistente"}{" "}
               {resultado.consistencia.resultados_apresentados}/
-              {resultado.consistencia.propostas_selecionadas ?? resultado.consistencia.resultados_esperados}
+              {resultado.consistencia.cenarios_configurados ??
+                resultado.consistencia.propostas_selecionadas ??
+                resultado.consistencia.resultados_esperados}
             </span>
           )}
           {salvandoSelecao && <span className="muted">Salvando…</span>}

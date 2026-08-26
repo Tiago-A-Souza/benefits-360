@@ -39,6 +39,16 @@ def _nome_opcao(rascunho: RascunhoEstudo, opcao_id: str) -> str:
     return opcao_id
 
 
+def propostas_fora_dos_cenarios(rascunho: RascunhoEstudo) -> list[str]:
+    """IDs de opções da etapa 3 que não aparecem em nenhuma atribuição de cenário."""
+    usadas: set[str] = set()
+    for cenario in rascunho.cenarios:
+        for atr in cenario.atribuicoes:
+            if atr.opcao_plano_id:
+                usadas.add(atr.opcao_plano_id)
+    return [op.id for op in rascunho.opcoes_proposta if op.id not in usadas]
+
+
 def rotulo_cenario(rascunho: RascunhoEstudo, cenario: CenarioRascunho) -> str:
     """Rótulo da coluna do comparativo — sempre derivado das atribuições atuais.
 

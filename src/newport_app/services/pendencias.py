@@ -9,7 +9,11 @@ from newport_app.models.compilation import ErroCompilacao
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import BloqueioComparativo, PendenciaItem
 from newport_app.policy.registry import default_registry
-from newport_app.rascunho.cenarios_sync import cenarios_sincronizados
+from newport_app.rascunho.cenarios_sync import (
+    cenarios_sincronizados,
+    propostas_fora_dos_cenarios,
+    subgrupos_com_vidas,
+)
 
 _TRADUCOES: dict[str, tuple[str, str, str]] = {
     "APP-IMP-001": (
@@ -76,6 +80,11 @@ _TRADUCOES: dict[str, tuple[str, str, str]] = {
         "bloqueio",
         "Atribuição de propostas pendente",
         "Confirme qual proposta substitui cada plano atual em todos os cenários.",
+    ),
+    "APP-ET4-002": (
+        "alerta",
+        "Propostas fora dos cenários",
+        "Há propostas selecionadas na etapa Cotações que não entram em nenhum cenário.",
     ),
 }
 
@@ -326,8 +335,9 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
         )
     if rascunho.opcoes_proposta and not cenarios_sincronizados(rascunho):
         etapa = 4 if len(rascunho.subgrupos_atuais) > 1 else 3
+        descricao = _descricao_cenarios_incompletos(rascunho)
         acao = (
-            "Use a etapa de atribuição de propostas por cenário."
+            "Use a etapa «Correspondência com os planos atuais»."
             if etapa == 4
             else "Aguarde a sincronização automática ou revise as cotações."
         )
@@ -335,14 +345,93 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
             PendenciaItem(
                 tipo="bloqueio",
                 titulo="Atribuição de propostas pendente",
-                descricao="Confirme qual proposta substitui cada plano atual em todos os cenários.",
+                descricao=descricao,
                 acao_sugerida=acao,
                 codigo="APP-ET4-001",
                 etapa=etapa,
                 quantidade=1,
             )
         )
+    elif rascunho.opcoes_proposta and cenarios_sincronizados(rascunho):
+        itens.extend(pendencias_propostas_fora_dos_cenarios(rascunho))
     from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
 
     itens.extend(pendencias_divergencia_acomodacao(rascunho))
     return itens
+
+
+def _descricao_cenarios_incompletos(rascunho: RascunhoEstudo) -> str:
+    if not rascunho.cenarios:
+        return (
+            "Nenhum cenário montado. Na etapa «Correspondência com os planos atuais», "
+            "escolha uma cotação para cada plano vigente."
+        )
+    if rascunho.formato == "novo" or len(rascunho.subgrupos_atuais) <= 1:
+        return "Confirme qual proposta substitui cada plano atual em todos os cenários."
+
+    obrigatorios = set(subgrupos_com_vidas(rascunho))
+    op_ids = {op.id for op in rascunho.opcoes_proposta}
+    nomes_sg = {
+        sg.id: (sg.plano_nome or sg.id) for sg in rascunho.subgrupos_atuais
+    }
+    lacunas: list[str] = []
+    for i, cenario in enumerate(rascunho.cenarios, start=1):
+        atrib_por_sg = {
+            a.alvo_id: a.opcao_plano_id
+            for a in cenario.atribuicoes
+            if a.alvo_tipo == "subgrupo"
+        }
+        faltando = [
+            nomes_sg.get(sg_id, sg_id)
+            for sg_id in obrigatorios
+            if not atrib_por_sg.get(sg_id) or atrib_por_sg.get(sg_id) not in op_ids
+        ]
+        if faltando:
+            lacunas.append(
+                f"Cenário {i}: falta escolher cotação para {', '.join(faltando)}"
+            )
+    if lacunas:
+        return " · ".join(lacunas)
+    return "Confirme qual proposta substitui cada plano atual em todos os cenários."
+
+
+def pendencias_propostas_fora_dos_cenarios(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
+    """Alerta informativo: propostas da etapa 3 não usadas em nenhum cenário.
+
+    Só em renovação multi — no 1 plano / seguro novo o sync usa todas.
+    Não bloqueia o cálculo (Leonardo: não precisa migrar N para N).
+    """
+    if rascunho.formato == "novo" or len(rascunho.subgrupos_atuais) <= 1:
+        return []
+    if not cenarios_sincronizados(rascunho):
+        return []
+    fora_ids = propostas_fora_dos_cenarios(rascunho)
+    if not fora_ids:
+        return []
+    por_id = {op.id: op for op in rascunho.opcoes_proposta}
+    nomes = [por_id[i].plano_nome or i for i in fora_ids]
+    n = len(nomes)
+    lista = ", ".join(nomes[:4])
+    if n > 4:
+        lista += f" e mais {n - 4}"
+    return [
+        PendenciaItem(
+            tipo="alerta",
+            titulo=(
+                f"{n} proposta(s) selecionada(s) ficaram fora dos cenários"
+                if n > 1
+                else "1 proposta selecionada ficou fora dos cenários"
+            ),
+            descricao=(
+                f"{lista}. Continuam disponíveis na etapa Cotações; "
+                "só entram no comparativo se forem usadas em algum cenário."
+            ),
+            acao_sugerida=(
+                "Opcional: volte à «Correspondência com os planos atuais» "
+                "e inclua-as em um cenário, ou ignore se não quiser compará-las."
+            ),
+            codigo="APP-ET4-002",
+            etapa=4,
+            quantidade=n,
+        )
+    ]

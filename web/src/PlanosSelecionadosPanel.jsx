@@ -326,7 +326,7 @@ export default function PlanosSelecionadosPanel({
                         onChange={(e) => atualizarAtribuicao(i, sg.id, e.target.value)}
                         aria-label={`Cotação para ${sg.plano_nome} no cenário ${i + 1}`}
                       >
-                        <option value="">Escolha a cotação…</option>
+                        <option value="">Escolha o plano…</option>
                         {opcoes.map((opcao) => (
                           <option key={opcao.id} value={opcao.id}>
                             {opcao.plano_nome || opcao.id}

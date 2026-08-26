@@ -1123,6 +1123,11 @@ def _avaliar_consistencia(
     resultado: MotorResult,
     erros_compilacao: list[ErroCompilacao] | None = None,
 ) -> ConsistenciaComparativo:
+    """Consistência do comparativo vs cenários montados (não vs catálogo da etapa 3).
+
+    Após a etapa 4 manual, N propostas selecionadas e M cenários (M≠N) é válido.
+    Exige: ao menos um cenário; cada cenário completo produz um resultado no motor.
+    """
     erros_compilacao = erros_compilacao or []
     n_propostas = len(rascunho.opcoes_proposta)
     n_cenarios = len(rascunho.cenarios)
@@ -1140,40 +1145,35 @@ def _avaliar_consistencia(
                 "corrija os campos indicados antes de calcular."
             )
 
-    if n_cenarios == n_propostas and n_propostas > 1:
-        if n_resultados_motor != n_cenarios:
-            consistente = False
-            mensagem = (
-                f"Esperados {n_propostas} resultados calculados (um por proposta), "
-                f"mas o motor retornou {n_resultados_motor}."
-            )
-        elif n_resultados != n_propostas:
-            consistente = False
-            mensagem = (
-                f"Esperadas {n_propostas} propostas apresentadas, "
-                f"mas apenas {n_resultados} pôde(m) ser montada(s)."
-            )
-    elif n_cenarios == 1:
-        if n_resultados_motor != 1:
-            consistente = False
+    if n_cenarios == 0:
+        consistente = False
+        mensagem = (
+            "Nenhum cenário configurado. Monte ao menos um na etapa "
+            "«Correspondência com os planos atuais»."
+        )
+    elif n_resultados_motor == 0:
+        consistente = False
+        if n_cenarios == 1:
             mensagem = (
                 "O cenário configurado não produziu resultado — "
                 "revise atribuições e pendências bloqueantes."
             )
-        elif len(propostas) != 1:
-            consistente = False
-            mensagem = "Não foi possível montar o resultado do cenário principal."
-    elif n_cenarios < n_propostas:
-        consistente = False
-        mensagem = (
-            f"Há {n_propostas} proposta(s) no comparativo, mas apenas {n_cenarios} "
-            "cenário(s) configurado(s). Volte à etapa «Planos selecionados» e salve as comparações."
-        )
+        else:
+            mensagem = (
+                f"Os {n_cenarios} cenários configurados não produziram resultado — "
+                "revise atribuições e pendências bloqueantes."
+            )
     elif n_resultados_motor != n_cenarios:
         consistente = False
         mensagem = (
             f"Configurados {n_cenarios} cenário(s), mas o motor retornou "
             f"{n_resultados_motor} resultado(s)."
+        )
+    elif n_resultados != n_cenarios:
+        consistente = False
+        mensagem = (
+            f"Esperados {n_cenarios} resultado(s) apresentados, "
+            f"mas apenas {n_resultados} pôde(m) ser montado(s)."
         )
 
     bloqueios_compilacao = _agrupar_bloqueios_comparativo(
@@ -1340,6 +1340,9 @@ def montar_comparativo(
     )
     if not erros_compilacao:
         pendencias.extend(pendencias_divergencia_acomodacao(rascunho))
+        from newport_app.services.pendencias import pendencias_propostas_fora_dos_cenarios
+
+        pendencias.extend(pendencias_propostas_fora_dos_cenarios(rascunho))
     pendencias.extend(pendencias_planos)
     if not consistencia.consistente and consistencia.mensagem:
         if not (
@@ -1353,7 +1356,8 @@ def montar_comparativo(
                     titulo="Comparativo incompleto",
                     descricao=consistencia.mensagem,
                     acao_sugerida=(
-                        "Revise as etapas «Planos selecionados» e «Cotações» antes de aprovar."
+                        "Revise as etapas «Correspondência com os planos atuais» e "
+                        "«Cotações» antes de aprovar."
                     ),
                     codigo="APP-CMP-001",
                     etapa=5,

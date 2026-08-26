@@ -373,6 +373,114 @@ def test_podar_orfaos_remove_atribuicao_sem_apagar_slots_vazios():
     assert "op-1" in ops
 
 
+def _cenario_completo(rascunho: RascunhoEstudo, cid: str, op_a: str, op_b: str) -> CenarioRascunho:
+    sgs = [sg.id for sg in rascunho.subgrupos_atuais]
+    return CenarioRascunho(
+        id=cid,
+        atribuicoes=[
+            AtribuicaoRascunho(
+                id=f"a-{cid}-0",
+                alvo_tipo="subgrupo",
+                alvo_id=sgs[0],
+                opcao_plano_id=op_a,
+            ),
+            AtribuicaoRascunho(
+                id=f"a-{cid}-1",
+                alvo_tipo="subgrupo",
+                alvo_id=sgs[1],
+                opcao_plano_id=op_b,
+            ),
+        ],
+    )
+
+
+def test_15_cinco_propostas_dois_cenarios_calcula():
+    from newport_app.adapters.motor_out import motor_result_para_comparativo
+    from newport_app.draft_compiler import compile
+    from newport_motor.engine import calcular
+
+    rascunho = _multi_vazio(5)
+    rascunho.cenarios = [
+        _cenario_completo(rascunho, "c1", "op-1", "op-2"),
+        _cenario_completo(rascunho, "c2", "op-3", "op-3"),
+    ]
+    assert cenarios_sincronizados(rascunho)
+    compilado = compile(rascunho)
+    assert compilado.compilavel
+    motor = calcular(compilado.compilado.estudo_input, compilado.compilado.effective_policy)
+    resp = motor_result_para_comparativo(rascunho, motor)
+    assert resp.calculo_realizado is True
+    assert resp.consistencia.consistente is True
+    assert len(resp.propostas) == 2
+    assert resp.consistencia.cenarios_configurados == 2
+    assert resp.consistencia.propostas_selecionadas == 5
+    assert not any(p.codigo == "APP-CMP-001" for p in resp.pendencias)
+    assert any(p.codigo == "APP-ET4-002" for p in resp.pendencias)
+
+
+def test_16_um_cenario_completo_calcula():
+    from newport_app.adapters.motor_out import motor_result_para_comparativo
+    from newport_app.draft_compiler import compile
+    from newport_motor.engine import calcular
+
+    rascunho = _multi_vazio(5)
+    rascunho.cenarios = [_cenario_completo(rascunho, "c1", "op-1", "op-1")]
+    compilado = compile(rascunho)
+    motor = calcular(compilado.compilado.estudo_input, compilado.compilado.effective_policy)
+    resp = motor_result_para_comparativo(rascunho, motor)
+    assert resp.calculo_realizado is True
+    assert len(resp.propostas) == 1
+
+
+def test_17_cenario_incompleto_bloqueia_com_lacuna():
+    rascunho = _multi_vazio(2)
+    rascunho.cenarios = [
+        CenarioRascunho(
+            id="c-inc",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a1",
+                    alvo_tipo="subgrupo",
+                    alvo_id="sg-1",
+                    opcao_plano_id="op-1",
+                ),
+                AtribuicaoRascunho(
+                    id="a2",
+                    alvo_tipo="subgrupo",
+                    alvo_id="sg-2",
+                    opcao_plano_id="",
+                ),
+            ],
+        )
+    ]
+    assert not cenarios_sincronizados(rascunho)
+    pend = pendencias_compilacao(rascunho)
+    et4 = next(p for p in pend if p.codigo == "APP-ET4-001")
+    assert "Plano vigente B" in et4.descricao or "sg-2" in et4.descricao
+    assert "Planos selecionados" not in (et4.acao_sugerida or "")
+
+
+def test_18_zero_cenarios_bloqueia():
+    from newport_app.adapters.motor_out import motor_result_para_comparativo
+    from newport_motor.result import MotorResult
+
+    rascunho = _multi_vazio(3)
+    assert rascunho.cenarios == []
+    assert any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(rascunho))
+    motor = MotorResult(
+        estudo_id=rascunho.id,
+        cenarios=[],
+        validacoes=[],
+        politicas_efetivas={},
+        bloqueios_abertos=[],
+    )
+    resp = motor_result_para_comparativo(rascunho, motor)
+    assert resp.calculo_realizado is False
+    assert resp.consistencia.consistente is False
+    assert "Nenhum cenário" in (resp.consistencia.mensagem or "")
+    assert "Correspondência" in (resp.consistencia.mensagem or "")
+
+
 def test_12_suite_marcador():
     """Placeholder — a suíte completa é o veredito do pytest na entrega."""
     assert True

@@ -139,5 +139,7 @@ def test_zero_resultados_sem_bloqueios_preserva_mensagem_generica():
     assert resp.consistencia is not None
     assert resp.consistencia.bloqueios == []
     assert resp.consistencia.mensagem_contagem is None
-    assert "Esperados 4 resultados calculados" in (resp.consistencia.mensagem or "")
+    assert "não produziu resultado" in (resp.consistencia.mensagem or "") or (
+        "não produziram resultado" in (resp.consistencia.mensagem or "")
+    )
     assert any(p.codigo == "APP-CMP-001" for p in resp.pendencias)
