@@ -18,6 +18,7 @@ from newport_app.presentation.paridade_estrutural import (
 )
 from newport_app.presentation.paridade_html import (
     assert_paridade_html_vm,
+    divergencias_celulas_pos,
     divergencias_html_vm,
     inventariar_html,
     inventariar_vm,
@@ -37,9 +38,13 @@ from tests.test_paridade_matriz_html import _aprovar, _calcular_matriz
 _APROV = datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc)
 _MODOS = ("resumo", "faixas", "beneficiario", "completo")
 
-# Defeitos de produto conhecidos nesta grade: nenhum até agora.
-# Quando a coleta achar falha, registre aqui:
-#   "modo-formato_P_R_N": "motivo curto (camada/modo)"
+# Defeitos de produto conhecidos nesta grade:
+# - beneficiario: html_renderer._render_beneficiarios chama
+#   `_th_proposta(op_id, [], rotulos)` — lista vazia, então o TH não recebe o
+#   objeto PropostaApresentacao (operadora via .od). O nome ainda vem de
+#   `rotulos` (mapa do VM), então a paridade de rótulo HTML↔VM não quebra.
+#   NÃO corrigido nesta entrega (sem autorização de produto). Sem xfail:
+#   baseline verde; o defeito é de apresentação (operadora), não de inventário.
 _XFAIL_POR_ID: dict[str, str] = {}
 
 
@@ -91,6 +96,9 @@ def _vm(snap, modo: str, ids: list[str]):
 def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
     """Inventário do documento completo contra os três VMs (sem lista à mão)."""
     ih = inventariar_html(html)
+    ih_r = inventariar_html(html, secao_id="visao-resumo")
+    ih_f = inventariar_html(html, secao_id="visao-faixas")
+    ih_b = inventariar_html(html, secao_id="visao-benef")
     divs: list[str] = []
     iv_r, iv_f, iv_b = inventariar_vm(vm_r), inventariar_vm(vm_f), inventariar_vm(vm_b)
 
@@ -98,17 +106,25 @@ def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
     if falta_prop:
         divs.append(f"completo: propostas ausentes no HTML: {falta_prop}")
 
-    falta_fx = sorted(iv_f.faixas - ih.faixas)
+    falta_fx = sorted(iv_f.faixas - ih_f.faixas)
     if falta_fx:
         divs.append(f"completo: faixas ausentes no HTML: {falta_fx}")
 
+    # Planos do resumo: só linhas da tabela Indicador (não h3 da visão faixas).
+    if iv_r.planos:
+        falta_pl_r = sorted(iv_r.planos - ih_r.planos_linha_resumo)
+        if falta_pl_r:
+            divs.append(
+                f"completo/resumo: planos ausentes nas linhas: {falta_pl_r}"
+            )
+
     if iv_f.planos:
-        falta_pl = sorted(iv_f.planos - ih.planos)
+        falta_pl = sorted(iv_f.planos - ih_f.planos)
         if falta_pl:
-            divs.append(f"completo: planos ausentes no HTML: {falta_pl}")
+            divs.append(f"completo/faixas: planos ausentes no HTML: {falta_pl}")
 
     if iv_b.vidas:
-        falta_v = sorted(iv_b.vidas - ih.vidas)
+        falta_v = sorted(iv_b.vidas - ih_b.vidas)
         if falta_v:
             divs.append(
                 f"completo: vidas ausentes no HTML ({len(falta_v)}): {falta_v[:8]}"
@@ -123,6 +139,22 @@ def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
             + ", ".join(formatar_reais(c) for c in ausentes[:8])
             + ("…" if len(ausentes) > 8 else "")
         )
+
+    divs.extend(
+        divergencias_celulas_pos(
+            iv_r.celulas_pos, ih_r.celulas_pos, prefixo="completo/resumo: "
+        )
+    )
+    divs.extend(
+        divergencias_celulas_pos(
+            iv_f.celulas_pos, ih_f.celulas_pos, prefixo="completo/faixas: "
+        )
+    )
+    divs.extend(
+        divergencias_celulas_pos(
+            iv_b.celulas_pos, ih_b.celulas_pos, prefixo="completo/benef: "
+        )
+    )
 
     modelo_vals = (
         set(iv_r.valores_centavos)
@@ -143,21 +175,21 @@ def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
 def _rodar_celula_modo(
     tmp_path: Path, celula: CelulaEstrutural, modo: str
 ) -> list[str]:
-    _, matriz, snap, ids = _preparar(tmp_path, celula)
+    rascunho, matriz, snap, ids = _preparar(tmp_path, celula)
     divs: list[str] = []
     if modo == "completo":
         vm_r = _vm(snap, "resumo", ids)
         vm_f = _vm(snap, "faixas", ids)
         vm_b = _vm(snap, "beneficiario", ids)
         for rotulo, vm in (("resumo", vm_r), ("faixas", vm_f), ("beneficiario", vm_b)):
-            d = divergencias_estruturais(matriz, vm)
+            d = divergencias_estruturais(matriz, vm, rascunho=rascunho)
             divs.extend(f"camada1/{rotulo}: {x}" for x in d)
         html = render_html_completo(vm_r, vm_f, vm_b)
         divs.extend(f"camada2/completo: {x}" for x in divergencias_html_completo(vm_r, vm_f, vm_b, html))
         return divs
 
     vm = _vm(snap, modo, ids)
-    d1 = divergencias_estruturais(matriz, vm)
+    d1 = divergencias_estruturais(matriz, vm, rascunho=rascunho)
     divs.extend(f"camada1: {x}" for x in d1)
     html = render_html(vm)
     d2 = divergencias_html_vm(vm, html)

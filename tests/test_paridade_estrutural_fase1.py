@@ -88,7 +88,7 @@ def test_paridade_estrutural_11_casos(tmp_path: Path, rotulo: str, factory, modo
         propostas_selecionadas=ids,
         beneficiarios_agregados=(modo != "beneficiario"),
     )
-    assert_paridade_estrutural(matriz, vm)
+    assert_paridade_estrutural(matriz, vm, rascunho=rascunho)
 
 
 @pytest.mark.parametrize("rotulo,factory,modo", list(_params_html_vm()))
@@ -127,7 +127,7 @@ def test_coleta_divergencias_fase1(tmp_path: Path):
                 propostas_selecionadas=ids,
                 beneficiarios_agregados=(modo != "beneficiario"),
             )
-            divs1 = divergencias_estruturais(matriz, vm)
+            divs1 = divergencias_estruturais(matriz, vm, rascunho=rascunho)
             if divs1:
                 n1 += 1
                 relatorio1.append(f"### {rotulo} / modo={modo}")

@@ -70,6 +70,10 @@ class EstruturaApresentacao:
     regimes: frozenset[str] = field(default_factory=frozenset)
     faixas: frozenset[tuple[str, int]] = field(default_factory=frozenset)
     vidas: frozenset[str] = field(default_factory=frozenset)
+    # (opcao_id, plano_nome) — divergência de rótulo com mesmo id falha aqui.
+    rotulos_propostas: frozenset[tuple[str, str]] = field(default_factory=frozenset)
+    # (subgrupo_id, plano_nome)
+    rotulos_planos: frozenset[tuple[str, str]] = field(default_factory=frozenset)
     celulas: dict[tuple[Any, ...], int | None] = field(default_factory=dict)
 
 
@@ -108,6 +112,14 @@ def extrair_estrutura_matriz(matriz: ComparativoResponse) -> EstruturaApresentac
     faixas: set[tuple[str, int]] = set()
     vidas: set[str] = set()
     celulas: dict[tuple[Any, ...], int | None] = {}
+    rotulos_propostas = frozenset(
+        (p.opcao_id, (p.plano_nome or "").strip())
+        for p in matriz.propostas
+        if p.calculo_realizado
+    )
+    rotulos_planos = frozenset(
+        (p.subgrupo_id, (p.plano_nome or "").strip()) for p in matriz.planos_atuais
+    )
 
     for pl in matriz.planos_atuais:
         pk = _plano_key(pl.subgrupo_id)
@@ -151,6 +163,8 @@ def extrair_estrutura_matriz(matriz: ComparativoResponse) -> EstruturaApresentac
         regimes=regimes,
         faixas=frozenset(faixas),
         vidas=frozenset(vidas),
+        rotulos_propostas=rotulos_propostas,
+        rotulos_planos=rotulos_planos,
         celulas=celulas,
     )
 
@@ -162,12 +176,15 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
     faixas: set[tuple[str, int]] = set()
     vidas = frozenset(b.vida_id for b in vm.beneficiarios)
     celulas: dict[tuple[Any, ...], int | None] = {}
+    rotulos_propostas: set[tuple[str, str]] = set()
+    rotulos_planos: set[tuple[str, str]] = set()
 
     for secao in vm.secoes_regime:
         for pl in secao.planos_atuais:
             pk = _plano_key(pl.subgrupo_id)
             if pl.subgrupo_id != _PLANO_SINTETICO:
                 planos.add(pl.subgrupo_id)
+                rotulos_planos.add((pl.subgrupo_id, (pl.plano_nome or "").strip()))
             _centavos_de_modelo(pl, celulas, ("plano", pk))
             for fx in pl.faixas:
                 faixas.add((pk, fx.faixa))
@@ -177,6 +194,7 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
                         col, celulas, ("faixa_prop", pk, fx.faixa, col.opcao_id)
                     )
         for prop in secao.propostas:
+            rotulos_propostas.add((prop.opcao_id, (prop.plano_nome or "").strip()))
             _centavos_de_modelo(prop, celulas, ("prop", prop.opcao_id))
             # Totais da seção por proposta
             if prop.opcao_id in secao.totais.propostas:
@@ -236,6 +254,9 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
     }
     if ids_secoes:
         propostas = frozenset(propostas & ids_secoes) if propostas else frozenset(ids_secoes)
+        rotulos_propostas = {
+            (oid, nome) for oid, nome in rotulos_propostas if oid in propostas
+        }
 
     return EstruturaApresentacao(
         propostas=propostas,
@@ -243,6 +264,8 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
         regimes=regimes,
         faixas=frozenset(faixas),
         vidas=vidas,
+        rotulos_propostas=frozenset(rotulos_propostas),
+        rotulos_planos=frozenset(rotulos_planos),
         celulas=celulas,
     )
 
@@ -252,6 +275,7 @@ def divergencias_estruturais(
     vm: PresentationViewModel,
     *,
     exigir_vidas: bool | None = None,
+    rascunho: Any | None = None,
 ) -> list[str]:
     """Lista divergências; lista vazia = paridade estrutural."""
     em = extrair_estrutura_matriz(matriz)
@@ -279,6 +303,39 @@ def divergencias_estruturais(
     if exigir_vidas:
         _cmp_set("vidas", em.vidas, ev.vidas)
 
+    # Rótulos comerciais (mesmo opcao_id / subgrupo_id, nome diferente).
+    _cmp_set("rotulos_propostas", em.rotulos_propostas, ev.rotulos_propostas)
+    _cmp_set("rotulos_planos", em.rotulos_planos, ev.rotulos_planos)
+
+    # Rascunho → matriz/VM: pega plano omitido no adaptador (ambos os lados mentem juntos).
+    if rascunho is not None and getattr(rascunho, "formato", None) != "novo":
+        ids_rascunho = frozenset(
+            sg.id for sg in getattr(rascunho, "subgrupos_atuais", []) or []
+        )
+        if ids_rascunho != em.planos:
+            divs.append(
+                f"planos_rascunho_matriz: rascunho={sorted(ids_rascunho)} "
+                f"matriz={sorted(em.planos)} "
+                f"só_rascunho={sorted(ids_rascunho - em.planos)} "
+                f"só_matriz={sorted(em.planos - ids_rascunho)}"
+            )
+        if ids_rascunho != ev.planos:
+            divs.append(
+                f"planos_rascunho_vm: rascunho={sorted(ids_rascunho)} "
+                f"vm={sorted(ev.planos)} "
+                f"só_rascunho={sorted(ids_rascunho - ev.planos)} "
+                f"só_vm={sorted(ev.planos - ids_rascunho)}"
+            )
+        nomes_r = frozenset(
+            (sg.id, (sg.plano_nome or "").strip())
+            for sg in getattr(rascunho, "subgrupos_atuais", []) or []
+        )
+        if nomes_r and nomes_r != em.rotulos_planos:
+            divs.append(
+                f"rotulos_planos_rascunho_matriz: "
+                f"rascunho={sorted(nomes_r)} matriz={sorted(em.rotulos_planos)}"
+            )
+
     # Parte E: só valores nas chaves comuns (assimetrías de schema não são defeito).
     comuns = set(em.celulas) & set(ev.celulas)
     if not exigir_vidas:
@@ -297,6 +354,9 @@ def assert_paridade_estrutural(
     vm: PresentationViewModel,
     *,
     exigir_vidas: bool | None = None,
+    rascunho: Any | None = None,
 ) -> None:
-    divs = divergencias_estruturais(matriz, vm, exigir_vidas=exigir_vidas)
+    divs = divergencias_estruturais(
+        matriz, vm, exigir_vidas=exigir_vidas, rascunho=rascunho
+    )
     assert not divs, "paridade estrutural falhou:\n- " + "\n- ".join(divs)
