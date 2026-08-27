@@ -213,6 +213,7 @@ def gerar_rascunho(celula: CelulaEstrutural) -> RascunhoEstudo:
                 plano_nome=f"Proposta sintética {i + 1}",
                 regime_copart_id=regime.id,
                 tipo_fiscal="operadora",
+                acomodacao="Apartamento" if i % 2 == 0 else "Enfermaria",
                 tabela=_tabela_proposta(i),
                 validade_oficial=date(2026, 8, 1),
             )
