@@ -23,8 +23,14 @@ from newport_motor.result import ResultadoSubgrupo
 from tests.gerador_celulas_estruturais import CelulaEstrutural, gerar_rascunho
 from tests.test_paridade_matriz_html import _aprovar, _calcular_matriz
 
-# Uma célula representante: cobre renovação multi + 2 propostas (M1–M15).
-# Três células somavam ~10 s; o teto da entrega é 3 min na suíte.
+# Alcance do harness (importante para quem confiar nele):
+# - Roda 1 célula estrutural (`renovacao_2_2_3`), não 3.
+# - Motivo: três células acusavam as mesmas 15 mutações e somavam ~10 s;
+#   com a suíte em ~163 s o teto da entrega (3 min) estourou (3:06).
+# - Consequência: cada mutação é validada numa configuração só (2 planos,
+#   2 regimes, 3 propostas, cenários uniformes). Não prova detecção em
+#   seguro novo, 1 plano, 3 planos nem nas células mistas da Parte A.
+# - Commit do corte: b844316.
 _CELULAS_HARNESS: tuple[CelulaEstrutural, ...] = (
     CelulaEstrutural("renovacao", 2, 2, 3),
 )

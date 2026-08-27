@@ -842,10 +842,12 @@ abaixo descrevia o defeito; não está mais aberto.
 
 | Lacuna | Consequência |
 |---|---|
+| Harness de mutações (Fases A–B) roda **1 célula** (`renovacao_2_2_3`), não 3 | cada mutação é validada numa configuração só; não cobre seguro novo, 1/3 planos nem mistos — corte `b844316` por teto de 3 min na suíte |
 | `assert_paridade_rotulos_faixa` não é chamado no teste do gabarito Anistia | o único teste com dado real não confere rótulo de faixa |
 | Nada assegura que `ROTULOS_FAIXA` contenha as faixas da ANS | a asserção compara o campo com a tabela, não a tabela com a realidade |
 | `sum(vigente das faixas) == plano.vigente_centavos` não é assertado | o rodapé exibe vigente e reajustado; o teste trava só o reajustado |
 | Nenhum teste de tela (Vitest) | correção que fique no payload e não suba ao JSX passa despercebida |
+| `test_listagem_47_estudos_abaixo_de_300ms` no demo real | sob contenção da suíte (138 s → 163 s) a mediana pode cruzar 300 ms e o teste **skipa**; o gate de performance perde eficácia por carga da própria suíte, não por regressão do produto — o sintético em `tmp_path` continua sendo o assert rígido |
 
 ~~`assert obs_matriz == obs_html` com ambos vazios~~ — corrigido: ramo explícito
 exige faixas sem observação ou igualdade não-vazia; coletas fase1/fase2 passam
