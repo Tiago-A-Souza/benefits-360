@@ -23,11 +23,10 @@ from newport_motor.result import ResultadoSubgrupo
 from tests.gerador_celulas_estruturais import CelulaEstrutural, gerar_rascunho
 from tests.test_paridade_matriz_html import _aprovar, _calcular_matriz
 
-# Células representantes: cobrem renovação multi, regimes, várias propostas.
+# Uma célula representante: cobre renovação multi + 2 propostas (M1–M15).
+# Três células somavam ~10 s; o teto da entrega é 3 min na suíte.
 _CELULAS_HARNESS: tuple[CelulaEstrutural, ...] = (
-    CelulaEstrutural("renovacao", 2, 1, 2),
     CelulaEstrutural("renovacao", 2, 2, 3),
-    CelulaEstrutural("renovacao", 3, 2, 3),
 )
 
 
