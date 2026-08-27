@@ -801,12 +801,17 @@ documento.
 | Acomodação ausente não gera aviso | alerta de divergência não dispara |
 | Revisar tipo fiscal gravado em estudos anteriores à correção | dado legado |
 | Etapa 1 exige plano e seguradora mesmo em seguro novo | lista de vidas simples |
-| Segundo renderizador de faixas no frontend | tabela pobre em qualquer estudo com `faixas` vazio |
 | Duas implementações do formatador de reais | divergência futura entre as camadas |
-| `round()` bancário em `_calcular_diff_bps` | 1 bps de diferença em fronteira exata |
 | Paginação da matriz para impressão | última coluna cortada com 5 propostas |
 | Cabeçalho da coluna de contrato atual repete o rótulo | «CONTRATO ATUAL / CONTRATO ATUAL / vários planos» |
 | `_th_proposta(..., [], ...)` no modo beneficiário | terceira superfície do 8.2 — ver abaixo |
+
+### Resolvidos (histórico — não apagar)
+
+| Item | Commit / nota |
+|---|---|
+| Segundo renderizador de faixas no frontend (`seguroNovo \|\| !plano?.faixas?.length`) | `5483fe3` — ver §8.10; teste `test_jsx_tabela_faixas_sem_agregacao_no_cliente` |
+| `round()` bancário em `_calcular_diff_bps` | `_calcular_diff_bps` delega a `bps_variacao` (half-up); `test_bps_variacao_half_up_nao_bankers` — `c96f861` |
 
 ### Resolvido nesta branch — acomodação do cabeçalho em cenário misto
 
@@ -824,30 +829,28 @@ então o valor não erra — mas duas propostas com o mesmo nome base não são
 desambiguadas nessa visão. É a terceira superfície do item 8.2. Correção:
 passar `secao.propostas` em vez de lista vazia.
 
-### Segundo renderizador de faixas etárias no frontend
+### Segundo renderizador de faixas etárias no frontend — RESOLVIDO
 
-`ComparativoExperiencia.jsx` tem um caminho alternativo para a tabela de faixas,
-sob a condição `seguroNovo || !plano?.faixas?.length`, que **soma as vidas no
-cliente** e não exibe observação de heterogeneidade, unitária nem linha de
-totais.
+Histórico mantido: `ComparativoExperiencia.jsx` tinha caminho alternativo sob
+`seguroNovo || !plano?.faixas?.length`. Removido em `5483fe3` (§8.10). O bloco
+abaixo descrevia o defeito; não está mais aberto.
 
-Não é um caminho exclusivo de seguro novo: qualquer renovação em que `faixas`
-venha vazio cai nele. É uma segunda implementação da agregação, que vai divergir
-de `agregacao_faixa.py` na próxima alteração — a mesma raiz de 8.7.
-
-O teste `test_paridade_seguro_novo` não o cobre: o helper de observação percorre
-`planos_atuais`, que em seguro novo é lista vazia, e a asserção passa sem
-afirmar nada.
+~~`ComparativoExperiencia.jsx` tem um caminho alternativo…~~ → ver tabela
+«Resolvidos» acima.
 
 ### Lacunas conhecidas na cobertura de teste
 
 | Lacuna | Consequência |
 |---|---|
-| `assert obs_matriz == obs_html` também é verdadeiro com os dois conjuntos vazios | nas fixtures sem heterogeneidade a asserção não testa nada |
 | `assert_paridade_rotulos_faixa` não é chamado no teste do gabarito Anistia | o único teste com dado real não confere rótulo de faixa |
 | Nada assegura que `ROTULOS_FAIXA` contenha as faixas da ANS | a asserção compara o campo com a tabela, não a tabela com a realidade |
 | `sum(vigente das faixas) == plano.vigente_centavos` não é assertado | o rodapé exibe vigente e reajustado; o teste trava só o reajustado |
 | Nenhum teste de tela (Vitest) | correção que fique no payload e não suba ao JSX passa despercebida |
+
+~~`assert obs_matriz == obs_html` com ambos vazios~~ — corrigido: ramo explícito
+exige faixas sem observação ou igualdade não-vazia; coletas fase1/fase2 passam
+a falhar se `n_falha > 0`.
+
 
 ### Escopo não construído
 

@@ -263,7 +263,7 @@ def test_paridade_celula_estrutural(celula_preparada: CelulaPreparada, modo: str
 
 
 def test_coleta_divergencias_fase2(tmp_path: Path):
-    """Inventário de falhas (sempre passa). Imprime combinação × camada × modo."""
+    """Inventário de falhas da grade 36×modos; falha se qualquer combinação divergir."""
     relatorio: list[str] = []
     n_falha = 0
     for celula in enumerar_celulas_validas():
@@ -278,7 +278,9 @@ def test_coleta_divergencias_fase2(tmp_path: Path):
     print(f"CELULAS_INVALIDAS={len(enumerar_celulas_invalidas())}")
     print(f"CASOS_MODO_COM_FALHA={n_falha}")
     print("\n".join(relatorio) if relatorio else "NENHUMA_FALHA")
-    assert True
+    assert n_falha == 0, (
+        f"coleta fase2: {n_falha} casos com falha\n" + "\n".join(relatorio)
+    )
 
 
 def test_modos_nao_escrevem_estado_compartilhado(celula_preparada: CelulaPreparada):

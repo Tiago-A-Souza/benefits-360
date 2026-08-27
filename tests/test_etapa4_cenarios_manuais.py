@@ -204,7 +204,8 @@ def test_05b_linhas_matriz_completas_por_coluna():
         assert prop.totais is not None
         assert prop.totais.proposta_mensal_reais
         assert len(prop.subgrupos) == 2
-        assert prop.validade_oficial is not None or True  # pode ser None no fixture
+        # Fixture Anistia tem validade; se ausente, o campo fica None sem quebrar.
+        assert prop.validade_oficial is None or isinstance(prop.validade_oficial, str)
         assert prop.diferenca_percentual is not None
 
 
@@ -600,7 +601,3 @@ def test_18_zero_cenarios_bloqueia():
     assert "Nenhum cenário" in (resp.consistencia.mensagem or "")
     assert "Correspondência" in (resp.consistencia.mensagem or "")
 
-
-def test_12_suite_marcador():
-    """Placeholder — a suíte completa é o veredito do pytest na entrega."""
-    assert True

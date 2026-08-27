@@ -110,7 +110,7 @@ def test_paridade_html_vm_11_casos(tmp_path: Path, rotulo: str, factory, modo: s
 
 
 def test_coleta_divergencias_fase1(tmp_path: Path):
-    """Imprime inventário camada 1 (matriz↔VM) e camada 2 (HTML↔VM). Sempre passa."""
+    """Inventário camada 1 (matriz↔VM) e camada 2 (HTML↔VM); falha se houver divergência."""
     relatorio1: list[str] = []
     relatorio2: list[str] = []
     n1 = n2 = 0
@@ -147,4 +147,7 @@ def test_coleta_divergencias_fase1(tmp_path: Path):
     print("\n".join(relatorio1) if relatorio1 else "CAMADA1_NENHUMA_DIVERGENCIA")
     print(f"CAMADA2_CASOS_COM_DIVERGENCIA={n2}")
     print("\n".join(relatorio2) if relatorio2 else "CAMADA2_NENHUMA_DIVERGENCIA")
-    assert True
+    assert n1 == 0 and n2 == 0, (
+        f"coleta fase1: camada1={n1} camada2={n2}\n"
+        + "\n".join(relatorio1 + relatorio2)
+    )

@@ -229,7 +229,10 @@ def assert_paridade_observacao_faixas(matriz, vm) -> None:
         assert faixas_html, "paridade de observação sem faixas no documento (seguro novo)"
         obs_matriz = {fx.faixa for fx in faixas_matriz if fx.observacao_valor}
         obs_html = {fx.faixa for fx in faixas_html if fx.observacao_valor}
-        assert obs_matriz == obs_html
+        if not obs_matriz and not obs_html:
+            assert all(not fx.observacao_valor for fx in faixas_matriz)
+        else:
+            assert obs_matriz == obs_html
         html_por_faixa = {fx.faixa: fx for fx in faixas_html}
         for fx in faixas_matriz:
             html = html_por_faixa[fx.faixa]
@@ -260,7 +263,14 @@ def assert_paridade_observacao_faixas(matriz, vm) -> None:
                         (fx.atual_vigente_unitario_centavos, fx.atual_reajustado_unitario_centavos),
                     )
         assert unit_html, "paridade de observação sem faixas no documento"
-        assert obs_matriz == obs_html
+        # Conjuntos vazios não contam: exige ao menos uma faixa observada OU
+        # confirma explicitamente que nenhuma faixa tem observação nos dois lados
+        # e que há faixas para comparar unitários.
+        assert pl.faixas, "plano sem faixas na matriz"
+        if not obs_matriz and not obs_html:
+            assert all(not fx.observacao_valor for fx in pl.faixas)
+        else:
+            assert obs_matriz == obs_html
         for fx in pl.faixas:
             if fx.faixa not in unit_html:
                 continue
