@@ -257,6 +257,190 @@ def gerar_rascunho(celula: CelulaEstrutural) -> RascunhoEstudo:
     return rascunho
 
 
+# --- Dimensão de distribuição (Parte A) — representantes, sem Q^P ----------
+
+@dataclass(frozen=True)
+class CelulaDistribuicao:
+    """Atribuição de cenários sobre uma célula estrutural base.
+
+    Não enumera todas as atribuições possíveis. Cada id cobre um padrão
+    que a grade uniforme das 36 células não exercita.
+    """
+
+    id: str
+    descricao: str
+    base: CelulaEstrutural
+
+
+def enumerar_celulas_distribuicao() -> list[CelulaDistribuicao]:
+    """Seis representantes. Justificativa:
+
+    - ``uniforme``: controle (já é o default das 36).
+    - ``misto``: opções diferentes entre planos no mesmo cenário.
+    - ``opcao_em_dois_cenarios``: mesma opção em cenários distintos / sgs.
+    - ``opcao_nao_usada``: opção da etapa 3 fora de qualquer atribuição.
+    - ``mais_cenarios_que_opcoes``: M>N com reuso de planos.
+    - ``menos_cenarios_que_opcoes``: M<N (coluna só dos planos usados).
+
+    Base renovacao_2_2_3: 2 planos (mínimo para misto), 2 regimes, 3 propostas
+    (permite opção ociosa e M≠N sem explodir).
+    """
+    base = CelulaEstrutural("renovacao", 2, 2, 3)
+    return [
+        CelulaDistribuicao(
+            "uniforme",
+            "mesma opção em todos os planos vigentes, um cenário por opção",
+            base,
+        ),
+        CelulaDistribuicao(
+            "misto",
+            "opções diferentes entre planos vigentes no mesmo cenário",
+            base,
+        ),
+        CelulaDistribuicao(
+            "opcao_em_dois_cenarios",
+            "opção usada em mais de um cenário, em subgrupos diferentes",
+            base,
+        ),
+        CelulaDistribuicao(
+            "opcao_nao_usada",
+            "opção selecionada na etapa 3 e não usada em cenário nenhum",
+            base,
+        ),
+        CelulaDistribuicao(
+            "mais_cenarios_que_opcoes",
+            "mais cenários que opções (reuso de planos entre cenários)",
+            base,
+        ),
+        CelulaDistribuicao(
+            "menos_cenarios_que_opcoes",
+            "menos cenários que opções (coluna = planos usados)",
+            base,
+        ),
+    ]
+
+
+def _atribuicao(sg_id: str, op_id: str) -> "AtribuicaoRascunho":
+    from newport_app.models.draft import AtribuicaoRascunho
+
+    return AtribuicaoRascunho(
+        id=f"a-{sg_id}-{op_id}",
+        alvo_tipo="subgrupo",
+        alvo_id=sg_id,
+        opcao_plano_id=op_id,
+    )
+
+
+def _aplicar_distribuicao(rascunho: RascunhoEstudo, dist_id: str) -> None:
+    from newport_app.models.draft import CenarioRascunho
+    from newport_app.rascunho.cenarios_sync import (
+        garantir_cenarios_uniformes_multi,
+        rotulo_cenario,
+    )
+
+    ops = [op.id for op in rascunho.opcoes_proposta]
+    sgs = [sg.id for sg in rascunho.subgrupos_atuais]
+    assert len(ops) >= 3 and len(sgs) >= 2
+
+    if dist_id == "uniforme":
+        garantir_cenarios_uniformes_multi(rascunho)
+        return
+
+    if dist_id == "misto":
+        cenarios = [
+            CenarioRascunho(
+                id="c-misto",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[0]),
+                    _atribuicao(sgs[1], ops[1]),
+                ],
+            )
+        ]
+    elif dist_id == "opcao_em_dois_cenarios":
+        # op[0] aparece nos dois cenários (sg-1 em c1 e sg-2 em c2)
+        cenarios = [
+            CenarioRascunho(
+                id="c1",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[0]),
+                    _atribuicao(sgs[1], ops[1]),
+                ],
+            ),
+            CenarioRascunho(
+                id="c2",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[2]),
+                    _atribuicao(sgs[1], ops[0]),
+                ],
+            ),
+        ]
+    elif dist_id == "opcao_nao_usada":
+        # ops[2] na etapa 3, fora dos cenários
+        cenarios = [
+            CenarioRascunho(
+                id="c-misto",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[0]),
+                    _atribuicao(sgs[1], ops[1]),
+                ],
+            )
+        ]
+    elif dist_id == "mais_cenarios_que_opcoes":
+        # 3 cenários, só 2 opções usadas (ops[0], ops[1]); ops[2] ociosa
+        cenarios = [
+            CenarioRascunho(
+                id="c1",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[0]),
+                    _atribuicao(sgs[1], ops[0]),
+                ],
+            ),
+            CenarioRascunho(
+                id="c2",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[1]),
+                    _atribuicao(sgs[1], ops[1]),
+                ],
+            ),
+            CenarioRascunho(
+                id="c3",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[0]),
+                    _atribuicao(sgs[1], ops[1]),
+                ],
+            ),
+        ]
+    elif dist_id == "menos_cenarios_que_opcoes":
+        # 1 cenário, 3 opções na etapa 3 — só 2 entram na coluna
+        cenarios = [
+            CenarioRascunho(
+                id="c-misto",
+                atribuicoes=[
+                    _atribuicao(sgs[0], ops[0]),
+                    _atribuicao(sgs[1], ops[1]),
+                ],
+            )
+        ]
+    else:
+        raise ValueError(f"distribuição desconhecida: {dist_id}")
+
+    rascunho.cenarios = [
+        c.model_copy(update={"rotulo": rotulo_cenario(rascunho, c)})
+        for c in cenarios
+    ]
+
+
+def gerar_rascunho_distribuicao(dist: CelulaDistribuicao) -> RascunhoEstudo:
+    """Rascunho da célula base com cenários segundo a distribuição."""
+    # Base sem pré-preencher uniformes — a distribuição define os cenários.
+    if not dist.base.valida:
+        raise ValueError(f"célula inválida: {dist.base.nome}")
+    # Reusa a montagem de gerar_rascunho, depois substitui cenários.
+    rascunho = gerar_rascunho(dist.base)
+    _aplicar_distribuicao(rascunho, dist.id)
+    return rascunho
+
+
 def iter_celulas_nomeadas() -> Iterator[tuple[str, CelulaEstrutural]]:
     for celula in enumerar_celulas_validas():
         yield celula.nome, celula
