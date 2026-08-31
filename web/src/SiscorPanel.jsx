@@ -10,6 +10,7 @@ import {
   formatarPctHint,
   montarTabelaPlanosBase,
 } from "./fluxo/resumoPlanoUi";
+import TabelaFaixasCotacao from "./fluxo/TabelaFaixasCotacao";
 import { centavosParaReaisExibicao, reaisTextoParaCentavos } from "./money";
 
 export default function SiscorPanel({
@@ -294,6 +295,10 @@ export default function SiscorPanel({
               </span>
             </div>
           </div>
+
+          {conferencia.tabela_faixas_cotacao && (
+            <TabelaFaixasCotacao tabela={conferencia.tabela_faixas_cotacao} />
+          )}
 
           <div className="panel">
             <div className="panel-head">

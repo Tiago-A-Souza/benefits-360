@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,7 @@ from newport_app.siscor_importer.parentesco_contagem import contar_parentesco
 from newport_app.siscor_importer.parser import parse_planilha_siscor
 from newport_app.siscor_importer.revalidate import revalidar_linha
 from newport_app.siscor_importer.subgrupos import remontar_subgrupos_candidata
+from newport_app.siscor_importer.faixas_cotacao import montar_tabela_faixas_cotacao
 from newport_app.siscor_mapper.apply import (
     aplicar_candidata_ao_rascunho,
     estudo_possui_dados,
@@ -365,6 +366,15 @@ class ImportacaoSiscorService:
         candidata = self._importacoes.obter_ativa(estudo_id)
         if candidata is None:
             raise EstudoNaoEncontradoError(estudo_id)
+        rascunho = self._estudos.obter_rascunho(estudo_id)
+        data_ref = date.today()
+        if rascunho and rascunho.escolhas and rascunho.escolhas.data_referencia_idade:
+            data_ref = rascunho.escolhas.data_referencia_idade
+        tabela = montar_tabela_faixas_cotacao(
+            candidata.linhas,
+            data_referencia=data_ref,
+            disponibilidade=candidata.disponibilidade_colunas,
+        )
         return ConferenciaSiscorResponse(
             estudo_id=estudo_id,
             importacao_id=candidata.id,
@@ -378,6 +388,8 @@ class ImportacaoSiscorService:
             correspondencias_sugeridas=[
                 c.model_dump(mode="json") for c in candidata.correspondencias_sugeridas
             ],
+            tabela_faixas_cotacao=tabela,
+            disponibilidade_colunas=candidata.disponibilidade_colunas.model_dump(),
         )
 
     def confirmar_lote(

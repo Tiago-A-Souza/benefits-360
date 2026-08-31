@@ -9,6 +9,7 @@ from newport_app.models.siscor_import import (
     ErroArquivoSiscor,
     ImportacaoSiscorCandidata,
 )
+from newport_app.siscor_importer.faixas_cotacao import TabelaFaixasCotacao
 
 
 class ResumoImportacaoSiscor(BaseModel):
@@ -38,6 +39,8 @@ class ConferenciaSiscorResponse(BaseModel):
     linhas: list[dict] = []
     subgrupos_sugeridos: list[dict] = []
     correspondencias_sugeridas: list[dict] = []
+    tabela_faixas_cotacao: TabelaFaixasCotacao | None = None
+    disponibilidade_colunas: dict | None = None
 
 
 class ConfirmacaoLoteResponse(BaseModel):
