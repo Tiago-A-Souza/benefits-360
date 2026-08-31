@@ -418,6 +418,44 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
   );
 }
 
+function primeiroNome(nome) {
+  if (!nome) return "Grupo";
+  const p = String(nome).trim().split(/\s+/);
+  return p[0] || "Grupo";
+}
+
+function montarGruposMatriz(vidas) {
+  const buckets = new Map();
+  for (const v of vidas || []) {
+    const chave = v.vinculo_grupo_chave || `nao_resolvido:${v.vida_id}`;
+    if (!buckets.has(chave)) {
+      buckets.set(chave, { grupo_id: chave, membros: [], titular: null, sem: !v.vinculo_grupo_chave });
+    }
+    const g = buckets.get(chave);
+    g.membros.push(v);
+    if (String(v.parentesco || "").toLowerCase() === "titular") g.titular = v;
+  }
+  const lista = [...buckets.values()];
+  for (const g of lista) {
+    g.membros.sort((a, b) => {
+      const ta = String(a.parentesco || "").toLowerCase() === "titular" ? 0 : 1;
+      const tb = String(b.parentesco || "").toLowerCase() === "titular" ? 0 : 1;
+      if (ta !== tb) return ta - tb;
+      return String(a.nome || "").localeCompare(String(b.nome || ""), "pt");
+    });
+    if (!g.titular) g.titular = g.membros.find((m) => String(m.parentesco || "").toLowerCase() === "titular") || null;
+  }
+  lista.sort((a, b) => {
+    const ra = a.sem ? 1 : 0;
+    const rb = b.sem ? 1 : 0;
+    if (ra !== rb) return ra - rb;
+    const na = (a.titular?.nome || a.membros[0]?.nome || a.grupo_id).toLowerCase();
+    const nb = (b.titular?.nome || b.membros[0]?.nome || b.grupo_id).toLowerCase();
+    return na.localeCompare(nb, "pt");
+  });
+  return lista;
+}
+
 function ConteudoMatriz({
   planosAtuais,
   propostas,
@@ -428,6 +466,7 @@ function ConteudoMatriz({
   reajusteConsolidadoPct,
 }) {
   const vidasRef = vidasDaProposta(propostas[0]);
+  const gruposRef = useMemo(() => montarGruposMatriz(vidasRef), [vidasRef]);
 
   return (
     <>
@@ -539,7 +578,7 @@ function ConteudoMatriz({
           </>
         )}
 
-        {vista === "beneficiarios" && (
+        {vista === "grupos" && (
           <>
             {!mostrarNomes && (
               <tbody className="cmp-matriz-aviso">
@@ -552,30 +591,67 @@ function ConteudoMatriz({
                 </tr>
               </tbody>
             )}
-            <SeparadorMatriz rotulo="Detalhamento por beneficiário" />
-            <tbody className="cmp-matriz-dados">
-              {vidasRef.map((v) => (
-                <tr key={v.vida_id}>
-                  <th scope="row">
-                    {mostrarNomes ? v.nome : `Beneficiário · ${v.faixa_rotulo || "faixa não informada"}`}
-                    {!seguroNovo && v.plano_atual && (
-                      <small className="cmp-faixa-qtd"> · {v.plano_atual}</small>
-                    )}
-                  </th>
-                  {!seguroNovo && (
-                    <td className="cmp-col-atual">
-                      {formatCentavos(v.atual_centavos)}
-                    </td>
+            <SeparadorMatriz rotulo="Detalhamento por grupo familiar" />
+            {gruposRef.map((g) => {
+              const rotulo = mostrarNomes
+                ? primeiroNome(g.titular?.nome || g.membros[0]?.nome)
+                : `Grupo familiar · ${g.membros.length} vida${g.membros.length !== 1 ? "s" : ""}`;
+              return (
+                <tbody key={g.grupo_id} className="cmp-matriz-dados cmp-grupo-familiar">
+                  <tr className="cmp-grupo-cabecalho">
+                    <th scope="row" colSpan={100}>
+                      {rotulo}
+                      {g.sem && mostrarNomes ? (
+                        <small className="cmp-faixa-qtd"> · sem vínculo resolvido</small>
+                      ) : null}
+                    </th>
+                  </tr>
+                  {g.membros.map((v) => (
+                    <tr key={v.vida_id}>
+                      <th scope="row">
+                        {mostrarNomes
+                          ? v.nome
+                          : `Beneficiário · ${v.faixa_rotulo || "faixa não informada"}`}
+                        {mostrarNomes && v.parentesco && (
+                          <small className="cmp-faixa-qtd"> · {v.parentesco}</small>
+                        )}
+                        {!seguroNovo && v.plano_atual && (
+                          <small className="cmp-faixa-qtd"> · {v.plano_atual}</small>
+                        )}
+                      </th>
+                      {!seguroNovo && (
+                        <td className="cmp-col-atual">{formatCentavos(v.atual_centavos)}</td>
+                      )}
+                      {propostas.map((p) => {
+                        const pv = vidasDaProposta(p).find((x) => x.vida_id === v.vida_id);
+                        return (
+                          <td key={p.opcao_id}>{formatCentavos(pv?.proposta_centavos)}</td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {g.membros.length > 1 && (
+                    <tr className="total-row">
+                      <th scope="row">Subtotal · {rotulo}</th>
+                      {!seguroNovo && (
+                        <td className="cmp-col-atual">
+                          {formatCentavos(
+                            g.membros.reduce((s, v) => s + (v.atual_centavos || 0), 0)
+                          )}
+                        </td>
+                      )}
+                      {propostas.map((p) => {
+                        const soma = g.membros.reduce((s, v) => {
+                          const pv = vidasDaProposta(p).find((x) => x.vida_id === v.vida_id);
+                          return s + (pv?.proposta_centavos || 0);
+                        }, 0);
+                        return <td key={p.opcao_id}>{formatCentavos(soma)}</td>;
+                      })}
+                    </tr>
                   )}
-                  {propostas.map((p) => {
-                    const pv = vidasDaProposta(p).find((x) => x.vida_id === v.vida_id);
-                    return (
-                      <td key={p.opcao_id}>{formatCentavos(pv?.proposta_centavos)}</td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
+                </tbody>
+              );
+            })}
           </>
         )}
       </table>
@@ -1049,16 +1125,16 @@ export default function ComparativoExperiencia({
             <button
               type="button"
               className={
-                vista === "beneficiarios" ? "cmp-vista cmp-vista--ativa tab active" : "cmp-vista tab"
+                vista === "grupos" ? "cmp-vista cmp-vista--ativa tab active" : "cmp-vista tab"
               }
-              onClick={() => setVista("beneficiarios")}
+              onClick={() => setVista("grupos")}
             >
-              Por beneficiário
+              Por grupo familiar
             </button>
           </div>
         </header>
         <div className="panel-body">
-          {vista === "beneficiarios" && (modo === "analise" || origemCongelada) && (
+          {vista === "grupos" && (modo === "analise" || origemCongelada) && (
             <label className="cmp-aviso-pii">
               <input
                 type="checkbox"

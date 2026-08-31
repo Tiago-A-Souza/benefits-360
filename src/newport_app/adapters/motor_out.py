@@ -705,6 +705,7 @@ def _montar_secoes_cenario(
                         parentesco=vida.parentesco.value if vida and vida.parentesco else None,
                         plano_atual=plano_nome,
                         subgrupo_id=None if seguro_novo else sg.subgrupo_id,
+                        vinculo_grupo_chave=vida.vinculo_grupo_chave if vida else None,
                         atual_reais=_formatar_reais_opcional(baseline_val),
                         proposta_reais=_formatar_reais_opcional(rv.proposta_centavos),
                         diff_mes_reais=_formatar_reais_opcional(diff_val),

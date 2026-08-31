@@ -44,7 +44,7 @@ class EntregavelApresentacao(BaseModel):
     estudo_id: str
     snapshot_id: str
     aprovacao_id: str
-    modo: Literal["faixas", "beneficiario", "resumo", "completo"]
+    modo: Literal["faixas", "beneficiario", "grupo_familiar", "resumo", "completo"]
     propostas_selecionadas: list[str] = Field(default_factory=list)
     renderer_versao: str
     hash_conteudo: str
@@ -75,7 +75,7 @@ class AprovarSnapshotResponse(BaseModel):
 
 
 class GerarApresentacaoRequest(BaseModel):
-    modo: Literal["faixas", "beneficiario", "resumo", "completo"]
+    modo: Literal["faixas", "beneficiario", "grupo_familiar", "resumo", "completo"]
     propostas_selecionadas: list[str]
     ressalvas: list[str] = Field(default_factory=list)
     titulo: str | None = None

@@ -99,6 +99,16 @@ class BeneficiarioApresentacao(BaseModel):
     propostas: list[BeneficiarioPropostaColuna] = Field(default_factory=list)
 
 
+class GrupoFamiliarApresentacao(BaseModel):
+    grupo_id: str
+    rotulo: str
+    exibir_subtotal: bool = False
+    sem_vinculo_resolvido: bool = False
+    membros: list[BeneficiarioApresentacao] = Field(default_factory=list)
+    subtotal_atual_reajustado_centavos: int | None = None
+    subtotal_propostas: list[BeneficiarioPropostaColuna] = Field(default_factory=list)
+
+
 class TotaisSecaoApresentacao(BaseModel):
     atual_centavos: int | None = None
     propostas: dict[str, int | None] = Field(default_factory=dict)
@@ -151,4 +161,5 @@ class PresentationViewModel(BaseModel):
     totais_gerais: TotaisGeraisApresentacao = Field(default_factory=TotaisGeraisApresentacao)
     secoes_regime: list[SecaoRegimeApresentacao] = Field(default_factory=list)
     beneficiarios: list[BeneficiarioApresentacao] = Field(default_factory=list)
+    grupos_familiares: list[GrupoFamiliarApresentacao] = Field(default_factory=list)
     reajuste_consolidado_percentual_exibicao: str | None = None

@@ -41,7 +41,7 @@ def _vm_html(tmp_path: Path, rascunho, *, modo: str, ids: list[str] | None = Non
         snap,
         modo=modo,
         propostas_selecionadas=ids,
-        beneficiarios_agregados=(modo != "beneficiario"),
+        beneficiarios_agregados=(modo != "grupo_familiar"),
         aprovado_em=aprov,
     )
     return vm, render_html(vm), matriz, snap, ids
@@ -131,7 +131,7 @@ def test_05_inventario_html_vm_sem_xfail(tmp_path: Path):
     ):
         rascunho = factory()
         sincronizar_cenarios(rascunho)
-        for modo in ("resumo", "faixas", "beneficiario"):
+        for modo in ("resumo", "faixas", "grupo_familiar"):
             vm, html, _, _, _ = _vm_html(tmp_path / f"{rotulo}-{modo}", rascunho, modo=modo)
             divs = divergencias_html_vm(vm, html)
             assert not divs, f"{rotulo}/{modo}: {divs}"

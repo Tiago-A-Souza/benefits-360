@@ -64,7 +64,7 @@ _CASOS = [
 # Defeitos do resumo seguro novo corrigidos — xfail removido.
 def _params_html_vm():
     for rotulo, factory in _CASOS:
-        for modo in ("resumo", "faixas", "beneficiario"):
+        for modo in ("resumo", "faixas", "grupo_familiar"):
             yield pytest.param(
                 rotulo,
                 factory,
@@ -74,7 +74,7 @@ def _params_html_vm():
 
 
 @pytest.mark.parametrize("rotulo,factory", _CASOS)
-@pytest.mark.parametrize("modo", ["resumo", "faixas", "beneficiario"])
+@pytest.mark.parametrize("modo", ["resumo", "faixas", "grupo_familiar"])
 def test_paridade_estrutural_11_casos(tmp_path: Path, rotulo: str, factory, modo: str):
     rascunho = factory()
     sincronizar_cenarios(rascunho)
@@ -86,7 +86,7 @@ def test_paridade_estrutural_11_casos(tmp_path: Path, rotulo: str, factory, modo
         snap,
         modo=modo,
         propostas_selecionadas=ids,
-        beneficiarios_agregados=(modo != "beneficiario"),
+        beneficiarios_agregados=(modo != "grupo_familiar"),
     )
     assert_paridade_estrutural(matriz, vm, rascunho=rascunho)
 
@@ -103,7 +103,7 @@ def test_paridade_html_vm_11_casos(tmp_path: Path, rotulo: str, factory, modo: s
         snap,
         modo=modo,
         propostas_selecionadas=ids,
-        beneficiarios_agregados=(modo != "beneficiario"),
+        beneficiarios_agregados=(modo != "grupo_familiar"),
     )
     html_doc = render_html(vm)
     assert_paridade_html_vm(vm, html_doc)
@@ -120,12 +120,12 @@ def test_coleta_divergencias_fase1(tmp_path: Path):
         matriz, _ = _calcular_matriz(rascunho)
         snap = _aprovar(tmp_path / rotulo, rascunho)
         ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
-        for modo in ("resumo", "faixas", "beneficiario"):
+        for modo in ("resumo", "faixas", "grupo_familiar"):
             vm = construir_view_model(
                 snap,
                 modo=modo,
                 propostas_selecionadas=ids,
-                beneficiarios_agregados=(modo != "beneficiario"),
+                beneficiarios_agregados=(modo != "grupo_familiar"),
             )
             divs1 = divergencias_estruturais(matriz, vm, rascunho=rascunho)
             if divs1:

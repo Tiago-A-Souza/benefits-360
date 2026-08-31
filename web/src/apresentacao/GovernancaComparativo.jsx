@@ -219,7 +219,7 @@ export function ExportarHtmlApresentacao({
       onErro?.("Snapshot aprovado necessário.");
       return;
     }
-    if (modo === "beneficiario") {
+    if (modo === "grupo_familiar" || modo === "beneficiario") {
       const ok = window.confirm(
         "O arquivo HTML conterá nomes de beneficiários. Confirma a geração para armazenamento privado local?"
       );
@@ -282,11 +282,11 @@ export function ExportarHtmlApresentacao({
           <input
             type="radio"
             name={`modo-html-${snapshotId || "gov"}`}
-            value="beneficiario"
-            checked={modo === "beneficiario"}
-            onChange={() => setModo("beneficiario")}
+            value="grupo_familiar"
+            checked={modo === "grupo_familiar"}
+            onChange={() => setModo("grupo_familiar")}
           />
-          Por beneficiário com nomes (uso interno)
+          Por grupo familiar com nomes (uso interno)
         </label>
       </fieldset>
 
@@ -323,6 +323,9 @@ export function ExportarHtmlApresentacao({
         <div className="preview-apresentacao">
           <h4>Pré-visualização ({preview.modo}{modo === "completo" ? " · documento completo" : ""})</h4>
           <p>Seções: {preview.secoes_regime?.length ?? 0}</p>
+          {preview.modo === "grupo_familiar" && (
+            <p>Grupos familiares: {preview.grupos_familiares?.length ?? 0}</p>
+          )}
           {preview.modo === "beneficiario" && (
             <p>Beneficiários: {preview.beneficiarios?.length ?? 0}</p>
           )}

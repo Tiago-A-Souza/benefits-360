@@ -757,6 +757,106 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
             bloco.append("</tbody></table></div></section>")
             paginas.append(bloco)
 
+    if model.modo == "grupo_familiar" and model.grupos_familiares:
+        op_ids = model.propostas_selecionadas
+        agregados = all(
+            (g.rotulo or "").startswith("Grupo familiar ·") for g in model.grupos_familiares
+        )
+        for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA):
+            chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
+            bloco = [
+                "<section class='secao-regime'><h2>Detalhamento por grupo familiar</h2>"
+            ]
+            pct_por_subgrupo: dict[str, str | None] = {}
+            for secao in model.secoes_regime:
+                for pl in secao.planos_atuais:
+                    pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
+            for g in model.grupos_familiares:
+                bloco.append(
+                    f"<h3 class='grupo-familiar-titulo'>{html.escape(g.rotulo)}</h3>"
+                )
+                bloco.append("<div class='rolo'><table><thead><tr>")
+                col_rotulo = "Membro" if agregados else "Nome"
+                cab = f"<th>{col_rotulo}</th>"
+                if not agregados:
+                    cab += "<th>Idade</th><th>Faixa</th><th>Vínculo</th>"
+                cab += "<th>Plano atual</th>"
+                if not seguro_novo:
+                    cab += (
+                        "<th class='atual'><span class='op'>Contrato atual</span>"
+                        "<span class='od' data-l='REAJUSTADO'></span></th>"
+                    )
+                bloco.append(cab)
+                for op_id in chunk:
+                    bloco.append(_th_proposta(op_id, [], rotulos))
+                bloco.append("</tr></thead><tbody>")
+                for b in g.membros:
+                    pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+                    linha = f"<tr><td>{html.escape(b.nome)}</td>"
+                    if not agregados:
+                        idade = "" if b.idade is None else str(b.idade)
+                        faixa = html.escape(b.faixa_rotulo or "")
+                        parentesco = html.escape(b.parentesco or "")
+                        linha += f"<td>{idade}</td><td>{faixa}</td><td>{parentesco}</td>"
+                    linha += f"<td>{html.escape(b.plano_atual or '')}</td>"
+                    if not seguro_novo:
+                        linha += (
+                            f"<td class='atual'>"
+                            f"{_cel_contrato_atual(b.atual_reajustado_centavos, pct)}</td>"
+                        )
+                    bloco.append(linha)
+                    for op_id in chunk:
+                        col = next((c for c in b.propostas if c.opcao_id == op_id), None)
+                        val = _cel(col.valor_centavos if col else None)
+                        diff = _cel_diff(col.diff_centavos if col else None)
+                        if diff:
+                            bloco.append(f"<td>{val}<span class='uni'>{diff}</span></td>")
+                        else:
+                            bloco.append(f"<td>{val}</td>")
+                    bloco.append("</tr>")
+                if g.exibir_subtotal:
+                    colspan = 1 + (0 if agregados else 3) + 1 + (0 if seguro_novo else 1)
+                    sub = (
+                        f"<tr class='total-row'><td colspan='{colspan}'>"
+                        f"Subtotal · {html.escape(g.rotulo)}</td>"
+                    )
+                    if not seguro_novo:
+                        sub = (
+                            f"<tr class='total-row'><td>"
+                            f"Subtotal · {html.escape(g.rotulo)}</td>"
+                        )
+                        if not agregados:
+                            sub += "<td></td><td></td><td></td>"
+                        sub += "<td></td>"
+                        sub += (
+                            f"<td class='atual'>"
+                            f"{_cel(g.subtotal_atual_reajustado_centavos)}</td>"
+                        )
+                    else:
+                        sub = (
+                            f"<tr class='total-row'><td>"
+                            f"Subtotal · {html.escape(g.rotulo)}</td>"
+                        )
+                        if not agregados:
+                            sub += "<td></td><td></td><td></td>"
+                        sub += "<td></td>"
+                    bloco.append(sub)
+                    for op_id in chunk:
+                        col = next(
+                            (c for c in g.subtotal_propostas if c.opcao_id == op_id),
+                            None,
+                        )
+                        val = _cel(col.valor_centavos if col else None)
+                        diff = _cel_diff(col.diff_centavos if col else None)
+                        if diff:
+                            bloco.append(f"<td>{val}<span class='uni'>{diff}</span></td>")
+                        else:
+                            bloco.append(f"<td>{val}</td>")
+                    bloco.append("</tr>")
+                bloco.append("</tbody></table></div>")
+            bloco.append("</section>")
+            paginas.append(bloco)
+
     if model.ressalvas:
         res = ["<section class='ressalvas'><h3>Ressalvas comerciais</h3><ul>"]
         for r in model.ressalvas:
@@ -922,9 +1022,15 @@ def _documento(
 
 
 def render_html(model: PresentationViewModel) -> str:
-    aviso_pii = model.modo == "beneficiario" and not all(
-        (b.nome or "").startswith("Beneficiário ·") for b in model.beneficiarios
-    )
+    aviso_pii = False
+    if model.modo == "beneficiario":
+        aviso_pii = not all(
+            (b.nome or "").startswith("Beneficiário ·") for b in model.beneficiarios
+        )
+    elif model.modo == "grupo_familiar":
+        aviso_pii = not all(
+            (g.rotulo or "").startswith("Grupo familiar ·") for g in model.grupos_familiares
+        )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
     corpo = "<div class='corpo'>" + "".join(blocos) + "</div>"
     return _documento(model, aviso_pii=aviso_pii, corpo=corpo, com_abas=False)
@@ -933,7 +1039,7 @@ def render_html(model: PresentationViewModel) -> str:
 def render_html_completo(
     vm_resumo: PresentationViewModel,
     vm_faixas: PresentationViewModel,
-    vm_beneficiario: PresentationViewModel,
+    vm_grupos: PresentationViewModel,
 ) -> str:
     """Documento cliente com três visões — abas em CSS puro (radios)."""
     rotulos = _mapa_rotulos_propostas(vm_resumo)
@@ -956,14 +1062,24 @@ def render_html_completo(
         )
         + "".join("".join(p) for p in _paginas_corpo_visao(vm_faixas))
     )
-    corpo_benef = (
-        _tit_secao(
-            "03",
-            "Detalhamento",
-            "Por beneficiário",
-            "Uma linha por vida, identificada pela faixa etária e pelo plano vigente. Nomes não são exibidos neste material.",
+    # Aceita VM legado (beneficiario) ou novo (grupo_familiar).
+    if vm_grupos.modo == "beneficiario":
+        titulo_detalhe = "Por beneficiário"
+        lead_detalhe = (
+            "Uma linha por vida, identificada pela faixa etária e pelo plano vigente. "
+            "Nomes não são exibidos neste material."
         )
-        + "".join("".join(p) for p in _paginas_corpo_visao(vm_beneficiario))
+        aria_detalhe = "Por beneficiário"
+    else:
+        titulo_detalhe = "Por grupo familiar"
+        lead_detalhe = (
+            "Cada titular forma um grupo; dependentes ficam sob o titular. "
+            "Subtotal só quando o grupo tem mais de uma pessoa. Nomes não são exibidos neste material."
+        )
+        aria_detalhe = "Por grupo familiar"
+    corpo_grupos = (
+        _tit_secao("03", "Detalhamento", titulo_detalhe, lead_detalhe)
+        + "".join("".join(p) for p in _paginas_corpo_visao(vm_grupos))
     )
     del rotulos
 
@@ -974,7 +1090,7 @@ def render_html_completo(
             '<input type="radio" name="doc-visao" id="tab-faixas" class="doc-tab-input" '
             'aria-label="Faixas etárias">',
             '<input type="radio" name="doc-visao" id="tab-benef" class="doc-tab-input" '
-            'aria-label="Por beneficiário">',
+            f'aria-label="{aria_detalhe}">',
             '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
             'aria-label="Ver as três visões">',
             '<nav class="doc-controles no-print" aria-label="Visões do documento">',
@@ -984,7 +1100,7 @@ def render_html_completo(
             '<label class="doc-aba" for="tab-faixas" role="tab" aria-controls="visao-faixas">'
             "Faixas etárias</label>",
             '<label class="doc-aba" for="tab-benef" role="tab" aria-controls="visao-benef">'
-            "Por beneficiário</label>",
+            f"{titulo_detalhe}</label>",
             "</div>",
             '<label class="doc-btn-todas" for="tab-todas">Ver as três visões</label>',
             '<label class="doc-btn-voltar" for="tab-resumo">Voltar às abas</label>',
@@ -1002,8 +1118,8 @@ def render_html_completo(
             "</section>",
             '<section class="visao visao-benef" id="visao-benef" role="tabpanel" '
             'aria-labelledby="tit-benef">',
-            '<h2 class="visao-titulo" id="tit-benef">Por beneficiário</h2>',
-            corpo_benef,
+            f'<h2 class="visao-titulo" id="tit-benef">{titulo_detalhe}</h2>',
+            corpo_grupos,
             "</section>",
             "</div>",
         ]

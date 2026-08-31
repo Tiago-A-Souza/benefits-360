@@ -87,23 +87,23 @@ class ApresentacaoService:
                 titulo=req.titulo,
                 aprovado_em=aprov.aprovado_em,
             )
-            vm_benef = construir_view_model(
+            vm_grupos = construir_view_model(
                 snap,
-                modo="beneficiario",
+                modo="grupo_familiar",
                 propostas_selecionadas=propostas,
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
                 beneficiarios_agregados=True,
                 aprovado_em=aprov.aprovado_em,
             )
-            html_content = render_html_completo(vm_resumo, vm_faixas, vm_benef)
+            html_content = render_html_completo(vm_resumo, vm_faixas, vm_grupos)
             digest = hash_sha256_objeto(
                 {
                     "html": html_content,
                     "modo": "completo",
                     "vm_resumo": vm_resumo.model_dump(mode="json"),
                     "vm_faixas": vm_faixas.model_dump(mode="json"),
-                    "vm_beneficiario": vm_benef.model_dump(mode="json"),
+                    "vm_grupo_familiar": vm_grupos.model_dump(mode="json"),
                 }
             )
             aviso = None
@@ -120,7 +120,7 @@ class ApresentacaoService:
             html_content = render_html(vm)
             digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})
             aviso = None
-            if req.modo == "beneficiario":
+            if req.modo in ("beneficiario", "grupo_familiar"):
                 aviso = (
                     "O arquivo contém nomes de beneficiários. "
                     "Armazene apenas em local privado."

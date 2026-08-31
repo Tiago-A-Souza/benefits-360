@@ -40,7 +40,7 @@ from tests.gerador_celulas_estruturais import (
 from tests.test_paridade_matriz_html import _aprovar, _calcular_matriz
 
 _APROV = datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc)
-_MODOS = ("resumo", "faixas", "beneficiario", "completo")
+_MODOS = ("resumo", "faixas", "grupo_familiar", "completo")
 _CELULAS_VALIDAS = enumerar_celulas_validas()
 
 # Defeitos de produto conhecidos nesta grade:
@@ -126,7 +126,7 @@ def _vm(snap: SnapshotCalculo, modo: str, ids: tuple[str, ...]):
         snap,
         modo=modo,
         propostas_selecionadas=list(ids),
-        beneficiarios_agregados=(modo != "beneficiario"),
+        beneficiarios_agregados=(modo != "grupo_familiar"),
         aprovado_em=_APROV,
     )
 
@@ -216,14 +216,14 @@ def _rodar_modo(prep: CelulaPreparada, modo: str) -> list[str]:
     if modo == "completo":
         vm_r = _vm(prep.snap, "resumo", prep.ids)
         vm_f = _vm(prep.snap, "faixas", prep.ids)
-        vm_b = _vm(prep.snap, "beneficiario", prep.ids)
-        for rotulo, vm in (("resumo", vm_r), ("faixas", vm_f), ("beneficiario", vm_b)):
+        vm_g = _vm(prep.snap, "grupo_familiar", prep.ids)
+        for rotulo, vm in (("resumo", vm_r), ("faixas", vm_f), ("grupo_familiar", vm_g)):
             d = divergencias_estruturais(prep.matriz, vm, rascunho=prep.rascunho)
             divs.extend(f"camada1/{rotulo}: {x}" for x in d)
-        html = render_html_completo(vm_r, vm_f, vm_b)
+        html = render_html_completo(vm_r, vm_f, vm_g)
         divs.extend(
             f"camada2/completo: {x}"
-            for x in divergencias_html_completo(vm_r, vm_f, vm_b, html)
+            for x in divergencias_html_completo(vm_r, vm_f, vm_g, html)
         )
     else:
         vm = _vm(prep.snap, modo, prep.ids)

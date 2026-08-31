@@ -182,7 +182,7 @@ def test_05_matriz_e_documento_usam_nome_do_plano(tmp_path: Path):
     assert nomes == ["Proposta prata", "Proposta ouro"]
     snap = _aprovar(tmp_path, rascunho)
     ids = [p.opcao_id for p in matriz.propostas]
-    for modo in ("faixas", "beneficiario", "resumo"):
+    for modo in ("faixas", "grupo_familiar", "resumo"):
         vm = construir_view_model(snap, modo=modo, propostas_selecionadas=ids)
         html = render_html(vm)
         assert "Proposta prata" in html

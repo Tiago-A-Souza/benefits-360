@@ -40,13 +40,13 @@ def _html_completo_anistia(tmp_path: Path) -> tuple[str, object]:
     ids = [p["id"] for p in spec["propostas"]]
     vm_r = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
     vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    vm_b = construir_view_model(
+    vm_g = construir_view_model(
         snap,
-        modo="beneficiario",
+        modo="grupo_familiar",
         propostas_selecionadas=ids,
         beneficiarios_agregados=True,
     )
-    return render_html_completo(vm_r, vm_f, vm_b), snap
+    return render_html_completo(vm_r, vm_f, vm_g), snap
 
 
 def test_01_arquivo_contem_tres_visoes(tmp_path: Path):
@@ -56,7 +56,8 @@ def test_01_arquivo_contem_tres_visoes(tmp_path: Path):
     assert 'id="visao-benef"' in html
     assert "Resumo executivo" in html
     assert "Faixas etárias" in html
-    assert "Por beneficiário" in html
+    assert "Por grupo familiar" in html
+    assert "Por beneficiário" not in html
     assert RENDERER_VERSAO.startswith("html@")
 
 
@@ -99,11 +100,11 @@ def test_04_beneficiario_sem_nomes_reais(tmp_path: Path):
     for nome in nomes:
         assert nome not in html, f"nome vazou no completo: {nome}"
     assert "Beneficiário ·" in html
-    # Caminho interno com nomes permanece separado.
+    # Caminho interno com nomes permanece separado (grupo familiar).
     res_pii = apres.gerar_html(
         rascunho.id,
         snap.id,
-        GerarApresentacaoRequest(modo="beneficiario", propostas_selecionadas=["op-1"]),
+        GerarApresentacaoRequest(modo="grupo_familiar", propostas_selecionadas=["op-1"]),
     )
     assert res_pii.aviso_dados_pessoais
     html_pii = (apres._entregaveis_dir / res_pii.caminho_relativo).read_text(encoding="utf-8")
@@ -193,14 +194,14 @@ def test_tamanho_completo_maior_que_resumo(tmp_path: Path):
     ids = [p["id"] for p in spec["propostas"]]
     vm_r = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
     vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    vm_b = construir_view_model(
+    vm_g = construir_view_model(
         snap,
-        modo="beneficiario",
+        modo="grupo_familiar",
         propostas_selecionadas=ids,
         beneficiarios_agregados=True,
     )
     html_resumo = render_html(vm_r)
-    html_completo = render_html_completo(vm_r, vm_f, vm_b)
+    html_completo = render_html_completo(vm_r, vm_f, vm_g)
     assert len(html_completo) > len(html_resumo)
     print(f"TAMANHO_RESUMO={len(html_resumo)}")
     print(f"TAMANHO_COMPLETO={len(html_completo)}")

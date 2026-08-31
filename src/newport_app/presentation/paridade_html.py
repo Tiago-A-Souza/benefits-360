@@ -268,12 +268,16 @@ def inventariar_html(
                     cells = _celulas_linha(tr)
                     if cells:
                         faixas.add(_texto(cells[0]))
-        elif primeiro_th in {"Beneficiário", "Nome"}:
+        elif primeiro_th in {"Beneficiário", "Nome", "Membro"}:
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
                     cells = _celulas_linha(tr)
-                    if cells:
-                        vidas.add(_texto(cells[0]))
+                    if not cells:
+                        continue
+                    rotulo_vida = _texto(cells[0])
+                    if rotulo_vida.startswith("Subtotal"):
+                        continue
+                    vidas.add(rotulo_vida)
         elif primeiro_th == "Proposta":
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
@@ -431,13 +435,16 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                             cells[(fx.rotulo, prop.plano_nome)] = col.subtotal_centavos
         return cells
 
-    if vm.modo == "beneficiario":
+    if vm.modo in ("beneficiario", "grupo_familiar"):
         prop_por_id = {
             p.opcao_id: p.plano_nome
             for s in vm.secoes_regime
             for p in s.propostas
         }
-        for b in vm.beneficiarios:
+        membros = list(vm.beneficiarios)
+        if vm.modo == "grupo_familiar":
+            membros = [m for g in vm.grupos_familiares for m in g.membros]
+        for b in membros:
             if b.atual_reajustado_centavos is not None:
                 cells[(b.nome, "Contrato atual")] = b.atual_reajustado_centavos
             for col in b.propostas:
@@ -472,6 +479,9 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
 
     for b in vm.beneficiarios:
         vidas.add(b.nome)
+    for g in vm.grupos_familiares:
+        for m in g.membros:
+            vidas.add(m.nome)
 
     _centavos_recursivo(vm, valores)
     valores |= _valores_derivados_vm(vm)
@@ -560,7 +570,7 @@ def divergencias_html_vm(vm: PresentationViewModel, html_doc: str) -> list[str]:
                 f"contagem faixas: modelo={len(iv.faixas)} html={len(ih.faixas)} "
                 f"linhas_tabela={len(ih.linhas)}"
             )
-    if vm.modo == "beneficiario":
+    if vm.modo in ("beneficiario", "grupo_familiar"):
         _faltando("vidas", iv.vidas, ih.vidas)
 
     if vm.modo in {"resumo", "faixas"}:

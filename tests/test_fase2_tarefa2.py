@@ -36,7 +36,7 @@ from tests.test_paridade_matriz_html import (
     assert_paridade_rotulos,
 )
 
-_MODOS = ("resumo", "faixas", "beneficiario")
+_MODOS = ("resumo", "faixas", "grupo_familiar")
 
 
 def _stack(tmp_path: Path, nome: str = "fase2-t2"):
@@ -96,9 +96,10 @@ def test_documento_idêntico_a_matriz_do_mesmo_snapshot(tmp_path: Path):
             assert_paridade_planos(matriz, vm)
         if modo == "faixas":
             assert_paridade_observacao_faixas(matriz, vm)
-        if modo == "beneficiario":
-            assert len(vm.beneficiarios) == len(vidas_matriz)
-            for b in vm.beneficiarios:
+        if modo == "grupo_familiar":
+            membros = [m for g in vm.grupos_familiares for m in g.membros]
+            assert len(membros) == len(vidas_matriz)
+            for b in membros:
                 origem = vidas_matriz[b.vida_id]
                 assert b.atual_vigente_centavos == origem.vigente_centavos
                 assert b.atual_reajustado_centavos == origem.reajustado_centavos
@@ -280,20 +281,27 @@ def test_gabarito_prata_e_ouro_preservado(tmp_path: Path):
     assert "7.109,88" in html
 
 
-def test_modo_beneficiario_mantem_aviso_de_dados_pessoais(tmp_path: Path):
+def test_modo_grupo_familiar_mantem_aviso_de_dados_pessoais(tmp_path: Path):
     repo, _, snap_svc, apres = _stack(tmp_path, "pii")
     rascunho = rascunho_demo_12_vidas()
     snap = _aprovar(repo, snap_svc, rascunho)
     res = apres.gerar_html(
         rascunho.id,
         snap.id,
-        GerarApresentacaoRequest(modo="beneficiario", propostas_selecionadas=["op-1"]),
+        GerarApresentacaoRequest(modo="grupo_familiar", propostas_selecionadas=["op-1"]),
     )
     assert res.aviso_dados_pessoais
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
     assert "nomes de beneficiários" in html.lower()
-    vm = construir_view_model(snap, modo="beneficiario", propostas_selecionadas=["op-1"])
+    vm = construir_view_model(snap, modo="grupo_familiar", propostas_selecionadas=["op-1"])
     assert "nomes de beneficiários" in render_html(vm).lower()
+    # Legado beneficiario continua legível.
+    res_leg = apres.gerar_html(
+        rascunho.id,
+        snap.id,
+        GerarApresentacaoRequest(modo="beneficiario", propostas_selecionadas=["op-1"]),
+    )
+    assert res_leg.aviso_dados_pessoais
 
 
 def test_banner_rascunho_interno_nos_tres_modos(tmp_path: Path):

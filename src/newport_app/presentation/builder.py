@@ -10,6 +10,7 @@ from newport_app.models.presentation import (
     BeneficiarioApresentacao,
     BeneficiarioPropostaColuna,
     FaixaApresentacao,
+    GrupoFamiliarApresentacao,
     PaginaFaixasApresentacao,
     PlanoAtualApresentacao,
     PresentationViewModel,
@@ -28,6 +29,10 @@ from newport_app.models.responses import (
 )
 from newport_app.models.snapshot import SnapshotCalculo
 from newport_app.presentation.formatacao import formatar_data_br
+from newport_app.presentation.grupos_familiares import (
+    montar_grupos_familiares,
+    rotulo_grupo,
+)
 from newport_app.presentation.reajuste import (
     rotulo_reajuste_consolidado_dos_planos,
     rotulo_reajuste_exibicao,
@@ -260,6 +265,68 @@ def _total_atual_congelado(
     return sum(vals) if vals else None
 
 
+def _colunas_proposta_vida(
+    por_id: dict[str, ResultadoPropostaComparativo],
+    propostas_ids: list[str],
+    vida_id: str,
+) -> list[BeneficiarioPropostaColuna]:
+    cols: list[BeneficiarioPropostaColuna] = []
+    for op_id in propostas_ids:
+        vd = None
+        for sec in por_id[op_id].secoes:
+            vd = next((x for x in sec.vidas if x.vida_id == vida_id), None)
+            if vd is not None:
+                break
+        cols.append(
+            BeneficiarioPropostaColuna(
+                opcao_id=op_id,
+                valor_centavos=vd.proposta_centavos if vd else None,
+                diff_centavos=vd.diff_mes_centavos if vd else None,
+            )
+        )
+    return cols
+
+
+def _beneficiario_de_detalhe(
+    dados: DetalheVidaComparativo,
+    *,
+    rascunho: RascunhoEstudo,
+    por_id: dict[str, ResultadoPropostaComparativo],
+    propostas_ids: list[str],
+    nomes_ocultos: bool,
+) -> BeneficiarioApresentacao:
+    subgrupos_map = {s.id: s for s in rascunho.subgrupos_atuais}
+    faixa = dados.faixa
+    faixa_rotulo = dados.faixa_rotulo or (
+        ROTULOS_FAIXA[faixa] if faixa is not None and 0 <= faixa < 10 else None
+    )
+    if nomes_ocultos:
+        rotulo_vida = f"Beneficiário · {faixa_rotulo or 'faixa não informada'}"
+    else:
+        rotulo_vida = dados.nome
+    sg = subgrupos_map.get(dados.subgrupo_id or "")
+    return BeneficiarioApresentacao(
+        vida_id=dados.vida_id,
+        nome=rotulo_vida,
+        idade=dados.idade,
+        faixa=faixa,
+        faixa_rotulo=faixa_rotulo,
+        parentesco=dados.parentesco,
+        plano_atual=dados.plano_atual or (sg.plano_nome if sg else None),
+        subgrupo_id=dados.subgrupo_id,
+        atual_vigente_centavos=dados.vigente_centavos,
+        atual_reajustado_centavos=dados.reajustado_centavos,
+        propostas=_colunas_proposta_vida(por_id, propostas_ids, dados.vida_id),
+    )
+
+
+def _somar_centavos(vals: list[int | None]) -> int | None:
+    presentes = [v for v in vals if v is not None]
+    if not presentes:
+        return None
+    return sum(presentes)
+
+
 def construir_view_model(
     snap: SnapshotCalculo,
     *,
@@ -351,57 +418,65 @@ def construir_view_model(
         )
 
     beneficiarios: list[BeneficiarioApresentacao] = []
+    grupos_familiares: list[GrupoFamiliarApresentacao] = []
     if modo == "beneficiario":
-        subgrupos_map = {s.id: s for s in rascunho.subgrupos_atuais}
+        # Legado — entregáveis antigos e regressão; novos usam grupo_familiar.
         ordenadas = sorted(
             vidas.values(),
-            key=lambda v: (
-                v.plano_atual or "",
-                v.nome or v.vida_id,
-            ),
+            key=lambda v: (v.plano_atual or "", v.nome or v.vida_id),
         )
         for dados in ordenadas:
-            cols: list[BeneficiarioPropostaColuna] = []
-            for op_id in propostas_ids:
-                vd = None
-                for sec in por_id[op_id].secoes:
-                    vd = next((x for x in sec.vidas if x.vida_id == dados.vida_id), None)
-                    if vd is not None:
-                        break
-                cols.append(
-                    BeneficiarioPropostaColuna(
-                        opcao_id=op_id,
-                        valor_centavos=vd.proposta_centavos if vd else None,
-                        diff_centavos=vd.diff_mes_centavos if vd else None,
-                    )
-                )
-            sg = subgrupos_map.get(dados.subgrupo_id or "")
-            faixa = dados.faixa
-            faixa_rotulo = (
-                dados.faixa_rotulo
-                or (
-                    ROTULOS_FAIXA[faixa]
-                    if faixa is not None and 0 <= faixa < 10
-                    else None
+            beneficiarios.append(
+                _beneficiario_de_detalhe(
+                    dados,
+                    rascunho=rascunho,
+                    por_id=por_id,
+                    propostas_ids=propostas_ids,
+                    nomes_ocultos=beneficiarios_agregados,
                 )
             )
-            if beneficiarios_agregados:
-                rotulo_vida = f"Beneficiário · {faixa_rotulo or 'faixa não informada'}"
-            else:
-                rotulo_vida = dados.nome
-            beneficiarios.append(
-                BeneficiarioApresentacao(
-                    vida_id=dados.vida_id,
-                    nome=rotulo_vida,
-                    idade=dados.idade,
-                    faixa=faixa,
-                    faixa_rotulo=faixa_rotulo,
-                    parentesco=dados.parentesco,
-                    plano_atual=dados.plano_atual or (sg.plano_nome if sg else None),
-                    subgrupo_id=dados.subgrupo_id,
-                    atual_vigente_centavos=dados.vigente_centavos,
-                    atual_reajustado_centavos=dados.reajustado_centavos,
-                    propostas=cols,
+    elif modo == "grupo_familiar":
+        grupos_montados = montar_grupos_familiares(vidas, rascunho)
+        for g in grupos_montados:
+            membros_vm = [
+                _beneficiario_de_detalhe(
+                    m,
+                    rascunho=rascunho,
+                    por_id=por_id,
+                    propostas_ids=propostas_ids,
+                    nomes_ocultos=beneficiarios_agregados,
+                )
+                for m in g.membros
+            ]
+            subtotal_props: list[BeneficiarioPropostaColuna] = []
+            subtotal_atual = None
+            if g.exibir_subtotal:
+                subtotal_atual = _somar_centavos(
+                    [m.atual_reajustado_centavos for m in membros_vm]
+                )
+                for op_id in propostas_ids:
+                    vals = []
+                    diffs = []
+                    for m in membros_vm:
+                        col = next((c for c in m.propostas if c.opcao_id == op_id), None)
+                        vals.append(col.valor_centavos if col else None)
+                        diffs.append(col.diff_centavos if col else None)
+                    subtotal_props.append(
+                        BeneficiarioPropostaColuna(
+                            opcao_id=op_id,
+                            valor_centavos=_somar_centavos(vals),
+                            diff_centavos=_somar_centavos(diffs),
+                        )
+                    )
+            grupos_familiares.append(
+                GrupoFamiliarApresentacao(
+                    grupo_id=g.grupo_id,
+                    rotulo=rotulo_grupo(g, nomes_ocultos=beneficiarios_agregados),
+                    exibir_subtotal=g.exibir_subtotal,
+                    sem_vinculo_resolvido=g.sem_vinculo_resolvido,
+                    membros=membros_vm,
+                    subtotal_atual_reajustado_centavos=subtotal_atual,
+                    subtotal_propostas=subtotal_props,
                 )
             )
 
@@ -473,6 +548,7 @@ def construir_view_model(
         totais_gerais=totais_gerais,
         secoes_regime=secoes_vm,
         beneficiarios=beneficiarios,
+        grupos_familiares=grupos_familiares,
         reajuste_consolidado_percentual_exibicao=(
             None
             if seguro_novo

@@ -106,6 +106,7 @@ class DetalheVidaComparativo(BaseModel):
     parentesco: str | None = None
     plano_atual: str | None = None
     subgrupo_id: str | None = None
+    vinculo_grupo_chave: str | None = None
     atual_reais: str | None = None
     proposta_reais: str | None = None
     diff_mes_reais: str | None = None

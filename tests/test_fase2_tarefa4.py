@@ -38,7 +38,7 @@ from tests.test_paridade_matriz_html import (
     assert_gabarito_propostas,
 )
 
-_MODOS = ("resumo", "faixas", "beneficiario")
+_MODOS = ("resumo", "faixas", "grupo_familiar")
 
 
 def _stack(tmp_path: Path, nome: str = "fase2-t4"):

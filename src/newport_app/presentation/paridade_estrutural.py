@@ -70,6 +70,7 @@ class EstruturaApresentacao:
     regimes: frozenset[str] = field(default_factory=frozenset)
     faixas: frozenset[tuple[str, int]] = field(default_factory=frozenset)
     vidas: frozenset[str] = field(default_factory=frozenset)
+    grupos: frozenset[str] = field(default_factory=frozenset)
     # (opcao_id, plano_nome) — divergência de rótulo com mesmo id falha aqui.
     rotulos_propostas: frozenset[tuple[str, str]] = field(default_factory=frozenset)
     # (subgrupo_id, plano_nome)
@@ -174,7 +175,8 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
     planos: set[str] = set()
     regimes = frozenset(s.regime_tipo for s in vm.secoes_regime)
     faixas: set[tuple[str, int]] = set()
-    vidas = frozenset(b.vida_id for b in vm.beneficiarios)
+    vidas = set(b.vida_id for b in vm.beneficiarios)
+    grupos: set[str] = set()
     celulas: dict[tuple[Any, ...], int | None] = {}
     rotulos_propostas: set[tuple[str, str]] = set()
     rotulos_planos: set[tuple[str, str]] = set()
@@ -231,6 +233,19 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
             _centavos_de_modelo(col, celulas, ("vida", col.opcao_id, b.vida_id))
         _centavos_de_modelo(b, celulas, ("vida_atual", b.vida_id))
 
+    for g in vm.grupos_familiares:
+        grupos.add(g.grupo_id)
+        for b in g.membros:
+            vidas.add(b.vida_id)
+            for col in b.propostas:
+                _centavos_de_modelo(col, celulas, ("vida", col.opcao_id, b.vida_id))
+            _centavos_de_modelo(b, celulas, ("vida_atual", b.vida_id))
+        if g.exibir_subtotal:
+            for col in g.subtotal_propostas:
+                _centavos_de_modelo(
+                    col, celulas, ("grupo_subtotal", col.opcao_id, g.grupo_id)
+                )
+
     # Totais por subgrupo derivados das faixas (espelha RecorteSubgrupoComparativo).
     agg: dict[tuple[str, str], int] = {}
     for chave, valor in list(celulas.items()):
@@ -263,7 +278,8 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
         planos=frozenset(planos),
         regimes=regimes,
         faixas=frozenset(faixas),
-        vidas=vidas,
+        vidas=frozenset(vidas),
+        grupos=frozenset(grupos),
         rotulos_propostas=frozenset(rotulos_propostas),
         rotulos_planos=frozenset(rotulos_planos),
         celulas=celulas,
@@ -281,7 +297,11 @@ def divergencias_estruturais(
     em = extrair_estrutura_matriz(matriz)
     ev = extrair_estrutura_vm(vm)
     if exigir_vidas is None:
-        exigir_vidas = vm.modo == "beneficiario" or bool(vm.beneficiarios)
+        exigir_vidas = (
+            vm.modo in ("beneficiario", "grupo_familiar")
+            or bool(vm.beneficiarios)
+            or bool(vm.grupos_familiares)
+        )
 
     divs: list[str] = []
 
@@ -302,6 +322,15 @@ def divergencias_estruturais(
     _cmp_set("faixas", em.faixas, ev.faixas)
     if exigir_vidas:
         _cmp_set("vidas", em.vidas, ev.vidas)
+        if vm.modo == "grupo_familiar" or vm.grupos_familiares:
+            # Matriz não carrega grupos; só exige não-vazio no VM e cobertura de vidas.
+            if not ev.grupos:
+                divs.append("grupos: vm vazio com modo grupo_familiar")
+            elif sum(1 for g in vm.grupos_familiares for _ in g.membros) != len(ev.vidas):
+                divs.append(
+                    f"grupos_cobertura: membros={sum(len(g.membros) for g in vm.grupos_familiares)} "
+                    f"vidas={len(ev.vidas)}"
+                )
 
     # Rótulos comerciais (mesmo opcao_id / subgrupo_id, nome diferente).
     _cmp_set("rotulos_propostas", em.rotulos_propostas, ev.rotulos_propostas)
