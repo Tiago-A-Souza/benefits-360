@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { obterPendencias, obterRascunho, obterResumoPlanoAtual, salvarRascunho } from "./api";
 import {
+  ACOMODACOES,
   MODALIDADES,
   REGIMES_COPART,
   TIPOS_FISCAIS,
@@ -284,6 +285,22 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                           {REGIMES_COPART.map((r) => (
                             <option key={r.value} value={r.value}>
                               {r.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="field">
+                        Acomodação
+                        <select
+                          value={sg.acomodacao || ""}
+                          onChange={(e) =>
+                            atualizarSubgrupo(idx, "acomodacao", e.target.value || null)
+                          }
+                        >
+                          <option value="">Não informada</option>
+                          {ACOMODACOES.map((a) => (
+                            <option key={a.value} value={a.value}>
+                              {a.label}
                             </option>
                           ))}
                         </select>

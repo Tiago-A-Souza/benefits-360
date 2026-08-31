@@ -31,6 +31,11 @@ export const REGIMES_COPART = [
   { value: "percentual", label: "Percentual" },
 ];
 
+export const ACOMODACOES = [
+  { value: "enfermaria", label: "Enfermaria" },
+  { value: "apartamento", label: "Apartamento" },
+];
+
 /** Opções selecionáveis de price_basis na UI. desconhecido/nao_aplica
  *  permanecem no modelo (extração / operadora), mas não são escolhas do analista. */
 export const BASES_IOF = [
