@@ -1,0 +1,44 @@
+{
+  "estado": "extraido",
+  "template_id": "sulamerica-pme-copart-v1",
+  "parser_versao": "sulamerica@2.2.0",
+  "n_opcoes": 1,
+  "opcoes": [
+    {
+      "plano_nome": "Direto Nacional — Apartamento (Nacional / SP (CAP1))",
+      "acomodacao": "Apartamento",
+      "regime_copart": "percentual",
+      "copart_percentual": 30,
+      "tipo_fiscal": null,
+      "validade": "2026-08-14",
+      "premio_centavos": 221576,
+      "iof_centavos": 5274,
+      "total_centavos": 226850,
+      "faixas_centavos": [
+        28394,
+        35492,
+        44009,
+        48851,
+        52271,
+        60634,
+        72483,
+        84951,
+        101133,
+        170359
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    }
+  ],
+  "alertas_codigos": []
+}

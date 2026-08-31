@@ -1,0 +1,10 @@
+{
+  "estado": "ocr_parcial",
+  "template_id": "sulamerica-pme-sem-cp-v2",
+  "parser_versao": "sulamerica@2.2.0",
+  "n_opcoes": 0,
+  "opcoes": [],
+  "alertas_codigos": [
+    "PDF-SUL-001"
+  ]
+}

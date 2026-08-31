@@ -66,34 +66,7 @@ def _paginas_cabecalho(doc: pymupdf.Document, n: int = 4) -> None:
         doc.new_page(width=595, height=842).insert_text((36, 36), "SUL AMERICA SAUDE", fontsize=10)
 
 
-def build_sulamerica_faixa_unica_com_vidas() -> bytes:
-    """Layout ATEF: nome em 4 linhas, «1 vida» acima das faixas cotadas."""
-    doc = pymupdf.open()
-    _paginas_cabecalho(doc, 4)
-    page = doc.new_page(width=595, height=842)
-    page.insert_text((36, 40), "TABELA DE PREÇOS", fontsize=11)
-    page.insert_text((36, 58), "COM COPARTICIPACAO 30%", fontsize=10)
-    for rotulo, x in _FAIXAS_COLS:
-        page.insert_text((x, 70), rotulo, fontsize=7)
-    page.insert_text((36, 120), "Nacional", fontsize=9)
-    page.insert_text((36, 132), "SP (CAP1)", fontsize=9)
-    page.insert_text((36, 144), "Direto Nacional", fontsize=9)
-    page.insert_text((36, 156), "Apartamento", fontsize=9)
-    for idx in (1, 7, 8):
-        page.insert_text((_FAIXAS_COLS[idx][1], 168), "1 vida", fontsize=7)
-    for v, (_, x) in zip(_VALORES, _FAIXAS_COLS):
-        page.insert_text((x, 180), v, fontsize=7)
-    page.insert_text(
-        (36, 220),
-        "Prêmio Saúde: R$ 2.215,76 + IOF (2,38%): R$ 52,74 = Total de Prêmio Saúde: R$ 2.268,50",
-        fontsize=8,
-    )
-    page.insert_text((36, 240), "Validade da cotação: 14/08/2026", fontsize=8)
-    out = doc.tobytes()
-    doc.close()
-    return out
-
-
+from tests.fixtures.cotacao_pdf.build_pdfs import build_sulamerica_faixa_unica_com_vidas
 def test_valores_ignoram_anotacoes_vida_intercaladas():
     """Tokens «N vida» entre valores não interrompem a sequência de 10 faixas."""
     from newport_app.cotacao_pdf.sulamerica_table import _valores_de_linha

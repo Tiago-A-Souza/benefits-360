@@ -1,0 +1,79 @@
+{
+  "estado": "extraido",
+  "template_id": "sulamerica-pme-ajustes-dual",
+  "parser_versao": "sulamerica@2.2.0",
+  "n_opcoes": 2,
+  "opcoes": [
+    {
+      "plano_nome": "Direto SP CAP1",
+      "acomodacao": null,
+      "regime_copart": "sem",
+      "copart_percentual": null,
+      "tipo_fiscal": null,
+      "validade": null,
+      "premio_centavos": null,
+      "iof_centavos": null,
+      "total_centavos": null,
+      "faixas_centavos": [
+        28394,
+        35492,
+        44009,
+        48851,
+        52271,
+        60634,
+        72483,
+        84951,
+        101133,
+        170359
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    },
+    {
+      "plano_nome": "Direto SP CAP1",
+      "acomodacao": null,
+      "regime_copart": "percentual",
+      "copart_percentual": 30,
+      "tipo_fiscal": null,
+      "validade": null,
+      "premio_centavos": null,
+      "iof_centavos": null,
+      "total_centavos": null,
+      "faixas_centavos": [
+        21296,
+        26619,
+        33007,
+        36638,
+        39203,
+        45476,
+        54362,
+        63713,
+        75850,
+        127769
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    }
+  ],
+  "alertas_codigos": []
+}
