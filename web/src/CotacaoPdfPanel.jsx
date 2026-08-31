@@ -55,7 +55,7 @@ import {
   formatarResumoUploads,
   primeiroUploadComSucesso,
 } from "./cotacaoPdf/uploadLote";
-import { REGIMES_COPART, TIPOS_FISCAIS } from "./constants";
+import { ACOMODACOES, REGIMES_COPART, TIPOS_FISCAIS } from "./constants";
 
 function rotuloTipoFiscal(texto) {
   if (texto === "operadora") return "Operadora";
@@ -513,6 +513,11 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
   const tipoFiscalPendente = !tipoFiscalAtual;
   const regimeAtual = op.regime_copart?.texto || "";
   const regimePendente = !regimeAtual;
+  const acomodacaoAtual = op.acomodacao?.texto || "";
+  const acomodacaoPendente = !acomodacaoAtual;
+  const rotuloAcomodacaoAtual =
+    ACOMODACOES.find((a) => a.value === acomodacaoAtual)?.label ||
+    (acomodacaoAtual ? acomodacaoAtual : null);
 
   return (
     <div className="cartao cartao--fluxo revisao-plano">
@@ -528,7 +533,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </div>
         <div>
           <dt>Acomodação</dt>
-          <dd>{inferirAcomodacao(op)}</dd>
+          <dd>{rotuloAcomodacaoAtual || "A declarar"}</dd>
         </div>
         <div>
           <dt>Tipo fiscal</dt>
@@ -572,6 +577,33 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </label>
       )}
 
+      {acomodacaoPendente && (
+        <label className="campo-revisao">
+          <span>Acomodação</span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (op.acomodacao?.id && e.target.value) {
+                onSalvarCampo(op.acomodacao.id, {
+                  texto: e.target.value,
+                  confirmado: true,
+                });
+              }
+            }}
+          >
+            <option value="">Selecione…</option>
+            {ACOMODACOES.map((a) => (
+              <option key={a.value} value={a.value}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          <span className="muted revisao-plano-dica">
+            Não extraída do PDF — declare antes de adicionar ao comparativo.
+          </span>
+        </label>
+      )}
+
       {regimePendente && (
         <label className="campo-revisao">
           <span>Regime de coparticipação</span>
@@ -606,7 +638,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </p>
       )}
 
-      {!validadePendente && !tipoFiscalPendente && !regimePendente && (
+      {!validadePendente && !tipoFiscalPendente && !acomodacaoPendente && !regimePendente && (
         <p className="muted revisao-plano-dica">
           Dados extraídos do PDF. Use <strong>Corrigir</strong> na tabela apenas se algum valor estiver errado.
         </p>
