@@ -47,6 +47,18 @@ def acomodacao_opcao(op: OpcaoPropostaRascunho) -> str | None:
     return acomodacao_de_texto(op.acomodacao, op.plano_nome)
 
 
+def acomodacao_informada_subgrupo(sg: SubgrupoAtualRascunho) -> str | None:
+    """Acomodação declarada explicitamente — sem dedução do nome do plano."""
+
+    return normalizar_acomodacao(sg.acomodacao)
+
+
+def acomodacao_informada_opcao(op: OpcaoPropostaRascunho) -> str | None:
+    """Acomodação declarada explicitamente — sem dedução do nome do plano."""
+
+    return normalizar_acomodacao(op.acomodacao)
+
+
 def mensagem_divergencia_acomodacao(
     *,
     plano_atual: str,
@@ -61,14 +73,37 @@ def mensagem_divergencia_acomodacao(
     )
 
 
-def coletar_divergencias_acomodacao(rascunho: RascunhoEstudo) -> list[str]:
-    """Mensagens únicas de divergência nas atribuições atuais."""
+def mensagem_incompleto_acomodacao(
+    *,
+    plano_atual: str,
+    plano_proposta: str,
+    falta_atual: bool,
+    falta_proposta: bool,
+) -> str:
+    if falta_atual and falta_proposta:
+        return (
+            f"Comparação de acomodação não realizada entre «{plano_atual}» e "
+            f"«{plano_proposta}»: nenhum dos lados informado. "
+            f"Preencha na etapa «Plano atual» e na conferência do PDF."
+        )
+    if falta_atual:
+        return (
+            f"Comparação de acomodação não realizada para «{plano_atual}»: "
+            f"acomodação do plano vigente não informada. "
+            f"Preencha na etapa «Plano atual»."
+        )
+    return (
+        f"Comparação de acomodação não realizada para «{plano_proposta}»: "
+        f"acomodação da proposta não informada. "
+        f"Preencha na conferência do PDF."
+    )
+
+
+def _iterar_pares_atribuidos(rascunho: RascunhoEstudo):
     if rascunho.formato == "novo":
-        return []
+        return
     subgrupos = {sg.id: sg for sg in rascunho.subgrupos_atuais}
     opcoes = {op.id: op for op in rascunho.opcoes_proposta}
-    mensagens: list[str] = []
-    vistos: set[str] = set()
     for cenario in rascunho.cenarios:
         for atr in cenario.atribuicoes:
             if atr.alvo_tipo != "subgrupo":
@@ -77,19 +112,48 @@ def coletar_divergencias_acomodacao(rascunho: RascunhoEstudo) -> list[str]:
             op = opcoes.get(atr.opcao_plano_id)
             if sg is None or op is None:
                 continue
-            ac_sg = acomodacao_subgrupo(sg)
-            ac_op = acomodacao_opcao(op)
-            if not ac_sg or not ac_op or ac_sg == ac_op:
-                continue
-            msg = mensagem_divergencia_acomodacao(
-                plano_atual=sg.plano_nome,
-                acomod_atual=ac_sg,
-                plano_proposta=op.plano_nome,
-                acomod_proposta=ac_op,
-            )
-            if msg not in vistos:
-                vistos.add(msg)
-                mensagens.append(msg)
+            yield sg, op
+
+
+def coletar_divergencias_acomodacao(rascunho: RascunhoEstudo) -> list[str]:
+    """Mensagens únicas de divergência nas atribuições atuais."""
+    mensagens: list[str] = []
+    vistos: set[str] = set()
+    for sg, op in _iterar_pares_atribuidos(rascunho):
+        ac_sg = acomodacao_informada_subgrupo(sg)
+        ac_op = acomodacao_informada_opcao(op)
+        if not ac_sg or not ac_op or ac_sg == ac_op:
+            continue
+        msg = mensagem_divergencia_acomodacao(
+            plano_atual=sg.plano_nome,
+            acomod_atual=ac_sg,
+            plano_proposta=op.plano_nome,
+            acomod_proposta=ac_op,
+        )
+        if msg not in vistos:
+            vistos.add(msg)
+            mensagens.append(msg)
+    return mensagens
+
+
+def coletar_incompletos_acomodacao(rascunho: RascunhoEstudo) -> list[str]:
+    """Mensagens informativas quando a comparação não pôde ser feita."""
+    mensagens: list[str] = []
+    vistos: set[str] = set()
+    for sg, op in _iterar_pares_atribuidos(rascunho):
+        ac_sg = acomodacao_informada_subgrupo(sg)
+        ac_op = acomodacao_informada_opcao(op)
+        if ac_sg and ac_op:
+            continue
+        msg = mensagem_incompleto_acomodacao(
+            plano_atual=sg.plano_nome,
+            plano_proposta=op.plano_nome,
+            falta_atual=not ac_sg,
+            falta_proposta=not ac_op,
+        )
+        if msg not in vistos:
+            vistos.add(msg)
+            mensagens.append(msg)
     return mensagens
 
 
@@ -107,6 +171,27 @@ def pendencias_divergencia_acomodacao(rascunho: RascunhoEstudo) -> list[Pendenci
                 "intencional, mas a comparação de preço não é equivalente."
             ),
             codigo="APP-ACO-001",
+            etapa=4 if len(rascunho.subgrupos_atuais) > 1 else 3,
+            quantidade=1,
+        )
+        for msg in msgs
+    ]
+
+
+def pendencias_incompleto_acomodacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
+    msgs = coletar_incompletos_acomodacao(rascunho)
+    if not msgs:
+        return []
+    return [
+        PendenciaItem(
+            tipo="info",
+            titulo="Acomodação incompleta — comparação não realizada",
+            descricao=msg,
+            acao_sugerida=(
+                "Informe a acomodação na etapa «Plano atual» (vigente) e na "
+                "conferência do PDF (proposta), quando o documento não trouxer o dado."
+            ),
+            codigo="APP-ACO-002",
             etapa=4 if len(rascunho.subgrupos_atuais) > 1 else 3,
             quantidade=1,
         )

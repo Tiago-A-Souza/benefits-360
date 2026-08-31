@@ -20,11 +20,47 @@ function normalizarAcomodacao(texto) {
   return null;
 }
 
-function acomodacaoDe(entidade) {
-  return (
-    normalizarAcomodacao(entidade?.acomodacao) ||
-    normalizarAcomodacao(entidade?.plano_nome)
-  );
+function acomodacaoInformada(entidade) {
+  return normalizarAcomodacao(entidade?.acomodacao);
+}
+
+function avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos) {
+  const divergencias = [];
+  const incompletos = [];
+  const vistosDiv = new Set();
+  const vistosInc = new Set();
+  for (const cenario of cenarios) {
+    for (const sg of subgrupos) {
+      const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
+      if (!atr?.opcao_plano_id) continue;
+      const op = rascunho.opcoes_proposta.find((o) => o.id === atr.opcao_plano_id);
+      if (!op) continue;
+      const acSg = acomodacaoInformada(sg);
+      const acOp = acomodacaoInformada(op);
+      if (acSg && acOp && acSg !== acOp) {
+        const msg =
+          `«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída «${op.plano_nome}» é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`;
+        if (!vistosDiv.has(msg)) {
+          vistosDiv.add(msg);
+          divergencias.push(msg);
+        }
+      } else if (!acSg || !acOp) {
+        let msg;
+        if (!acSg && !acOp) {
+          msg = `Comparação de acomodação não realizada entre «${sg.plano_nome}» e «${op.plano_nome}»: nenhum dos lados informado.`;
+        } else if (!acSg) {
+          msg = `Comparação de acomodação não realizada para «${sg.plano_nome}»: acomodação do plano vigente não informada.`;
+        } else {
+          msg = `Comparação de acomodação não realizada para «${op.plano_nome}»: acomodação da proposta não informada.`;
+        }
+        if (!vistosInc.has(msg)) {
+          vistosInc.add(msg);
+          incompletos.push(msg);
+        }
+      }
+    }
+  }
+  return { divergencias, incompletos };
 }
 
 function rotuloAcomodacao(canonico) {
@@ -76,29 +112,6 @@ function lacunasCenario(cenario, subgrupos, opcoes) {
     }
   }
   return faltando;
-}
-
-function avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos) {
-  const msgs = [];
-  const vistos = new Set();
-  for (const cenario of cenarios) {
-    for (const sg of subgrupos) {
-      const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
-      if (!atr?.opcao_plano_id) continue;
-      const op = rascunho.opcoes_proposta.find((o) => o.id === atr.opcao_plano_id);
-      if (!op) continue;
-      const acSg = acomodacaoDe(sg);
-      const acOp = acomodacaoDe(op);
-      if (!acSg || !acOp || acSg === acOp) continue;
-      const msg =
-        `«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída «${op.plano_nome}» é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`;
-      if (!vistos.has(msg)) {
-        vistos.add(msg);
-        msgs.push(msg);
-      }
-    }
-  }
-  return msgs;
 }
 
 export default function PlanosSelecionadosPanel({
@@ -206,7 +219,8 @@ export default function PlanosSelecionadosPanel({
     }
   }
 
-  const avisosAcomodacao = avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos);
+  const { divergencias: avisosDivergencia, incompletos: avisosIncompletos } =
+    avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos);
 
   if (!multiplosPlanosAtuais) {
     return (
@@ -302,16 +316,17 @@ export default function PlanosSelecionadosPanel({
                   const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
                   const opId = atr?.opcao_plano_id || "";
                   const opSel = opcoes.find((o) => o.id === opId);
-                  const acSg = acomodacaoDe(sg);
-                  const acOp = acomodacaoDe(opSel);
+                  const acSg = acomodacaoInformada(sg);
+                  const acOp = acomodacaoInformada(opSel);
                   const diverge = acSg && acOp && acSg !== acOp;
+                  const incompletoAc = (!acSg || !acOp) && opId;
                   const vidasSg = (rascunho.vidas || []).filter(
                     (v) => v.incluida && v.subgrupo_atual_id === sg.id
                   ).length;
                   return (
                     <div
                       key={sg.id}
-                      className={`mapping${diverge ? " mapping--aviso" : ""}`}
+                      className={`mapping${diverge ? " mapping--aviso" : ""}${incompletoAc ? " mapping--info" : ""}`}
                     >
                       <div className="current">
                         <b>{sg.plano_nome}</b>
@@ -330,12 +345,18 @@ export default function PlanosSelecionadosPanel({
                         {opcoes.map((opcao) => (
                           <option key={opcao.id} value={opcao.id}>
                             {opcao.plano_nome || opcao.id}
-                            {acomodacaoDe(opcao)
-                              ? ` (${rotuloAcomodacao(acomodacaoDe(opcao))})`
+                            {acomodacaoInformada(opcao)
+                              ? ` (${rotuloAcomodacao(acomodacaoInformada(opcao))})`
                               : ""}
                           </option>
                         ))}
                       </select>
+                      {incompletoAc && !diverge && (
+                        <p className="alerta alerta-inline alerta-inline--info">
+                          Acomodação incompleta — informe na etapa «Plano atual» e na conferência
+                          do PDF para comparar.
+                        </p>
+                      )}
                       {diverge && (
                         <p className="alerta alerta-inline">
                           {`«${sg.plano_nome}» é ${rotuloAcomodacao(acSg)}; a proposta atribuída é ${rotuloAcomodacao(acOp)}. A comparação de preço não é equivalente.`}
@@ -356,14 +377,30 @@ export default function PlanosSelecionadosPanel({
         </button>
       </div>
 
-      {avisosAcomodacao.length > 0 && (
+      {avisosDivergencia.length > 0 && (
         <div className="alerta">
           <strong>Acomodação divergente</strong>
           <ul>
-            {avisosAcomodacao.map((m) => (
+            {avisosDivergencia.map((m) => (
               <li key={m}>{m}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {avisosIncompletos.length > 0 && (
+        <div className="notice notice--blue">
+          <div className="notice-icon" aria-hidden="true">
+            i
+          </div>
+          <div>
+            <strong>Acomodação incompleta</strong>
+            <ul>
+              {avisosIncompletos.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 

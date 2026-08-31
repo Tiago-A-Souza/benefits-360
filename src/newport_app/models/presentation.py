@@ -141,6 +141,7 @@ class PresentationViewModel(BaseModel):
     propostas_selecionadas: list[str] = Field(default_factory=list)
     ressalvas: list[str] = Field(default_factory=list)
     avisos_acomodacao: list[str] = Field(default_factory=list)
+    avisos_acomodacao_incompleto: list[str] = Field(default_factory=list)
     politicas_provisorias: bool = True
     aviso_rascunho_interno: str = (
         "RASCUNHO INTERNO — políticas provisórias sujeitas a homologação."

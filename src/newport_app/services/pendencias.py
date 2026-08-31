@@ -354,9 +354,13 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
         )
     elif rascunho.opcoes_proposta and cenarios_sincronizados(rascunho):
         itens.extend(pendencias_propostas_fora_dos_cenarios(rascunho))
-    from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
+    from newport_app.rascunho.acomodacao import (
+        pendencias_divergencia_acomodacao,
+        pendencias_incompleto_acomodacao,
+    )
 
     itens.extend(pendencias_divergencia_acomodacao(rascunho))
+    itens.extend(pendencias_incompleto_acomodacao(rascunho))
     return itens
 
 

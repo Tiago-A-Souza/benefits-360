@@ -1426,7 +1426,10 @@ def montar_comparativo(
         if rascunho.formato == "novo" and resultado.cenarios
         else []
     )
-    from newport_app.rascunho.acomodacao import pendencias_divergencia_acomodacao
+    from newport_app.rascunho.acomodacao import (
+        pendencias_divergencia_acomodacao,
+        pendencias_incompleto_acomodacao,
+    )
 
     consistencia = _avaliar_consistencia(
         rascunho,
@@ -1436,6 +1439,7 @@ def montar_comparativo(
     )
     if not erros_compilacao:
         pendencias.extend(pendencias_divergencia_acomodacao(rascunho))
+        pendencias.extend(pendencias_incompleto_acomodacao(rascunho))
         from newport_app.services.pendencias import pendencias_propostas_fora_dos_cenarios
 
         pendencias.extend(pendencias_propostas_fora_dos_cenarios(rascunho))

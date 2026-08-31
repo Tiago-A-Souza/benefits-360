@@ -798,7 +798,7 @@ documento.
 | Registrar o parser Bradesco em `FAMILIAS` (existe, não está ativo) | conclui IVTEC e Lunvox |
 | Deduplicar planos idênticos vindos de documentos distintos | elimina colunas repetidas |
 | Regime de coparticipação da Amil fixado como «parcial» | rótulo correto no documento |
-| Acomodação ausente não gera aviso | alerta de divergência não dispara |
+| Acomodação ausente não gera aviso | **resolvido** — Frente 2: `APP-ACO-002` informa incompleto |
 | Revisar tipo fiscal gravado em estudos anteriores à correção | dado legado |
 | Etapa 1 exige plano e seguradora mesmo em seguro novo | lista de vidas simples |
 | Duas implementações do formatador de reais | divergência futura entre as camadas |
@@ -812,6 +812,14 @@ documento.
 |---|---|
 | Segundo renderizador de faixas no frontend (`seguroNovo \|\| !plano?.faixas?.length`) | `5483fe3` — ver §8.10; teste `test_jsx_tabela_faixas_sem_agregacao_no_cliente` |
 | `round()` bancário em `_calcular_diff_bps` | `_calcular_diff_bps` delega a `bps_variacao` (half-up); `test_bps_variacao_half_up_nao_bankers` — `c96f861` |
+
+### Pendência — dois tipos de acomodação convivendo
+
+Com a dedução por letra no nome do produto **mantida** nos parsers Porto e Amil,
+o sistema passa a ter duas origens: a **informada** (etapa 2 / conferência do
+PDF) e a **deduzida na extração** (campo `acomodacao` preenchido pelo parser a
+partir de Q/E/QC/QP no nome). Na tela ficam idênticas quando ambas existem.
+Remover a dedução volta à mesa quando os golden dos parsers forem construídos.
 
 ### Resolvido nesta branch — acomodação do cabeçalho em cenário misto
 

@@ -620,8 +620,16 @@ def _avisos_topo(model: PresentationViewModel, *, aviso_pii: bool) -> str:
         f"<div class='rascunho'>{html.escape(model.aviso_rascunho_interno)}</div>",
     ]
     if model.avisos_acomodacao:
-        partes.append("<div class='aviso-acomodacao'><strong>Atenção — acomodação</strong><ul>")
+        partes.append("<div class='aviso-acomodacao'><strong>Atenção — acomodação divergente</strong><ul>")
         for aviso in model.avisos_acomodacao:
+            partes.append(f"<li>{html.escape(aviso)}</li>")
+        partes.append("</ul></div>")
+    if model.avisos_acomodacao_incompleto:
+        partes.append(
+            "<div class='aviso-acomodacao aviso-acomodacao--info'>"
+            "<strong>Acomodação incompleta</strong><ul>"
+        )
+        for aviso in model.avisos_acomodacao_incompleto:
             partes.append(f"<li>{html.escape(aviso)}</li>")
         partes.append("</ul></div>")
     if aviso_pii:
@@ -793,6 +801,7 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
   padding:11px 56px;font-size:12px;font-weight:500;color:var(--ouro-esc);letter-spacing:.03em}
 .aviso-pii{background:#FBEDEE;border-bottom:1px solid #E8B4B8;padding:11px 56px;color:#A8323C;font-size:12.5px}
 .aviso-acomodacao{background:#FFF8E1;border-bottom:1px solid #FFE082;padding:11px 56px;color:#6d4c00;font-size:12.5px}
+.aviso-acomodacao--info{background:#E3F2FD;border-bottom-color:#90CAF9;color:#0d47a1}
 .aviso-acomodacao ul{margin:6px 0 0;padding-left:1.2rem}
 .doc-tab-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .doc-controles{display:flex;align-items:center;gap:0;flex-wrap:wrap;padding:0 56px;background:var(--papel);

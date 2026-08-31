@@ -448,7 +448,10 @@ def construir_view_model(
             vm_parcial, secao, ids_secao
         )
 
-    from newport_app.rascunho.acomodacao import coletar_divergencias_acomodacao
+    from newport_app.rascunho.acomodacao import (
+        coletar_divergencias_acomodacao,
+        coletar_incompletos_acomodacao,
+    )
 
     nome_cliente = None
     if rascunho.empresa_cliente and (rascunho.empresa_cliente.nome or "").strip():
@@ -464,6 +467,7 @@ def construir_view_model(
         propostas_selecionadas=propostas_ids,
         ressalvas=ressalvas or [],
         avisos_acomodacao=coletar_divergencias_acomodacao(rascunho),
+        avisos_acomodacao_incompleto=coletar_incompletos_acomodacao(rascunho),
         vidas_calculadas=vidas_calculadas,
         qtd_planos_vigentes=qtd_planos,
         totais_gerais=totais_gerais,
