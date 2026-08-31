@@ -1,0 +1,11 @@
+{
+  "estado": "ocr_parcial",
+  "template_id": "porto-demonstrativo-27",
+  "parser_versao": "porto@2.1.0",
+  "n_opcoes": 0,
+  "opcoes": [],
+  "alertas_codigos": [
+    "PDF-PORTO-002"
+  ],
+  "_ressalva_deducacao_acomodacao": "Este golden congela a inferência de acomodação a partir de Q/E/QC/QP no nome do produto. Não é endosso do comportamento: ele está registrado no §12 como pendente de decisão, e quebra quando uma operadora mudar a nomenclatura. Se a inferência for removida, este golden é atualizado deliberadamente."
+}

@@ -1,0 +1,83 @@
+{
+  "estado": "extraido",
+  "template_id": "porto-demonstrativo-27",
+  "parser_versao": "porto@2.1.0",
+  "n_opcoes": 2,
+  "opcoes": [
+    {
+      "plano_nome": "P320 Q COPAR",
+      "acomodacao": "Apartamento",
+      "regime_copart": "percentual",
+      "copart_percentual": 30,
+      "tipo_fiscal": "seguradora",
+      "validade": "2026-07-30",
+      "premio_centavos": 150082,
+      "iof_centavos": 3608,
+      "total_centavos": 153690,
+      "faixas_centavos": [
+        30317,
+        36766,
+        44353,
+        50776,
+        55016,
+        56818,
+        67870,
+        73065,
+        90277,
+        151748
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    },
+    {
+      "plano_nome": "P320 Q COPAR",
+      "acomodacao": "Apartamento",
+      "regime_copart": "percentual",
+      "copart_percentual": 30,
+      "tipo_fiscal": "seguradora",
+      "validade": "2026-07-30",
+      "premio_centavos": 150082,
+      "iof_centavos": 3608,
+      "total_centavos": 153690,
+      "faixas_centavos": [
+        22738,
+        27575,
+        33264,
+        38082,
+        41262,
+        42613,
+        50902,
+        54799,
+        67708,
+        113811
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    }
+  ],
+  "alertas_codigos": [
+    "PDF-PORTO-006",
+    "PDF-REC"
+  ],
+  "_ressalva_deducacao_acomodacao": "Este golden congela a inferência de acomodação a partir de Q/E/QC/QP no nome do produto. Não é endosso do comportamento: ele está registrado no §12 como pendente de decisão, e quebra quando uma operadora mudar a nomenclatura. Se a inferência for removida, este golden é atualizado deliberadamente."
+}
