@@ -64,8 +64,15 @@ def test_parse_12_vidas_todas_nao_confirmadas():
 def test_normalizar_cabecalho_converte_nbsp_e_colapsa_espacos():
     assert normalizar_cabecalho("DATA\u00A0DE\u00A0NASCIMENTO") == "DATA DE NASCIMENTO"
     assert normalizar_cabecalho("STATUS\u00A0SEGURADO") == "STATUS SEGURADO"
+    assert normalizar_cabecalho("CPF\u00A0TITULAR") == "CPF TITULAR"
+    assert normalizar_cabecalho("TIPO\u00A0DE\u00A0VIDA") == "TIPO DE VIDA"
+    assert normalizar_cabecalho("NOME\u00A0DA\u00A0MAE") == "NOME DA MAE"
     assert normalizar_cabecalho("  CLIENTE\t\n  ") == "CLIENTE"
     assert normalizar_cabecalho("PLANO  \u2003  DEMO") == "PLANO DEMO"
+    assert normalizar_cabecalho("\uFEFFSEXO") == "SEXO"
+    assert normalizar_cabecalho("MATRÍCULA") == "MATRICULA"
+    assert normalizar_cabecalho("matrícula") == "MATRICULA"
+    assert normalizar_cabecalho("sexo") == "SEXO"
 
 
 def test_parse_41_vidas_cabecalho_nbsp_50_colunas():

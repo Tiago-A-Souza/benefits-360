@@ -21,16 +21,15 @@ COLUNAS_OPCIONAIS = (
     "TIPO DE VIDA",
 )
 
-# Variações de cabeçalho observadas → nome canônico interno.
+# Variações de rótulo → nome canônico (após normalizar_cabecalho).
+# Não use alias para NBSP/espaços: isso é papel da normalização.
 ALIAS_COLUNAS_OPCIONAIS: dict[str, str] = {
     "SEXO": "SEXO",
     "CPF TITULAR": "CPF TITULAR",
     "CPF DO TITULAR": "CPF TITULAR",
     "TITULAR": "TITULAR",
     "MATRICULA": "MATRICULA",
-    "MATRÍCULA": "MATRICULA",
     "TIPO DE VIDA": "TIPO DE VIDA",
-    "TIPO DE VIDA ": "TIPO DE VIDA",
 }
 
 MAPEAMENTO_COLUNAS = {nome: nome for nome in COLUNAS_OBRIGATORIAS}

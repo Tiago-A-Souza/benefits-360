@@ -15,6 +15,7 @@ from newport_app.snapshot.hashing import hash_snapshot_canonico
 from newport_app.siscor_importer.parser import parse_planilha_siscor
 from tests.fixtures.siscor.xlsx_builder import (
     planilha_12_vidas,
+    planilha_anistia_41_cabecalho_nbsp,
     planilha_anistia_41_sintetica,
     planilha_atef_3_sintetica,
     planilha_sexo_coluna_celulas_vazias,
@@ -28,7 +29,7 @@ from tests.test_paridade_matriz_html import (
 )
 
 
-def _planilha_real(nomes: tuple[str, ...]) -> Path | None:
+def _planilha_real(nomes: tuple[str, ...], *, glob_anistia: bool = False) -> Path | None:
     raizes = [
         Path(r"C:\Users\tiago\Downloads"),
         Path(r"C:\np\.private\runtime"),
@@ -37,9 +38,21 @@ def _planilha_real(nomes: tuple[str, ...]) -> Path | None:
         if not raiz.is_dir():
             continue
         for nome in nomes:
+            direto = raiz / nome
+            if direto.is_file():
+                return direto
             for hit in raiz.rglob(nome):
                 if hit.is_file():
                     return hit
+        if not glob_anistia:
+            continue
+        # Nomes com acento/encoding de filesystem (POSIÇÃO…SAÚDE).
+        for hit in raiz.glob("POSI*.xlsx"):
+            n = hit.name.upper()
+            if "IVTEC" in n:
+                continue
+            if "CADASTRAL" in n and "SEGURADO" in n:
+                return hit
     return None
 
 
@@ -66,22 +79,79 @@ def test_01_anistia_41_sexo_e_vinculo_sintetico():
     assert all(l.vinculo_resolvido for l in c.linhas)
 
 
+def test_01b_anistia_41_cabecalho_nbsp_regressao():
+    """Fixture com NBSP nos compostos — mesma regressão da planilha real."""
+    from collections import Counter
+
+    from openpyxl import load_workbook
+    from io import BytesIO
+
+    conteudo = planilha_anistia_41_cabecalho_nbsp()
+    wb = load_workbook(BytesIO(conteudo), read_only=True, data_only=True)
+    headers = [c.value for c in next(wb.active.iter_rows(min_row=1, max_row=1))]
+    wb.close()
+    assert "CPF\u00A0TITULAR" in headers
+    assert "TIPO\u00A0DE\u00A0VIDA" in headers
+    assert "DATA\u00A0DE\u00A0NASCIMENTO" in headers
+    assert "NOME\u00A0DA\u00A0MAE" in headers
+
+    resultado = _parse_bytes(conteudo, estudo_id="fb-nbsp")
+    assert resultado.sucesso
+    c = resultado.candidata
+    assert c is not None
+    assert len(c.linhas) == 41
+    assert c.disponibilidade_colunas.sexo
+    assert c.disponibilidade_colunas.cpf_titular
+    assert c.disponibilidade_colunas.matricula
+    assert c.disponibilidade_colunas.tipo_de_vida
+    assert c.estatisticas.sexo_preenchido == 41
+    assert sum(1 for l in c.linhas if l.sexo == "feminino") == 29
+    assert sum(1 for l in c.linhas if l.sexo == "masculino") == 12
+    parentesco = Counter(l.parentesco.value if l.parentesco else None for l in c.linhas)
+    assert parentesco["titular"] == 27
+    assert parentesco["conjuge"] == 8
+    assert parentesco["filho"] == 5
+    assert parentesco["companheiro"] == 1
+    grupos = {l.vinculo_grupo_chave for l in c.linhas if l.vinculo_grupo_chave}
+    assert len(grupos) == 27
+    assert c.estatisticas.vinculos_resolvidos == 41
+    assert sum(1 for l in c.linhas if l.matricula) == 36
+    sem_mat = [l for l in c.linhas if not l.matricula]
+    assert len(sem_mat) == 5
+    assert all(l.parentesco and l.parentesco.value != "titular" for l in sem_mat)
+
+
 def test_01_anistia_real_se_disponivel():
     path = _planilha_real(
         (
             "POSIÇÃO_CADASTRAL_SEGURADOS__SAÚDE_2.xlsx",
             "POSICAO_CADASTRAL_SEGURADOS__SAUDE_2.xlsx",
-        )
+        ),
+        glob_anistia=True,
     )
     if path is None:
         pytest.skip("Planilha Anistia real indisponível")
+    from collections import Counter
+
     resultado = _parse_arquivo(path)
     assert resultado.sucesso
     c = resultado.candidata
     assert c is not None
     assert len(c.linhas) == 41
+    assert c.disponibilidade_colunas.cpf_titular
     assert c.estatisticas.sexo_preenchido == 41
+    assert sum(1 for l in c.linhas if l.sexo == "feminino") == 29
+    assert sum(1 for l in c.linhas if l.sexo == "masculino") == 12
+    parentesco = Counter(l.parentesco.value if l.parentesco else None for l in c.linhas)
+    assert parentesco["titular"] == 27
+    assert parentesco["conjuge"] == 8
+    assert parentesco["filho"] == 5
+    assert parentesco["companheiro"] == 1
+    grupos = {l.vinculo_grupo_chave for l in c.linhas if l.vinculo_grupo_chave}
+    assert len(grupos) == 27
     assert c.estatisticas.vinculos_resolvidos == 41
+    assert sum(1 for l in c.linhas if l.matricula) == 36
+    assert sum(1 for l in c.linhas if not l.matricula) == 5
 
 
 def test_02_atef_3_sexo_sintetico():

@@ -806,6 +806,23 @@ documento.
 | Cabeçalho da coluna de contrato atual repete o rótulo | «CONTRATO ATUAL / CONTRATO ATUAL / vários planos» |
 | `_th_proposta(..., [], ...)` no modo beneficiário | terceira superfície do 8.2 — ver abaixo |
 
+### Cabeçalho SISCOR com caracteres invisíveis (NBSP)
+
+Planilha real da Anistia (e outras origens Excel/SISCOR) pode trazer **espaço
+não separável (U+00A0)** e outros invisíveis nos cabeçalhos de mais de uma
+palavra — visualmente idênticos a espaço comum (`CPF\xa0TITULAR`,
+`TIPO\xa0DE\xa0VIDA`, `DATA\xa0DE\xa0NASCIMENTO`, `NOME\xa0DA\xa0MAE`).
+Um `== "CPF TITULAR"` sem normalizar **não encontra** a coluna; `SEXO` (uma
+palavra) casava e mascarava o defeito.
+
+**Defesa:** `normalizar_cabecalho` colapsa NBSP/tab/quebra/BOM/ZWSP, remove
+acentos e aplica caixa alta — não alias pontual. Fixture
+`planilha_anistia_41_cabecalho_nbsp` + testes em `test_frente_base_colunas_siscor`
+e `test_siscor_import`. **Não versionar** a planilha real.
+
+Isto **voltará a acontecer** com planilha de outra origem — qualquer leitura de
+cabeçalho deve passar pela normalização.
+
 ### Resolvidos (histórico — não apagar)
 
 | Item | Commit / nota |

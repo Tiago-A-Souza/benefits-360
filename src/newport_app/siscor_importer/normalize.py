@@ -3,21 +3,42 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date, datetime
 
 from newport_app.models.draft import ParentescoRascunho
 from newport_app.siscor_importer.constants import PARENTESCO_MAP, STATUS_ATIVO
 
+# Espaços e separadores invisíveis comuns em export Excel/SISCOR (NBSP, etc.).
+# Não incluir hífen suave aqui — removido à parte para não virar espaço.
 _RE_ESPACOS_CABECALHO = re.compile(
-    r"[\t\r\n\v\f\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000 ]+"
+    r"[\t\r\n\v\f"
+    r"\u00A0"  # NBSP
+    r"\u1680"  # ogham space
+    r"\u2000-\u200B"  # en/em/thin/… + ZWSP
+    r"\u2028\u2029"  # line/paragraph separator
+    r"\u202F"  # narrow NBSP
+    r"\u205F"  # medium mathematical space
+    r"\u2060"  # word joiner
+    r"\u3000"  # ideographic space
+    r"\uFEFF"  # BOM / ZWNBSP
+    r" ]+"
 )
 
 
 def normalizar_cabecalho(valor: object) -> str:
+    """Canônico de cabeçalho: invisíveis → espaço, acento removido, caixa alta.
+
+    Planilhas reais (Anistia/SISCOR) usam U+00A0 entre palavras
+    (``CPF\\xa0TITULAR``). A defesa é aqui — não alias por cabeçalho.
+    """
     if valor is None:
         return ""
-    texto = _RE_ESPACOS_CABECALHO.sub(" ", str(valor))
-    return texto.strip().upper()
+    texto = str(valor).replace("\u00AD", "")  # soft hyphen
+    texto = _RE_ESPACOS_CABECALHO.sub(" ", texto).strip()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return texto.upper()
 
 
 def normalizar_status(valor: object) -> tuple[str | None, str | None]:

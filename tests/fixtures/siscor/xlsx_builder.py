@@ -69,13 +69,21 @@ def gerar_planilha_siscor_completa(
     linhas: list[dict[str, object]],
     *,
     cabecalho: list[str] | None = None,
+    chaves_linha: list[str] | None = None,
 ) -> bytes:
+    """Gera XLSX. ``chaves_linha`` mapeia cada coluna do cabeçalho → chave do dict.
+
+    Use quando o cabeçalho visual difere da chave canônica (ex.: NBSP no header).
+    """
     cab = cabecalho or CABECALHO_COMPLETO_50
+    chaves = chaves_linha or cab
+    if len(chaves) != len(cab):
+        raise ValueError("chaves_linha e cabecalho devem ter o mesmo comprimento")
     wb = Workbook()
     ws = wb.active
     ws.append(cab)
     for linha in linhas:
-        ws.append([linha.get(col) for col in cab])
+        ws.append([linha.get(chave) for chave in chaves])
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
@@ -141,7 +149,12 @@ def linha_completa_anistia(
     return linha
 
 
-def planilha_anistia_41_sintetica() -> bytes:
+def _espacos_para_nbsp(texto: str) -> str:
+    """Reproduz cabeçalho SISCOR real: espaço comum → U+00A0 entre palavras."""
+    return texto.replace(" ", "\u00A0")
+
+
+def _linhas_anistia_41() -> list[dict[str, object]]:
     """41 vidas — 29F/12M; 5 dependentes sem matrícula; vínculo via CPF TITULAR."""
     linhas: list[dict[str, object]] = []
     sexos = (["FEMININO"] * 29) + (["MASCULINO"] * 12)
@@ -156,35 +169,36 @@ def planilha_anistia_41_sintetica() -> bytes:
     for t_idx, (nome, cpf, mat) in enumerate(titulares):
         plano = "Plano Fictício A" if idx < 36 else "Plano Fictício B"
         linha = linha_completa_anistia(
-                idx,
-                plano=plano,
-                parentesco="TITULAR",
-                sexo=sexos[idx],
-                titular_nome=None,
-                cpf_titular=None,
-                matricula=mat,
-                valor=900.0 + idx,
-            )
+            idx,
+            plano=plano,
+            parentesco="TITULAR",
+            sexo=sexos[idx],
+            titular_nome=None,
+            cpf_titular=None,
+            matricula=mat,
+            valor=900.0 + idx,
+        )
         linha["SEGURADO"] = nome
         linhas.append(linha)
         idx += 1
 
-    # 14 dependentes — 5 sem matrícula (índices 0-4 dentro dos deps)
+    # 14 dependentes — espelha Anistia real: 8 cônjuges, 5 filhos, 1 companheiro;
+    # 5 primeiros sem matrícula (só CPF TITULAR).
     dep_specs = [
         ("CÔNJUGE", 0),
-        ("FILHO(A)", 0),
-        ("FILHO(A)", 1),
-        ("COMPANHEIRO(A)", 2),
-        ("FILHO(A)", 3),
+        ("CÔNJUGE", 1),
+        ("CÔNJUGE", 2),
+        ("CÔNJUGE", 3),
         ("CÔNJUGE", 4),
-        ("FILHO(A)", 5),
-        ("FILHO(A)", 6),
+        ("CÔNJUGE", 5),
+        ("CÔNJUGE", 6),
         ("CÔNJUGE", 7),
         ("FILHO(A)", 8),
         ("FILHO(A)", 9),
-        ("CÔNJUGE", 10),
+        ("FILHO(A)", 10),
         ("FILHO(A)", 11),
         ("FILHO(A)", 12),
+        ("COMPANHEIRO(A)", 0),
     ]
     for d_i, (parentesco, tit_ref) in enumerate(dep_specs):
         nome_tit, cpf_tit, mat_tit = titulares[tit_ref]
@@ -205,7 +219,30 @@ def planilha_anistia_41_sintetica() -> bytes:
         idx += 1
 
     assert len(linhas) == 41
-    return gerar_planilha_siscor_completa(linhas)
+    return linhas
+
+
+def planilha_anistia_41_sintetica() -> bytes:
+    return gerar_planilha_siscor_completa(_linhas_anistia_41())
+
+
+def planilha_anistia_41_cabecalho_nbsp() -> bytes:
+    """Anistia 41 com cabeçalhos multi-palavra em NBSP (U+00A0), como o SISCOR real.
+
+    Não versione a planilha real — esta fixture reproduz a regressão.
+    """
+    cab_canon = list(CABECALHO_COMPLETO_50)
+    cab_nbsp = [_espacos_para_nbsp(h) for h in cab_canon]
+    assert "CPF\u00A0TITULAR" in cab_nbsp
+    assert "TIPO\u00A0DE\u00A0VIDA" in cab_nbsp
+    assert "DATA\u00A0DE\u00A0NASCIMENTO" in cab_nbsp
+    assert "NOME\u00A0DA\u00A0MAE" in cab_nbsp
+    assert "SEXO" in cab_nbsp  # palavra única — sem NBSP
+    return gerar_planilha_siscor_completa(
+        _linhas_anistia_41(),
+        cabecalho=cab_nbsp,
+        chaves_linha=cab_canon,
+    )
 
 
 def planilha_atef_3_sintetica() -> bytes:

@@ -39,14 +39,21 @@ Colunas aceitas no layout piloto (`src/newport_app/siscor_importer/constants.py:
 
 ## Normalizações
 
-### Cabeçalho (NBSP e espaços Unicode)
+### Cabeçalho (NBSP, invisíveis, acento e caixa)
 
-`normalizar_cabecalho` (`normalize.py:11-20`):
+`normalizar_cabecalho` (`normalize.py`):
 
-- Regex `_RE_ESPACOS_CABECALHO` colapsa tab, CR/LF, NBSP (`\u00A0`), espaços Unicode diversos em um espaço simples.
-- Resultado: `strip().upper()`.
+- Colapsa tab, CR/LF, NBSP (`\u00A0`), ZWSP, BOM e demais espaços Unicode em um
+  espaço simples; remove hífen suave.
+- Remove acentos (NFKD + sem marcas combinantes).
+- Resultado: `strip` implícito no colapso + `.upper()`.
 
-Usado no parse do header (`parser.py:149`).
+Planilhas SISCOR reais (ex.: Anistia) usam NBSP em cabeçalhos de mais de uma
+palavra (`CPF\xa0TITULAR`, `TIPO\xa0DE\xa0VIDA`). A defesa é a normalização —
+não alias por cabeçalho. Fixture de regressão:
+`planilha_anistia_41_cabecalho_nbsp()`.
+
+Usado no parse do header (`parser.py`).
 
 ### Parentesco
 
