@@ -18,6 +18,7 @@ from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.paridade_estrutural import divergencias_estruturais
 from newport_app.presentation.paridade_html import divergencias_html_vm
 from newport_app.presentation.paridade_origem import divergencias_origem_completas
+from newport_app.presentation.indicadores_resumo import divergencias_indicadores_resumo
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_motor.result import ResultadoSubgrupo
 from tests.gerador_celulas_estruturais import CelulaEstrutural, gerar_rascunho
@@ -106,6 +107,12 @@ def _detectar(prep: _EstadoPrep) -> list[str]:
             divergencias_estruturais(prep.matriz, vm, rascunho=prep.rascunho)
         )
         divs.extend(divergencias_html_vm(vm, html))
+        if modo == "resumo":
+            divs.extend(
+                divergencias_indicadores_resumo(
+                    matriz=prep.matriz, vm=vm, html=html
+                )
+            )
     return divs
 
 
@@ -141,6 +148,8 @@ def _avaliar_mutacao(
                         tags.add("origem_vm")
                     elif "html_vs_grade" in d:
                         tags.add("origem_html")
+                    elif "indicadores_resumo" in d:
+                        tags.add("indicadores")
                     elif "propostas:" in d or "planos:" in d:
                         tags.add("paridade_estrutural")
                     elif "camada" in d or "rotulo" in d.lower():
@@ -483,6 +492,27 @@ def mut_15_grade_celula_outra_opcao() -> Iterator[None]:
         motor_out._montar_propostas = _orig_montar
 
 
+@contextmanager
+def mut_16_resumo_omite_indicador() -> Iterator[None]:
+    """Remove um indicador do resumo do documento (cegueira de cabeçalho)."""
+
+    def wrapped(model, secao, rotulos, op_ids, *, seguro_novo):
+        inds = list(secao.indicadores_resumo)
+        if inds:
+            secao = secao.model_copy(
+                update={"indicadores_resumo": inds[1:]}  # omite o primeiro
+            )
+        return _orig_render_resumo(
+            model, secao, rotulos, op_ids, seguro_novo=seguro_novo
+        )
+
+    html_renderer._render_resumo = wrapped  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        html_renderer._render_resumo = _orig_render_resumo
+
+
 MUTACOES: list[tuple[int, str, Callable[[], Iterator[None]]]] = [
     (1, "resumo_omite_plano", mut_01_resumo_omite_plano),
     (2, "adapter_plano_a_menos", mut_02_adapter_plano_a_menos),
@@ -499,6 +529,7 @@ MUTACOES: list[tuple[int, str, Callable[[], Iterator[None]]]] = [
     (13, "troca_sg_tres_camadas", mut_13_troca_sg_tres_camadas),
     (14, "consolidado_soma_errado", mut_14_consolidado_soma_errado),
     (15, "grade_celula_outra_opcao", mut_15_grade_celula_outra_opcao),
+    (16, "resumo_omite_indicador", mut_16_resumo_omite_indicador),
 ]
 
 

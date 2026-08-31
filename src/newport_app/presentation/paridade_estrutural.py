@@ -346,6 +346,14 @@ def divergencias_estruturais(
                 f"célula {chave}: matriz={em.celulas[chave]} vm={ev.celulas[chave]}"
             )
 
+    # Indicadores do resumo executivo (matriz ↔ VM).
+    if vm.modo == "resumo":
+        from newport_app.presentation.indicadores_resumo import (
+            divergencias_indicadores_resumo,
+        )
+
+        divs.extend(divergencias_indicadores_resumo(matriz=matriz, vm=vm))
+
     return divs
 
 

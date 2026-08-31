@@ -386,22 +386,15 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
         for secao in vm.secoes_regime:
             props = list(secao.propostas)
             if vm.formato == "novo":
-                for prop in props:
-                    total = secao.totais.propostas.get(prop.opcao_id)
-                    if total is None:
-                        total = prop.total_mensal_centavos
-                    if isinstance(total, int):
-                        cells[(prop.plano_nome, "Total mensal")] = total
-                    diff_m = secao.totais.diff_mensal.get(prop.opcao_id)
-                    if diff_m is None:
-                        diff_m = prop.diff_mensal_centavos
-                    if isinstance(diff_m, int) and diff_m != 0:
-                        cells[(prop.plano_nome, "Diferença vs menor (mês)")] = diff_m
-                    diff_a = secao.totais.diff_anual.get(prop.opcao_id)
-                    if diff_a is None:
-                        diff_a = prop.diff_anual_centavos
-                    if isinstance(diff_a, int) and diff_a != 0:
-                        cells[(prop.plano_nome, "Diferença vs menor (ano)")] = diff_a
+                # Layout por indicador (mesma grade da matriz): linha × coluna-proposta.
+                for lin in secao.indicadores_resumo:
+                    for prop in props:
+                        cel = lin.propostas.get(prop.opcao_id)
+                        if cel is None or cel.centavos is None:
+                            continue
+                        if cel.referencia and cel.centavos == 0:
+                            continue
+                        cells[(lin.rotulo, prop.plano_nome)] = cel.centavos
                 continue
             for pl in secao.planos_atuais:
                 if pl.subgrupo_id == _PLANO_SINTETICO:
@@ -414,6 +407,12 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                     sub = _subtotal_plano_prop(pl, prop.opcao_id)
                     if sub is not None:
                         cells[(pl.plano_nome, prop.plano_nome)] = sub
+            for lin in secao.indicadores_resumo:
+                if lin.rotulo == "Custo total mensal":
+                    for prop in props:
+                        cel = lin.propostas.get(prop.opcao_id)
+                        if cel and cel.centavos is not None:
+                            cells[(lin.rotulo, prop.plano_nome)] = cel.centavos
         return cells
 
     if vm.modo == "faixas":
@@ -593,6 +592,13 @@ def divergencias_html_vm(vm: PresentationViewModel, html_doc: str) -> list[str]:
             + ", ".join(formatar_reais(c) for c in amostra)
             + ("…" if len(inventados) > 8 else "")
         )
+
+    if vm.modo == "resumo":
+        from newport_app.presentation.indicadores_resumo import (
+            divergencias_indicadores_resumo,
+        )
+
+        divs.extend(divergencias_indicadores_resumo(vm=vm, html=html_doc))
 
     return divs
 
