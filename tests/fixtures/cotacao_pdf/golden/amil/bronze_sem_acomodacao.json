@@ -1,0 +1,44 @@
+{
+  "estado": "extraido",
+  "template_id": "amil-cotacao-texto-4p",
+  "parser_versao": "amil@1.2.0",
+  "n_opcoes": 1,
+  "opcoes": [
+    {
+      "plano_nome": "BRONZE BRASIL I COPART",
+      "acomodacao": null,
+      "regime_copart": "parcial",
+      "copart_percentual": null,
+      "tipo_fiscal": null,
+      "validade": null,
+      "premio_centavos": null,
+      "iof_centavos": null,
+      "total_centavos": null,
+      "faixas_centavos": [
+        17938,
+        24360,
+        28595,
+        31941,
+        35742,
+        42176,
+        51032,
+        61239,
+        73487,
+        88184
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    }
+  ],
+  "alertas_codigos": []
+}

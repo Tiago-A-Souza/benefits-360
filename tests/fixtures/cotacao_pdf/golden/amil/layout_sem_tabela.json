@@ -1,0 +1,10 @@
+{
+  "estado": "ocr_parcial",
+  "template_id": "amil-cotacao-texto-4p",
+  "parser_versao": "amil@1.2.0",
+  "n_opcoes": 0,
+  "opcoes": [],
+  "alertas_codigos": [
+    "PDF-AMIL-001"
+  ]
+}

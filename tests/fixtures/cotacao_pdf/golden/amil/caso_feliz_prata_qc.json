@@ -1,0 +1,45 @@
+{
+  "estado": "extraido",
+  "template_id": "amil-cotacao-texto-4p",
+  "parser_versao": "amil@1.2.0",
+  "n_opcoes": 1,
+  "opcoes": [
+    {
+      "plano_nome": "PRATA QC COPART",
+      "acomodacao": "Enfermaria",
+      "regime_copart": "parcial",
+      "copart_percentual": null,
+      "tipo_fiscal": null,
+      "validade": null,
+      "premio_centavos": null,
+      "iof_centavos": null,
+      "total_centavos": null,
+      "faixas_centavos": [
+        107396,
+        120000,
+        130000,
+        140000,
+        150000,
+        160000,
+        170000,
+        180000,
+        190000,
+        200000
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    }
+  ],
+  "alertas_codigos": [],
+  "_ressalva_deducacao_acomodacao": "Este golden congela a inferência de acomodação a partir de Q/E/QC/QP no nome do produto. Não é endosso do comportamento: ele está registrado no §12 como pendente de decisão, e quebra quando uma operadora mudar a nomenclatura. Se a inferência for removida, este golden é atualizado deliberadamente."
+}
