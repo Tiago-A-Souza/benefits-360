@@ -26,6 +26,27 @@ class FaixaApresentacao(BaseModel):
     propostas: list[PropostaFaixaColuna] = Field(default_factory=list)
 
 
+class CelulaIndicadorResumo(BaseModel):
+    """Célula de indicador do resumo — texto ou dinheiro; ausência explícita."""
+
+    texto: str | None = None
+    centavos: int | None = None
+    bps: int | None = None
+    ausente: bool = False
+    referencia: bool = False
+
+
+class LinhaIndicadorResumo(BaseModel):
+    """Linha do resumo executivo — nasce do ViewModel, o renderer só exibe."""
+
+    rotulo: str
+    atual: CelulaIndicadorResumo | None = None
+    propostas: dict[str, CelulaIndicadorResumo] = Field(default_factory=dict)
+    destaque: bool = False
+    # cabecalho = acima dos planos; rodape = diffs/validade (renovação).
+    grupo: str = "cabecalho"
+
+
 class PropostaApresentacao(BaseModel):
     opcao_id: str
     operadora: str
@@ -42,6 +63,7 @@ class PropostaApresentacao(BaseModel):
     total_mensal_centavos: int | None = None
     diff_mensal_centavos: int | None = None
     diff_anual_centavos: int | None = None
+    diff_bps: int | None = None
 
 
 class PlanoAtualApresentacao(BaseModel):
@@ -96,6 +118,9 @@ class SecaoRegimeApresentacao(BaseModel):
     planos_atuais: list[PlanoAtualApresentacao] = Field(default_factory=list)
     totais: TotaisSecaoApresentacao = Field(default_factory=TotaisSecaoApresentacao)
     paginas_faixas: list[PaginaFaixasApresentacao] = Field(default_factory=list)
+    # Indicadores do resumo executivo (acomodação, custo, validade, …) —
+    # montados no builder; o renderer itera sem inventar rótulos.
+    indicadores_resumo: list[LinhaIndicadorResumo] = Field(default_factory=list)
 
 
 class TotaisGeraisApresentacao(BaseModel):

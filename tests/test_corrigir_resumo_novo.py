@@ -55,14 +55,14 @@ def test_01_ivtec_resumo_lista_propostas_com_totais(tmp_path: Path):
     assert "5.652,04" in html
     assert "BRONZE SP MAIS COPART TP" in html or "BRONZE" in html
     assert "PRATA QC COPART TP" in html or "PRATA" in html
-    # Uma linha por proposta — não a única «Diferença vs menor».
-    assert html.count("<tbody>") >= 1
-    assert "Proposta</th>" in html
-    assert "Total mensal" in html
+    # Indicadores do resumo (mesma grade da matriz) — propostas nas colunas.
+    assert "Indicador</th>" in html
+    assert "Custo total mensal" in html
+    assert "Validade da cotação" in html
+    assert "Acomodação" in html
     for op_id in ids:
         assert vm.totais_gerais.propostas[op_id] is not None
         assert formatar_reais(vm.totais_gerais.propostas[op_id]) in html
-
 
 def test_02_totais_resumo_iguais_aos_de_faixas(tmp_path: Path):
     rascunho = _rascunho_ivtec_novo()

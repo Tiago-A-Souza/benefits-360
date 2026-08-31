@@ -236,6 +236,7 @@ def _montar_proposta_meta(
         # Em seguro novo o numerico já traz diff vs a proposta mais barata.
         diff_mensal_centavos=numerico.diff_mes_centavos if numerico else None,
         diff_anual_centavos=numerico.diff_ano_centavos if numerico else None,
+        diff_bps=numerico.diff_bps if numerico else None,
     )
 
 
@@ -427,6 +428,25 @@ def construir_view_model(
 
     todas_propostas = [p for secao in secoes_vm for p in secao.propostas]
     qualificar_rotulos_propostas(rascunho, todas_propostas)
+
+    # Indicadores do resumo — após totais e rótulos; o renderer só itera.
+    from newport_app.presentation.indicadores_resumo import montar_indicadores_resumo
+
+    vm_parcial = PresentationViewModel(
+        titulo=titulo or rascunho.titulo,
+        data_apresentacao=data_revisao or "",
+        estudo_id=snap.estudo_id,
+        modo=modo,
+        formato=rascunho.formato,
+        propostas_selecionadas=propostas_ids,
+        totais_gerais=totais_gerais,
+        secoes_regime=secoes_vm,
+    )
+    for secao in secoes_vm:
+        ids_secao = [p.opcao_id for p in secao.propostas]
+        secao.indicadores_resumo = montar_indicadores_resumo(
+            vm_parcial, secao, ids_secao
+        )
 
     from newport_app.rascunho.acomodacao import coletar_divergencias_acomodacao
 

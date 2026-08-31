@@ -102,17 +102,20 @@ def test_ivtec_capa_sem_base_nem_planos_atuais(tmp_path: Path):
     assert "PLANOS ATUAIS" not in html
     assert "Contrato atual" not in html
     assert "R$ —" not in html
-    assert ">—<" not in html
+    # Ausência de acomodação/validade usa «—» (como a matriz), não «R$ —».
+    assert "Acomodação" in html
+    assert "—" in html
 
 
-def test_um_plano_omite_consolidado(tmp_path: Path):
+def test_um_plano_exibe_consolidado_como_matriz(tmp_path: Path):
+    """Matriz sempre mostra Consolidado quando há plano vigente — documento também."""
     rascunho = rascunho_demo_12_vidas()
     rascunho.id = "um-plano-consol"
     snap = _aprovar_tmp(tmp_path, rascunho)
     html = render_html(
         construir_view_model(snap, modo="resumo", propostas_selecionadas=["op-1"])
     )
-    assert "Consolidado" not in html
+    assert "Consolidado" in html
 
 
 def test_dois_planos_exibe_consolidado(tmp_path: Path):
