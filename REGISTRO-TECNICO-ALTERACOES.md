@@ -821,6 +821,12 @@ PDF) e a **deduzida na extração** (campo `acomodacao` preenchido pelo parser a
 partir de Q/E/QC/QP no nome). Na tela ficam idênticas quando ambas existem.
 Remover a dedução volta à mesa quando os golden dos parsers forem construídos.
 
+**Golden (Frente 3):** a inferência Q/E/QC/QP está congelada nos JSON em
+`tests/fixtures/cotacao_pdf/golden/amil/` e `…/golden/porto/`, com ressalva
+explícita em cada arquivo (`_ressalva_deducacao_acomodacao`). Os testes em
+`tests/test_frente3_golden_parsers.py` protegem o comportamento atual — não são
+endosso; quebra deliberada ao remover a dedução exige atualizar o golden.
+
 ### Resolvido nesta branch — acomodação do cabeçalho em cenário misto
 
 Com coluna = cenário, o cabeçalho usava a acomodação da primeira atribuição.
@@ -856,6 +862,17 @@ abaixo descrevia o defeito; não está mais aberto.
 | `sum(vigente das faixas) == plano.vigente_centavos` não é assertado | o rodapé exibe vigente e reajustado; o teste trava só o reajustado |
 | Nenhum teste de tela (Vitest) | correção que fique no payload e não suba ao JSX passa despercebida |
 | `test_listagem_47_estudos_abaixo_de_300ms` no demo real | sob contenção da suíte (138 s → 163 s) a mediana pode cruzar 300 ms e o teste **skipa**; o gate de performance perde eficácia por carga da própria suíte, não por regressão do produto — o sintético em `tmp_path` continua sendo o assert rígido |
+
+### Lacunas dos goldens sintéticos (Frente 3 — não coberto por fixture)
+
+| Lacuna | Consequência |
+|---|---|
+| PDF escaneado Amil 8p / OCR Omint | só corpus privado ou testes OCR existentes |
+| Coordenadas finas e drift de layout real | golden PyMuPDF não reproduz posicionamento comercial |
+| Bradesco via pipeline (`FAMILIAS`) | parser testado com stub de tabelas; família ainda não registrada |
+| SulAmérica: `secao is None` em página intermediária | páginas sem tabela são ignoradas sem alerta — comportamento documentado, não bloqueia happy path |
+| Amil: páginas sem cabeçalho de faixa | ignoradas em silêncio até falta total (`PDF-AMIL-001`) |
+| Paridade centavo-a-centavo com PDFs comerciais reais | os 13 testes `private_corpus` continuam necessários |
 
 ~~`assert obs_matriz == obs_html` com ambos vazios~~ — corrigido: ramo explícito
 exige faixas sem observação ou igualdade não-vazia; coletas fase1/fase2 passam

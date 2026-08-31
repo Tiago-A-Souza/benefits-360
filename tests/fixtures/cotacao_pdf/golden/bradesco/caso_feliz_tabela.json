@@ -1,0 +1,44 @@
+{
+  "estado": "extraido",
+  "template_id": "bradesco-cp-v1",
+  "parser_versao": "bradesco@1.0.0",
+  "n_opcoes": 1,
+  "opcoes": [
+    {
+      "plano_nome": "Plano Saúde Nacional III",
+      "acomodacao": null,
+      "regime_copart": "parcial",
+      "copart_percentual": 30,
+      "tipo_fiscal": null,
+      "validade": null,
+      "premio_centavos": 357420,
+      "iof_centavos": 8507,
+      "total_centavos": 365927,
+      "faixas_centavos": [
+        35742,
+        42176,
+        51032,
+        61239,
+        73487,
+        88184,
+        87551,
+        102978,
+        122543,
+        214438
+      ],
+      "faixas_price_basis": [
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof",
+        "exclui_iof"
+      ]
+    }
+  ],
+  "alertas_codigos": []
+}

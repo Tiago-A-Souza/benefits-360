@@ -1,0 +1,10 @@
+{
+  "estado": "extraido",
+  "template_id": "bradesco-cp-v1",
+  "parser_versao": "bradesco@1.0.0",
+  "n_opcoes": 0,
+  "opcoes": [],
+  "alertas_codigos": [
+    "PDF-BRA-001"
+  ]
+}
