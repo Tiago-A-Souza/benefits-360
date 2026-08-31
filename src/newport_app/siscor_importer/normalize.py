@@ -39,6 +39,45 @@ def normalizar_parentesco(valor: object) -> tuple[str | None, ParentescoRascunho
     return texto, None
 
 
+def normalizar_cpf(valor: object) -> str | None:
+    if valor is None or str(valor).strip() == "":
+        return None
+    digitos = "".join(c for c in str(valor) if c.isdigit())
+    if len(digitos) != 11:
+        return None
+    return digitos
+
+
+def normalizar_matricula(valor: object) -> str | None:
+    if valor is None or str(valor).strip() == "":
+        return None
+    texto = str(valor).strip()
+    return texto
+
+
+def normalizar_sexo(valor: object) -> tuple[str | None, str | None]:
+    """Retorna (texto_original_upper, sexo_canonico) ou (texto, None) se ilegível."""
+    if valor is None or str(valor).strip() == "":
+        return None, None
+    texto = str(valor).strip().upper()
+    canonico_map = {
+        "F": "feminino",
+        "FEMININO": "feminino",
+        "FEM": "feminino",
+        "M": "masculino",
+        "MASCULINO": "masculino",
+        "MASC": "masculino",
+    }
+    canonico = canonico_map.get(texto)
+    return texto, canonico
+
+
+def normalizar_tipo_vida(valor: object) -> str | None:
+    if valor is None or str(valor).strip() == "":
+        return None
+    return str(valor).strip().upper()
+
+
 def parse_data_nascimento(valor: object) -> tuple[str | None, date | None, bool]:
     if valor is None or str(valor).strip() == "":
         return None, None, False

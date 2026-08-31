@@ -31,11 +31,9 @@ Colunas aceitas no layout piloto (`src/newport_app/siscor_importer/constants.py:
 
 1. Cabeçalhos são normalizados e indexados (`parser.py:146-164`).
 2. Se faltar qualquer coluna da whitelist → erro de arquivo `APP-SIS-F05` (`parser.py:166-177`).
-3. A linha candidata (`LinhaSiscorCandidata`, `models/siscor_import.py:44-69`) só persiste campos da whitelist (cliente, segurado, parentesco, nascimento, plano, operadora/`SEGURADORA`, valor, status). **Não há campos CPF/RG/endereço/telefone/sexo no modelo de linha.**
-4. Colunas extras eventualmente presentes no `.xlsx` podem ser lidas no dicionário temporário `valores`, mas **não são gravadas** na candidata nem no rascunho — efeito prático de whitelist/descarte de PII alinhado a P9.
-5. Ao aplicar (`siscor_mapper/apply.py:111-122`), só vão para `VidaRascunho`: nome, nascimento, parentesco, inclusão, subgrupo, valor_fatura confirmado.
-
-`sexo?` aparece na política P9 como opcional; **não está** em `COLUNAS_OBRIGATORIAS` nem em `LinhaSiscorCandidata` — não é ingestado nesta implementação.
+3. A linha candidata (`LinhaSiscorCandidata`, `models/siscor_import.py`) persiste as colunas obrigatórias e, **quando presentes no cabeçalho**, as opcionais: `sexo`, `cpf_titular`, `titular_nome`, `matricula`, `tipo_de_vida`, além de `vinculo_grupo_chave` derivado (precedência: CPF TITULAR → MATRICULA — ver `vinculo_familiar.py`).
+4. Colunas extras não mapeadas podem ser lidas no dicionário temporário `valores`, mas **não são gravadas** na candidata — efeito prático de descarte de PII alinhado a P9 para CPF/endereço/telefone próprios.
+5. `disponibilidade_colunas` na candidata registra quais colunas opcionais existem no **formato** do arquivo (distinto de célula vazia por linha).
 
 ---
 

@@ -9,7 +9,17 @@ from pydantic import BaseModel, Field
 
 from newport_app.models.draft import ComponenteFinanceiroRascunho, ParentescoRascunho
 
-IMPORTADOR_SISCOR_VERSAO = "siscor@2.3.6"
+IMPORTADOR_SISCOR_VERSAO = "siscor@2.4.0"
+
+
+class DisponibilidadeColunasSiscor(BaseModel):
+    """Colunas opcionais presentes no cabeçalho do arquivo (característica do formato)."""
+
+    sexo: bool = False
+    cpf_titular: bool = False
+    titular: bool = False
+    matricula: bool = False
+    tipo_de_vida: bool = False
 
 
 class ErroArquivoSiscor(BaseModel):
@@ -65,6 +75,14 @@ class LinhaSiscorCandidata(BaseModel):
     subgrupo_sugerido_id: str | None = None
     excluida: bool = False
     motivo_exclusao: str | None = None
+    sexo_texto: str | None = None
+    sexo: str | None = None
+    cpf_titular: str | None = None
+    titular_nome: str | None = None
+    matricula: str | None = None
+    tipo_de_vida: str | None = None
+    vinculo_grupo_chave: str | None = None
+    vinculo_resolvido: bool = False
     editado_manualmente: bool = False
     historico_edicoes: list[EdicaoManualSiscor] = Field(default_factory=list)
 
@@ -97,6 +115,9 @@ class EstatisticasImportacaoSiscor(BaseModel):
     qtd_dependentes: int = 0
     qtd_sem_parentesco: int = 0
     qtd_excluidas: int = 0
+    sexo_preenchido: int = 0
+    sexo_celula_vazia: int = 0
+    vinculos_resolvidos: int = 0
 
 
 class ImportacaoSiscorCandidata(BaseModel):
@@ -117,6 +138,9 @@ class ImportacaoSiscorCandidata(BaseModel):
     )
     correspondencias_sugeridas: list[CorrespondenciaSugeridaSiscor] = Field(
         default_factory=list
+    )
+    disponibilidade_colunas: DisponibilidadeColunasSiscor = Field(
+        default_factory=DisponibilidadeColunasSiscor
     )
     criado_em: datetime
     criado_por: str = "analista-local"

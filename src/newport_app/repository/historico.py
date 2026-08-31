@@ -293,10 +293,10 @@ class HistoricoRepository:
                 """
                 INSERT INTO beneficiario_participacao (
                     id, estudo_id, posicao_versao_id, beneficiario_id,
-                    vida_rascunho_id, nome, nascimento, parentesco, status,
+                    vida_rascunho_id, nome, nascimento, parentesco, sexo, status,
                     subgrupo_id, plano_nome, faixa, valor_centavos,
                     sugestao_vinculo, vinculo_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     participacao_id,
@@ -307,6 +307,7 @@ class HistoricoRepository:
                     vida.nome,
                     vida.nascimento.isoformat(),
                     parentesco,
+                    vida.sexo,
                     "incluido" if vida.incluida else "excluido",
                     vida.subgrupo_atual_id,
                     sg.plano_nome if sg else None,

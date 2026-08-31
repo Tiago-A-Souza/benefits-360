@@ -20,6 +20,7 @@ from newport_app.models.draft import (
 from newport_app.models.siscor_import import (
     IMPORTADOR_SISCOR_VERSAO,
     AlertaLinhaSiscor,
+    DisponibilidadeColunasSiscor,
     ErroArquivoSiscor,
     EstatisticasImportacaoSiscor,
     ImportacaoSiscorCandidata,
@@ -27,18 +28,26 @@ from newport_app.models.siscor_import import (
     ResultadoParseSiscor,
     SubgrupoSiscorSugerido,
 )
-from newport_app.siscor_importer.constants import COLUNAS_OBRIGATORIAS
+from newport_app.siscor_importer.constants import (
+    ALIAS_COLUNAS_OPCIONAIS,
+    COLUNAS_OBRIGATORIAS,
+)
 from newport_app.siscor_importer.parentesco_contagem import contar_parentesco
 from newport_app.siscor_importer.duplicidades import recalcular_duplicidades
 from newport_app.siscor_importer.money import valor_para_centavos
 from newport_app.siscor_importer.normalize import (
     normalizar_cabecalho,
+    normalizar_cpf,
+    normalizar_matricula,
     normalizar_parentesco,
+    normalizar_sexo,
     normalizar_status,
+    normalizar_tipo_vida,
     parse_data_nascimento,
 )
 from newport_app.siscor_importer.subgrupos import montar_subgrupos
 from newport_app.siscor_importer.valor_fatura import FormatoEstudoSiscor, alertas_valor_mensal
+from newport_app.siscor_importer.vinculo_familiar import resolver_vinculos_grupo_familiar
 
 
 def _erro_arquivo(codigo: str, mensagem: str) -> ErroArquivoSiscor:
@@ -79,13 +88,43 @@ def _linha_vazia(valores: dict[str, Any]) -> bool:
     return all(v is None or str(v).strip() == "" for v in valores.values())
 
 
-def _estatisticas(linhas: list[LinhaSiscorCandidata]) -> EstatisticasImportacaoSiscor:
+def _resolver_colunas_opcionais(
+    indice_colunas: dict[str, int],
+) -> tuple[DisponibilidadeColunasSiscor, dict[str, int]]:
+    idx_opcionais: dict[str, int] = {}
+    for cabecalho, idx in indice_colunas.items():
+        canonico = ALIAS_COLUNAS_OPCIONAIS.get(cabecalho)
+        if canonico and canonico not in idx_opcionais:
+            idx_opcionais[canonico] = idx
+    return (
+        DisponibilidadeColunasSiscor(
+            sexo="SEXO" in idx_opcionais,
+            cpf_titular="CPF TITULAR" in idx_opcionais,
+            titular="TITULAR" in idx_opcionais,
+            matricula="MATRICULA" in idx_opcionais,
+            tipo_de_vida="TIPO DE VIDA" in idx_opcionais,
+        ),
+        idx_opcionais,
+    )
+
+
+def _estatisticas(
+    linhas: list[LinhaSiscorCandidata],
+    *,
+    disponibilidade: DisponibilidadeColunasSiscor,
+) -> EstatisticasImportacaoSiscor:
     ativas = [linha for linha in linhas if not linha.excluida]
     excluidas = len(linhas) - len(ativas)
     com_excecao = sum(1 for linha in ativas if linha.tem_excecao)
     confirmadas = sum(1 for linha in ativas if linha.registro_confirmado)
     planos = {linha.subgrupo_sugerido_id for linha in ativas if linha.subgrupo_sugerido_id}
     parentesco = contar_parentesco(linhas)
+    ativas_nao_excl = [l for l in ativas]
+    sexo_preenchido = sum(1 for l in ativas_nao_excl if l.sexo)
+    sexo_vazio = 0
+    if disponibilidade.sexo:
+        sexo_vazio = sum(1 for l in ativas_nao_excl if not l.sexo)
+    vinculos = sum(1 for l in ativas_nao_excl if l.vinculo_resolvido)
     return EstatisticasImportacaoSiscor(
         total_linhas_lidas=len(ativas),
         linhas_utilizaveis=len(ativas),
@@ -97,6 +136,9 @@ def _estatisticas(linhas: list[LinhaSiscorCandidata]) -> EstatisticasImportacaoS
         qtd_dependentes=parentesco.dependentes,
         qtd_sem_parentesco=parentesco.sem_parentesco,
         qtd_excluidas=excluidas,
+        sexo_preenchido=sexo_preenchido,
+        sexo_celula_vazia=sexo_vazio,
+        vinculos_resolvidos=vinculos,
     )
 
 
@@ -194,6 +236,8 @@ def parse_planilha_siscor(
                 documento_hash_sha256=doc_hash,
             )
 
+        disponibilidade, _ = _resolver_colunas_opcionais(indice_colunas)
+
         linhas: list[LinhaSiscorCandidata] = []
         numero_linha = 1
         for row, row_f in zip(rows, rows_formulas, strict=False):
@@ -208,6 +252,9 @@ def parse_planilha_siscor(
                 cell_f = row_f[col_idx] if col_idx < len(row_f) else cell
                 formulas[coluna] = _celula_tem_formula(cell_f)
                 valores[coluna] = _valor_celula(cell_f) if formulas[coluna] else cell.value
+                canon = ALIAS_COLUNAS_OPCIONAIS.get(coluna)
+                if canon:
+                    valores[canon] = valores[coluna]
 
             if _linha_vazia(valores):
                 continue
@@ -353,6 +400,28 @@ def parse_planilha_siscor(
                 )
             incluida = status_norm == "ATIVO"
 
+            sexo_texto, sexo = None, None
+            if disponibilidade.sexo:
+                sexo_texto, sexo = normalizar_sexo(valores.get("SEXO"))
+
+            cpf_titular = None
+            if disponibilidade.cpf_titular:
+                cpf_titular = normalizar_cpf(valores.get("CPF TITULAR"))
+
+            titular_nome = None
+            if disponibilidade.titular:
+                bruto_titular = valores.get("TITULAR")
+                if bruto_titular is not None and str(bruto_titular).strip():
+                    titular_nome = str(bruto_titular).strip()
+
+            matricula = None
+            if disponibilidade.matricula:
+                matricula = normalizar_matricula(valores.get("MATRICULA"))
+
+            tipo_de_vida = None
+            if disponibilidade.tipo_de_vida:
+                tipo_de_vida = normalizar_tipo_vida(valores.get("TIPO DE VIDA"))
+
             valor_fatura = None
             if valor_centavos is not None and valor_centavos > 0:
                 valor_fatura = ComponenteFinanceiroRascunho(
@@ -386,6 +455,12 @@ def parse_planilha_siscor(
                     status_normalizado=status_norm,
                     incluida_sugerida=incluida,
                     alertas=alertas,
+                    sexo_texto=sexo_texto,
+                    sexo=sexo,
+                    cpf_titular=cpf_titular,
+                    titular_nome=titular_nome,
+                    matricula=matricula,
+                    tipo_de_vida=tipo_de_vida,
                 )
             )
 
@@ -402,6 +477,7 @@ def parse_planilha_siscor(
             )
 
         recalcular_duplicidades(linhas)
+        resolver_vinculos_grupo_familiar(linhas)
         subgrupos = montar_subgrupos(linhas)
         empresa = next((linha.cliente for linha in linhas if linha.cliente), None)
 
@@ -414,7 +490,8 @@ def parse_planilha_siscor(
             empresa_sugerida=empresa,
             linhas=linhas,
             subgrupos_sugeridos=subgrupos,
-            estatisticas=_estatisticas(linhas),
+            estatisticas=_estatisticas(linhas, disponibilidade=disponibilidade),
+            disponibilidade_colunas=disponibilidade,
             criado_em=datetime.now(timezone.utc),
             criado_por=criado_por,
         )

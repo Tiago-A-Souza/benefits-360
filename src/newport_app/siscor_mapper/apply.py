@@ -117,6 +117,12 @@ def aplicar_candidata_ao_rascunho(
                 nome=linha.segurado or "",
                 nascimento=date.fromisoformat(linha.nascimento),  # type: ignore[arg-type]
                 parentesco=linha.parentesco,
+                sexo=linha.sexo,
+                cpf_titular=linha.cpf_titular,
+                titular_nome=linha.titular_nome,
+                matricula=linha.matricula,
+                tipo_de_vida=linha.tipo_de_vida,
+                vinculo_grupo_chave=linha.vinculo_grupo_chave,
                 incluida=linha.incluida_sugerida,
                 motivo_exclusao=linha.motivo_exclusao,
                 subgrupo_atual_id=sg_id,

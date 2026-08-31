@@ -6,7 +6,52 @@ from io import BytesIO
 
 from openpyxl import Workbook
 
-from newport_app.siscor_importer.constants import COLUNAS_OBRIGATORIAS
+from newport_app.siscor_importer.constants import COLUNAS_OBRIGATORIAS, COLUNAS_OPCIONAIS
+
+CABECALHO_COMPLETO_50 = list(COLUNAS_OBRIGATORIAS) + [
+    "CNPJ CLIENTE",
+    "UNIDADE",
+    "CNPJ UNIDADE",
+    "CONTRATO",
+    "STATUS CONTRATO",
+    "RAMO",
+    "TITULAR",
+    "CPF TITULAR",
+    "NOME DA MAE",
+    "CPF",
+    "DOC PIS",
+    "RG",
+    "CARTAO SUS",
+    "DATA DE INICIO",
+    "ESTADO CIVIL",
+    "SEXO",
+    "TIPO DE VIDA",
+    "REGISTRO EMPREGADO",
+    "CARGO",
+    "DEPARTAMENTO",
+    "CENTRO DE CUSTO",
+    "NIVEL DE CARGO",
+    "COD CONTABIL",
+    "SALARIO",
+    "DATA DE ADMISSAO",
+    "MATRICULA",
+    "NUM SEGURO",
+    "TEL FIXO",
+    "TEL CELULAR",
+    "EMAIL",
+    "CEP",
+    "ENDERECO",
+    "UF",
+    "CIDADE",
+    "NUMERO",
+    "COMPLEMENTO",
+    "BAIRRO",
+    "CAMPO EXTRA 1",
+    "CAMPO EXTRA 2",
+    "CAMPO EXTRA 3",
+    "CAMPO EXTRA 4",
+    "CAMPO EXTRA 5",
+]
 
 
 def gerar_planilha_siscor(linhas: list[dict[str, object]]) -> bytes:
@@ -15,6 +60,22 @@ def gerar_planilha_siscor(linhas: list[dict[str, object]]) -> bytes:
     ws.append(list(COLUNAS_OBRIGATORIAS))
     for linha in linhas:
         ws.append([linha.get(col) for col in COLUNAS_OBRIGATORIAS])
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def gerar_planilha_siscor_completa(
+    linhas: list[dict[str, object]],
+    *,
+    cabecalho: list[str] | None = None,
+) -> bytes:
+    cab = cabecalho or CABECALHO_COMPLETO_50
+    wb = Workbook()
+    ws = wb.active
+    ws.append(cab)
+    for linha in linhas:
+        ws.append([linha.get(col) for col in cab])
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
@@ -40,6 +101,164 @@ def linha_ficticia(
         "VALOR": valor_efetivo,
         "STATUS SEGURADO": "ATIVO",
     }
+
+
+def _cpf_ficticio(seed: int) -> str:
+    base = f"{seed:011d}"
+    return base
+
+
+def linha_completa_anistia(
+    idx: int,
+    *,
+    plano: str,
+    operadora: str = "Operadora Fictícia",
+    cliente: str = "Anistia Internacional Brasil",
+    parentesco: str,
+    sexo: str,
+    titular_nome: str | None,
+    cpf_titular: str | None,
+    matricula: str | None,
+    valor: float,
+) -> dict[str, object]:
+    ano = 1965 + (idx % 35)
+    cpf_tit = cpf_titular
+    linha = linha_ficticia(
+        idx,
+        plano=plano,
+        operadora=operadora,
+        cliente=cliente,
+        valor=valor,
+    )
+    linha["PARENTESCO"] = parentesco
+    linha["SEGURADO"] = f"Vida Anistia {idx + 1}"
+    linha["DATA DE NASCIMENTO"] = f"15/06/{ano}"
+    linha["SEXO"] = sexo
+    linha["TITULAR"] = titular_nome
+    linha["CPF TITULAR"] = cpf_tit
+    linha["MATRICULA"] = matricula
+    linha["TIPO DE VIDA"] = "TITULAR" if parentesco == "TITULAR" else "DEPENDENTE"
+    return linha
+
+
+def planilha_anistia_41_sintetica() -> bytes:
+    """41 vidas — 29F/12M; 5 dependentes sem matrícula; vínculo via CPF TITULAR."""
+    linhas: list[dict[str, object]] = []
+    sexos = (["FEMININO"] * 29) + (["MASCULINO"] * 12)
+    titulares: list[tuple[str, str, str]] = []
+    for t in range(27):
+        cpf = _cpf_ficticio(1000 + t)
+        mat = f"M{t + 1:04d}"
+        nome = f"Titular Anistia {t + 1}"
+        titulares.append((nome, cpf, mat))
+
+    idx = 0
+    for t_idx, (nome, cpf, mat) in enumerate(titulares):
+        plano = "Plano Fictício A" if idx < 36 else "Plano Fictício B"
+        linha = linha_completa_anistia(
+                idx,
+                plano=plano,
+                parentesco="TITULAR",
+                sexo=sexos[idx],
+                titular_nome=None,
+                cpf_titular=None,
+                matricula=mat,
+                valor=900.0 + idx,
+            )
+        linha["SEGURADO"] = nome
+        linhas.append(linha)
+        idx += 1
+
+    # 14 dependentes — 5 sem matrícula (índices 0-4 dentro dos deps)
+    dep_specs = [
+        ("CÔNJUGE", 0),
+        ("FILHO(A)", 0),
+        ("FILHO(A)", 1),
+        ("COMPANHEIRO(A)", 2),
+        ("FILHO(A)", 3),
+        ("CÔNJUGE", 4),
+        ("FILHO(A)", 5),
+        ("FILHO(A)", 6),
+        ("CÔNJUGE", 7),
+        ("FILHO(A)", 8),
+        ("FILHO(A)", 9),
+        ("CÔNJUGE", 10),
+        ("FILHO(A)", 11),
+        ("FILHO(A)", 12),
+    ]
+    for d_i, (parentesco, tit_ref) in enumerate(dep_specs):
+        nome_tit, cpf_tit, mat_tit = titulares[tit_ref]
+        sem_matricula = d_i < 5
+        plano = "Plano Fictício A" if idx < 36 else "Plano Fictício B"
+        linhas.append(
+            linha_completa_anistia(
+                idx,
+                plano=plano,
+                parentesco=parentesco,
+                sexo=sexos[idx],
+                titular_nome=nome_tit,
+                cpf_titular=cpf_tit,
+                matricula=None if sem_matricula else mat_tit,
+                valor=450.0 + idx,
+            )
+        )
+        idx += 1
+
+    assert len(linhas) == 41
+    return gerar_planilha_siscor_completa(linhas)
+
+
+def planilha_atef_3_sintetica() -> bytes:
+    linhas = [
+        linha_completa_anistia(
+            0,
+            plano="Plano ATEF",
+            cliente="ATEF Demo",
+            parentesco="TITULAR",
+            sexo="MASCULINO",
+            titular_nome=None,
+            cpf_titular=None,
+            matricula="A001",
+            valor=1200.0,
+        ),
+        linha_completa_anistia(
+            1,
+            plano="Plano ATEF",
+            cliente="ATEF Demo",
+            parentesco="CÔNJUGE",
+            sexo="MASCULINO",
+            titular_nome="Titular Anistia 1",
+            cpf_titular=_cpf_ficticio(2001),
+            matricula=None,
+            valor=600.0,
+        ),
+        linha_completa_anistia(
+            2,
+            plano="Plano ATEF",
+            cliente="ATEF Demo",
+            parentesco="FILHO(A)",
+            sexo="FEMININO",
+            titular_nome="Titular Anistia 1",
+            cpf_titular=_cpf_ficticio(2001),
+            matricula=None,
+            valor=400.0,
+        ),
+    ]
+    linhas[0]["SEGURADO"] = "Titular ATEF"
+    linhas[0]["CPF"] = _cpf_ficticio(2001)
+    linhas[1]["TITULAR"] = "Titular ATEF"
+    linhas[2]["TITULAR"] = "Titular ATEF"
+    return gerar_planilha_siscor_completa(linhas)
+
+
+def planilha_sexo_coluna_celulas_vazias() -> bytes:
+    linhas = []
+    for i in range(4):
+        row = linha_ficticia(i)
+        row["SEXO"] = "FEMININO" if i % 2 == 0 else None
+        linhas.append(row)
+    cab = list(COLUNAS_OBRIGATORIAS) + list(COLUNAS_OPCIONAIS)
+    return gerar_planilha_siscor_completa(linhas, cabecalho=cab)
 
 
 def planilha_12_vidas() -> bytes:

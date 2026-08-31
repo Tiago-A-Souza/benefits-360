@@ -157,6 +157,12 @@ class VidaRascunho(BaseModel):
     nome: str
     nascimento: date
     parentesco: ParentescoRascunho | None = None
+    sexo: str | None = None
+    cpf_titular: str | None = None
+    titular_nome: str | None = None
+    matricula: str | None = None
+    tipo_de_vida: str | None = None
+    vinculo_grupo_chave: str | None = None
     incluida: bool = True
     motivo_inclusao: str | None = None
     motivo_exclusao: str | None = None
