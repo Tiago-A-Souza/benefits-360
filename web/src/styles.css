@@ -6430,3 +6430,353 @@ a.btn-link {
   }
 }
 
+/* ── Gráficos da etapa 1 — rosca de sexo e barras por faixa ─────────────── */
+
+.apenas-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.gr-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* A tabela e os gráficos dividem o mesmo espaço. O piso equivale à altura da
+   tabela de dez faixas (cabeçalho + 11 linhas de 43px + margem), e os cartões
+   esticam para preenchê-lo: a alternância não faz a página saltar nem deixa
+   vão morto sob os gráficos. */
+.gr-area {
+  display: grid;
+  min-height: 520px;
+}
+
+.gr-faixas {
+  display: grid;
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+  align-items: stretch;
+}
+
+.gr-card {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.gr-titulo {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 750;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.gr-sub {
+  display: block;
+  margin-top: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rosca ------------------------------------------------------------------ */
+
+.gr-rosca-corpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.gr-rosca-svg {
+  width: min(100%, 208px);
+  height: auto;
+  aspect-ratio: 1;
+  flex: none;
+}
+
+.gr-rosca-trilho {
+  fill: none;
+  stroke: var(--line);
+}
+
+.gr-fatia {
+  fill: none;
+  stroke-linecap: butt;
+}
+
+.gr-fatia--feminino {
+  stroke: var(--blue);
+}
+
+.gr-fatia--masculino {
+  stroke: var(--navy-2);
+}
+
+/* Mid-slate, e não cinza-claro: a hachura branca precisa contrastar. */
+.gr-fatia--nao_informado {
+  stroke: var(--muted-2);
+}
+
+/* Textura sobre as fatias não femininas: distingue sem depender de cor
+   (grayscale, impressão, daltonismo). */
+.gr-fatia-textura {
+  fill: none;
+  stroke-linecap: butt;
+}
+
+.gr-hachura-traco {
+  stroke: var(--surface);
+  stroke-width: 2.5;
+  opacity: 0.55;
+}
+
+.gr-rosca-centro {
+  text-anchor: middle;
+  fill: var(--ink);
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gr-rosca-centro-rotulo {
+  text-anchor: middle;
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.gr-legenda {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: 6px;
+}
+
+.gr-legenda-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.gr-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+}
+
+.gr-swatch--feminino {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.gr-swatch--masculino {
+  background: var(--navy-2);
+  border-color: var(--navy-2);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.55) 0 1.5px,
+    transparent 1.5px 5px
+  );
+}
+
+.gr-swatch--nao_informado {
+  background: var(--muted-2);
+  border-color: var(--muted-2);
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.55) 0 1.5px,
+    transparent 1.5px 5px
+  );
+}
+
+.gr-legenda-rotulo {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gr-legenda-valor {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gr-legenda-pct {
+  min-width: 4ch;
+  text-align: right;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barras ----------------------------------------------------------------- */
+
+.gr-barras {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.gr-barra {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 6px;
+  min-width: 0;
+  justify-items: center;
+}
+
+.gr-barra-valor {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.gr-barra--zero .gr-barra-valor {
+  color: var(--muted-2);
+  font-weight: 500;
+}
+
+.gr-barra-trilho {
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.gr-barra-preenchimento {
+  width: 100%;
+  /* Piso de 3px: com 300 vidas em duas faixas, as demais continuam visíveis. */
+  height: max(3px, calc(var(--fracao) * 100%));
+  background: var(--blue);
+  border-radius: 3px 3px 0 0;
+}
+
+.gr-barra--zero .gr-barra-preenchimento {
+  height: 0;
+}
+
+.gr-barra-rotulo {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Contêiner estreito: as dez faixas viram barras horizontais, sem rótulo
+   sobre rótulo. */
+@media (max-width: 900px) {
+  .gr-faixas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .gr-area {
+    min-height: 0;
+  }
+
+  .gr-barras {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .gr-barra {
+    grid-template-rows: none;
+    grid-template-columns: 4.5rem minmax(0, 1fr) 3ch;
+    align-items: center;
+    justify-items: stretch;
+    gap: 10px;
+  }
+
+  .gr-barra-rotulo {
+    order: -1;
+    text-align: left;
+  }
+
+  .gr-barra-valor {
+    text-align: right;
+  }
+
+  .gr-barra-trilho {
+    min-height: 0;
+    height: 18px;
+    align-items: stretch;
+  }
+
+  .gr-barra-preenchimento {
+    height: 100%;
+    width: max(3px, calc(var(--fracao) * 100%));
+    border-radius: 0 3px 3px 0;
+  }
+
+  .gr-barra--zero .gr-barra-preenchimento {
+    width: 0;
+  }
+}
+
+/* Impressão: sai o que está na tela. Os dois gráficos já trazem todos os
+   números por escrito, então a folha não perde informação. */
+@media print {
+  .gr-faixas {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .gr-area {
+    min-height: 0;
+  }
+
+  .gr-card,
+  .gr-barra-preenchimento,
+  .gr-fatia,
+  .gr-swatch {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+

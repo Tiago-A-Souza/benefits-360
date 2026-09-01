@@ -20,6 +20,7 @@ resultado do sistema contra estudos já entregues.
 10. [Verificações estruturais](#10-verificações-estruturais)
 11. [Validação contra estudos reais](#11-validação-contra-estudos-reais)
 12. [Em aberto](#12-em-aberto)
+13. [Gráficos da etapa 1](#13-gráficos-da-etapa-1)
 
 ---
 
@@ -911,6 +912,89 @@ escopo. A saída do sistema é HTML, não PowerPoint.
 **Governança não exercitada** — as três travas da etapa de aprovação existem
 no código mas não foram testadas nesta validação: gerar documento sem
 aprovar, aprovar sem atestar revisão, e usar snapshot invalidado.
+
+---
+
+## 13. Gráficos da etapa 1
+
+Pedido de Leonardo Brunetti na reunião de 01/09: uma rosca separando feminino
+de masculino e barras verticais por faixa etária, ambas **opcionais** — com 9 a
+12 vidas o gráfico é pobre; com 40 a 50 mostra concentração.
+
+### Fonte única
+
+A tabela `faixa × sexo × titular/dependente` da etapa 1 é produzida por
+`montar_tabela_faixas_cotacao`
+(`src/newport_app/siscor_importer/faixas_cotacao.py:79`) e entregue à tela em
+`conferencia.tabela_faixas_cotacao`. **Os gráficos consomem esse mesmo objeto**:
+`derivarGraficos` (`web/src/fluxo/graficosFaixas.js:96`) apenas relê as células
+que a tabela exibe.
+
+| Gráfico | Célula lida | Coluna correspondente na tabela |
+|---|---|---|
+| Rosca — feminino | `tit_f + dep_f` | Tit. F + Dep. F |
+| Rosca — masculino | `tit_m + dep_m` | Tit. M + Dep. M |
+| Rosca — não informado | `nao_informado` | Não informado |
+| Barras — cada faixa | `total` | Total da linha |
+
+Não existe segunda contagem nem segunda regra de faixa: o índice e o rótulo da
+faixa vêm de `ln.faixa` / `ln.rotulo`, que a própria função da tabela derivou de
+`newport_motor.faixa.faixa_em`. `tests/test_graficos_etapa1.py` recusa
+`nascimento`, `Date(`, `idade`, `faixa_em` e `getFullYear` no módulo do gráfico,
+e regenera as fixtures JSON pela função Python comparando-as byte a byte com o
+que o teste JavaScript consome — nenhuma contagem paralela nasce sem quebrar a
+suíte.
+
+### Quando aparece
+
+Sem coluna `SEXO` na origem (formato reduzido de 8 colunas) ou sem vida alguma,
+`derivarGraficos` devolve `{ disponivel: false }`: **nenhum gráfico e nenhum
+botão**. A etapa 1 fica idêntica ao que era.
+
+### Sexo parcialmente preenchido
+
+As vidas sem sexo **não são distribuídas** entre feminino e masculino nem
+descartadas: viram uma terceira fatia «Não informado», coerente com a coluna de
+mesmo nome que a tabela já mostrava. Nas barras elas continuam no `total` da
+faixa. A alternativa — omiti-las da rosca — mudaria o total do gráfico em
+relação ao da tabela; a outra — ratear — inventaria dado.
+
+### Alternância
+
+Botão ao lado de «Copiar tabela». Os gráficos **substituem** a tabela no mesmo
+espaço; «Copiar tabela» desaparece enquanto não há tabela na tela e volta com
+ela. Estado local de tela (`useState`) — não vira preferência, não entra no
+rascunho, não toca o snapshot nem o hash.
+
+### Implementação e acabamento
+
+Sem biblioteca. A rosca é SVG (arcos por `stroke-dasharray` sobre um círculo de
+raio 62 e espessura 26); as barras são CSS puro em grid. Tokens de `styles.css`,
+numerais tabulares em todo valor, nenhum número escondido atrás de hover.
+
+| Caso-limite | Tratamento |
+|---|---|
+| Fatia de 0% | fora do desenho; aparece na legenda com o valor e `0%` |
+| Fatia de 100% | círculo cheio, sem `stroke-dasharray` — sem emenda visível |
+| Percentual que não soma 100 | maior resto (`percentuaisInteiros`); 3 iguais → 34/33/33 |
+| Uma vida só | rosca cheia e uma coluna; as outras nove faixas com zero |
+| Base grande | barra com piso de 3px, escala pela maior faixa |
+| Rótulo que colide | rótulo curto no eixo (`0–18`) e, abaixo de 700px, barras horizontais |
+| Contêiner estreito | ≤900px coluna única; ≤700px barras horizontais |
+| Impressão | sai o que está na tela; `break-inside: avoid` e cor exata |
+
+Cor não é o único diferenciador: hachura diagonal sobre as fatias não femininas,
+mais rótulo e valor visíveis na legenda. Cada gráfico tem `role="img"` com
+descrição textual completa associada por `aria-labelledby`.
+
+`web/scripts/previa-graficos.mjs` renderiza os nove casos em oito larguras
+(360–1280px) para revisão de acabamento →
+`.data/previa-graficos-etapa1.html`.
+
+### O que não mudou
+
+Motor, snapshot, hash, governança, TSV do «Copiar tabela», demais etapas e o
+gabarito da Anistia — todos intactos e verificados na suíte.
 
 ---
 

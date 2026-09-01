@@ -1,6 +1,8 @@
 /** Tabela faixa × sexo × tit/dep — copy-paste para cotação na operadora. */
 
 import { useCallback, useMemo, useState } from "react";
+import GraficosFaixasCotacao from "./GraficosFaixasCotacao";
+import { derivarGraficos } from "./graficosFaixas";
 
 function celula(valor) {
   if (valor == null) return "—";
@@ -9,9 +11,14 @@ function celula(valor) {
 
 export default function TabelaFaixasCotacao({ tabela }) {
   const [copiado, setCopiado] = useState(false);
+  const [verGraficos, setVerGraficos] = useState(false);
 
   const mostrarSexo = tabela?.modo_sexo !== "sem_sexo";
   const mostrarNi = tabela?.modo_sexo === "parcial";
+
+  // Mesma fonte da tabela: os gráficos releem estas linhas, não recontam.
+  const graficos = useMemo(() => derivarGraficos(tabela), [tabela]);
+  const graficosVisiveis = graficos.disponivel && verGraficos;
 
   const tsv = useMemo(() => {
     if (!tabela?.linhas?.length) return "";
@@ -57,9 +64,23 @@ export default function TabelaFaixasCotacao({ tabela }) {
             .
           </p>
         </div>
-        <button type="button" className="btn-compacto secundario" onClick={copiar}>
-          {copiado ? "Copiado" : "Copiar tabela"}
-        </button>
+        <div className="gr-acoes">
+          {!graficosVisiveis && (
+            <button type="button" className="btn-compacto secundario" onClick={copiar}>
+              {copiado ? "Copiado" : "Copiar tabela"}
+            </button>
+          )}
+          {graficos.disponivel && (
+            <button
+              type="button"
+              className="btn-compacto secundario"
+              aria-pressed={graficosVisiveis}
+              onClick={() => setVerGraficos((v) => !v)}
+            >
+              {graficosVisiveis ? "Ver tabela" : "Ver gráficos"}
+            </button>
+          )}
+        </div>
       </div>
       <div className="panel-body">
         {tabela.aviso_sexo && (
@@ -73,83 +94,89 @@ export default function TabelaFaixasCotacao({ tabela }) {
             </div>
           </div>
         )}
-        <div className="table-wrap">
-          <table className="num tabela-fluxo tabela-faixas-cotacao" tabIndex={0}>
-            <thead>
-              <tr>
-                <th>Faixa</th>
-                {mostrarSexo ? (
-                  <>
-                    <th className="right">Tit. M</th>
-                    <th className="right">Tit. F</th>
-                    <th className="right">Dep. M</th>
-                    <th className="right">Dep. F</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="right">Titulares</th>
-                    <th className="right">Dependentes</th>
-                  </>
-                )}
-                {mostrarNi && <th className="right">Não informado</th>}
-                <th className="right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tabela.linhas.map((ln) => (
-                <tr key={ln.faixa}>
-                  <td>
-                    <span className="cell-main">{ln.rotulo}</span>
-                  </td>
-                  {mostrarSexo ? (
-                    <>
-                      <td className="right">{celula(ln.tit_m)}</td>
-                      <td className="right">{celula(ln.tit_f)}</td>
-                      <td className="right">{celula(ln.dep_m)}</td>
-                      <td className="right">{celula(ln.dep_f)}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="right">{celula(ln.titulares)}</td>
-                      <td className="right">{celula(ln.dependentes)}</td>
-                    </>
-                  )}
-                  {mostrarNi && (
-                    <td className="right">{celula(ln.nao_informado)}</td>
-                  )}
-                  <td className="right">{ln.total}</td>
-                </tr>
-              ))}
-              <tr className="total-row">
-                <td>Total</td>
-                {mostrarSexo ? (
-                  <>
-                    <td className="right">
-                      {tabela.linhas.reduce((s, l) => s + (l.tit_m || 0), 0)}
-                    </td>
-                    <td className="right">
-                      {tabela.linhas.reduce((s, l) => s + (l.tit_f || 0), 0)}
-                    </td>
-                    <td className="right">
-                      {tabela.linhas.reduce((s, l) => s + (l.dep_m || 0), 0)}
-                    </td>
-                    <td className="right">
-                      {tabela.linhas.reduce((s, l) => s + (l.dep_f || 0), 0)}
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="right">{tabela.total_titulares}</td>
-                    <td className="right">{tabela.total_dependentes}</td>
-                  </>
-                )}
-                {mostrarNi && (
-                  <td className="right">{tabela.total_nao_informado ?? 0}</td>
-                )}
-                <td className="right">{tabela.total_vidas}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="gr-area">
+          {graficosVisiveis ? (
+            <GraficosFaixasCotacao graficos={graficos} />
+          ) : (
+            <div className="table-wrap">
+              <table className="num tabela-fluxo tabela-faixas-cotacao" tabIndex={0}>
+                <thead>
+                  <tr>
+                    <th>Faixa</th>
+                    {mostrarSexo ? (
+                      <>
+                        <th className="right">Tit. M</th>
+                        <th className="right">Tit. F</th>
+                        <th className="right">Dep. M</th>
+                        <th className="right">Dep. F</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="right">Titulares</th>
+                        <th className="right">Dependentes</th>
+                      </>
+                    )}
+                    {mostrarNi && <th className="right">Não informado</th>}
+                    <th className="right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tabela.linhas.map((ln) => (
+                    <tr key={ln.faixa}>
+                      <td>
+                        <span className="cell-main">{ln.rotulo}</span>
+                      </td>
+                      {mostrarSexo ? (
+                        <>
+                          <td className="right">{celula(ln.tit_m)}</td>
+                          <td className="right">{celula(ln.tit_f)}</td>
+                          <td className="right">{celula(ln.dep_m)}</td>
+                          <td className="right">{celula(ln.dep_f)}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="right">{celula(ln.titulares)}</td>
+                          <td className="right">{celula(ln.dependentes)}</td>
+                        </>
+                      )}
+                      {mostrarNi && (
+                        <td className="right">{celula(ln.nao_informado)}</td>
+                      )}
+                      <td className="right">{ln.total}</td>
+                    </tr>
+                  ))}
+                  <tr className="total-row">
+                    <td>Total</td>
+                    {mostrarSexo ? (
+                      <>
+                        <td className="right">
+                          {tabela.linhas.reduce((s, l) => s + (l.tit_m || 0), 0)}
+                        </td>
+                        <td className="right">
+                          {tabela.linhas.reduce((s, l) => s + (l.tit_f || 0), 0)}
+                        </td>
+                        <td className="right">
+                          {tabela.linhas.reduce((s, l) => s + (l.dep_m || 0), 0)}
+                        </td>
+                        <td className="right">
+                          {tabela.linhas.reduce((s, l) => s + (l.dep_f || 0), 0)}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="right">{tabela.total_titulares}</td>
+                        <td className="right">{tabela.total_dependentes}</td>
+                      </>
+                    )}
+                    {mostrarNi && (
+                      <td className="right">{tabela.total_nao_informado ?? 0}</td>
+                    )}
+                    <td className="right">{tabela.total_vidas}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
