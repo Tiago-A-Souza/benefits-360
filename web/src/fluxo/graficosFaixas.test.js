@@ -5,6 +5,7 @@ import {
   derivarGraficos,
   descricaoBarras,
   descricaoRosca,
+  intensidadeBarra,
   percentuaisInteiros,
   rotuloCurto,
 } from "./graficosFaixas.js";
@@ -131,6 +132,42 @@ describe("barras por faixa", () => {
     expect(pequena.fracao).toBeGreaterThan(0);
     expect(pequena.fracao).toBeLessThan(0.01);
     expect(barras.maior).toBe(190);
+  });
+
+  it("intensidade acompanha o valor sem inverter ordem", () => {
+    const { barras } = derivarGraficos(anistia41);
+    const porValor = [...barras.itens].sort((a, b) => a.valor - b.valor);
+    for (let i = 1; i < porValor.length; i += 1) {
+      expect(porValor[i].intensidade).toBeGreaterThanOrEqual(
+        porValor[i - 1].intensidade,
+      );
+    }
+    expect(barras.itens.find((i) => i.valor === barras.maior).intensidade).toBe(1);
+  });
+
+  it("a rampa não amontoa os valores baixos sob uma faixa dominante", () => {
+    // Distribuição relatada em tela: 1, 3, 4 e 10 vidas, pico de 10. No mapa
+    // linear, 1 e 4 saíam quase da mesma cor e só o pico se destacava.
+    const de = (v) => intensidadeBarra(v / 10);
+    const passoBaixo = de(4) - de(1);
+    const passoAlto = de(10) - de(4);
+    expect(passoBaixo).toBeGreaterThan(0.2);
+    // Nenhum trecho da escala domina o outro por mais que o dobro.
+    expect(passoAlto / passoBaixo).toBeLessThan(2);
+    // A ordem das quatro continua estrita.
+    expect([de(1), de(3), de(4), de(10)]).toEqual(
+      [de(1), de(3), de(4), de(10)].slice().sort((a, b) => a - b),
+    );
+  });
+
+  it("barra vazia não recebe tinta; piso mantém a menor visível", () => {
+    expect(intensidadeBarra(0)).toBe(0);
+    expect(intensidadeBarra(1)).toBe(1);
+    const { barras } = derivarGraficos(trezentas);
+    const minima = barras.itens.find((i) => i.valor === 1).intensidade;
+    expect(minima).toBeGreaterThan(0.18);
+    expect(minima).toBeLessThan(0.3);
+    expect(barras.itens.find((i) => i.valor === 0).intensidade).toBe(0);
   });
 
   it("rótulo curto encurta sem reescrever a faixa", () => {

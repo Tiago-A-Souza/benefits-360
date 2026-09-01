@@ -75,6 +75,23 @@ function montarRosca(linhas, chaves) {
   };
 }
 
+/** Piso de tinta: abaixo disto a barra não se distingue do fundo do cartão. */
+const INTENSIDADE_MINIMA = 0.18;
+
+/**
+ * Intensidade de cor da barra — presentação pura, derivada da fração.
+ *
+ * A rampa é a raiz da fração, não a fração. Com uma faixa dominante (10 contra
+ * 1, 3 e 4), o mapa linear empurra todo o resto para o extremo claro e some com
+ * a diferença entre elas; a raiz devolve espaço à parte baixa da escala sem
+ * trocar a ordem de nenhuma faixa.
+ */
+export function intensidadeBarra(fracao) {
+  if (!(fracao > 0)) return 0;
+  const bruta = INTENSIDADE_MINIMA + (1 - INTENSIDADE_MINIMA) * Math.sqrt(fracao);
+  return Math.round(bruta * 10000) / 10000;
+}
+
 /** Barras por faixa etária: uma por faixa da ANS, zeros inclusos. */
 function montarBarras(linhas) {
   const itens = linhas.map((ln) => ({
@@ -86,12 +103,12 @@ function montarBarras(linhas) {
   const maior = itens.reduce((m, it) => Math.max(m, it.valor), 0);
   const total = itens.reduce((s, it) => s + it.valor, 0);
   return {
-    itens: itens.map((it) => ({
-      ...it,
+    itens: itens.map((it) => {
       // Fração da barra mais alta: mantém legível a faixa pequena ao lado de
       // uma concentrada (a altura mínima visível fica no CSS).
-      fracao: maior > 0 ? it.valor / maior : 0,
-    })),
+      const fracao = maior > 0 ? it.valor / maior : 0;
+      return { ...it, fracao, intensidade: intensidadeBarra(fracao) };
+    }),
     maior,
     total,
   };

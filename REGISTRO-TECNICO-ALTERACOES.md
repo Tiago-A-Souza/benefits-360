@@ -980,19 +980,28 @@ caixa; as pistas encostam (`gap: 0`, respiro por padding interno) para a linha
 sair contínua. Na versão estreita a mesma linha vira vertical, à esquerda.
 
 **Intensidade proporcional.** A concentração precisa saltar antes da leitura do
-número. Cada barra tem sua cor derivada da própria fração pela CSS, sem tocar a
-derivação de dado:
+número. Cada barra tem sua cor derivada da própria fração, do azul claro ao
+`--blue-2` cheio, dentro da família de tokens:
 
 ```css
 background: color-mix(in oklab,
-  var(--blue-2) calc(28% + var(--fracao) * 72%), var(--blue-100));
+  var(--blue-2) calc(var(--intensidade) * 100%), var(--blue-100));
 ```
 
-Do azul claro ao `--blue-2` cheio, dentro da família de tokens. Os rótulos e os
-valores ficam fora da barra — acima e abaixo —, então nenhuma intensidade os
-prejudica. O piso de altura subiu de 3px para 7px para que a faixa de uma vida
-não suma ao lado de uma de duzentas; a cor clara dessa barra impede que o piso
-superdimensione o valor.
+A curva está em `intensidadeBarra` (`web/src/fluxo/graficosFaixas.js:89`) e é a
+**raiz** da fração, não a fração. A primeira versão usava o mapa linear
+`28% + fração × 72%`, e uma faixa dominante o estragava: numa base com 1, 3, 4 e
+10 vidas, as cores medidas em tela foram `#95b7ed`, `#79a2e5`, `#6b98e0` e
+`#0f56c4` — 1, 3 e 4 praticamente indistinguíveis, e só o pico se destacando.
+Com a raiz, os mesmos valores rendem `#84aae8`, `#5f8fdd`, `#5284d8` e
+`#0f56c4`; o degrau de luminância entre 4 e 10 cai de 69 para 49 pontos e o
+degrau entre 1 e 3 sobe de 22 para 28. A ordem das faixas não muda em nenhum
+caso — a raiz é monotônica.
+
+Os rótulos e os valores ficam fora da barra — acima e abaixo —, então nenhuma
+intensidade os prejudica. O piso de altura subiu de 3px para 7px para que a
+faixa de uma vida não suma ao lado de uma de duzentas; a cor clara dessa barra
+impede que o piso superdimensione o valor.
 
 | Caso-limite | Tratamento |
 |---|---|

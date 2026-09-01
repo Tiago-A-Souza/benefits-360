@@ -6692,11 +6692,12 @@ a.btn-link {
   /* Piso de 7px: a faixa de uma vida ao lado de uma de duzentas continua
      legível. A intensidade clara evita que o piso superdimensione o valor. */
   height: max(7px, calc(var(--fracao) * 100%));
-  /* Concentração antes do número: quanto mais vidas, mais escura a barra. */
+  /* Concentração antes do número: quanto mais vidas, mais escura a barra.
+     A curva está em `intensidadeBarra`; aqui é só tinta. */
   background: var(--blue);
   background: color-mix(
     in oklab,
-    var(--blue-2) calc(28% + var(--fracao) * 72%),
+    var(--blue-2) calc(var(--intensidade) * 100%),
     var(--blue-100)
   );
   border-radius: 3px 3px 0 0;

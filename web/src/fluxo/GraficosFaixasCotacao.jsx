@@ -141,7 +141,7 @@ function Barras({ barras }) {
             <span className="gr-barra-trilho">
               <span
                 className="gr-barra-preenchimento"
-                style={{ "--fracao": item.fracao }}
+                style={{ "--fracao": item.fracao, "--intensidade": item.intensidade }}
               />
             </span>
             <span className="gr-barra-rotulo">{item.rotuloCurto}</span>

@@ -208,9 +208,14 @@ def test_06_faixa_vazia_aparece_com_zero():
 
 def test_07_grafico_nao_recalcula_faixa_nem_sexo():
     """Nada de segunda regra: o JS só relê campos do payload."""
+    import re
+
     src = _MODULO_JS.read_text(encoding="utf-8")
-    for proibido in ("nascimento", "Date(", "idade", "faixa_em", "getFullYear"):
-        assert proibido not in src, f"derivação paralela no gráfico: {proibido}"
+    # Palavra inteira: «intensidade» é cor, não idade.
+    for proibido in ("nascimento", r"Date\(", "idade", "faixa_em", "getFullYear"):
+        assert re.search(rf"\b{proibido}", src) is None, (
+            f"derivação paralela no gráfico: {proibido}"
+        )
     assert "tit_f" in src and "dep_f" in src and "tit_m" in src and "dep_m" in src
 
 
@@ -260,9 +265,11 @@ def test_12_barras_sem_trilho_com_intensidade_e_linha_de_base():
     assert "border-bottom: 1px solid var(--line-strong)" in bloco
 
     fill = css.split(".gr-barra-preenchimento {", 1)[1].split("}", 1)[0]
-    assert "color-mix(" in fill and "var(--fracao)" in fill
+    assert "color-mix(" in fill and "var(--intensidade)" in fill
     assert "var(--blue-2)" in fill and "var(--blue-100)" in fill
     assert "max(7px," in fill  # piso para a faixa de uma vida
+    # A curva mora no módulo, não na folha de estilo.
+    assert "intensidadeBarra" in _MODULO_JS.read_text(encoding="utf-8")
 
 
 def test_13_rosca_maior_e_mais_espessa():
