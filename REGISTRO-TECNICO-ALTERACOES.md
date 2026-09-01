@@ -21,6 +21,7 @@ resultado do sistema contra estudos já entregues.
 11. [Validação contra estudos reais](#11-validação-contra-estudos-reais)
 12. [Em aberto](#12-em-aberto)
 13. [Gráficos da etapa 1](#13-gráficos-da-etapa-1)
+14. [Colunas Tit. e Dep. sob demanda](#14-colunas-tit-e-dep-sob-demanda)
 
 ---
 
@@ -1026,6 +1027,47 @@ descrição textual completa associada por `aria-labelledby`.
 
 Motor, snapshot, hash, governança, TSV do «Copiar tabela», demais etapas e o
 gabarito da Anistia — todos intactos e verificados na suíte.
+
+---
+
+## 14. Colunas Tit. e Dep. sob demanda
+
+Pedido de Leonardo Brunetti na reunião de 01/09: na visão de faixas etárias do
+documento exportado, titular e dependente ficam atrás de um botão — a
+granularidade por faixa «não faz muito sentido» por padrão.
+
+### Técnica
+
+O documento exportado continua **sem script**. O controle é o mesmo padrão das
+abas: um `input type="checkbox"` visualmente oculto (`#col-titdep`) imediatamente
+seguido do `label`, e a visibilidade das colunas resolvida por seletor irmão:
+
+```css
+.tabela-faixas th.col-titdep, .tabela-faixas td.col-titdep { display: none; }
+#col-titdep:checked ~ * .tabela-faixas th.col-titdep,
+#col-titdep:checked ~ * .tabela-faixas td.col-titdep { display: table-cell; }
+```
+
+Um único checkbox governa **todas** as tabelas da seção — as duas da Anistia
+abrem e fecham juntas. O rodapé deixou o `colspan="4"` e passou a ter uma célula
+por coluna, para `display:none` em Tit./Dep. não desalinhá-lo.
+
+### Rótulos
+
+«Ver titulares e dependentes» / «Ocultar titulares e dependentes». Dizem o que o
+clique faz, nos dois estados, com as palavras por extenso — Tit. e Dep. na tabela
+são abreviação; no controle, não. O checkbox nativo anuncia o estado ao leitor
+de tela; o texto visível muda com `:checked`.
+
+### Impressão
+
+Sai o estado da tela. O controle some (`display:none` no `@media print`); as
+colunas seguem o `:checked`. Nenhuma regra de impressão força aberto ou fechado.
+
+### O que não mudou
+
+Matriz da etapa 5, resumo executivo, grupo familiar, totais, motor, snapshot,
+hash e gabarito da Anistia. Renderer `html@2.11.0`.
 
 ---
 

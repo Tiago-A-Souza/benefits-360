@@ -22,7 +22,7 @@ from newport_app.presentation.branding import (
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
-RENDERER_VERSAO = "html@2.10.0"
+RENDERER_VERSAO = "html@2.11.0"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -33,6 +33,24 @@ def _rotulo_grupo_agregado(rotulo: str | None) -> bool:
     if rotulo.startswith("Grupo familiar ·"):
         return True
     return bool(_RE_GRUPO_AGREGADO.match(rotulo))
+
+
+_ID_TITDEP = "col-titdep"
+
+
+def _controle_titdep() -> str:
+    """Checkbox + rótulo irmãos. A visibilidade das colunas é CSS puro."""
+    return (
+        f'<input type="checkbox" id="{_ID_TITDEP}" class="doc-tab-input" '
+        'aria-describedby="hint-titdep">'
+        f'<label class="ctrl-titdep no-print" for="{_ID_TITDEP}">'
+        '<span class="ctrl-titdep-abrir">Ver titulares e dependentes</span>'
+        '<span class="ctrl-titdep-fechar">Ocultar titulares e dependentes</span>'
+        "</label>"
+        '<p class="sr-only" id="hint-titdep">'
+        "Mostra ou oculta as colunas Tit. e Dep. em todas as tabelas de faixa etária."
+        "</p>"
+    )
 
 
 def _cel(valor: int | None) -> str:
@@ -199,7 +217,9 @@ def _render_linha_faixa(
 ) -> str:
     partes = [
         f"<tr><td>{html.escape(fx.rotulo)}</td>",
-        f"<td>{fx.qtd_titulares}</td><td>{fx.qtd_dependentes}</td><td>{fx.qtd_total}</td>",
+        f"<td class='col-titdep'>{fx.qtd_titulares}</td>"
+        f"<td class='col-titdep'>{fx.qtd_dependentes}</td>"
+        f"<td>{fx.qtd_total}</td>",
     ]
     if not seguro_novo:
         reaj = fx.atual_reajustado_total_centavos
@@ -250,8 +270,13 @@ def _render_tabela_faixas(
         if meta:
             partes.append(f"<p class='plano-meta'>{' · '.join(meta)}</p>")
 
-    partes.append("<div class='rolo'><table><thead><tr>")
-    partes.append("<th>Faixa</th><th>Tit.</th><th>Dep.</th><th>Vidas</th>")
+    partes.append("<div class='rolo'><table class='tabela-faixas'><thead><tr>")
+    partes.append(
+        "<th>Faixa</th>"
+        "<th class='col-titdep'>Tit.</th>"
+        "<th class='col-titdep'>Dep.</th>"
+        "<th>Vidas</th>"
+    )
     if not seguro_novo:
         partes.append(
             "<th class='atual'><span class='op'>Contrato atual</span>"
@@ -271,8 +296,13 @@ def _render_tabela_faixas(
             )
         )
 
-    colspan_base = 4
-    partes.append(f"</tbody><tfoot><tr><td colspan='{colspan_base}'>Totais</td>")
+    # Células individuais no lugar de colspan=4: com Tit./Dep. em display:none
+    # o colspan quebraria o alinhamento das colunas de valor.
+    partes.append(
+        "</tbody><tfoot><tr>"
+        "<td>Totais</td>"
+        "<td class='col-titdep'></td><td class='col-titdep'></td><td></td>"
+    )
     if not seguro_novo:
         partes.append(
             f"<td class='atual'>{_cel_contrato_atual(plano.subtotal_reajustado_centavos, plano.reajuste_percentual_exibicao)}</td>"
@@ -982,8 +1012,20 @@ tfoot tr td.atual{background:#F1E7D6}
 #tab-faixas:focus-visible ~ .doc-controles label[for="tab-faixas"],
 #tab-benef:focus-visible ~ .doc-controles label[for="tab-benef"],
 #tab-todas:focus-visible ~ .doc-controles label[for="tab-todas"],
-#tab-resumo:focus-visible ~ .doc-controles label.doc-btn-voltar{
+#tab-resumo:focus-visible ~ .doc-controles label.doc-btn-voltar,
+#col-titdep:focus-visible ~ .ctrl-titdep{
   outline:3px solid #93c5fd;outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ctrl-titdep{display:inline-block;margin:18px 0 4px;padding:7px 13px;font-size:11.5px;font-weight:600;
+  letter-spacing:.03em;color:var(--grafite-2);border:1px solid var(--risco);border-radius:2px;
+  cursor:pointer;background:var(--papel)}
+.ctrl-titdep:hover{border-color:var(--ouro);color:var(--ouro-esc);background:var(--ouro-cl)}
+.ctrl-titdep-fechar{display:none}
+.tabela-faixas th.col-titdep,.tabela-faixas td.col-titdep{display:none}
+#col-titdep:checked ~ .ctrl-titdep .ctrl-titdep-abrir{display:none}
+#col-titdep:checked ~ .ctrl-titdep .ctrl-titdep-fechar{display:inline}
+#col-titdep:checked ~ * .tabela-faixas th.col-titdep,
+#col-titdep:checked ~ * .tabela-faixas td.col-titdep{display:table-cell}
 .recomenda{display:flex;gap:0;flex-wrap:wrap;margin:30px 0 0;border:1px solid var(--risco)}
 .rc{flex:1;min-width:190px;padding:20px 22px;border-right:1px solid var(--risco)}
 .rc:last-child{border-right:0}
@@ -1007,7 +1049,7 @@ tfoot tr td.atual{background:#F1E7D6}
 @media print{
   body{background:#fff}
   .folha{box-shadow:none;max-width:none}
-  .doc-controles,.doc-tab-input{display:none !important}
+  .doc-controles,.doc-tab-input,.ctrl-titdep{display:none !important}
   .rolo{overflow:visible}
   thead{display:table-header-group}
   .tit,.secao-regime{page-break-after:avoid}
@@ -1046,7 +1088,15 @@ def render_html(model: PresentationViewModel) -> str:
             _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
-    corpo = "<div class='corpo'>" + "".join(blocos) + "</div>"
+    if model.modo == "faixas":
+        corpo = (
+            "<div class='corpo'>"
+            + _controle_titdep()
+            + "".join(blocos)
+            + "</div>"
+        )
+    else:
+        corpo = "<div class='corpo'>" + "".join(blocos) + "</div>"
     return _documento(model, aviso_pii=aviso_pii, corpo=corpo, com_abas=False)
 
 
@@ -1074,6 +1124,7 @@ def render_html_completo(
             "Por faixa etária",
             "Valores por faixa da ANS. Faixas sem vidas não são exibidas.",
         )
+        + _controle_titdep()
         + "".join("".join(p) for p in _paginas_corpo_visao(vm_faixas))
     )
     # Aceita VM legado (beneficiario) ou novo (grupo_familiar).
