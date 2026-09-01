@@ -89,10 +89,10 @@ function Rosca({ rosca }) {
                 />
               ))}
           </g>
-          <text className="gr-rosca-centro" x="100" y="102">
+          <text className="gr-rosca-centro" x="100" y="103">
             {rosca.total}
           </text>
-          <text className="gr-rosca-centro-rotulo" x="100" y="118">
+          <text className="gr-rosca-centro-rotulo" x="100" y="121">
             {rosca.total === 1 ? "vida" : "vidas"}
           </text>
         </svg>

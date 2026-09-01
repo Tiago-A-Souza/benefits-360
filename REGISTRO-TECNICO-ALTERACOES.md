@@ -969,8 +969,30 @@ rascunho, não toca o snapshot nem o hash.
 ### Implementação e acabamento
 
 Sem biblioteca. A rosca é SVG (arcos por `stroke-dasharray` sobre um círculo de
-raio 62 e espessura 26); as barras são CSS puro em grid. Tokens de `styles.css`,
+raio 70 e espessura 34); as barras são CSS puro em grid. Tokens de `styles.css`,
 numerais tabulares em todo valor, nenhum número escondido atrás de hover.
+
+**Barras sem trilho.** A primeira versão punha um retângulo claro de altura total
+atrás de cada barra. Ele competia com o dado e sugeria que cada faixa tivesse um
+máximo próprio — leitura falsa. A distribuição agora é lida contra o espaço
+vazio, com uma linha de base de 1px (`--line-strong`) que ancora sem devolver a
+caixa; as pistas encostam (`gap: 0`, respiro por padding interno) para a linha
+sair contínua. Na versão estreita a mesma linha vira vertical, à esquerda.
+
+**Intensidade proporcional.** A concentração precisa saltar antes da leitura do
+número. Cada barra tem sua cor derivada da própria fração pela CSS, sem tocar a
+derivação de dado:
+
+```css
+background: color-mix(in oklab,
+  var(--blue-2) calc(28% + var(--fracao) * 72%), var(--blue-100));
+```
+
+Do azul claro ao `--blue-2` cheio, dentro da família de tokens. Os rótulos e os
+valores ficam fora da barra — acima e abaixo —, então nenhuma intensidade os
+prejudica. O piso de altura subiu de 3px para 7px para que a faixa de uma vida
+não suma ao lado de uma de duzentas; a cor clara dessa barra impede que o piso
+superdimensione o valor.
 
 | Caso-limite | Tratamento |
 |---|---|
@@ -978,7 +1000,7 @@ numerais tabulares em todo valor, nenhum número escondido atrás de hover.
 | Fatia de 100% | círculo cheio, sem `stroke-dasharray` — sem emenda visível |
 | Percentual que não soma 100 | maior resto (`percentuaisInteiros`); 3 iguais → 34/33/33 |
 | Uma vida só | rosca cheia e uma coluna; as outras nove faixas com zero |
-| Base grande | barra com piso de 3px, escala pela maior faixa |
+| Base grande | barra com piso de 7px e cor clara, escala pela maior faixa |
 | Rótulo que colide | rótulo curto no eixo (`0–18`) e, abaixo de 700px, barras horizontais |
 | Contêiner estreito | ≤900px coluna única; ≤700px barras horizontais |
 | Impressão | sai o que está na tela; `break-inside: avoid` e cor exata |

@@ -6463,7 +6463,7 @@ a.btn-link {
 
 .gr-faixas {
   display: grid;
-  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(252px, 324px) minmax(0, 1fr);
   gap: 16px;
   margin-top: 14px;
   align-items: stretch;
@@ -6513,7 +6513,7 @@ a.btn-link {
 }
 
 .gr-rosca-svg {
-  width: min(100%, 208px);
+  width: min(100%, 252px);
   height: auto;
   aspect-ratio: 1;
   flex: none;
@@ -6558,7 +6558,7 @@ a.btn-link {
 .gr-rosca-centro {
   text-anchor: middle;
   fill: var(--ink);
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 750;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
@@ -6567,7 +6567,7 @@ a.btn-link {
 .gr-rosca-centro-rotulo {
   text-anchor: middle;
   fill: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -6642,6 +6642,8 @@ a.btn-link {
 
 /* Barras ----------------------------------------------------------------- */
 
+/* Sem gap entre colunas: as pistas encostam e a linha de base sai contínua.
+   O respiro entre barras vem do padding interno de cada pista. */
 .gr-barras {
   flex: 1;
   list-style: none;
@@ -6650,7 +6652,7 @@ a.btn-link {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: 0;
   align-items: stretch;
 }
 
@@ -6674,21 +6676,29 @@ a.btn-link {
   font-weight: 500;
 }
 
+/* Sem retângulo de fundo: a barra é lida contra o espaço vazio, não dentro de
+   uma caixa que sugeriria um máximo por faixa. Só a linha de base ancora. */
 .gr-barra-trilho {
   width: 100%;
-  min-height: 140px;
+  min-height: 150px;
+  padding: 0 6px;
   display: flex;
   align-items: flex-end;
-  background: var(--surface-3);
-  border-radius: 4px;
-  overflow: hidden;
+  border-bottom: 1px solid var(--line-strong);
 }
 
 .gr-barra-preenchimento {
   width: 100%;
-  /* Piso de 3px: com 300 vidas em duas faixas, as demais continuam visíveis. */
-  height: max(3px, calc(var(--fracao) * 100%));
+  /* Piso de 7px: a faixa de uma vida ao lado de uma de duzentas continua
+     legível. A intensidade clara evita que o piso superdimensione o valor. */
+  height: max(7px, calc(var(--fracao) * 100%));
+  /* Concentração antes do número: quanto mais vidas, mais escura a barra. */
   background: var(--blue);
+  background: color-mix(
+    in oklab,
+    var(--blue-2) calc(28% + var(--fracao) * 72%),
+    var(--blue-100)
+  );
   border-radius: 3px 3px 0 0;
 }
 
@@ -6721,7 +6731,7 @@ a.btn-link {
   .gr-barras {
     grid-auto-flow: row;
     grid-auto-columns: auto;
-    gap: 6px;
+    gap: 8px;
     align-items: center;
   }
 
@@ -6742,15 +6752,19 @@ a.btn-link {
     text-align: right;
   }
 
+  /* Barras deitadas: a linha de base vira vertical, à esquerda. */
   .gr-barra-trilho {
     min-height: 0;
-    height: 18px;
+    height: 20px;
+    padding: 0;
     align-items: stretch;
+    border-bottom: 0;
+    border-left: 1px solid var(--line-strong);
   }
 
   .gr-barra-preenchimento {
     height: 100%;
-    width: max(3px, calc(var(--fracao) * 100%));
+    width: max(7px, calc(var(--fracao) * 100%));
     border-radius: 0 3px 3px 0;
   }
 

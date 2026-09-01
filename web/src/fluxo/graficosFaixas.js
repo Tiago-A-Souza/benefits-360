@@ -6,8 +6,8 @@
  * células que a tabela exibe.
  */
 
-export const ROSCA_RAIO = 62;
-export const ROSCA_ESPESSURA = 26;
+export const ROSCA_RAIO = 70;
+export const ROSCA_ESPESSURA = 34;
 export const ROSCA_CIRCUNFERENCIA = 2 * Math.PI * ROSCA_RAIO;
 
 /** Rótulo curto para o eixo; a forma completa continua no texto alternativo. */

@@ -249,7 +249,31 @@ def test_10_gabarito_anistia_intacto(tmp_path: Path):
     assert_gabarito_propostas(matriz, vm, gab)
 
 
-def test_11_hash_snapshot_inalterado(tmp_path: Path):
+def test_12_barras_sem_trilho_com_intensidade_e_linha_de_base():
+    """Refinamento visual: leitura contra o vazio, concentração pela cor."""
+    css = (_RAIZ / "web" / "src" / "styles.css").read_text(encoding="utf-8")
+    bloco = css.split(".gr-barra-trilho {", 1)[1].split("}", 1)[0]
+    # Nada de retângulo de fundo competindo com o dado.
+    assert "background" not in bloco
+    assert "var(--surface-3)" not in bloco
+    # Linha de base discreta, ancorando sem devolver a caixa.
+    assert "border-bottom: 1px solid var(--line-strong)" in bloco
+
+    fill = css.split(".gr-barra-preenchimento {", 1)[1].split("}", 1)[0]
+    assert "color-mix(" in fill and "var(--fracao)" in fill
+    assert "var(--blue-2)" in fill and "var(--blue-100)" in fill
+    assert "max(7px," in fill  # piso para a faixa de uma vida
+
+
+def test_13_rosca_maior_e_mais_espessa():
+    js = _MODULO_JS.read_text(encoding="utf-8")
+    assert "ROSCA_RAIO = 70" in js
+    assert "ROSCA_ESPESSURA = 34" in js
+    # O anel inteiro continua dentro do viewBox 200 com folga para o traço.
+    assert 70 + 34 / 2 < 100
+
+
+def test_14_hash_snapshot_inalterado(tmp_path: Path):
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     snap = _aprovar(tmp_path, rascunho)
     digest = hash_snapshot_canonico(snap.payload, versao=snap.snapshot_versao)
