@@ -418,6 +418,23 @@ function TabelaFaixasPlano({ plano, propostas, seguroNovo }) {
   );
 }
 
+function rotuloParentesco(parentesco) {
+  const p = String(parentesco || "").toLowerCase();
+  const mapa = {
+    titular: "titular",
+    conjuge: "cônjuge",
+    filho: "filho(a)",
+    companheiro: "companheiro",
+  };
+  return mapa[p] || parentesco || null;
+}
+
+function rotuloVidaAgregada(v) {
+  const faixa = v.faixa_rotulo || "faixa não informada";
+  const rot = rotuloParentesco(v.parentesco);
+  return rot ? `Beneficiário · ${faixa} · ${rot}` : `Beneficiário · ${faixa}`;
+}
+
 function primeiroNome(nome) {
   if (!nome) return "Grupo";
   const p = String(nome).trim().split(/\s+/);
@@ -592,16 +609,16 @@ function ConteudoMatriz({
               </tbody>
             )}
             <SeparadorMatriz rotulo="Detalhamento por grupo familiar" />
-            {gruposRef.map((g) => {
+            {gruposRef.map((g, idx) => {
               const rotulo = mostrarNomes
                 ? primeiroNome(g.titular?.nome || g.membros[0]?.nome)
-                : `Grupo familiar · ${g.membros.length} vida${g.membros.length !== 1 ? "s" : ""}`;
+                : `Grupo ${idx + 1}`;
               return (
                 <tbody key={g.grupo_id} className="cmp-matriz-dados cmp-grupo-familiar">
                   <tr className="cmp-grupo-cabecalho">
                     <th scope="row" colSpan={100}>
                       {rotulo}
-                      {g.sem && mostrarNomes ? (
+                      {g.sem ? (
                         <small className="cmp-faixa-qtd"> · sem vínculo resolvido</small>
                       ) : null}
                     </th>
@@ -609,12 +626,7 @@ function ConteudoMatriz({
                   {g.membros.map((v) => (
                     <tr key={v.vida_id}>
                       <th scope="row">
-                        {mostrarNomes
-                          ? v.nome
-                          : `Beneficiário · ${v.faixa_rotulo || "faixa não informada"}`}
-                        {mostrarNomes && v.parentesco && (
-                          <small className="cmp-faixa-qtd"> · {v.parentesco}</small>
-                        )}
+                        {mostrarNomes ? v.nome : rotuloVidaAgregada(v)}
                         {!seguroNovo && v.plano_atual && (
                           <small className="cmp-faixa-qtd"> · {v.plano_atual}</small>
                         )}

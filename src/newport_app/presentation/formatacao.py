@@ -32,3 +32,15 @@ def formatar_data_br(valor: date | datetime | str | None) -> str | None:
         except ValueError:
             return texto
     return texto
+
+
+def normalizar_acomodacao_exibicao(valor: str | None) -> str | None:
+    """Caixa uniforme para acomodação (ex.: apartamento → Apartamento)."""
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    if len(texto) == 1:
+        return texto.upper()
+    return texto[0].upper() + texto[1:].lower()

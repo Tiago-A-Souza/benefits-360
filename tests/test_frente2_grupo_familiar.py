@@ -184,8 +184,10 @@ def test_07_exibir_nomes_desligado_ainda_identificavel(tmp_path: Path):
     html = render_html(vm)
     for v in rascunho.vidas:
         assert v.nome not in html
-    assert any(g.rotulo.startswith("Grupo familiar ·") for g in vm.grupos_familiares)
-    assert "Grupo familiar ·" in html
+    assert vm.grupos_familiares[0].rotulo == "Grupo 1"
+    assert vm.grupos_familiares[-1].rotulo == f"Grupo {len(vm.grupos_familiares)}"
+    assert "Grupo 1" in html
+    assert " · titular" in html or " · cônjuge" in html
     assert len(vm.grupos_familiares) == 27
 
 
@@ -204,6 +206,8 @@ def test_08_vida_sem_vinculo_aparece_grupo_proprio(tmp_path: Path):
     assert orfaos[-1].membros[0].nome == "Vida Orfa Sem Vinculo"
     # Não resolvidos ao final.
     assert vm.grupos_familiares[-1].sem_vinculo_resolvido
+    html = render_html(vm)
+    assert "sem vínculo resolvido" in html
 
 
 def test_09_beneficiario_sai_da_matriz_e_documento(tmp_path: Path):

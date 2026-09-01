@@ -48,13 +48,36 @@ def primeiro_nome(nome: str | None) -> str:
     return partes[0] if partes else "Grupo"
 
 
+def rotulo_parentesco_exibicao(parentesco: str | None) -> str | None:
+    """Rótulo de vínculo para exibição — não é dado pessoal."""
+    if not parentesco:
+        return None
+    chave = str(parentesco).lower()
+    mapa = {
+        "titular": "titular",
+        "conjuge": "cônjuge",
+        "filho": "filho(a)",
+        "companheiro": "companheiro",
+    }
+    return mapa.get(chave, parentesco)
+
+
+def rotulo_vida_agregada(faixa_rotulo: str | None, parentesco: str | None) -> str:
+    base = f"Beneficiário · {faixa_rotulo or 'faixa não informada'}"
+    rot = rotulo_parentesco_exibicao(parentesco)
+    return f"{base} · {rot}" if rot else base
+
+
 def rotulo_grupo(
     grupo: GrupoFamiliarMontado,
     *,
     nomes_ocultos: bool,
+    numero: int | None = None,
 ) -> str:
-    n = len(grupo.membros)
     if nomes_ocultos:
+        if numero is not None:
+            return f"Grupo {numero}"
+        n = len(grupo.membros)
         return f"Grupo familiar · {n} vida{'s' if n != 1 else ''}"
     if grupo.sem_vinculo_resolvido:
         base = grupo.membros[0].nome if grupo.membros else "Sem vínculo"

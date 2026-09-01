@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import re
 
 from newport_app.models.presentation import (
     FaixaApresentacao,
@@ -22,6 +23,16 @@ from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
 RENDERER_VERSAO = "html@2.10.0"
+
+_RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
+
+
+def _rotulo_grupo_agregado(rotulo: str | None) -> bool:
+    if not rotulo:
+        return False
+    if rotulo.startswith("Grupo familiar ·"):
+        return True
+    return bool(_RE_GRUPO_AGREGADO.match(rotulo))
 
 
 def _cel(valor: int | None) -> str:
@@ -759,8 +770,8 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
 
     if model.modo == "grupo_familiar" and model.grupos_familiares:
         op_ids = model.propostas_selecionadas
-        agregados = all(
-            (g.rotulo or "").startswith("Grupo familiar ·") for g in model.grupos_familiares
+        agregados = bool(model.grupos_familiares) and all(
+            _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
         for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA):
             chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
@@ -772,8 +783,11 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
                 for pl in secao.planos_atuais:
                     pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
             for g in model.grupos_familiares:
+                titulo_grupo = html.escape(g.rotulo)
+                if g.sem_vinculo_resolvido:
+                    titulo_grupo += " · sem vínculo resolvido"
                 bloco.append(
-                    f"<h3 class='grupo-familiar-titulo'>{html.escape(g.rotulo)}</h3>"
+                    f"<h3 class='grupo-familiar-titulo'>{titulo_grupo}</h3>"
                 )
                 bloco.append("<div class='rolo'><table><thead><tr>")
                 col_rotulo = "Membro" if agregados else "Nome"
@@ -1029,7 +1043,7 @@ def render_html(model: PresentationViewModel) -> str:
         )
     elif model.modo == "grupo_familiar":
         aviso_pii = not all(
-            (g.rotulo or "").startswith("Grupo familiar ·") for g in model.grupos_familiares
+            _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
     corpo = "<div class='corpo'>" + "".join(blocos) + "</div>"

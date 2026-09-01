@@ -28,10 +28,11 @@ from newport_app.models.responses import (
     ResultadoPropostaComparativo,
 )
 from newport_app.models.snapshot import SnapshotCalculo
-from newport_app.presentation.formatacao import formatar_data_br
+from newport_app.presentation.formatacao import formatar_data_br, normalizar_acomodacao_exibicao
 from newport_app.presentation.grupos_familiares import (
     montar_grupos_familiares,
     rotulo_grupo,
+    rotulo_vida_agregada,
 )
 from newport_app.presentation.reajuste import (
     rotulo_reajuste_consolidado_dos_planos,
@@ -192,7 +193,9 @@ def _mapear_plano(
         subgrupo_id=plano.subgrupo_id,
         operadora=plano.operadora,
         plano_nome=plano.plano_nome,
-        acomodacao=plano.acomodacao or (getattr(sg, "acomodacao", None) if sg else None),
+        acomodacao=normalizar_acomodacao_exibicao(
+            plano.acomodacao or (getattr(sg, "acomodacao", None) if sg else None)
+        ),
         modalidade=None,
         copart_descricao=_copart_descricao(rascunho, sg.regime_copart_id if sg else None),
         faixas=faixas,
@@ -228,7 +231,9 @@ def _montar_proposta_meta(
         plano_nome=prop.plano_nome,
         regime_rotulo=_rotulo_regime(regime_tipo, pct_secao),
         regime_tipo=regime_tipo,
-        acomodacao=prop.acomodacao or (op.acomodacao if op else None),
+        acomodacao=normalizar_acomodacao_exibicao(
+            prop.acomodacao or (op.acomodacao if op else None)
+        ),
         modalidade=op.modalidade.value if op and op.modalidade else None,
         copart_descricao=_copart_descricao(rascunho, op.regime_copart_id if op else None),
         validade=prop.validade_oficial or (formatar_data_br(op.validade_oficial) if op else None),
@@ -301,7 +306,7 @@ def _beneficiario_de_detalhe(
         ROTULOS_FAIXA[faixa] if faixa is not None and 0 <= faixa < 10 else None
     )
     if nomes_ocultos:
-        rotulo_vida = f"Beneficiário · {faixa_rotulo or 'faixa não informada'}"
+        rotulo_vida = rotulo_vida_agregada(faixa_rotulo, dados.parentesco)
     else:
         rotulo_vida = dados.nome
     sg = subgrupos_map.get(dados.subgrupo_id or "")
@@ -437,7 +442,7 @@ def construir_view_model(
             )
     elif modo == "grupo_familiar":
         grupos_montados = montar_grupos_familiares(vidas, rascunho)
-        for g in grupos_montados:
+        for i, g in enumerate(grupos_montados, start=1):
             membros_vm = [
                 _beneficiario_de_detalhe(
                     m,
@@ -471,7 +476,11 @@ def construir_view_model(
             grupos_familiares.append(
                 GrupoFamiliarApresentacao(
                     grupo_id=g.grupo_id,
-                    rotulo=rotulo_grupo(g, nomes_ocultos=beneficiarios_agregados),
+                    rotulo=rotulo_grupo(
+                        g,
+                        nomes_ocultos=beneficiarios_agregados,
+                        numero=i,
+                    ),
                     exibir_subtotal=g.exibir_subtotal,
                     sem_vinculo_resolvido=g.sem_vinculo_resolvido,
                     membros=membros_vm,
