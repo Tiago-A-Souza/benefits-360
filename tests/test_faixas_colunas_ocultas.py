@@ -241,5 +241,14 @@ def test_13_acessibilidade_do_controle(tmp_path: Path):
     assert 'type="checkbox"' in html
 
 
+def test_14_tabela_com_respiro_e_rolagem_horizontal(tmp_path: Path):
+    html, _ = _html_completo_anistia(tmp_path)
+    # Primeira coluna não pode colar na borda — padding mínimo em todas as células.
+    assert "padding-left:0" not in html
+    # Com Tit./Dep. abertos a tabela cresce; o rolo rola em vez de cortar a última coluna.
+    assert ".rolo table{width:max-content;min-width:100%}" in html
+    assert "overflow-x:auto" in html.split(".rolo{")[1].split("}")[0]
+
+
 def test_renderer_sem_script_e_versao():
     assert RENDERER_VERSAO.startswith("html@2.11")

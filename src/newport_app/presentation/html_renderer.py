@@ -984,10 +984,11 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .secao-regime h2{font-size:1.05rem;margin:28px 0 12px;color:var(--grafite)}
 .secao-regime h3{font-size:1rem;margin:16px 0 8px}
 .plano-meta,.proposta-meta{font-size:.85rem;color:var(--grafite-3);margin:6px 0}
-.rolo{overflow-x:auto}
+.rolo{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+.rolo table{width:max-content;min-width:100%}
 table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0 20px}
 th,td{padding:13px 14px;text-align:right;white-space:nowrap;vertical-align:top}
-th:first-child,td:first-child{text-align:left;white-space:normal;padding-left:0}
+th:first-child,td:first-child{text-align:left;white-space:normal}
 thead th{background:var(--grafite);color:#fff;font-size:10.5px;font-weight:600;letter-spacing:.1em;
   text-transform:uppercase;padding-top:12px;padding-bottom:12px;vertical-align:bottom}
 thead th .op{display:block;font-size:12.5px;font-weight:600;letter-spacing:-.01em;text-transform:none;margin-bottom:3px}
