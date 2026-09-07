@@ -22,7 +22,7 @@ from newport_app.presentation.branding import (
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
-RENDERER_VERSAO = "html@2.11.0"
+RENDERER_VERSAO = "html@2.11.1"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -182,6 +182,187 @@ def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao
 
 def _vidas_plano(plano: PlanoAtualApresentacao) -> int:
     return sum(fx.qtd_total for fx in plano.faixas)
+
+
+def _n_cols_id_grupo(*, agregados: bool, seguro_novo: bool) -> int:
+    n = 1  # nome / membro
+    if not agregados:
+        n += 3  # idade, faixa, vínculo
+    n += 1  # plano atual
+    if not seguro_novo:
+        n += 1  # contrato atual
+    return n
+
+
+def _td_proposta(col=None, *, valor_centavos: int | None = None, diff_centavos: int | None = None) -> str:
+    if col is not None:
+        valor_centavos = col.valor_centavos
+        diff_centavos = col.diff_centavos
+    val = _cel(valor_centavos)
+    diff = _cel_diff(diff_centavos)
+    if diff:
+        return f"<td>{val}<span class='uni'>{diff}</span></td>"
+    return f"<td>{val}</td>"
+
+
+def _cabecalho_tabela_grupo(
+    op_ids: list[str],
+    rotulos: dict[str, str],
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+) -> str:
+    col_rotulo = "Membro" if agregados else "Nome"
+    cab = f"<th>{col_rotulo}</th>"
+    if not agregados:
+        cab += "<th>Idade</th><th>Faixa</th><th>Vínculo</th>"
+    cab += "<th>Plano atual</th>"
+    if not seguro_novo:
+        cab += (
+            "<th class='atual'><span class='op'>Contrato atual</span>"
+            "<span class='od' data-l='REAJUSTADO'></span></th>"
+        )
+    partes = ["<thead><tr>", cab]
+    for op_id in op_ids:
+        partes.append(_th_proposta(op_id, [], rotulos))
+    partes.append("</tr></thead>")
+    return "".join(partes)
+
+
+def _linha_membro_grupo(
+    b,
+    op_ids: list[str],
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+    pct: str | None,
+) -> str:
+    linha = [f"<tr><td>{html.escape(b.nome)}</td>"]
+    if not agregados:
+        idade = "" if b.idade is None else str(b.idade)
+        faixa = html.escape(b.faixa_rotulo or "")
+        parentesco = html.escape(b.parentesco or "")
+        linha.append(f"<td>{idade}</td><td>{faixa}</td><td>{parentesco}</td>")
+    linha.append(f"<td>{html.escape(b.plano_atual or '')}</td>")
+    if not seguro_novo:
+        linha.append(
+            f"<td class='atual'>{_cel_contrato_atual(b.atual_reajustado_centavos, pct)}</td>"
+        )
+    for op_id in op_ids:
+        col = next((c for c in b.propostas if c.opcao_id == op_id), None)
+        linha.append(_td_proposta(col))
+    linha.append("</tr>")
+    return "".join(linha)
+
+
+def _linha_subtotal_grupo(
+    g,
+    op_ids: list[str],
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+) -> str:
+    partes = [f"<tr class='total-row subtotal-grupo'><td>Sub Total {html.escape(g.rotulo)}</td>"]
+    if not agregados:
+        partes.append("<td></td><td></td><td></td>")
+    partes.append("<td></td>")
+    if not seguro_novo:
+        partes.append(
+            f"<td class='atual'>{_cel(g.subtotal_atual_reajustado_centavos)}</td>"
+        )
+    for op_id in op_ids:
+        col = next((c for c in g.subtotal_propostas if c.opcao_id == op_id), None)
+        partes.append(_td_proposta(col))
+    partes.append("</tr>")
+    return "".join(partes)
+
+
+def _linha_total_geral_grupo(
+    model: PresentationViewModel,
+    op_ids: list[str],
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+    n_vidas: int,
+) -> str:
+    rotulo = f"Total {n_vidas} Vida" if n_vidas == 1 else f"Total {n_vidas} Vidas"
+    partes = [f"<tr class='total-row total-geral'><td>{html.escape(rotulo)}</td>"]
+    if not agregados:
+        partes.append("<td></td><td></td><td></td>")
+    partes.append("<td></td>")
+    if not seguro_novo:
+        partes.append(
+            f"<td class='atual'>{_cel(model.totais_gerais.atual_centavos)}</td>"
+        )
+    for op_id in op_ids:
+        partes.append(
+            _td_proposta(
+                valor_centavos=model.totais_gerais.propostas.get(op_id),
+                diff_centavos=model.totais_gerais.diff_mensal.get(op_id),
+            )
+        )
+    partes.append("</tr>")
+    return "".join(partes)
+
+
+def _render_tabela_grupo_familiar(
+    model: PresentationViewModel,
+    op_ids: list[str],
+    rotulos: dict[str, str],
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+) -> str:
+    pct_por_subgrupo: dict[str, str | None] = {}
+    for secao in model.secoes_regime:
+        for pl in secao.planos_atuais:
+            pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
+    n_id = _n_cols_id_grupo(agregados=agregados, seguro_novo=seguro_novo)
+    n_cols = n_id + len(op_ids)
+    n_vidas = sum(len(g.membros) for g in model.grupos_familiares)
+    partes = [
+        "<div class='rolo'><table class='tabela-grupo-familiar'>",
+        _cabecalho_tabela_grupo(
+            op_ids, rotulos, agregados=agregados, seguro_novo=seguro_novo
+        ),
+    ]
+    for g in model.grupos_familiares:
+        partes.append("<tbody class='grupo-familiar'>")
+        if g.sem_vinculo_resolvido:
+            titulo = html.escape(g.rotulo) + " · sem vínculo resolvido"
+            partes.append(
+                f"<tr class='grupo-cab'><td colspan='{n_cols}'>{titulo}</td></tr>"
+            )
+        for b in g.membros:
+            pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+            partes.append(
+                _linha_membro_grupo(
+                    b,
+                    op_ids,
+                    agregados=agregados,
+                    seguro_novo=seguro_novo,
+                    pct=pct,
+                )
+            )
+        if g.exibir_subtotal:
+            partes.append(
+                _linha_subtotal_grupo(
+                    g, op_ids, agregados=agregados, seguro_novo=seguro_novo
+                )
+            )
+        partes.append("</tbody>")
+    partes.append("<tbody class='grupo-familiar-total'>")
+    partes.append(
+        _linha_total_geral_grupo(
+            model,
+            op_ids,
+            agregados=agregados,
+            seguro_novo=seguro_novo,
+            n_vidas=n_vidas,
+        )
+    )
+    partes.append("</tbody></table></div>")
+    return "".join(partes)
 
 
 def _tem_copart_percentual(model: PresentationViewModel) -> bool:
@@ -803,103 +984,20 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
         agregados = bool(model.grupos_familiares) and all(
             _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
-        for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA):
-            chunk = op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
-            bloco = [
-                "<section class='secao-regime'><h2>Detalhamento por grupo familiar</h2>"
+        # Uma tabela única: cabeçalho uma vez, grupos empilhados.
+        paginas.append(
+            [
+                "<section class='secao-regime'><h2>Detalhamento por grupo familiar</h2>",
+                _render_tabela_grupo_familiar(
+                    model,
+                    op_ids,
+                    rotulos,
+                    agregados=agregados,
+                    seguro_novo=seguro_novo,
+                ),
+                "</section>",
             ]
-            pct_por_subgrupo: dict[str, str | None] = {}
-            for secao in model.secoes_regime:
-                for pl in secao.planos_atuais:
-                    pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
-            for g in model.grupos_familiares:
-                titulo_grupo = html.escape(g.rotulo)
-                if g.sem_vinculo_resolvido:
-                    titulo_grupo += " · sem vínculo resolvido"
-                bloco.append(
-                    f"<h3 class='grupo-familiar-titulo'>{titulo_grupo}</h3>"
-                )
-                bloco.append("<div class='rolo'><table><thead><tr>")
-                col_rotulo = "Membro" if agregados else "Nome"
-                cab = f"<th>{col_rotulo}</th>"
-                if not agregados:
-                    cab += "<th>Idade</th><th>Faixa</th><th>Vínculo</th>"
-                cab += "<th>Plano atual</th>"
-                if not seguro_novo:
-                    cab += (
-                        "<th class='atual'><span class='op'>Contrato atual</span>"
-                        "<span class='od' data-l='REAJUSTADO'></span></th>"
-                    )
-                bloco.append(cab)
-                for op_id in chunk:
-                    bloco.append(_th_proposta(op_id, [], rotulos))
-                bloco.append("</tr></thead><tbody>")
-                for b in g.membros:
-                    pct = pct_por_subgrupo.get(b.subgrupo_id or "")
-                    linha = f"<tr><td>{html.escape(b.nome)}</td>"
-                    if not agregados:
-                        idade = "" if b.idade is None else str(b.idade)
-                        faixa = html.escape(b.faixa_rotulo or "")
-                        parentesco = html.escape(b.parentesco or "")
-                        linha += f"<td>{idade}</td><td>{faixa}</td><td>{parentesco}</td>"
-                    linha += f"<td>{html.escape(b.plano_atual or '')}</td>"
-                    if not seguro_novo:
-                        linha += (
-                            f"<td class='atual'>"
-                            f"{_cel_contrato_atual(b.atual_reajustado_centavos, pct)}</td>"
-                        )
-                    bloco.append(linha)
-                    for op_id in chunk:
-                        col = next((c for c in b.propostas if c.opcao_id == op_id), None)
-                        val = _cel(col.valor_centavos if col else None)
-                        diff = _cel_diff(col.diff_centavos if col else None)
-                        if diff:
-                            bloco.append(f"<td>{val}<span class='uni'>{diff}</span></td>")
-                        else:
-                            bloco.append(f"<td>{val}</td>")
-                    bloco.append("</tr>")
-                if g.exibir_subtotal:
-                    colspan = 1 + (0 if agregados else 3) + 1 + (0 if seguro_novo else 1)
-                    sub = (
-                        f"<tr class='total-row'><td colspan='{colspan}'>"
-                        f"Subtotal · {html.escape(g.rotulo)}</td>"
-                    )
-                    if not seguro_novo:
-                        sub = (
-                            f"<tr class='total-row'><td>"
-                            f"Subtotal · {html.escape(g.rotulo)}</td>"
-                        )
-                        if not agregados:
-                            sub += "<td></td><td></td><td></td>"
-                        sub += "<td></td>"
-                        sub += (
-                            f"<td class='atual'>"
-                            f"{_cel(g.subtotal_atual_reajustado_centavos)}</td>"
-                        )
-                    else:
-                        sub = (
-                            f"<tr class='total-row'><td>"
-                            f"Subtotal · {html.escape(g.rotulo)}</td>"
-                        )
-                        if not agregados:
-                            sub += "<td></td><td></td><td></td>"
-                        sub += "<td></td>"
-                    bloco.append(sub)
-                    for op_id in chunk:
-                        col = next(
-                            (c for c in g.subtotal_propostas if c.opcao_id == op_id),
-                            None,
-                        )
-                        val = _cel(col.valor_centavos if col else None)
-                        diff = _cel_diff(col.diff_centavos if col else None)
-                        if diff:
-                            bloco.append(f"<td>{val}<span class='uni'>{diff}</span></td>")
-                        else:
-                            bloco.append(f"<td>{val}</td>")
-                    bloco.append("</tr>")
-                bloco.append("</tbody></table></div>")
-            bloco.append("</section>")
-            paginas.append(bloco)
+        )
 
     if model.ressalvas:
         res = ["<section class='ressalvas'><h3>Ressalvas comerciais</h3><ul>"]
@@ -1004,6 +1102,16 @@ tbody tr td:first-child[data-vidas]::after{
   color:var(--grafite-3);margin-top:2px;text-transform:none;letter-spacing:0}
 tbody tr[data-row=consolidado] td{border-top:2px solid var(--grafite);font-weight:700;font-size:14.5px;background:var(--papel-2)}
 tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
+.tabela-grupo-familiar{margin:8px 0 16px;font-size:12.5px}
+.tabela-grupo-familiar th,.tabela-grupo-familiar td{padding:5px 10px;vertical-align:middle}
+.tabela-grupo-familiar tbody.grupo-familiar tr.grupo-cab td{
+  text-align:left;font-weight:600;font-size:11px;letter-spacing:.03em;
+  color:var(--grafite-2);background:var(--papel-2);padding-top:8px;padding-bottom:4px}
+.tabela-grupo-familiar tbody.grupo-familiar tr.subtotal-grupo td{
+  font-weight:600;background:var(--papel-2);border-bottom:1px solid var(--grafite-3)}
+.tabela-grupo-familiar tbody.grupo-familiar-total tr td{
+  border-top:2px solid var(--grafite);font-weight:700;font-size:13.5px;background:var(--papel-2)}
+.tabela-grupo-familiar tbody.grupo-familiar-total tr td.atual{background:#F1E7D6}
 tfoot tr td{border-top:2px solid var(--grafite);font-weight:700;font-size:14.5px;background:var(--papel-2)}
 tfoot tr td.atual{background:#F1E7D6}
 .ajuste{display:inline;font-size:11px;font-weight:600;color:var(--ouro-esc);margin-left:5px}
@@ -1055,6 +1163,10 @@ tfoot tr td.atual{background:#F1E7D6}
   thead{display:table-header-group}
   .tit,.secao-regime{page-break-after:avoid}
   table{page-break-inside:avoid}
+  table.tabela-grupo-familiar{page-break-inside:auto;break-inside:auto}
+  table.tabela-grupo-familiar thead{display:table-header-group}
+  table.tabela-grupo-familiar tbody.grupo-familiar{
+    break-inside:avoid;page-break-inside:avoid}
 }
 """
 
