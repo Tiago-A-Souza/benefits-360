@@ -75,7 +75,7 @@ def test_02_sem_javascript_e_radios_css(tmp_path: Path):
 
 def test_03_botao_ver_tres_e_voltar_ao_resumo(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
-    assert "Ver as três visões" in html
+    assert "Ver todas as visões" in html
     assert "Voltar às abas" in html
     assert 'for="tab-todas"' in html
     # Voltar seleciona tab-resumo (mesmo name → sai de «todas»).

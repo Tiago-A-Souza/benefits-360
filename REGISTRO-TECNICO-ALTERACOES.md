@@ -793,6 +793,27 @@ documento.
 
 ## 12. Em aberto
 
+### Regras comerciais — confirmações pendentes com o Wesley
+
+A aba «Regras contratuais» do documento lê `docs/regras_comerciais_base.csv`.
+Duas pontas ficam abertas, sem efeito no casamento atual:
+
+1. **«Unimed os Bandeirantes»** — a pesquisa não localizou operadora com esse
+   nome exato. Pode ser imprecisão da planilha. A chave e os aliases
+   (`Unimed dos Bandeirantes`, `Unimed Bandeirantes`) ficam como estão até
+   confirmação. Não casar com Seguros Unimed nem com Unimed regional.
+
+2. **Linha de produto Hapvida / NotreDame** (e-mail do Wesley): Smart é
+   Hapvida; Advance, Premium e Infinity são NotreDame. **Não usamos isso para
+   casar operadora.** Serve só se a cotação vier sem operadora identificada —
+   e ninguém decidiu usar. Hapvida e NotreDame continuam entradas distintas
+   (valores iguais por confirmação do Wesley; Fábio, 26/08, a Hapvida
+   reseparando a NotreDame).
+
+O casamento é igualdade após `normalizar_cabecalho`
+(`siscor_importer/normalize.py:29`). Nunca «contém», em especial nunca
+«contém Unimed». Operadora não reconhecida simplesmente não vira coluna.
+
 ### Correções mapeadas
 
 | Item | Efeito |
