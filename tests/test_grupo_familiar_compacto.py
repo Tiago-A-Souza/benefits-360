@@ -49,9 +49,22 @@ def _html_anistia_grupos(tmp_path: Path, *, agregados: bool = False) -> tuple[st
     return render_html(vm), vm
 
 
+def _html_tela(html: str) -> str:
+    tela = re.search(
+        r"<div class='rolo grupo-familiar-tela'>(.*?)</div>\s*<div class='grupo-familiar-impressao'",
+        html,
+        re.S,
+    )
+    if tela:
+        return tela.group(1)
+    unica = re.search(r"<table class='tabela-grupo-familiar[^']*'>.*?</table>", html, re.S)
+    assert unica, "tabela de grupo familiar ausente"
+    return unica.group(0)
+
+
 def _rotulos_th(html: str) -> list[str]:
     tabela = re.search(
-        r"<table class='tabela-grupo-familiar'>(.*?)</table>", html, re.S
+        r"<table class='tabela-grupo-familiar[^']*'>(.*?)</table>", _html_tela(html), re.S
     )
     assert tabela, "tabela de grupo familiar ausente"
     thead = re.search(r"<thead>(.*?)</thead>", tabela.group(1), re.S)
@@ -66,12 +79,13 @@ def _rotulos_th(html: str) -> list[str]:
 
 def test_01_anistia_uma_tabela_um_cabecalho(tmp_path: Path):
     html, vm = _html_anistia_grupos(tmp_path)
+    tela = _html_tela(html)
     assert len(vm.grupos_familiares) == 27
     assert sum(len(g.membros) for g in vm.grupos_familiares) == 41
-    assert html.count("<table class='tabela-grupo-familiar'>") == 1
-    assert html.count("<thead>") == 1
+    assert tela.count("<table class='tabela-grupo-familiar") == 1
+    assert tela.count("<thead>") == 1
     assert "grupo-familiar-titulo" not in html
-    assert html.count("<tbody class='grupo-familiar'>") == 27
+    assert tela.count("<tbody class='grupo-familiar'>") == 27
 
 
 def test_02_subtotal_so_grupos_com_mais_de_uma_pessoa(tmp_path: Path):
@@ -82,7 +96,7 @@ def test_02_subtotal_so_grupos_com_mais_de_uma_pessoa(tmp_path: Path):
     assert len(solo) == 15
     assert all(g.exibir_subtotal for g in multi)
     assert all(not g.exibir_subtotal for g in solo)
-    assert html.count("Sub Total ") == 12
+    assert _html_tela(html).count("Sub Total ") == 12
     for g in solo:
         assert g.exibir_subtotal is False
 
@@ -208,7 +222,7 @@ def test_11_impressao_thead_e_subtotal_com_o_grupo(tmp_path: Path):
     assert "tbody.grupo-familiar{" in _CSS or "tbody.grupo-familiar{" in html
     assert "break-inside:avoid" in html
     assert "page-break-inside:avoid" in html
-    assert html.count("<tbody class='grupo-familiar'>") == 27
+    assert _html_tela(html).count("<tbody class='grupo-familiar'>") == 27
     assert "subtotal-grupo" in html
 
 
@@ -268,4 +282,4 @@ def test_15_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.11.1"
+    assert RENDERER_VERSAO == "html@2.11.2"

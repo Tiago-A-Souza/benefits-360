@@ -22,7 +22,7 @@ from newport_app.presentation.branding import (
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 
-RENDERER_VERSAO = "html@2.11.1"
+RENDERER_VERSAO = "html@2.11.2"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -312,6 +312,8 @@ def _render_tabela_grupo_familiar(
     *,
     agregados: bool,
     seguro_novo: bool,
+    classe_rolo: str = "rolo",
+    para_impressao: bool = False,
 ) -> str:
     pct_por_subgrupo: dict[str, str | None] = {}
     for secao in model.secoes_regime:
@@ -320,8 +322,13 @@ def _render_tabela_grupo_familiar(
     n_id = _n_cols_id_grupo(agregados=agregados, seguro_novo=seguro_novo)
     n_cols = n_id + len(op_ids)
     n_vidas = sum(len(g.membros) for g in model.grupos_familiares)
+    classe_tabela = "tabela-grupo-familiar"
+    if not agregados:
+        classe_tabela += " tabela-grupo-detalhe"
+    if para_impressao:
+        classe_tabela += " tabela-grupo-bloco"
     partes = [
-        "<div class='rolo'><table class='tabela-grupo-familiar'>",
+        f"<div class='{classe_rolo}'><table class='{classe_tabela}'>",
         _cabecalho_tabela_grupo(
             op_ids, rotulos, agregados=agregados, seguro_novo=seguro_novo
         ),
@@ -362,6 +369,53 @@ def _render_tabela_grupo_familiar(
         )
     )
     partes.append("</tbody></table></div>")
+    return "".join(partes)
+
+
+def _render_visao_grupo_familiar(
+    model: PresentationViewModel,
+    op_ids: list[str],
+    rotulos: dict[str, str],
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+) -> str:
+    """Tela: uma tabela. Impressão: blocos de MAX_PROPOSTAS_POR_PAGINA colunas."""
+    chunks = [
+        op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
+        for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA)
+    ]
+    if len(chunks) <= 1:
+        return _render_tabela_grupo_familiar(
+            model,
+            op_ids,
+            rotulos,
+            agregados=agregados,
+            seguro_novo=seguro_novo,
+        )
+    partes = [
+        _render_tabela_grupo_familiar(
+            model,
+            op_ids,
+            rotulos,
+            agregados=agregados,
+            seguro_novo=seguro_novo,
+            classe_rolo="rolo grupo-familiar-tela",
+        ),
+        "<div class='grupo-familiar-impressao'>",
+    ]
+    for chunk in chunks:
+        partes.append(
+            _render_tabela_grupo_familiar(
+                model,
+                chunk,
+                rotulos,
+                agregados=agregados,
+                seguro_novo=seguro_novo,
+                para_impressao=True,
+            )
+        )
+    partes.append("</div>")
     return "".join(partes)
 
 
@@ -984,11 +1038,10 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
         agregados = bool(model.grupos_familiares) and all(
             _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
-        # Uma tabela única: cabeçalho uma vez, grupos empilhados.
         paginas.append(
             [
                 "<section class='secao-regime'><h2>Detalhamento por grupo familiar</h2>",
-                _render_tabela_grupo_familiar(
+                _render_visao_grupo_familiar(
                     model,
                     op_ids,
                     rotulos,
@@ -1112,6 +1165,7 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
 .tabela-grupo-familiar tbody.grupo-familiar-total tr td{
   border-top:2px solid var(--grafite);font-weight:700;font-size:13.5px;background:var(--papel-2)}
 .tabela-grupo-familiar tbody.grupo-familiar-total tr td.atual{background:#F1E7D6}
+.grupo-familiar-impressao{display:none}
 tfoot tr td{border-top:2px solid var(--grafite);font-weight:700;font-size:14.5px;background:var(--papel-2)}
 tfoot tr td.atual{background:#F1E7D6}
 .ajuste{display:inline;font-size:11px;font-weight:600;color:var(--ouro-esc);margin-left:5px}
@@ -1167,6 +1221,22 @@ tfoot tr td.atual{background:#F1E7D6}
   table.tabela-grupo-familiar thead{display:table-header-group}
   table.tabela-grupo-familiar tbody.grupo-familiar{
     break-inside:avoid;page-break-inside:avoid}
+  .rolo table.tabela-grupo-familiar{
+    width:100%;max-width:100%;table-layout:fixed;font-size:10px}
+  table.tabela-grupo-familiar th,table.tabela-grupo-familiar td{
+    padding:4px 4px;white-space:normal}
+  table.tabela-grupo-familiar .ajuste{display:block;margin-left:0}
+  table.tabela-grupo-familiar thead th,table.tabela-grupo-familiar thead th .op{
+    overflow-wrap:break-word;word-break:normal;font-size:9px;
+    letter-spacing:0;line-height:1.15}
+  table.tabela-grupo-detalhe th:nth-child(2),table.tabela-grupo-detalhe td:nth-child(2){width:5%}
+  table.tabela-grupo-detalhe th:nth-child(3),table.tabela-grupo-detalhe td:nth-child(3){width:7%}
+  table.tabela-grupo-detalhe th:nth-child(4),table.tabela-grupo-detalhe td:nth-child(4){width:8%}
+  table.tabela-grupo-detalhe th:nth-child(6),table.tabela-grupo-detalhe td:nth-child(6),
+  table.tabela-grupo-detalhe th:nth-child(n+7),table.tabela-grupo-detalhe td:nth-child(n+7){width:13%}
+  .grupo-familiar-tela{display:none !important}
+  .grupo-familiar-impressao{display:block}
+  .grupo-familiar-impressao .rolo + .rolo{page-break-before:always}
 }
 """
 
