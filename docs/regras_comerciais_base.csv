@@ -1,0 +1,103 @@
+operadora;regra;valor
+Amil;Redução de Carências;Até 69 anos
+Amil;Adesão;CNPJ MEI.
+Amil;Compulsório;"100% dos sócios, FGTS ou fatura atual;
+80% do quadro de funcionários e sócios para contratos com até 9 titulares, ou;
+90% do quadro de funcionários e sócios para contratos a partir de 10 titulares ou mais."
+Amil;Vigência do Contrato;12 meses
+Amil;Regras De Cancelamento;12 meses
+Amil;Multa Por Cancelamento;3 (três) vezes o valor da última fatura emitida.
+Amil;Análise de Sinistralidade;A partir de 30 vidas a analise é individual
+Amil;Inclusão de PJS;"02-99: Sem limitador
+100 ou +: Limitado a 20% do grupo"
+Alice;Redução de Carências;Até 69 anos
+Alice;Adesão;Sem a obrigatoriedade de 100% da população da empresa aderir ao plano, sejam sócios, administradores, diretores ou funcionários.
+Alice;Compulsório;"Compulsório a partir de 06 vidas: obrigatório inclusão de 100% do FGTS.
+Encampação de massa - contrato será compulsório para contratação dos funcionários com plano anterior;
+Categoria funcional - contrato será compulsório quando 100% de um cargo ou função aderirem ao plano, mesmo que não entrem todos os funcionários;
+Carta de não adesão - contrato será compulsório caso não haja ingresso de todos os funcionários, para isso eles devem assinar uma carta abrindo mão da adesão ao contrato."
+Alice;Vigência do Contrato;12 meses
+Alice;Regras De Cancelamento;12 meses
+Alice;Multa Por Cancelamento;Multa remanescentes pra dar 12 meses.
+Alice;Análise de Sinistralidade;Informação pendente
+Alice;Inclusão de PJS;Informação pendente
+Bradesco;Redução de Carências;67 anos até 9 vidas. Acima de 10 vidas é analisado pela operadora.
+Bradesco;Adesão;"Sem a obrigatoriedade de 100% da população da empresa aderir ao plano.
+
+Quando dependentes não participam."
+Bradesco;Compulsório;"100% da relação do FGTS ou do quadro societário.
+100% dos dependentes.
+(não será exigido desde que comprove vigência de plano anterior, por outro CNPJ ou plano individual)."
+Bradesco;Vigência do Contrato;12 meses
+Bradesco;Regras De Cancelamento;12 meses
+Bradesco;Multa Por Cancelamento;3 (três) vezes o valor da média das faturas emitidas durante a vigência do contrato.
+Bradesco;Análise de Sinistralidade;"30-199: Agrupamento de contratos.
+200 ou +: Individual"
+Bradesco;Inclusão de PJS;A partir do 3º titular e 5ª vida, sem limite máximo de prestadores
+Porto Seguro;Redução de Carências;Até 72 anos
+Porto Seguro;Adesão;Não há.
+Porto Seguro;Compulsório;Mínimo de 80%, do FGTS, do plano anterior, contrato social e/ou categoria profissional limitado a 02 cargos.
+Porto Seguro;Vigência do Contrato;24 meses
+Porto Seguro;Regras De Cancelamento;24 meses
+Porto Seguro;Multa Por Cancelamento;3 (três) vezes o valor médio mensal dos últimos 06 (seis) prêmios emitidos.
+Porto Seguro;Análise de Sinistralidade;"30-99: Agrupamento de contratos.
+100–199: 50% carteira + 50% contrato.
+200 ou +: Individual"
+Porto Seguro;Inclusão de PJS;"03- 09: limitado a 01 vida PJ a partir da 4ª vida.
+10 ou +: limitado a 50% do grupo."
+Hapvida;Redução de Carências;Redução de Carências para  até 64 anos 11 meses e 29 dias.
+Hapvida;Adesão;A contratação poderá ser Total ou Parcial
+Hapvida;Compulsório;A contratação poderá ser Total ou Parcial
+Hapvida;Vigência do Contrato;12 meses
+Hapvida;Regras De Cancelamento;12 meses
+Hapvida;Multa Por Cancelamento;Média das 03 (três) últimas faturas imediatamente anteriores à rescisão.
+Hapvida;Análise de Sinistralidade;"30–99: Grupo de contratos
+100 ou +: Individual."
+Hapvida;Inclusão de PJS;Não há limitador
+NotreDame;Redução de Carências;Redução de Carências para  até 64 anos 11 meses e 29 dias.
+NotreDame;Adesão;A contratação poderá ser Total ou Parcial
+NotreDame;Compulsório;A contratação poderá ser Total ou Parcial
+NotreDame;Vigência do Contrato;12 meses
+NotreDame;Regras De Cancelamento;12 meses
+NotreDame;Multa Por Cancelamento;Média das 03 (três) últimas faturas imediatamente anteriores à rescisão.
+NotreDame;Análise de Sinistralidade;"30–99: Grupo de contratos
+100 ou +: Individual."
+NotreDame;Inclusão de PJS;Não há limitador
+Seguros Unimed;Redução de Carências;De 10 à 63 anos.
+Seguros Unimed;Adesão;Sem a obrigatoriedade de 100% da população da empresa aderir ao plano
+Seguros Unimed;Compulsório;"Para este tipo de contratação é obrigatório ser: 100% GFIP; ou 100% quadro societário, sem a necessidade de GFIP negativa."
+Seguros Unimed;Vigência do Contrato;24 meses
+Seguros Unimed;Regras De Cancelamento;24 meses
+Seguros Unimed;Multa Por Cancelamento;"50% (cinquenta por cento) das mensalidades
+vincendas até o término da vigência, calculado com base no valor da última fatura vigente."
+Seguros Unimed;Análise de Sinistralidade;A partir de 30 vidas a analise é individual
+Seguros Unimed;Inclusão de PJS;Limitado a 10% .
+SulAmérica;Redução de Carências;Redução de Carências para contratos de 02 a 29 vidas e beneficiários com idade até 64 anos 11 meses e 29 dias.
+SulAmérica;Adesão;Contratação sem exigência de 100% da empresa (Regra Flex Saúde + Odonto)
+SulAmérica;Compulsório;"100% da relação do FGTS ou do quadro societário
+100% CBO"
+SulAmérica;Vigência do Contrato;24 meses
+SulAmérica;Regras De Cancelamento;24 meses
+SulAmérica;Multa Por Cancelamento;3 (três) vezes o valor da média das faturas já emitidas durante o período em que o Contrato esteve ativo.
+SulAmérica;Análise de Sinistralidade;"30–99: Grupo de contratos
+100-499: 50% analise do contrato + 50% agrupamento de contratos neste perfil."
+SulAmérica;Inclusão de PJS;"03-29: Não permite.
+30 ou +: limitado a 20% do grupo"
+Omint;Redução de Carências;Até 58 anos
+Omint;Adesão;Sem a obrigatoriedade de 100% da população da empresa aderir ao plano, sejam sócios, administradores, diretores ou funcionários.
+Omint;Compulsório;A partir de 10 vidas: obrigatório inclusão de 100% do FGTS ou 100% do contrato social.
+Omint;Vigência do Contrato;24 meses
+Omint;Regras De Cancelamento;24 meses
+Omint;Multa Por Cancelamento;3 (três) vezes o valor da média das ultimas 6 (seis) faturas emitidas.
+Omint;Análise de Sinistralidade;"30–99: Grupo de contratos
+100 ou +: Individual."
+Omint;Inclusão de PJS;"02-09: Não permite.
+10 ou +: limitado a 49% do grupo"
+Unimed os Bandeirantes;Redução de Carências;Redução de Carências para  até 64 anos 11 meses e 29 dias.
+Unimed os Bandeirantes;Adesão;A contratação poderá ser Total ou Parcial
+Unimed os Bandeirantes;Compulsório;A contratação poderá ser Total ou Parcial
+Unimed os Bandeirantes;Vigência do Contrato;24 meses
+Unimed os Bandeirantes;Regras De Cancelamento;24 meses
+Unimed os Bandeirantes;Multa Por Cancelamento;50% de cada prêmio faltante a completar 24 meses.
+Unimed os Bandeirantes;Análise de Sinistralidade;A partir de 30 vidas a analise é individual
+Unimed os Bandeirantes;Inclusão de PJS;Informação pendente
