@@ -290,6 +290,10 @@ class SnapshotService:
 
     def invalidar_por_alteracao(self, estudo_id: str, motivo: str) -> None:
         self._snapshots.invalidar_aprovacoes_estudo(estudo_id, motivo)
+        rascunho = self._estudos.obter_rascunho(estudo_id)
+        if rascunho is not None and rascunho.confirmacao_comparativo is not None:
+            rascunho.confirmacao_comparativo = None
+            self._estudos.salvar_rascunho(rascunho)
         self._historico.atualizar_estado_workflow(estudo_id, "rascunho")
         self._historico.registrar_auditoria(
             estudo_id,

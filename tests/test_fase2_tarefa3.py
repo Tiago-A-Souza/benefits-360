@@ -294,6 +294,99 @@ def test_08_alterar_rascunho_supera_e_avisa_etapa5(tmp_path: Path):
     snap = SnapshotRepository(tmp_path / "t3.db").obter_snapshot(snap_id)
     assert snap is not None
     assert snap.estado == "superado"
+    assert repo.obter_rascunho(r.id).confirmacao_comparativo is None
+
+
+def test_reconfirmar_e_reaprovar_depois_da_aprovacao_cair(tmp_path: Path):
+    """Voltar à etapa 4 salva o rascunho: a aprovação cai e a confirmação
+    tem de ser refeita — senão o botão da etapa 5 fica bloqueado."""
+    repo = SQLiteStudyRepository(tmp_path / "t3.db")
+    client = _client(repo)
+    r = rascunho_demo_12_vidas()
+    r.id = "t3-reaprovar"
+    repo.salvar_rascunho(r)
+    conf = _confirmar(client, r.id)
+    assert conf.status_code == 200, conf.text
+    snap_id = conf.json()["snapshot_id"]
+    apr = client.post(
+        f"/api/estudos/{r.id}/snapshots/{snap_id}/aprovar",
+        json={"revisor_nome": "Ana", "confirmo_conteudo": True},
+    )
+    assert apr.status_code == 200, apr.text
+    assert comparativo_revisao_confirmada(repo.obter_rascunho(r.id))
+
+    salvo = repo.obter_rascunho(r.id)
+    app = create_app(repo=repo, seed_demos=False)
+    app.state.calculo_service.salvar_rascunho(salvo)
+
+    status = client.get(f"/api/estudos/{r.id}/snapshot-aprovado")
+    assert status.status_code == 200
+    assert status.json()["estado"] == "superado"
+    assert status.json()["aprovado"] is False
+    assert repo.obter_rascunho(r.id).confirmacao_comparativo is None
+
+    calc = client.post(f"/api/estudos/{r.id}/calcular")
+    assert calc.status_code == 200, calc.text
+    body = calc.json()
+    assert body["calculo_realizado"] is True
+    conf2 = client.post(
+        f"/api/estudos/{r.id}/comparativo/confirmar",
+        json={
+            "hash_comparativo": body["hash_comparativo"],
+            "opcao_ids": _ids_propostas(body),
+        },
+    )
+    assert conf2.status_code == 200, conf2.text
+    novo_id = conf2.json()["snapshot_id"]
+    assert novo_id != snap_id
+    st2 = client.get(f"/api/estudos/{r.id}/snapshot-aprovado")
+    assert st2.json()["estado"] == "candidato"
+    assert st2.json()["snapshot_id"] == novo_id
+
+    apr2 = client.post(
+        f"/api/estudos/{r.id}/snapshots/{novo_id}/aprovar",
+        json={"revisor_nome": "Ana", "confirmo_conteudo": True},
+    )
+    assert apr2.status_code == 200, apr2.text
+    st3 = client.get(f"/api/estudos/{r.id}/snapshot-aprovado")
+    assert st3.json()["aprovado"] is True
+    assert st3.json()["estado"] == "aprovado"
+
+
+def test_reconfirmar_com_confirmacao_orfa_snapshot_superado(tmp_path: Path):
+    """Estudo já travado: confirmação ainda no rascunho, snapshot superado."""
+    repo = SQLiteStudyRepository(tmp_path / "t3.db")
+    snap_repo = SnapshotRepository(tmp_path / "t3.db")
+    client = _client(repo)
+    r = rascunho_demo_12_vidas()
+    r.id = "t3-orfa"
+    repo.salvar_rascunho(r)
+    conf = _confirmar(client, r.id)
+    assert conf.status_code == 200, conf.text
+    snap_id = conf.json()["snapshot_id"]
+    apr = client.post(
+        f"/api/estudos/{r.id}/snapshots/{snap_id}/aprovar",
+        json={"revisor_nome": "tt", "confirmo_conteudo": True},
+    )
+    assert apr.status_code == 200, apr.text
+    snap_repo.invalidar_aprovacoes_estudo(r.id, "simula rascunho salvo sem limpar confirmação")
+    assert repo.obter_rascunho(r.id).confirmacao_comparativo is not None
+    assert client.get(f"/api/estudos/{r.id}/snapshot-aprovado").json()["estado"] == "superado"
+
+    calc = client.post(f"/api/estudos/{r.id}/calcular")
+    assert calc.status_code == 200
+    body = calc.json()
+    conf2 = client.post(
+        f"/api/estudos/{r.id}/comparativo/confirmar",
+        json={
+            "hash_comparativo": body["hash_comparativo"],
+            "opcao_ids": _ids_propostas(body),
+        },
+    )
+    assert conf2.status_code == 200, conf2.text
+    st = client.get(f"/api/estudos/{r.id}/snapshot-aprovado")
+    assert st.json()["estado"] == "candidato"
+    assert comparativo_revisao_confirmada(repo.obter_rascunho(r.id))
 
 
 def test_09_trocar_selecao_depois_de_confirmar_supera(tmp_path: Path):

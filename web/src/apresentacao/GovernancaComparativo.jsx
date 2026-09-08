@@ -380,9 +380,11 @@ export default function GovernancaComparativo({ estudoId, rascunho, confirmado, 
     [];
 
   const formatoAntigo = Boolean(status?.formato_incompativel);
-  const mostrarSuperado = status?.estado === "superado" || (!status?.aprovado && status?.superado && !confirmado);
+  const mostrarSuperado =
+    status?.estado === "superado" ||
+    (!status?.aprovado && status?.superado && !confirmado);
   const mostrarForma =
-    confirmado && status?.estado === "candidato" && status?.snapshot_id && !formatoAntigo;
+    status?.estado === "candidato" && Boolean(status?.snapshot_id) && !formatoAntigo;
   const mostrarAprovado =
     Boolean(status?.aprovado) && Boolean(confirmado) && !formatoAntigo;
 

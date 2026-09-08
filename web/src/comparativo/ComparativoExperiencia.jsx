@@ -739,6 +739,7 @@ export default function ComparativoExperiencia({
   totalEtapas = 5,
   rotuloEtapa = "Comparativo",
   confirmado = false,
+  precisaReconfirmar = false,
   confirmando = false,
   onConfirmar,
   onRecalcular,
@@ -842,11 +843,11 @@ export default function ComparativoExperiencia({
   }
 
   const podeConfirmar =
-    !confirmado &&
     !confirmando &&
     selecao.length > 0 &&
     Boolean(resultado?.calculo_realizado) &&
-    resultado?.consistencia?.consistente !== false;
+    resultado?.consistencia?.consistente !== false &&
+    (!confirmado || precisaReconfirmar);
 
   return (
     <div className="cmp-experiencia">
@@ -1176,7 +1177,9 @@ export default function ComparativoExperiencia({
               <p>
                 {selecao.length === 0
                   ? "Adicione ao menos uma proposta na matriz (botão «Adicionar» nos cards)."
-                  : confirmado
+                  : precisaReconfirmar
+                    ? "A aprovação caiu. Confirme o comparativo de novo para congelar os valores atuais e reaprovar."
+                    : confirmado
                     ? "Comparativo confirmado. Aprove abaixo para liberar a exportação ao cliente."
                     : `${selecao.length} proposta(s) selecionada(s) para o material ao cliente.`}
               </p>

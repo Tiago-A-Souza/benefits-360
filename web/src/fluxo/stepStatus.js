@@ -81,6 +81,26 @@ export function comparativoConfirmado(rascunho) {
   );
 }
 
+/** Só trava o botão quando há snapshot candidato ou aprovação viva para seguir. */
+export function confirmacaoEmVigor(rascunho, statusGovernanca) {
+  if (!comparativoConfirmado(rascunho)) return false;
+  if (!statusGovernanca) return false;
+  if (statusGovernanca.formato_incompativel) return false;
+  return statusGovernanca.estado === "candidato" || statusGovernanca.estado === "aprovado";
+}
+
+/** Confirmação no rascunho não libera exportar se o snapshot caiu ou o status ainda não chegou. */
+export function confirmacaoPrecisaRefazer(rascunho, statusGovernanca) {
+  if (confirmacaoEmVigor(rascunho, statusGovernanca)) return false;
+  if (!statusGovernanca) return comparativoConfirmado(rascunho);
+  if (statusGovernanca.formato_incompativel) return true;
+  if (statusGovernanca.estado === "superado") return true;
+  if (statusGovernanca.superado && !statusGovernanca.aprovado && statusGovernanca.estado !== "candidato") {
+    return true;
+  }
+  return comparativoConfirmado(rascunho);
+}
+
 export function statusEtapaPorChave(chave, ctx) {
   const { conferencia, rascunho, extracoes, pendencias } = ctx;
 
