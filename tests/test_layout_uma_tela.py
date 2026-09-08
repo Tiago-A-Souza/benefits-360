@@ -205,8 +205,8 @@ def test_08_grupo_familiar_intocado(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
     benef = _secao(html, "visao-benef")
     assert "tabela-densa" not in benef
-    assert "grupo-familiar-titulo" in benef
-    assert benef.count("grupo-familiar-titulo") >= 27
+    assert "tabela-grupo-familiar" in benef
+    assert "grupo-familiar-titulo" not in benef
     assert "Detalhamento por grupo familiar" in benef
 
 
