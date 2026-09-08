@@ -225,6 +225,16 @@ export async function obterResumoPlanoAtual(estudoId) {
   return tratarResposta(res, "Não foi possível carregar o resumo do plano atual.");
 }
 
+export async function obterSugestaoReajustePme(estudoId, dataReferenciaIdade) {
+  const params = new URLSearchParams();
+  if (dataReferenciaIdade) params.set("data_referencia_idade", dataReferenciaIdade);
+  const qs = params.toString();
+  const res = await fetch(
+    `${API}/estudos/${estudoId}/sugestao-reajuste-pme${qs ? `?${qs}` : ""}`
+  );
+  return tratarResposta(res, "Não foi possível carregar a sugestão de reajuste.");
+}
+
 export async function importarCotacaoPdf(estudoId, arquivo) {
   const form = new FormData();
   form.append("arquivo", arquivo);

@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { obterPendencias, obterRascunho, obterResumoPlanoAtual, salvarRascunho } from "./api";
+import { useEffect, useRef, useState } from "react";
+import {
+  obterPendencias,
+  obterRascunho,
+  obterResumoPlanoAtual,
+  obterSugestaoReajustePme,
+  salvarRascunho,
+} from "./api";
 import {
   ACOMODACOES,
   MODALIDADES,
@@ -7,6 +13,52 @@ import {
   TIPOS_FISCAIS,
   ensureRegime,
 } from "./constants";
+
+function originaisReajuste(rascunho) {
+  const mapa = {};
+  for (const sg of rascunho?.subgrupos_atuais || []) {
+    mapa[sg.id] = sg.reajuste_bps ?? null;
+  }
+  return mapa;
+}
+
+function aplicarSugestoesReajuste(rascunho, porPlano, originais, editados) {
+  if (!rascunho || rascunho.formato === "novo") return rascunho;
+  const porId = Object.fromEntries((porPlano || []).map((s) => [s.subgrupo_id, s]));
+  const copia = structuredClone(rascunho);
+  let mudou = false;
+  for (const sg of copia.subgrupos_atuais || []) {
+    if (editados.has(sg.id)) continue;
+    if (originais[sg.id] != null) continue;
+    const sugerido = porId[sg.id]?.reajuste_bps ?? null;
+    if (sg.reajuste_bps !== sugerido) {
+      sg.reajuste_bps = sugerido;
+      mudou = true;
+    }
+  }
+  return mudou ? copia : rascunho;
+}
+
+function textoOrigemReajuste(sg, sugestaoPme) {
+  if (!sugestaoPme) return null;
+  const item = (sugestaoPme.por_plano || []).find((s) => s.subgrupo_id === sg.id);
+  const periodo = item?.periodo || sugestaoPme.periodo;
+  const partes = [];
+  if (periodo) partes.push(`Período ${periodo}`);
+  if (sugestaoPme.vidas_incluidas >= sugestaoPme.limiar_vidas) {
+    partes.push(
+      `${sugestaoPme.vidas_incluidas} vidas incluídas — informe o reajuste (não há índice ANS único)`
+    );
+  } else if (item?.origem === "tabela_pme" && item.reajuste_pct_exibicao) {
+    const nome = item.operadora_canonica || sg.operadora;
+    partes.push(`Tabela PME · ${nome} ${item.reajuste_pct_exibicao}% (prêmio)`);
+  } else if (!sugestaoPme.periodo && !item?.periodo) {
+    if (!sugestaoPme.data_referencia_idade) {
+      partes.push("Sem data de referência não há período de reajuste");
+    }
+  }
+  return partes.length ? partes.join(" · ") : null;
+}
 
 export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 5, onSalvo }) {
   const [rascunho, setRascunho] = useState(null);
@@ -16,6 +68,9 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [sugestaoPme, setSugestaoPme] = useState(null);
+  const originaisReajusteRef = useRef({});
+  const reajusteEditadoRef = useRef(new Set());
 
   useEffect(() => {
     if (!estudoId) return;
@@ -25,9 +80,12 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
       obterResumoPlanoAtual(estudoId).catch(() => null),
     ])
       .then(([r, p, resumo]) => {
+        originaisReajusteRef.current = originaisReajuste(r);
+        reajusteEditadoRef.current = new Set();
         setRascunho(r);
         setPendencias(p);
         setResumoAtual(resumo);
+        setSugestaoPme(null);
         setConfirmacaoFinal(
           Boolean(
             r.escolhas?.baseline_escolhido?.confirmado &&
@@ -38,6 +96,30 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
       })
       .catch((e) => setErro(e.message));
   }, [estudoId]);
+
+  useEffect(() => {
+    if (!estudoId || !rascunho || rascunho.formato === "novo") return undefined;
+    let cancelado = false;
+    obterSugestaoReajustePme(estudoId, rascunho.escolhas?.data_referencia_idade)
+      .then((sug) => {
+        if (cancelado) return;
+        setSugestaoPme(sug);
+        setRascunho((prev) =>
+          aplicarSugestoesReajuste(
+            prev,
+            sug?.por_plano,
+            originaisReajusteRef.current,
+            reajusteEditadoRef.current
+          )
+        );
+      })
+      .catch(() => {
+        if (!cancelado) setSugestaoPme(null);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [estudoId, rascunho?.formato, rascunho?.escolhas?.data_referencia_idade]);
 
   function atualizarSubgrupo(idx, campo, valor) {
     setRascunho((prev) => {
@@ -105,6 +187,8 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
       setRascunho(r);
       setPendencias(p);
       setResumoAtual(resumo);
+      originaisReajusteRef.current = originaisReajuste(r);
+      reajusteEditadoRef.current = new Set();
       setConfirmacaoFinal(
         Boolean(
           r.escolhas?.baseline_escolhido?.confirmado &&
@@ -313,6 +397,9 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                           value={sg.reajuste_bps != null ? sg.reajuste_bps / 100 : ""}
                           onChange={(e) => {
                             const v = e.target.value;
+                            reajusteEditadoRef.current = new Set(reajusteEditadoRef.current).add(
+                              sg.id
+                            );
                             atualizarSubgrupo(
                               idx,
                               "reajuste_bps",
@@ -320,6 +407,11 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                             );
                           }}
                         />
+                        {textoOrigemReajuste(sg, sugestaoPme) && (
+                          <small className="field-hint origem-reajuste-pme">
+                            {textoOrigemReajuste(sg, sugestaoPme)}
+                          </small>
+                        )}
                       </label>
                     </div>
                   </div>
@@ -431,6 +523,15 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                 value={rascunho.escolhas.data_referencia_idade || ""}
                 onChange={(e) => atualizarEscolha("data_referencia_idade", e.target.value)}
               />
+              {sugestaoPme?.periodo ? (
+                <small className="field-hint periodo-reajuste-pme">
+                  Período de reajuste PME: {sugestaoPme.periodo}
+                </small>
+              ) : (
+                <small className="field-hint periodo-reajuste-pme">
+                  Esta data define as idades e o período do reajuste PME.
+                </small>
+              )}
             </label>
           </div>
 

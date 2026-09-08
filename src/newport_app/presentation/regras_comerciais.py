@@ -29,6 +29,14 @@ OPERADORAS_CANONICAS: tuple[str, ...] = (
     "Unimed os Bandeirantes",
 )
 
+# Chaves próprias fora da grade de regras (80 células). Reajuste PME e aliases.
+OPERADORAS_CANONICAS_EXTRA: tuple[str, ...] = (
+    "Careplus",
+    "CNU",
+)
+
+OPERADORAS_RECONHECIVEIS: tuple[str, ...] = OPERADORAS_CANONICAS + OPERADORAS_CANONICAS_EXTRA
+
 REGRAS_ORDEM: tuple[str, ...] = (
     "Redução de Carências",
     "Adesão",
@@ -147,7 +155,7 @@ def carregar_aliases(caminho: Path | None = None) -> dict[str, str]:
                 f"{origem}: registro {indice}: esperado 2 colunas, obtido {len(row)}"
             )
         canonica, variacao = (c.strip() for c in row)
-        if canonica not in OPERADORAS_CANONICAS:
+        if canonica not in OPERADORAS_RECONHECIVEIS:
             raise BaseRegrasComerciaisInvalida(
                 f"{origem}: registro {indice}: canônica fora da lista: {canonica!r}"
             )
@@ -170,7 +178,7 @@ def carregar_aliases(caminho: Path | None = None) -> dict[str, str]:
                 f"{canonica!r} e também com {anterior!r}"
             )
         mapa[chave] = canonica
-    for canonica in OPERADORAS_CANONICAS:
+    for canonica in OPERADORAS_RECONHECIVEIS:
         chave = normalizar_cabecalho(canonica)
         mapa.setdefault(chave, canonica)
     return mapa
@@ -213,7 +221,8 @@ def montar_tabela(
     aliases: dict[str, str] | None = None,
 ) -> TabelaRegrasComerciais | None:
     """Tabela pronta para o renderer, ou None se nenhuma operadora casar."""
-    operadoras = operadoras_das_cotacoes(nomes_cotacao, aliases=aliases)
+    reconhecidas = operadoras_das_cotacoes(nomes_cotacao, aliases=aliases)
+    operadoras = tuple(op for op in reconhecidas if op in OPERADORAS_CANONICAS)
     if not operadoras:
         return None
     celulas = base if base is not None else carregar_base()

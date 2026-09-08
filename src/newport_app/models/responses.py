@@ -281,3 +281,21 @@ class ComparativoComExibicao(ComparativoResponse):
 
     planos_atuais: list[PlanoAtualComExibicao] = Field(default_factory=list)
     reajuste_consolidado_percentual_exibicao: str | None = None
+
+
+class SugestaoReajustePmeItem(BaseModel):
+    subgrupo_id: str
+    periodo: str | None = None
+    reajuste_bps: int | None = None
+    reajuste_pct_exibicao: str | None = None
+    origem: str | None = None
+    operadora_canonica: str | None = None
+
+
+class SugestaoReajustePmeResponse(BaseModel):
+    vidas_incluidas: int
+    limiar_vidas: int
+    periodo: str | None = None
+    data_referencia_idade: str | None = None
+    formato: str
+    por_plano: list[SugestaoReajustePmeItem] = Field(default_factory=list)

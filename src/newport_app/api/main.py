@@ -62,6 +62,8 @@ from newport_app.models.responses import (
     ResumoPlanoAtualResponse,
     SalvarSelecaoApresentacaoRequest,
     SalvarSelecaoApresentacaoResponse,
+    SugestaoReajustePmeItem,
+    SugestaoReajustePmeResponse,
 )
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
@@ -334,6 +336,59 @@ def create_app(
         if rascunho is None:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         return rascunho
+
+    @app.get(
+        "/api/estudos/{estudo_id}/sugestao-reajuste-pme",
+        response_model=SugestaoReajustePmeResponse,
+    )
+    def obter_sugestao_reajuste_pme(
+        estudo_id: str,
+        data_referencia_idade: str | None = Query(default=None),
+    ) -> SugestaoReajustePmeResponse:
+        """Sugestão da tabela PME. Não grava no rascunho nem no snapshot."""
+        from datetime import date as date_type
+
+        from newport_app.reajuste_pme import (
+            LIMIAR_VIDAS_PME,
+            periodo_da_data,
+            sugestoes_do_rascunho,
+            vidas_incluidas_estudo,
+        )
+
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        data_ref = rascunho.escolhas.data_referencia_idade
+        if data_referencia_idade:
+            try:
+                data_ref = date_type.fromisoformat(data_referencia_idade)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="data_referencia_idade inválida.",
+                ) from None
+            rascunho = rascunho.model_copy(deep=True)
+            rascunho.escolhas.data_referencia_idade = data_ref
+        sugestoes = sugestoes_do_rascunho(rascunho)
+        periodo = periodo_da_data(data_ref)
+        return SugestaoReajustePmeResponse(
+            vidas_incluidas=vidas_incluidas_estudo(rascunho),
+            limiar_vidas=LIMIAR_VIDAS_PME,
+            periodo=periodo,
+            data_referencia_idade=data_ref.isoformat() if data_ref else None,
+            formato=rascunho.formato,
+            por_plano=[
+                SugestaoReajustePmeItem(
+                    subgrupo_id=s.subgrupo_id,
+                    periodo=s.periodo,
+                    reajuste_bps=s.reajuste_bps,
+                    reajuste_pct_exibicao=s.reajuste_pct_exibicao,
+                    origem=s.origem,
+                    operadora_canonica=s.operadora_canonica,
+                )
+                for s in sugestoes
+            ],
+        )
 
     @app.get("/api/estudos/{estudo_id}/pendencias", response_model=list[PendenciaItem])
     def listar_pendencias_estudo(estudo_id: str) -> list[PendenciaItem]:
