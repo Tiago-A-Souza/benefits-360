@@ -22,14 +22,16 @@ function originaisReajuste(rascunho) {
   return mapa;
 }
 
-function aplicarSugestoesReajuste(rascunho, porPlano, originais, editados) {
+function aplicarSugestoesReajuste(rascunho, porPlano, originais, editados, sugestaoNaCarga) {
   if (!rascunho || rascunho.formato === "novo") return rascunho;
   const porId = Object.fromEntries((porPlano || []).map((s) => [s.subgrupo_id, s]));
   const copia = structuredClone(rascunho);
   let mudou = false;
   for (const sg of copia.subgrupos_atuais || []) {
     if (editados.has(sg.id)) continue;
-    if (originais[sg.id] != null) continue;
+    const original = originais[sg.id];
+    const naCarga = sugestaoNaCarga?.[sg.id];
+    if (original != null && original !== naCarga) continue;
     const sugerido = porId[sg.id]?.reajuste_bps ?? null;
     if (sg.reajuste_bps !== sugerido) {
       sg.reajuste_bps = sugerido;
@@ -39,25 +41,47 @@ function aplicarSugestoesReajuste(rascunho, porPlano, originais, editados) {
   return mudou ? copia : rascunho;
 }
 
-function textoOrigemReajuste(sg, sugestaoPme) {
-  if (!sugestaoPme) return null;
-  const item = (sugestaoPme.por_plano || []).find((s) => s.subgrupo_id === sg.id);
-  const periodo = item?.periodo || sugestaoPme.periodo;
+const MSG_DATA_PARA_SUGERIR =
+  "Informe a data de referência para o sistema sugerir o reajuste.";
+
+function textoOrigemReajuste(sg, sugestaoPme, dataReferencia) {
+  const item = (sugestaoPme?.por_plano || []).find((s) => s.subgrupo_id === sg.id);
+  const periodo = item?.periodo || sugestaoPme?.periodo;
+  if (!dataReferencia) return MSG_DATA_PARA_SUGERIR;
   const partes = [];
   if (periodo) partes.push(`Período ${periodo}`);
-  if (sugestaoPme.vidas_incluidas >= sugestaoPme.limiar_vidas) {
+  if (sugestaoPme && sugestaoPme.vidas_incluidas >= sugestaoPme.limiar_vidas) {
     partes.push(
       `${sugestaoPme.vidas_incluidas} vidas incluídas — informe o reajuste (não há índice ANS único)`
     );
   } else if (item?.origem === "tabela_pme" && item.reajuste_pct_exibicao) {
     const nome = item.operadora_canonica || sg.operadora;
     partes.push(`Tabela PME · ${nome} ${item.reajuste_pct_exibicao}% (prêmio)`);
-  } else if (!sugestaoPme.periodo && !item?.periodo) {
-    if (!sugestaoPme.data_referencia_idade) {
-      partes.push("Sem data de referência não há período de reajuste");
-    }
   }
   return partes.length ? partes.join(" · ") : null;
+}
+
+function CampoDataReferencia({ valor, onChange, periodo }) {
+  return (
+    <label className="field">
+      Data usada para calcular as idades
+      <input
+        type="date"
+        className="data-referencia-reajuste"
+        value={valor || ""}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {periodo ? (
+        <small className="field-hint periodo-reajuste-pme">
+          Período de reajuste PME: {periodo}. Esta data também define a faixa etária de cada vida.
+        </small>
+      ) : (
+        <small className="field-hint periodo-reajuste-pme aviso-data-reajuste">
+          {MSG_DATA_PARA_SUGERIR} Ela também define a faixa etária de cada vida.
+        </small>
+      )}
+    </label>
+  );
 }
 
 export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 5, onSalvo }) {
@@ -71,6 +95,7 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
   const [sugestaoPme, setSugestaoPme] = useState(null);
   const originaisReajusteRef = useRef({});
   const reajusteEditadoRef = useRef(new Set());
+  const sugestaoNaCargaRef = useRef(null);
 
   useEffect(() => {
     if (!estudoId) return;
@@ -82,6 +107,7 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
       .then(([r, p, resumo]) => {
         originaisReajusteRef.current = originaisReajuste(r);
         reajusteEditadoRef.current = new Set();
+        sugestaoNaCargaRef.current = null;
         setRascunho(r);
         setPendencias(p);
         setResumoAtual(resumo);
@@ -103,13 +129,21 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
     obterSugestaoReajustePme(estudoId, rascunho.escolhas?.data_referencia_idade)
       .then((sug) => {
         if (cancelado) return;
+        if (sugestaoNaCargaRef.current === null) {
+          const mapa = {};
+          for (const s of sug?.por_plano || []) {
+            mapa[s.subgrupo_id] = s.reajuste_bps ?? null;
+          }
+          sugestaoNaCargaRef.current = mapa;
+        }
         setSugestaoPme(sug);
         setRascunho((prev) =>
           aplicarSugestoesReajuste(
             prev,
             sug?.por_plano,
             originaisReajusteRef.current,
-            reajusteEditadoRef.current
+            reajusteEditadoRef.current,
+            sugestaoNaCargaRef.current
           )
         );
       })
@@ -189,6 +223,11 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
       setResumoAtual(resumo);
       originaisReajusteRef.current = originaisReajuste(r);
       reajusteEditadoRef.current = new Set();
+      const mapaCarga = {};
+      for (const s of sugestaoPme?.por_plano || []) {
+        mapaCarga[s.subgrupo_id] = s.reajuste_bps ?? null;
+      }
+      sugestaoNaCargaRef.current = mapaCarga;
       setConfirmacaoFinal(
         Boolean(
           r.escolhas?.baseline_escolhido?.confirmado &&
@@ -293,6 +332,24 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
 
       {nPlanos === 0 && <p className="alerta">Importe a base SISCOR na etapa anterior.</p>}
 
+      <div className="panel">
+        <div className="panel-head">
+          <div>
+            <h2>Data de referência</h2>
+            <p>Informe a data primeiro: ela define as idades e o reajuste sugerido abaixo.</p>
+          </div>
+        </div>
+        <div className="panel-body">
+          <div className="form-grid form-grid--two">
+            <CampoDataReferencia
+              valor={rascunho.escolhas.data_referencia_idade}
+              onChange={(v) => atualizarEscolha("data_referencia_idade", v)}
+              periodo={sugestaoPme?.periodo}
+            />
+          </div>
+        </div>
+      </div>
+
       {nPlanos > 0 && (
         <div className="panel">
           <div className="panel-head">
@@ -305,6 +362,11 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
           <div className="panel-body">
             {rascunho.subgrupos_atuais.map((sg, idx) => {
               const vidas = vidasPlano(sg.id);
+              const origemReajuste = textoOrigemReajuste(
+                sg,
+                sugestaoPme,
+                rascunho.escolhas.data_referencia_idade
+              );
               return (
                 <article key={sg.id} className="plan-card">
                   <header className="plan-card-head">
@@ -407,9 +469,9 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                             );
                           }}
                         />
-                        {textoOrigemReajuste(sg, sugestaoPme) && (
+                        {origemReajuste && (
                           <small className="field-hint origem-reajuste-pme">
-                            {textoOrigemReajuste(sg, sugestaoPme)}
+                            {origemReajuste}
                           </small>
                         )}
                       </label>
@@ -514,26 +576,6 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
                 "A origem dos valores atuais será definida automaticamente conforme a base importada."}
             </p>
           )}
-
-          <div className="form-grid form-grid--two form-grid--spaced">
-            <label className="field">
-              Data usada para calcular as idades
-              <input
-                type="date"
-                value={rascunho.escolhas.data_referencia_idade || ""}
-                onChange={(e) => atualizarEscolha("data_referencia_idade", e.target.value)}
-              />
-              {sugestaoPme?.periodo ? (
-                <small className="field-hint periodo-reajuste-pme">
-                  Período de reajuste PME: {sugestaoPme.periodo}
-                </small>
-              ) : (
-                <small className="field-hint periodo-reajuste-pme">
-                  Esta data define as idades e o período do reajuste PME.
-                </small>
-              )}
-            </label>
-          </div>
 
           {(resumoAtual?.total_vigente_reais || resumoAtual?.total_reajustado_reais) && (
             <div className="money-strip num">

@@ -359,14 +359,18 @@ def create_app(
         if rascunho is None:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         data_ref = rascunho.escolhas.data_referencia_idade
-        if data_referencia_idade:
-            try:
-                data_ref = date_type.fromisoformat(data_referencia_idade)
-            except ValueError:
-                raise HTTPException(
-                    status_code=400,
-                    detail="data_referencia_idade inválida.",
-                ) from None
+        if data_referencia_idade is not None:
+            bruto = data_referencia_idade.strip()
+            if bruto == "":
+                data_ref = None
+            else:
+                try:
+                    data_ref = date_type.fromisoformat(bruto)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="data_referencia_idade inválida.",
+                    ) from None
             rascunho = rascunho.model_copy(deep=True)
             rascunho.escolhas.data_referencia_idade = data_ref
         sugestoes = sugestoes_do_rascunho(rascunho)

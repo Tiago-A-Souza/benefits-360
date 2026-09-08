@@ -2912,6 +2912,10 @@ label.field select {
   color: var(--muted);
 }
 
+.aviso-data-reajuste {
+  color: var(--ink);
+}
+
 .money-strip {
   display: grid;
   grid-template-columns: 1fr auto 1fr;

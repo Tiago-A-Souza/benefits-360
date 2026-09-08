@@ -227,10 +227,9 @@ export async function obterResumoPlanoAtual(estudoId) {
 
 export async function obterSugestaoReajustePme(estudoId, dataReferenciaIdade) {
   const params = new URLSearchParams();
-  if (dataReferenciaIdade) params.set("data_referencia_idade", dataReferenciaIdade);
-  const qs = params.toString();
+  params.set("data_referencia_idade", dataReferenciaIdade || "");
   const res = await fetch(
-    `${API}/estudos/${estudoId}/sugestao-reajuste-pme${qs ? `?${qs}` : ""}`
+    `${API}/estudos/${estudoId}/sugestao-reajuste-pme?${params.toString()}`
   );
   return tratarResposta(res, "Não foi possível carregar a sugestão de reajuste.");
 }
