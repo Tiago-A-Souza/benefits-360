@@ -10,7 +10,7 @@ import {
 import ComparativoExperiencia from "./comparativo/ComparativoExperiencia";
 import BloqueiosComparativo from "./comparativo/BloqueiosComparativo";
 import GovernancaComparativo from "./apresentacao/GovernancaComparativo";
-import { comparativoConfirmado } from "./fluxo/stepStatus";
+import { comparativoConfirmado, confirmacaoEmVigor, confirmacaoPrecisaRefazer } from "./fluxo/stepStatus";
 import { tituloPasso } from "./fluxo/passos";
 
 export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapas = 5, onAtualizado }) {
@@ -21,6 +21,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
   const [carregando, setCarregando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [formatoIncompativel, setFormatoIncompativel] = useState(false);
+  const [statusGov, setStatusGov] = useState(null);
   const [avisoSelecaoAlterada, setAvisoSelecaoAlterada] = useState(false);
 
   async function recarregarContextoLocal() {
@@ -32,6 +33,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
     ]);
     setPendencias(p);
     setRascunho(r);
+    setStatusGov(st);
     setFormatoIncompativel(Boolean(st?.formato_incompativel));
   }
 
@@ -44,8 +46,8 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
     [rascunho]
   );
 
-  const jaConfirmado =
-    comparativoConfirmado(rascunho) && !formatoIncompativel;
+  const precisaReconfirmar = confirmacaoPrecisaRefazer(rascunho, statusGov);
+  const jaConfirmado = confirmacaoEmVigor(rascunho, statusGov);
 
   async function handleSelecaoSalva() {
     const estavaConfirmado = comparativoConfirmado(rascunho) && !formatoIncompativel;
@@ -83,6 +85,9 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
         data.propostas_apresentacao = ordemSalva;
       }
       setResultado(data);
+      const st = await obterSnapshotAprovado(estudoId).catch(() => null);
+      setStatusGov(st);
+      setFormatoIncompativel(Boolean(st?.formato_incompativel));
       onAtualizado?.();
       if (data.consistencia && !data.consistencia.consistente) {
         if (!data.consistencia.bloqueios?.length) {
@@ -216,6 +221,13 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
         </p>
       )}
 
+      {precisaReconfirmar && !resultado?.calculo_realizado && (
+        <p className="aviso cmp-confirmacao-banner" role="status">
+          A aprovação caiu. Calcule e confirme o comparativo de novo para congelar os valores
+          atuais e reaprovar.
+        </p>
+      )}
+
       {resultado?.calculo_realizado && (
         <ComparativoExperiencia
           estudoId={estudoId}
@@ -225,6 +237,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
           totalEtapas={totalEtapas}
           rotuloEtapa={rotuloEtapa}
           confirmado={jaConfirmado}
+          precisaReconfirmar={precisaReconfirmar}
           confirmando={confirmando}
           onConfirmar={handleConfirmar}
           onRecalcular={handleCalcular}

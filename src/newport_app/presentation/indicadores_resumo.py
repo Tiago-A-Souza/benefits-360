@@ -205,7 +205,7 @@ def montar_indicadores_resumo(
         linhas.append(
             LinhaIndicadorResumo(
                 rotulo="Diferença anual",
-                atual=CelulaIndicadorResumo(ausente=True, texto=""),
+                atual=CelulaIndicadorResumo(ausente=True, texto=AUSENCIA),
                 grupo="rodape",
                 propostas={
                     oid: _cel_centavos(
@@ -302,6 +302,8 @@ def rotulos_indicadores_html(html_doc: str) -> frozenset[str]:
             bloco,
             flags=re.DOTALL | re.IGNORECASE,
         ):
+            if 'linha-topo-extra' in m.group(0) or 'bloco-plano' in m.group(0) or 'bloco-regime' in m.group(0):
+                continue
             bruto = re.sub(r"<[^>]+>", "", m.group(1))
             texto = re.sub(r"\s+", " ", bruto).strip()
             if texto and texto not in {"Indicador", "Proposta"}:

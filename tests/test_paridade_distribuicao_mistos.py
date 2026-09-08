@@ -82,15 +82,16 @@ def test_distribuicao_origem_e_invariantes(dist: CelulaDistribuicao, tmp_path: P
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
     assert set(ids) == set(usadas)
 
-    vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    html = render_html(vm)
+    vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
+    vm_r = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    html = render_html(vm_f) + render_html(vm_r)
     divs = divergencias_origem_completas(
         matriz=matriz,
         motor=motor,
         rascunho=rascunho,
         estudo=rc.compilado.estudo_input,
         policy=rc.compilado.effective_policy,
-        vm=vm,
+        vm=vm_f,
         html=html,
         opcao_ids=ids,
     )

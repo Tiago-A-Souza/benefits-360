@@ -13,6 +13,7 @@ from typing import Any
 
 from newport_app.models.presentation import PresentationViewModel
 from newport_app.presentation.formatacao import formatar_reais
+from newport_app.presentation.tabela_densa import ROTULO_COLUNA_ATUAL
 
 _PLANO_SINTETICO = "vidas-incluidas"
 
@@ -159,6 +160,20 @@ def _expandir_cabecalho(tr: dict[str, Any]) -> list[str]:
     return cols
 
 
+def _cabecalho_completo(trs: list[dict[str, Any]]) -> list[str]:
+    """Cabeçalho de uma ou duas linhas (bloco de regime + nomes de plano)."""
+    if not trs:
+        return []
+    row1 = _expandir_cabecalho(trs[0])
+    if len(trs) == 1:
+        return row1
+    row2 = _expandir_cabecalho(trs[1])
+    n_prefix = len(row1) - len(row2)
+    if n_prefix < 0:
+        return row1
+    return row1[:n_prefix] + row2
+
+
 def _escopo_raiz(root: dict[str, Any], secao_id: str | None) -> dict[str, Any]:
     if not secao_id:
         return root
@@ -202,7 +217,7 @@ def inventariar_html(
                 planos.add(nome)
         if tag == "span" and "op" in classes:
             t = _texto(node)
-            if t and t not in {"Contrato atual"}:
+            if t and t not in {ROTULO_COLUNA_ATUAL}:
                 propostas.add(t)
                 colunas.add(t)
         if "rv" in classes and tag == "span":
@@ -212,20 +227,22 @@ def inventariar_html(
 
     for table in _iter(root, "table"):
         cab: list[str] = []
+        thead_rows: list[dict[str, Any]] = []
         for thead in _filhos(table, "thead"):
-            for tr in _filhos(thead, "tr"):
-                cab = _expandir_cabecalho(tr)
-                for th in _celulas_linha(tr):
-                    t = _rotulo_coluna(th)
-                    if t:
-                        colunas.add(t)
-                        if t != "Contrato atual":
-                            for span in _iter(th, "span"):
-                                if "op" in _attr_class(span) and _texto(span):
-                                    propostas.add(_texto(span))
-                break
-            if cab:
-                break
+            thead_rows.extend(_filhos(thead, "tr"))
+        cab = _cabecalho_completo(thead_rows)
+        for tr in thead_rows:
+            for th in _celulas_linha(tr):
+                t = _rotulo_coluna(th)
+                if t:
+                    colunas.add(t)
+                if t and t != ROTULO_COLUNA_ATUAL:
+                    for span in _iter(th, "span"):
+                        if "op" in _attr_class(span) and _texto(span):
+                            nome = _texto(span)
+                            propostas.add(nome)
+                            if "atual" in _attr_class(th):
+                                planos.add(nome)
         primeiro_th = cab[0] if cab else ""
 
         for corpo in _filhos(table, "tbody") + _filhos(table, "tfoot"):
@@ -266,8 +283,12 @@ def inventariar_html(
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
                     cells = _celulas_linha(tr)
-                    if cells:
-                        faixas.add(_texto(cells[0]))
+                    if not cells:
+                        continue
+                    rotulo_fx = _texto(cells[0])
+                    if rotulo_fx in {"Acomodação", "Modalidade", "Validade"}:
+                        continue
+                    faixas.add(rotulo_fx)
         elif primeiro_th in {"Beneficiário", "Nome", "Membro"}:
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
@@ -404,7 +425,7 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                 if pl.subgrupo_id == _PLANO_SINTETICO:
                     continue
                 if pl.subtotal_reajustado_centavos is not None:
-                    cells[(pl.plano_nome, "Contrato atual")] = (
+                    cells[(pl.plano_nome, ROTULO_COLUNA_ATUAL)] = (
                         pl.subtotal_reajustado_centavos
                     )
                 for prop in props:
@@ -429,9 +450,12 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                             (c for c in fx.propostas if c.opcao_id == prop.opcao_id),
                             None,
                         )
-                        if col and col.subtotal_centavos is not None:
-                            # Várias tabelas (um plano cada) reutilizam o rótulo de faixa;
-                            # a última ocorrência espelha o inventário HTML agregado.
+                        if col is None or col.quantidade == 0:
+                            continue
+                        unit = col.valor_unitario_centavos
+                        if unit is not None:
+                            cells[(fx.rotulo, prop.plano_nome)] = unit
+                        elif col.subtotal_centavos is not None:
                             cells[(fx.rotulo, prop.plano_nome)] = col.subtotal_centavos
         return cells
 
@@ -446,7 +470,7 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
             membros = [m for g in vm.grupos_familiares for m in g.membros]
         for b in membros:
             if b.atual_reajustado_centavos is not None:
-                cells[(b.nome, "Contrato atual")] = b.atual_reajustado_centavos
+                cells[(b.nome, ROTULO_COLUNA_ATUAL)] = b.atual_reajustado_centavos
             for col in b.propostas:
                 if col.valor_centavos is None:
                     continue
@@ -561,7 +585,9 @@ def divergencias_html_vm(vm: PresentationViewModel, html_doc: str) -> list[str]:
         # Linhas de plano no resumo — não vale h3 da visão faixas.
         _faltando("planos", iv.planos, ih.planos_linha_resumo or ih.planos)
     elif vm.modo == "faixas":
-        _faltando("planos", iv.planos, ih.planos)
+        # Vigentes não são colunas; nomes ficam no resumo e, se o unitário
+        # divergir na mesma faixa, como rótulo dentro da célula única.
+        pass
 
     if vm.modo == "faixas":
         _faltando("faixas", iv.faixas, ih.faixas)

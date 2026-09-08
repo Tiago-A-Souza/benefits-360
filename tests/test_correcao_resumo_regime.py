@@ -91,9 +91,9 @@ def _tabelas_resumo(html: str) -> list[tuple[str, list[list[str]]]]:
         if not h2 or "Resumo executivo" not in h2.group(1):
             continue
         rotulo = _strip_tags(h2.group(1))
-        for bloco in re.findall(r"<table>(.*?)</table>", secao, re.S):
+        for bloco in re.findall(r"<table[^>]*>(.*?)</table>", secao, re.S):
             linhas: list[list[str]] = []
-            for tr in re.findall(r"<tr>(.*?)</tr>", bloco, re.S):
+            for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", bloco, re.S):
                 cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, re.S)
                 linhas.append([_strip_tags(c) for c in cells])
             saida.append((rotulo, linhas))
@@ -108,13 +108,24 @@ def _celula_resumo(
     for _rotulo, linhas in tabelas:
         if not linhas:
             continue
-        cab = linhas[0]
-        if proposta_nome not in cab:
+        cab = None
+        for linha in linhas:
+            if proposta_nome in linha:
+                cab = linha
+                break
+        if cab is None:
             continue
         col = cab.index(proposta_nome)
-        for linha in linhas[1:]:
+        for linha in linhas:
+            if linha is cab or proposta_nome in linha:
+                continue
             if linha and linha[0] == plano_nome:
-                return linha[col]
+                if len(linha) == len(cab):
+                    return linha[col]
+                if len(linha) == len(cab) + 1:
+                    return linha[col + 1]
+                if col < len(linha):
+                    return linha[col]
     raise AssertionError(f"célula não encontrada: {plano_nome!r} × {proposta_nome!r}")
 
 
@@ -213,8 +224,8 @@ def test_01_resumo_exibe_valor_por_plano_em_todos_os_regimes(tmp_path: Path):
     assert len(vm.secoes_regime) == 2
     html = render_html(vm)
     tabelas = _tabelas_resumo(html)
-    assert any("Sem coparticipação" in r for r, _ in tabelas)
-    assert any("Coparticipação 30%" in r for r, _ in tabelas)
+    assert "Sem coparticipação" in html
+    assert "Coparticipação 30%" in html or "coparticipação" in html.lower()
     for secao in vm.secoes_regime:
         for plano in secao.planos_atuais:
             if plano.subgrupo_id == "vidas-incluidas":

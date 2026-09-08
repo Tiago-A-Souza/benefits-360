@@ -21,6 +21,12 @@ from newport_app.presentation.branding import (
 )
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
+from newport_app.presentation.tabela_densa import (
+    chunks_propostas,
+    envelopar_tela_impressao,
+    render_tabela_faixas,
+    render_tabela_resumo,
+)
 from newport_app.presentation.regras_comerciais import (
     MAX_OPERADORAS_POR_PAGINA,
     TabelaRegrasComerciais,
@@ -28,7 +34,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.12.1"
+RENDERER_VERSAO = "html@2.13.2"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -54,7 +60,7 @@ def _controle_titdep() -> str:
         '<span class="ctrl-titdep-fechar">Ocultar titulares e dependentes</span>'
         "</label>"
         '<p class="sr-only" id="hint-titdep">'
-        "Mostra ou oculta as colunas Tit. e Dep. em todas as tabelas de faixa etária."
+        "Mostra ou oculta as colunas Tit., Dep. e Vidas em todas as tabelas de faixa etária."
         "</p>"
     )
 
@@ -668,83 +674,16 @@ def _render_resumo(
     *,
     seguro_novo: bool,
 ) -> str:
-    planos = _planos_reais(secao)
-    indicadores = list(secao.indicadores_resumo)
-    if not indicadores:
-        # Fallback: monta a partir do VM se a seção veio sem indicadores.
+    if not secao.indicadores_resumo:
         from newport_app.presentation.indicadores_resumo import montar_indicadores_resumo
 
         indicadores = montar_indicadores_resumo(model, secao, op_ids)
-
-    partes = [
-        "<section class='secao-regime'>",
-        f"<h2>Resumo executivo — {html.escape(secao.regime_rotulo)}</h2>",
-    ]
-    if len(model.secoes_regime) > 1 or secao.regime_rotulo:
-        n_prop = len(op_ids)
-        partes.append(
-            f"<div class='regime'><b>{html.escape(secao.regime_rotulo)}</b><i></i>"
-            f"<em>{n_prop} proposta{'s' if n_prop != 1 else ''}</em></div>"
-        )
-
-    partes.append("<div class='rolo'><table><thead><tr><th>Indicador</th>")
-    if not seguro_novo:
-        od = f"{model.qtd_planos_vigentes} PLANOS" if model.qtd_planos_vigentes else ""
-        partes.append(
-            "<th class='atual'><span class='op'>Contrato atual</span>"
-            + (
-                f"<span class='od' data-l='{html.escape(od, quote=True)}'></span>"
-                if od
-                else ""
-            )
-            + "</th>"
-        )
-    for op_id in op_ids:
-        partes.append(_th_proposta(op_id, secao.propostas, rotulos))
-    partes.append("</tr></thead><tbody>")
-
-    cabecalho = [i for i in indicadores if i.grupo == "cabecalho"]
-    rodape = [i for i in indicadores if i.grupo == "rodape"]
-
-    for lin in cabecalho:
-        partes.append(
-            _render_linha_indicador(lin, op_ids, seguro_novo=seguro_novo)
-        )
-
-    if not seguro_novo:
-        for plano in planos:
-            vidas = _vidas_plano(plano)
-            vidas_attr = f" data-vidas='{vidas}'" if vidas > 0 else ""
-            partes.append(
-                f"<tr><td{vidas_attr}>{html.escape(plano.plano_nome)}</td>"
-            )
-            partes.append(
-                f"<td class='atual'>{_cel_contrato_atual(plano.subtotal_reajustado_centavos, plano.reajuste_percentual_exibicao)}</td>"
-            )
-            for op_id in op_ids:
-                partes.append(f"<td>{_cel_subtotal_plano(plano, op_id)}</td>")
-            partes.append("</tr>")
-        # Matriz sempre exibe Consolidado quando há plano vigente.
-        if planos:
-            partes.append("<tr><td><strong>Consolidado</strong></td>")
-            reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
-            partes.append(
-                f"<td class='atual'><strong>{_cel_contrato_atual(reaj_c, model.reajuste_consolidado_percentual_exibicao)}</strong></td>"
-            )
-            for op_id in op_ids:
-                total = secao.totais.propostas.get(op_id)
-                if total is None:
-                    total = model.totais_gerais.propostas.get(op_id)
-                partes.append(f"<td><strong>{_cel(total)}</strong></td>")
-            partes.append("</tr>")
-
-    for lin in rodape:
-        partes.append(
-            _render_linha_indicador(lin, op_ids, seguro_novo=seguro_novo)
-        )
-
-    partes.append("</tbody></table></div></section>")
-    return "".join(partes)
+        secao.indicadores_resumo = indicadores
+    return (
+        "<section class='secao-regime'><h2>Resumo executivo</h2>"
+        + render_tabela_resumo(model, op_ids, rotulos, seguro_novo=seguro_novo)
+        + "</section>"
+    )
 
 
 def _render_recomendacao(model: PresentationViewModel, rotulos: dict[str, str]) -> str:
@@ -973,56 +912,44 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
     seguro_novo = model.formato == "novo"
 
     if model.modo == "resumo":
+        op_ids = list(model.propostas_selecionadas)
         for secao in model.secoes_regime:
-            for pagina in _paginas_ou_sintese(secao):
-                paginas.append(
-                    [
-                        _render_resumo(
-                            model,
-                            secao,
-                            rotulos,
-                            pagina.propostas_ids,
-                            seguro_novo=seguro_novo,
-                        )
-                    ]
+            if not secao.indicadores_resumo:
+                from newport_app.presentation.indicadores_resumo import montar_indicadores_resumo
+
+                ids_secao = [p.opcao_id for p in secao.propostas if p.opcao_id in op_ids]
+                secao.indicadores_resumo = montar_indicadores_resumo(
+                    model, secao, ids_secao or op_ids
                 )
-        extra = _render_recomendacao(model, rotulos) + _nota_copart(model)
-        if extra:
-            if paginas:
-                paginas[-1].append(extra)
-            else:
-                paginas.append([extra])
+        secao0 = model.secoes_regime[0] if model.secoes_regime else None
+        if secao0 is not None:
+            chunks = chunks_propostas(op_ids)
+            tela = _render_resumo(
+                model, secao0, rotulos, op_ids, seguro_novo=seguro_novo
+            )
+            impressos = [
+                _render_resumo(model, secao0, rotulos, ch, seguro_novo=seguro_novo)
+                for ch in chunks
+            ]
+            extra = _render_recomendacao(model, rotulos) + _nota_copart(model)
+            paginas.append([envelopar_tela_impressao(tela, impressos) + extra])
 
     if model.modo == "faixas":
-        for secao in model.secoes_regime:
-            for pagina in _paginas_ou_sintese(secao):
-                bloco = [
-                    "<section class='secao-regime'>",
-                    f"<h2>{html.escape(secao.regime_rotulo)}</h2>",
-                    _render_cabecalho_propostas_pagina(secao.propostas, pagina.propostas_ids),
-                ]
-                for plano in secao.planos_atuais:
-                    bloco.append(
-                        "<div class='pagina-faixas'>"
-                        + _render_tabela_faixas(
-                            plano,
-                            secao.propostas,
-                            pagina.propostas_ids,
-                            rotulos,
-                            seguro_novo=seguro_novo,
-                        )
-                        + "</div>"
-                    )
-                bloco.append(
-                    _render_totais_secao(
-                        secao,
-                        pagina.propostas_ids,
-                        rotulos,
-                        seguro_novo=seguro_novo,
-                    )
+        op_ids = list(model.propostas_selecionadas)
+        chunks = chunks_propostas(op_ids)
+
+        def _bloco_faixas(ids: list[str]) -> str:
+            return (
+                "<section class='secao-regime'><h2>Distribuição por faixa etária</h2>"
+                + render_tabela_faixas(
+                    model, ids, rotulos, seguro_novo=seguro_novo
                 )
-                bloco.append("</section>")
-                paginas.append(bloco)
+                + "</section>"
+            )
+
+        tela = _bloco_faixas(op_ids)
+        impressos = [_bloco_faixas(ch) for ch in chunks]
+        paginas.append([envelopar_tela_impressao(tela, impressos)])
 
     if model.modo == "beneficiario" and model.beneficiarios:
         op_ids = model.propostas_selecionadas
@@ -1199,6 +1126,22 @@ tbody tr td:first-child[data-vidas]::after{
   color:var(--grafite-3);margin-top:2px;text-transform:none;letter-spacing:0}
 tbody tr[data-row=consolidado] td{border-top:2px solid var(--grafite);font-weight:700;font-size:14.5px;background:var(--papel-2)}
 tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
+.tabela-densa{font-size:11.5px;margin:8px 0 16px}
+.tabela-densa th,.tabela-densa td{padding:5px 8px;vertical-align:middle}
+.tabela-densa thead th{white-space:normal}
+.tabela-densa thead th .op{white-space:normal;max-width:8.2rem;line-height:1.2}
+.tabela-densa thead tr.bloco-regime th{text-align:center;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase}
+.tabela-densa thead tr.bloco-plano th{font-size:10.5px}
+.tabela-densa .money{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.tabela-densa .money .rs{font-weight:400;color:var(--grafite-3);white-space:nowrap}
+.tabela-densa .money .vl{font-weight:600;margin-left:auto}
+.tabela-densa tr.linha-topo td{font-size:11px;background:var(--papel-2)}
+.tabela-densa td.atual .atual-item{display:block}
+.tabela-densa td.atual .atual-item + .atual-item{margin-top:4px}
+.tabela-densa td.atual .atual-pl{display:block;font-size:9px;font-weight:600;
+  color:var(--grafite-3);text-align:left;white-space:normal;line-height:1.2}
+.layout-impressao{display:none}
 .tabela-grupo-familiar{margin:8px 0 16px;font-size:12.5px}
 .tabela-grupo-familiar th,.tabela-grupo-familiar td{padding:5px 10px;vertical-align:middle}
 .tabela-grupo-familiar tbody.grupo-familiar tr.grupo-cab td{
@@ -1232,11 +1175,14 @@ tfoot tr td.atual{background:#F1E7D6}
   cursor:pointer;background:var(--papel)}
 .ctrl-titdep:hover{border-color:var(--ouro);color:var(--ouro-esc);background:var(--ouro-cl)}
 .ctrl-titdep-fechar{display:none}
-.tabela-faixas th.col-titdep,.tabela-faixas td.col-titdep{display:none}
+.tabela-faixas th.col-titdep,.tabela-faixas td.col-titdep,
+.tabela-faixas th.col-vidas,.tabela-faixas td.col-vidas{display:none}
 #col-titdep:checked ~ .ctrl-titdep .ctrl-titdep-abrir{display:none}
 #col-titdep:checked ~ .ctrl-titdep .ctrl-titdep-fechar{display:inline}
 #col-titdep:checked ~ * .tabela-faixas th.col-titdep,
-#col-titdep:checked ~ * .tabela-faixas td.col-titdep{display:table-cell}
+#col-titdep:checked ~ * .tabela-faixas td.col-titdep,
+#col-titdep:checked ~ * .tabela-faixas th.col-vidas,
+#col-titdep:checked ~ * .tabela-faixas td.col-vidas{display:table-cell}
 .recomenda{display:flex;gap:0;flex-wrap:wrap;margin:30px 0 0;border:1px solid var(--risco)}
 .rc{flex:1;min-width:190px;padding:20px 22px;border-right:1px solid var(--risco)}
 .rc:last-child{border-right:0}
@@ -1286,6 +1232,10 @@ tfoot tr td.atual{background:#F1E7D6}
   .grupo-familiar-impressao{display:block}
   .grupo-familiar-impressao .rolo + .rolo{page-break-before:always}
   .tabela-regras{page-break-inside:avoid}
+  .layout-tela{display:none !important}
+  .layout-impressao{display:block}
+  .layout-impressao .secao-regime + .secao-regime{page-break-before:always}
+  .tabela-densa{width:100%;max-width:100%;table-layout:fixed}
 }
 """
 
@@ -1355,7 +1305,7 @@ def render_html_completo(
             "02",
             "Distribuição",
             "Por faixa etária",
-            "Valores por faixa da ANS. Faixas sem vidas não são exibidas.",
+            "Valores unitários por faixa da ANS.",
         )
         + _controle_titdep()
         + "".join("".join(p) for p in _paginas_corpo_visao(vm_faixas))

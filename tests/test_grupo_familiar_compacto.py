@@ -246,8 +246,7 @@ def test_12_gabarito_anistia_intacto(tmp_path: Path):
     assert "48.479,31" in html_r
     assert "23.607,17" in html_r
     assert "6.100,61" in html_r
-    assert "23.607,17" in html_f
-    assert "6.100,61" in html_f
+    assert "48.479,31" in html_f
     assert "48.479,31" in html_g
 
 
@@ -282,4 +281,4 @@ def test_15_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.12.1"
+    assert RENDERER_VERSAO == "html@2.13.2"

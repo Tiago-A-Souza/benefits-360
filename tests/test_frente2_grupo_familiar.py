@@ -317,12 +317,14 @@ def test_14_gabarito_anistia_intacto(tmp_path: Path):
     # Consolidado vigente (reajuste 10%) e reajustado 12% do fixture.
     assert gab["reajuste"]["1000"]["consolidado_centavos"] == _GABARITO["consolidado_atual"]
     assert gab["reajuste"]["1200"]["consolidado_centavos"] == _GABARITO["consolidado_proposta"]
-    html = render_html(vm)
-    assert "48.479,31" in html
-    assert "23.607,17" in html
-    assert "6.100,61" in html
-    assert "27.512,49" in html
-    assert "7.109,88" in html
+    html_r = render_html(
+        construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    )
+    assert "48.479,31" in html_r
+    assert "23.607,17" in html_r
+    assert "6.100,61" in html_r
+    assert "27.512,49" in html_r
+    assert "7.109,88" in html_r
     # Bronze (plano B reajustado / diff) aparece no estudo Anistia seis — conferido à parte.
     r6 = _anistia_com_vinculos()
     snap6 = _aprovar_tmp(tmp_path / "seis", r6)

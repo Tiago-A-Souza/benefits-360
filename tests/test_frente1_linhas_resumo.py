@@ -115,33 +115,29 @@ def test_04_acomodacao_ausente_aparece_como_ausente(tmp_path: Path):
 
 
 def test_05_assert_falha_quando_indicador_removido_do_documento(tmp_path: Path):
-    from newport_app.presentation import html_renderer
-
     matriz, vm, html_ok, _ = _resumo(
         tmp_path, _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     )
     assert not divergencias_indicadores_resumo(matriz=matriz, vm=vm, html=html_ok)
 
-    orig = html_renderer._render_resumo
-
-    def wrapped(model, secao, rotulos, op_ids, *, seguro_novo):
-        # Remove um indicador do VM antes de renderizar.
-        secao = secao.model_copy(
-            update={
-                "indicadores_resumo": [
-                    i
-                    for i in secao.indicadores_resumo
-                    if i.rotulo != "Validade da cotação"
-                ]
-            }
-        )
-        return orig(model, secao, rotulos, op_ids, seguro_novo=seguro_novo)
-
-    html_renderer._render_resumo = wrapped  # type: ignore[assignment]
-    try:
-        html_mut = render_html(vm)
-    finally:
-        html_renderer._render_resumo = orig
+    orig_secoes = list(vm.secoes_regime)
+    vm_mut = vm.model_copy(
+        update={
+            "secoes_regime": [
+                s.model_copy(
+                    update={
+                        "indicadores_resumo": [
+                            i
+                            for i in s.indicadores_resumo
+                            if i.rotulo != "Validade da cotação"
+                        ]
+                    }
+                )
+                for s in orig_secoes
+            ]
+        }
+    )
+    html_mut = render_html(vm_mut)
 
     divs = divergencias_indicadores_resumo(matriz=matriz, html=html_mut)
     assert divs, "remover Validade deveria acusar divergência de indicadores"
