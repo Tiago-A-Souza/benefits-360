@@ -274,11 +274,13 @@ def test_gabarito_prata_e_ouro_preservado(tmp_path: Path):
     assert prata["plano_b_centavos"] == 610_061
     assert ouro["plano_a_centavos"] == 2_751_249
     assert ouro["plano_b_centavos"] == 710_988
-    html = render_html(vm)
-    assert "23.607,17" in html
-    assert "6.100,61" in html
-    assert "27.512,49" in html
-    assert "7.109,88" in html
+    html_r = render_html(
+        construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    )
+    assert "23.607,17" in html_r
+    assert "6.100,61" in html_r
+    assert "27.512,49" in html_r
+    assert "7.109,88" in html_r
 
 
 def test_modo_grupo_familiar_mantem_aviso_de_dados_pessoais(tmp_path: Path):

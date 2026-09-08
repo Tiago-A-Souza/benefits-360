@@ -265,7 +265,7 @@ def test_09b_base_oficial_esta_inteira():
 def test_10_zero_script_no_documento(tmp_path: Path):
     html, _ = _html_de(tmp_path, _rascunho_anistia_seis())
     assert _SCRIPT.search(html) is None
-    assert RENDERER_VERSAO == "html@2.12.0"
+    assert RENDERER_VERSAO.startswith("html@2.13")
     assert "Ver todas as visões" in html
 
 

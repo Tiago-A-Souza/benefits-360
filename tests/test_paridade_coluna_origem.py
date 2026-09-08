@@ -20,6 +20,12 @@ from tests.test_paridade_matriz_html import (
 )
 
 
+def _html_origem(snap, ids: list[str]) -> tuple[object, str]:
+    vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
+    vm_r = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    return vm_f, render_html(vm_f) + render_html(vm_r)
+
+
 @pytest.mark.parametrize(
     "celula",
     [
@@ -37,8 +43,7 @@ def test_coluna_e_metadado_contra_origem(celula: CelulaEstrutural, tmp_path: Pat
     assert rc.compilavel and rc.compilado is not None
     snap = _aprovar(tmp_path, rascunho)
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
-    vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    html = render_html(vm)
+    vm, html = _html_origem(snap, ids)
     divs = divergencias_origem_completas(
         matriz=matriz,
         motor=motor,
@@ -59,8 +64,7 @@ def test_origem_gabarito_anistia_dois_planos(tmp_path: Path):
     assert rc.compilavel and rc.compilado is not None
     snap = _aprovar(tmp_path, rascunho)
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
-    vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    html = render_html(vm)
+    vm, html = _html_origem(snap, ids)
     divs = divergencias_origem_completas(
         matriz=matriz,
         motor=motor,

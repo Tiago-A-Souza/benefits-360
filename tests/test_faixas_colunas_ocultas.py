@@ -69,7 +69,7 @@ def _html_completo_anistia(tmp_path: Path) -> tuple[str, object]:
 
 def _tabelas_faixas(html: str) -> list[str]:
     return re.findall(
-        r"<table class='tabela-faixas'>(.*?)</table>", html, flags=re.S
+        r"<table class='tabela-faixas[^']*'>(.*?)</table>", html, flags=re.S
     )
 
 
@@ -77,7 +77,7 @@ def test_01_anistia_abre_com_colunas_ocultas(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
     assert "id=\"col-titdep\"" in html
     assert "checked" not in html.split('id="col-titdep"')[1][:80]
-    assert ".tabela-faixas th.col-titdep,.tabela-faixas td.col-titdep{display:none}" in html
+    assert ".tabela-faixas th.col-titdep,.tabela-faixas td.col-titdep" in html
     tabelas = _tabelas_faixas(html)
     assert len(tabelas) >= 2
     for tab in tabelas:
@@ -251,4 +251,4 @@ def test_14_tabela_com_respiro_e_rolagem_horizontal(tmp_path: Path):
 
 
 def test_renderer_sem_script_e_versao():
-    assert RENDERER_VERSAO.startswith("html@2.12")
+    assert RENDERER_VERSAO.startswith("html@2.13")

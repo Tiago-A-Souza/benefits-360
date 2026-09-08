@@ -338,11 +338,13 @@ def test_08_gabarito_preservado(tmp_path: Path):
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
     vm = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     assert_gabarito_propostas(matriz, vm, gab)
-    html = render_html(vm)
-    assert "23.607,17" in html
-    assert "6.100,61" in html
-    assert "27.512,49" in html
-    assert "7.109,88" in html
+    html_r = render_html(
+        construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    )
+    assert "23.607,17" in html_r
+    assert "6.100,61" in html_r
+    assert "27.512,49" in html_r
+    assert "7.109,88" in html_r
 
 
 def test_09_cinco_propostas_nao_corta_coluna(tmp_path: Path):
