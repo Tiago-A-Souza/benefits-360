@@ -494,3 +494,13 @@ def test_24_faixas_unitario_divergente_rotulado():
     assert "100,00" in igual
     vazio = _html_unitarios_atual([p1, p2], "59 a 99 anos")
     assert vazio == "—"
+
+
+def test_percentual_ao_lado_do_valor_resumo_e_faixas(tmp_path: Path):
+    html, _ = _html_completo_anistia(tmp_path)
+    assert ".tabela-densa .money{display:inline-flex" in html
+    assert ".tabela-resumo .ajuste,.tabela-faixas .ajuste{display:inline}" in html
+    assert "table.tabela-grupo-familiar .ajuste{display:block" in html
+    resumo = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
+    assert "class='ajuste'" in resumo
+    assert "+12%" in resumo

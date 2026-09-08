@@ -571,8 +571,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
             ))}
           </select>
           <span className="muted revisao-plano-dica">
-            Operadora (Amil, Hapvida, Unimed, NotreDame) ou Seguradora (Porto, SulAmérica,
-            Bradesco)? O IOF de 2,38% só se aplica a seguradora.
+            O IOF de 2,38% só se aplica a seguradora.
           </span>
         </label>
       )}

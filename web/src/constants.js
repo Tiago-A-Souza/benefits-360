@@ -12,11 +12,11 @@ export const OPERADORAS = [
 export const TIPOS_FISCAIS = [
   {
     value: "operadora",
-    label: "Operadora (Amil, Hapvida, Unimed, NotreDame) — sem IOF",
+    label: "Operadora - Sem IOF",
   },
   {
     value: "seguradora",
-    label: "Seguradora (Porto, SulAmérica, Bradesco) — com IOF",
+    label: "Seguradora - Com IOF",
   },
 ];
 

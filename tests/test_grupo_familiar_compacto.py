@@ -281,4 +281,4 @@ def test_15_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.13.2"
+    assert RENDERER_VERSAO == "html@2.13.3"

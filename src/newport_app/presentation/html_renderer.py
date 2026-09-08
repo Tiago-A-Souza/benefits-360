@@ -34,7 +34,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.2"
+RENDERER_VERSAO = "html@2.13.3"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -1133,7 +1133,7 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
 .tabela-densa thead tr.bloco-regime th{text-align:center;font-size:10px;letter-spacing:.08em;
   text-transform:uppercase}
 .tabela-densa thead tr.bloco-plano th{font-size:10.5px}
-.tabela-densa .money{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.tabela-densa .money{display:inline-flex;justify-content:flex-end;gap:6px;align-items:baseline;vertical-align:baseline}
 .tabela-densa .money .rs{font-weight:400;color:var(--grafite-3);white-space:nowrap}
 .tabela-densa .money .vl{font-weight:600;margin-left:auto}
 .tabela-densa tr.linha-topo td{font-size:11px;background:var(--papel-2)}
@@ -1153,12 +1153,16 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
   border-top:2px solid var(--grafite);font-weight:700;font-size:13.5px;background:var(--papel-2)}
 .tabela-grupo-familiar tbody.grupo-familiar-total tr td.atual{background:#F1E7D6}
 .grupo-familiar-impressao{display:none}
-.tabela-regras th,.tabela-regras td{text-align:left;white-space:normal;vertical-align:top;line-height:1.5}
+.visao-regras .rolo{overflow-x:visible}
+.visao-regras .rolo table.tabela-regras{width:100%;min-width:0;max-width:100%;table-layout:fixed}
+.tabela-regras th,.tabela-regras td{text-align:left;white-space:normal;vertical-align:top;line-height:1.25;
+  padding:6px 8px;overflow-wrap:anywhere;word-break:break-word;hyphens:auto}
 .tabela-regras td{font-weight:300}
-.tabela-regras th:first-child,.tabela-regras td:first-child{font-weight:600;white-space:normal;min-width:11rem}
+.tabela-regras th:first-child,.tabela-regras td:first-child{font-weight:600;white-space:normal;width:18%;min-width:0}
 tfoot tr td{border-top:2px solid var(--grafite);font-weight:700;font-size:14.5px;background:var(--papel-2)}
 tfoot tr td.atual{background:#F1E7D6}
-.ajuste{display:inline;font-size:11px;font-weight:600;color:var(--ouro-esc);margin-left:5px}
+.ajuste{display:inline;font-size:11px;font-weight:600;color:var(--ouro-esc);margin-left:5px;white-space:nowrap;vertical-align:baseline}
+.tabela-resumo .ajuste,.tabela-faixas .ajuste{display:inline}
 .neg{color:var(--verde)}.pos{color:var(--vinho)}
 .uni{display:block;font-size:11px;font-weight:400;color:var(--grafite-3);margin-top:2px}
 #tab-resumo:focus-visible ~ .doc-controles label[for="tab-resumo"],

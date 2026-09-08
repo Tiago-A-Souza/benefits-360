@@ -358,3 +358,15 @@ def test_normalizacao_reutilizada():
     assert "normalizar_cabecalho(variacao)" in src
     assert "normalizar_cabecalho(nome)" in src
     assert normalizar_cabecalho("Sul\u00a0América") == "SUL AMERICA"
+
+
+def test_16_tabela_regras_cabe_na_folha(tmp_path: Path):
+    html, _ = _html_de(tmp_path, _rascunho_anistia_seis())
+    assert ".visao-regras .rolo{overflow-x:visible}" in html
+    assert ".visao-regras .rolo table.tabela-regras{width:100%" in html
+    assert "table-layout:fixed" in html
+    assert "overflow-wrap:anywhere" in html
+    regras = re.search(
+        r"id=\"visao-regras\".*?class='tabela-regras'", html, flags=re.S
+    )
+    assert regras
