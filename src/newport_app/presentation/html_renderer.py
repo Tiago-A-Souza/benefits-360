@@ -34,7 +34,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.0"
+RENDERER_VERSAO = "html@2.13.1"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -986,6 +986,10 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
 .tabela-densa .money .rs{font-weight:400;color:var(--grafite-3);white-space:nowrap}
 .tabela-densa .money .vl{font-weight:600;margin-left:auto}
 .tabela-densa tr.linha-topo td{font-size:11px;background:var(--papel-2)}
+.tabela-densa td.atual .atual-item{display:block}
+.tabela-densa td.atual .atual-item + .atual-item{margin-top:4px}
+.tabela-densa td.atual .atual-pl{display:block;font-size:9px;font-weight:600;
+  color:var(--grafite-3);text-align:left;white-space:normal;line-height:1.2}
 .layout-impressao{display:none}
 .tabela-regras th,.tabela-regras td{text-align:left;white-space:normal;vertical-align:top;line-height:1.5}
 .tabela-regras td{font-weight:300}

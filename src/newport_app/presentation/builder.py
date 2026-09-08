@@ -28,7 +28,11 @@ from newport_app.models.responses import (
     ResultadoPropostaComparativo,
 )
 from newport_app.models.snapshot import SnapshotCalculo
-from newport_app.presentation.formatacao import formatar_data_br, normalizar_acomodacao_exibicao
+from newport_app.presentation.formatacao import (
+    formatar_data_br,
+    normalizar_acomodacao_exibicao,
+    rotulo_modalidade_exibicao,
+)
 from newport_app.presentation.grupos_familiares import (
     montar_grupos_familiares,
     rotulo_grupo,
@@ -196,7 +200,7 @@ def _mapear_plano(
         acomodacao=normalizar_acomodacao_exibicao(
             plano.acomodacao or (getattr(sg, "acomodacao", None) if sg else None)
         ),
-        modalidade=None,
+        modalidade=rotulo_modalidade_exibicao(sg.modalidade if sg else None),
         copart_descricao=_copart_descricao(rascunho, sg.regime_copart_id if sg else None),
         faixas=faixas,
         subtotal_vigente_centavos=plano.vigente_centavos,
@@ -234,7 +238,7 @@ def _montar_proposta_meta(
         acomodacao=normalizar_acomodacao_exibicao(
             prop.acomodacao or (op.acomodacao if op else None)
         ),
-        modalidade=op.modalidade.value if op and op.modalidade else None,
+        modalidade=rotulo_modalidade_exibicao(op.modalidade if op else None),
         copart_descricao=_copart_descricao(rascunho, op.regime_copart_id if op else None),
         validade=prop.validade_oficial or (formatar_data_br(op.validade_oficial) if op else None),
         premio_centavos=op.premio_saude.centavos if op and op.premio_saude else None,

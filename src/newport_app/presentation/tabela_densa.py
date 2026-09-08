@@ -18,6 +18,7 @@ from newport_app.presentation.reajuste import formatar_rotulo_reajuste_bps
 
 _AUSENCIA = "—"
 _PLANO_SINTETICO = "vidas-incluidas"
+ROTULO_COLUNA_ATUAL = "Contrato atual"
 
 
 def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao]:
@@ -79,7 +80,10 @@ class BlocoColuna:
 
     @property
     def n_cols(self) -> int:
-        return len(self.planos) if self.atual else len(self.op_ids)
+        """Atual é um contrato: sempre uma coluna, N vigentes viram linhas."""
+        if self.atual:
+            return 1 if self.planos else 0
+        return len(self.op_ids)
 
     def com_op_ids(self, op_ids: list[str]) -> BlocoColuna:
         if self.atual:
@@ -167,11 +171,20 @@ def montar_blocos(
     return [b for b in blocos if b.n_cols > 0]
 
 
-def _th_col_plano(plano: PlanoAtualApresentacao) -> str:
-    op = html.escape((plano.operadora or "").strip())
-    nome = html.escape(plano.plano_nome or "")
-    od = f"<span class='od' data-l='{op}'></span>" if op else ""
-    return f"<th class='atual'><span class='op'>{nome}</span>{od}</th>"
+def _th_col_atual(planos: list[PlanoAtualApresentacao]) -> str:
+    ops = sorted(
+        {(p.operadora or "").strip() for p in planos if (p.operadora or "").strip()}
+    )
+    operadora = ops[0] if len(ops) == 1 else ""
+    od = (
+        f"<span class='od' data-l='{html.escape(operadora, quote=True)}'></span>"
+        if operadora
+        else ""
+    )
+    return (
+        f"<th class='atual'><span class='op'>{html.escape(ROTULO_COLUNA_ATUAL)}</span>"
+        f"{od}</th>"
+    )
 
 
 def _th_col_prop(prop: PropostaApresentacao | None, nome: str) -> str:
@@ -208,8 +221,7 @@ def _cabecalho_blocos(
     partes.append("</tr><tr class='bloco-plano'>")
     for b in blocos:
         if b.atual:
-            for pl in b.planos:
-                partes.append(_th_col_plano(pl))
+            partes.append(_th_col_atual(b.planos))
         else:
             for oid in b.op_ids:
                 partes.append(_th_col_prop(_prop(model, oid), rotulos.get(oid, "Proposta")))
@@ -225,6 +237,16 @@ def _td_meta(bloco: BlocoColuna, *, campo: str) -> str:
     cls = " class='atual'" if bloco.atual else ""
     if span:
         return f"<td{cls} colspan='{bloco.n_cols}'>{html.escape(texto)}</td>"
+    if bloco.atual:
+        pares = []
+        for pl, v in zip(bloco.planos, por):
+            pares.append(
+                "<span class='atual-item'>"
+                f"<span class='atual-pl'>{html.escape(pl.plano_nome)}</span>"
+                f"{html.escape(v)}"
+                "</span>"
+            )
+        return f"<td class='atual'>{''.join(pares) or _AUSENCIA}</td>"
     partes = []
     for v in por:
         partes.append(f"<td{cls}>{html.escape(v)}</td>")
@@ -256,12 +278,14 @@ def _indicador_de(model: PresentationViewModel, rotulo: str, op_id: str | None, 
 
 def _td_cel_indicador(cel, *, como_diff: bool, atual: bool) -> str:
     cls = " class='atual'" if atual else ""
+    vazio = f"<td{cls}>{_AUSENCIA if atual else ''}</td>"
     if cel is None:
-        return f"<td{cls}></td>"
+        return vazio
     if cel.referencia and (cel.centavos is None or cel.centavos == 0):
         return f"<td{cls}>{html.escape(cel.texto or 'referência')}</td>"
     if cel.ausente:
-        return f"<td{cls}>{html.escape(cel.texto if cel.texto is not None else _AUSENCIA)}</td>"
+        txt = (cel.texto or "").strip() or _AUSENCIA
+        return f"<td{cls}>{html.escape(txt)}</td>"
     if cel.texto is not None and cel.centavos is None and cel.bps is None:
         return f"<td{cls}>{html.escape(cel.texto)}</td>"
     if cel.centavos is not None:
@@ -272,7 +296,7 @@ def _td_cel_indicador(cel, *, como_diff: bool, atual: bool) -> str:
         return f"<td{cls}>{base}</td>"
     if cel.bps is not None:
         return f"<td{cls}>{html.escape(formatar_rotulo_reajuste_bps(cel.bps))}</td>"
-    return f"<td{cls}></td>"
+    return vazio
 
 
 def _subtotal_proposta_plano(plano: PlanoAtualApresentacao, op_id: str) -> int | None:
@@ -311,11 +335,11 @@ def _tem_coluna_proposta(model: PresentationViewModel, subgrupo_id: str, op_id: 
 
 def _contrato_atual_html(centavos: int | None, percentual: str | None) -> str:
     if centavos is None and not percentual:
-        return ""
+        return _AUSENCIA
     valor = _cel_money(centavos)
     if percentual:
         return f"{valor}<span class='ajuste'>{html.escape(percentual)}</span>"
-    return valor
+    return valor or _AUSENCIA
 
 
 def _linha_indicador(
@@ -332,14 +356,7 @@ def _linha_indicador(
     for b in blocos:
         if b.atual:
             cel = _indicador_de(model, rotulo, None, atual=True)
-            if b.n_cols == 1:
-                partes.append(_td_cel_indicador(cel, como_diff=como_diff, atual=True))
-            else:
-                # Valor do atual vale para o bloco; repete na primeira coluna, demais vazias
-                # quando o indicador é único (custo consolidado etc. nas linhas próprias).
-                partes.append(_td_cel_indicador(cel, como_diff=como_diff, atual=True))
-                for _ in b.planos[1:]:
-                    partes.append("<td class='atual'></td>")
+            partes.append(_td_cel_indicador(cel, como_diff=como_diff, atual=True))
         else:
             for oid in b.op_ids:
                 cel = _indicador_de(model, rotulo, oid, atual=False)
@@ -376,18 +393,14 @@ def render_tabela_resumo(
             partes.append(f"<tr><td{vidas_attr}>{html.escape(plano.plano_nome)}</td>")
             for b in blocos:
                 if b.atual:
-                    for pl in b.planos:
-                        if pl.subgrupo_id == plano.subgrupo_id:
-                            partes.append(
-                                "<td class='atual'>"
-                                + _contrato_atual_html(
-                                    pl.subtotal_reajustado_centavos,
-                                    pl.reajuste_percentual_exibicao,
-                                )
-                                + "</td>"
-                            )
-                        else:
-                            partes.append("<td class='atual'></td>")
+                    partes.append(
+                        "<td class='atual'>"
+                        + _contrato_atual_html(
+                            plano.subtotal_reajustado_centavos,
+                            plano.reajuste_percentual_exibicao,
+                        )
+                        + "</td>"
+                    )
                 else:
                     for oid in b.op_ids:
                         valor = _subtotal_proposta_todas_secoes(
@@ -406,25 +419,18 @@ def render_tabela_resumo(
             partes.append("<tr data-row='consolidado'><td><strong>Consolidado</strong></td>")
             reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
             pct = model.reajuste_consolidado_percentual_exibicao
-            primeiro_atual = True
             for b in blocos:
                 if b.atual:
-                    for i, _pl in enumerate(b.planos):
-                        if i == 0:
-                            partes.append(
-                                "<td class='atual'><strong>"
-                                + _contrato_atual_html(reaj_c, pct)
-                                + "</strong></td>"
-                            )
-                        else:
-                            partes.append("<td class='atual'></td>")
-                    primeiro_atual = False
+                    partes.append(
+                        "<td class='atual'><strong>"
+                        + _contrato_atual_html(reaj_c, pct)
+                        + "</strong></td>"
+                    )
                 else:
                     for oid in b.op_ids:
                         total = model.totais_gerais.propostas.get(oid)
                         partes.append(f"<td><strong>{_cel_money(total)}</strong></td>")
             partes.append("</tr>")
-            del primeiro_atual
 
     skip = {"Acomodação"}
     vistos: set[str] = set(skip)
@@ -467,6 +473,30 @@ def _valor_faixa_prop(fx, op_id: str) -> int | None:
     if col is None or col.quantidade == 0:
         return None
     return col.valor_unitario_centavos
+
+
+def _html_unitarios_atual(planos: list[PlanoAtualApresentacao], rotulo_fx: str) -> str:
+    """Uma célula: unitário único, ou os dois valores rotulados se divergirem."""
+    itens: list[tuple[str, int]] = []
+    for pl in planos:
+        fx = _faixa_do_plano(pl, rotulo_fx)
+        unit, _ = _valor_faixa_atual(fx)
+        if unit is None:
+            continue
+        itens.append((pl.plano_nome, unit))
+    if not itens:
+        return _AUSENCIA
+    if len({u for _, u in itens}) == 1:
+        return _cel_money(itens[0][1]) or _AUSENCIA
+    partes = []
+    for nome, unit in itens:
+        partes.append(
+            "<span class='atual-item'>"
+            f"<span class='atual-pl'>{html.escape(nome)}</span>"
+            f"{_cel_money(unit)}"
+            "</span>"
+        )
+    return "".join(partes)
 
 
 def render_tabela_faixas(
@@ -539,11 +569,9 @@ def render_tabela_faixas(
         )
         for b in blocos:
             if b.atual:
-                for pl in b.planos:
-                    fx = _faixa_do_plano(pl, rotulo_fx)
-                    unit, _ = _valor_faixa_atual(fx)
-                    html_val = _cel_money(unit) if unit is not None else ""
-                    partes.append(f"<td class='atual'>{html_val}</td>")
+                partes.append(
+                    f"<td class='atual'>{_html_unitarios_atual(b.planos, rotulo_fx)}</td>"
+                )
             else:
                 for oid in b.op_ids:
                     valor = None
@@ -565,15 +593,13 @@ def render_tabela_faixas(
     partes.append("<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>")
     for b in blocos:
         if b.atual:
-            for pl in b.planos:
-                partes.append(
-                    "<td class='atual'>"
-                    + _contrato_atual_html(
-                        pl.subtotal_reajustado_centavos,
-                        pl.reajuste_percentual_exibicao,
-                    )
-                    + "</td>"
-                )
+            reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in b.planos) or None
+            pct = model.reajuste_consolidado_percentual_exibicao
+            partes.append(
+                "<td class='atual'>"
+                + _contrato_atual_html(reaj_c, pct)
+                + "</td>"
+            )
         else:
             for oid in b.op_ids:
                 total = model.totais_gerais.propostas.get(oid)
@@ -589,7 +615,7 @@ def render_tabela_faixas(
         partes.append("<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>")
         for b in blocos:
             if b.atual:
-                partes.append("<td class='atual'>referência</td>" * b.n_cols)
+                partes.append(f"<td class='atual'>referência</td>")
             else:
                 for oid in b.op_ids:
                     partes.append(f"<td>{_cel_money(model.totais_gerais.diff_mensal.get(oid), diff=True)}</td>")
@@ -597,7 +623,7 @@ def render_tabela_faixas(
         partes.append("<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>")
         for b in blocos:
             if b.atual:
-                partes.append("<td class='atual'></td>" * b.n_cols)
+                partes.append(f"<td class='atual'>{_AUSENCIA}</td>")
             else:
                 for oid in b.op_ids:
                     partes.append(f"<td>{_cel_money(model.totais_gerais.diff_anual.get(oid), diff=True)}</td>")
@@ -627,7 +653,7 @@ def _linha_validade_faixas(
     ]
     for b in blocos:
         if b.atual:
-            partes.append(f"<td class='atual' colspan='{b.n_cols}'></td>")
+            partes.append(f"<td class='atual'>{_AUSENCIA}</td>")
         else:
             for oid in b.op_ids:
                 prop = _prop(model, oid)

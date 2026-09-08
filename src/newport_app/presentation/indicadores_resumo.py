@@ -205,7 +205,7 @@ def montar_indicadores_resumo(
         linhas.append(
             LinhaIndicadorResumo(
                 rotulo="Diferença anual",
-                atual=CelulaIndicadorResumo(ausente=True, texto=""),
+                atual=CelulaIndicadorResumo(ausente=True, texto=AUSENCIA),
                 grupo="rodape",
                 propostas={
                     oid: _cel_centavos(

@@ -44,3 +44,26 @@ def normalizar_acomodacao_exibicao(valor: str | None) -> str | None:
     if len(texto) == 1:
         return texto.upper()
     return texto[0].upper() + texto[1:].lower()
+
+
+_MODALIDADE_EXIBICAO = {
+    "compulsorio": "Compulsório",
+    "adesao": "Adesão",
+}
+
+
+def rotulo_modalidade_exibicao(valor: object | None) -> str | None:
+    """Rótulo de modalidade para o documento (Compulsório / Adesão)."""
+    if valor is None:
+        return None
+    bruto = getattr(valor, "value", valor)
+    texto = str(bruto).strip()
+    if not texto:
+        return None
+    conhecido = _MODALIDADE_EXIBICAO.get(texto.lower())
+    if conhecido:
+        return conhecido
+    for rotulo in _MODALIDADE_EXIBICAO.values():
+        if texto.lower() == rotulo.lower():
+            return rotulo
+    return None

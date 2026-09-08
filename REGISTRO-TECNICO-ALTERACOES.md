@@ -829,6 +829,31 @@ O casamento é igualdade após `normalizar_cabecalho`
 | Cabeçalho da coluna de contrato atual repete o rótulo | «CONTRATO ATUAL / CONTRATO ATUAL / vários planos» |
 | `_th_proposta(..., [], ...)` no modo beneficiário | terceira superfície do 8.2 — ver abaixo |
 
+### Adaptador zera campos que existem no rascunho
+
+Mesmo padrão dos subtotais por subgrupo (§8.6): o dado está no rascunho e o
+adaptador de apresentação descarta.
+
+`presentation/builder.py`, `_mapear_plano`, gravava `modalidade=None` mesmo
+com `SubgrupoAtualRascunho.modalidade` preenchido (Anistia: `compulsorio` nos
+dois subgrupos). O HTML saía «—» nos dois blocos. A adesão compulsória não
+chegava ao renderer. `PlanoAtualComparativo` também não tem o campo — o
+`motor_out` nunca o copia.
+
+**Corrigido nesta alteração:** `_mapear_plano` lê `sg.modalidade` e o
+documento exibe «Compulsório» / «Adesão» no bloco do contrato atual. A
+proposta **não** herda a modalidade do vigente; continua «—» até a cotação
+trazer o campo.
+
+**Ainda na mesma situação — não corrigir agora:**
+
+| Campo no rascunho | Onde some |
+|---|---|
+| `SubgrupoAtualRascunho.tipo_fiscal` | não existe em `PlanoAtualApresentacao` |
+| `SubgrupoAtualRascunho.fatura_price_basis` | idem |
+| `SubgrupoAtualRascunho.subtotal_atual_impresso` | idem; conferência usa outro caminho |
+| `OpcaoPropostaRascunho.modalidade` quando a cotação não preenche | «—» no bloco de propostas (ausência real do dado, não descarte do vigente) |
+
 ### Cabeçalho SISCOR com caracteres invisíveis (NBSP)
 
 Planilha real da Anistia (e outras origens Excel/SISCOR) pode trazer **espaço

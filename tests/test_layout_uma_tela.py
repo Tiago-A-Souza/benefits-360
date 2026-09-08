@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
+from newport_app.models.presentation import FaixaApresentacao, PlanoAtualApresentacao
 from newport_app.models.snapshot import GerarApresentacaoRequest
 from newport_app.policy.registry import default_registry
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA, construir_view_model
@@ -18,6 +19,11 @@ from newport_app.presentation.html_renderer import (
 )
 from newport_app.presentation.paridade_estrutural import divergencias_estruturais
 from newport_app.presentation.paridade_html import divergencias_html_vm
+from newport_app.presentation.tabela_densa import (
+    ROTULO_COLUNA_ATUAL,
+    BlocoColuna,
+    _html_unitarios_atual,
+)
 from newport_app.seed.ficticio import rascunho_demo_12_vidas
 from newport_app.services.comparativo_confirmacao import montar_payload_nucleo_congelamento
 from newport_app.snapshot.hashing import hash_snapshot_canonico
@@ -81,6 +87,14 @@ def _cols_bloco_plano(tabela: str) -> list[str]:
     m = re.search(r"<tr class='bloco-plano'>(.*?)</tr>", tabela, flags=re.S)
     assert m, "linha bloco-plano ausente"
     return re.findall(r"<th[^>]*>.*?</th>", m.group(1), flags=re.S)
+
+
+def _visivel(inner: str) -> str:
+    return re.sub(r"<[^>]+>", "", inner).replace("\xa0", " ").strip()
+
+
+def _tds_atual(tabela: str) -> list[str]:
+    return re.findall(r"<td class='atual'[^>]*>(.*?)</td>", tabela, flags=re.S)
 
 
 def test_01_resumo_uma_tabela_com_blocos(tmp_path: Path):
@@ -164,6 +178,7 @@ def test_05_todas_as_propostas_aparecem(tmp_path: Path):
     cols = _cols_bloco_plano(tela)
     n_atual = sum(1 for c in cols if "class='atual'" in c)
     n_prop = len(cols) - n_atual
+    assert n_atual == 1
     assert n_prop == len(nomes)
 
 
@@ -313,3 +328,169 @@ def test_17_paridade_estrutural_verde(tmp_path: Path):
         assert not divergencias_estruturais(matriz, vm, rascunho=rascunho)
         html = render_html(vm)
         assert not divergencias_html_vm(vm, html)
+
+
+def test_18_atual_uma_coluna_dois_vigentes(tmp_path: Path):
+    html, _ = _html_completo_anistia(tmp_path)
+    for classe in ("tabela-resumo", "tabela-faixas"):
+        secao = "visao-resumo" if classe == "tabela-resumo" else "visao-faixas"
+        tela = _tabela_tela(_secao(html, secao), classe)
+        cols = _cols_bloco_plano(tela)
+        n_atual = sum(1 for c in cols if "class='atual'" in c)
+        assert n_atual == 1, classe
+        assert ROTULO_COLUNA_ATUAL in tela
+        assert "<td class='atual'></td>" not in tela
+
+
+def test_19_tres_vigentes_continua_uma_coluna(tmp_path: Path):
+    planos = [
+        PlanoAtualApresentacao(
+            subgrupo_id=f"s{i}", operadora="AMIL", plano_nome=f"Plano {i}"
+        )
+        for i in range(3)
+    ]
+    bloco = BlocoColuna(rotulo="Plano atual", atual=True, planos=planos)
+    assert bloco.n_cols == 1
+
+    rascunho = _rascunho_anistia_seis()
+    snap = _aprovar_anistia(tmp_path, rascunho)
+    ids = _ids(snap)
+    vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    extra = vm.secoes_regime[0].planos_atuais[0].model_copy(
+        update={"subgrupo_id": "sg-c", "plano_nome": "AMIL EXTRA - Apto."}
+    )
+    for secao in vm.secoes_regime:
+        secao.planos_atuais.append(extra)
+    html = render_html(vm)
+    tela = _tabela_tela(html, "tabela-resumo")
+    cols = _cols_bloco_plano(tela)
+    assert sum(1 for c in cols if "class='atual'" in c) == 1
+    assert "AMIL EXTRA - Apto." in tela
+    assert "Consolidado" in tela
+    assert "<td class='atual'></td>" not in tela
+
+
+def test_20_nenhuma_celula_vazia_no_bloco_atual(tmp_path: Path):
+    html, _ = _html_completo_anistia(tmp_path)
+    for secao, classe in (
+        ("visao-resumo", "tabela-resumo"),
+        ("visao-faixas", "tabela-faixas"),
+    ):
+        tela = _tabela_tela(_secao(html, secao), classe)
+        vazias = [c for c in _tds_atual(tela) if not _visivel(c)]
+        assert vazias == [], f"{classe}: {len(vazias)} células vazias no atual"
+
+
+def test_21_diferenca_anual_travesao_resumo_e_faixas(tmp_path: Path):
+    rascunho = _rascunho_anistia_seis()
+    snap = _aprovar_anistia(tmp_path, rascunho)
+    ids = _ids(snap)
+    vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
+    achou = False
+    for secao in vm.secoes_regime:
+        for lin in secao.indicadores_resumo:
+            if lin.rotulo != "Diferença anual":
+                continue
+            achou = True
+            assert lin.atual is not None
+            assert lin.atual.ausente is True
+            assert lin.atual.texto == "—"
+            assert lin.atual.texto != ""
+    assert achou
+
+    html = render_html(vm)
+    resumo = _tabela_tela(html, "tabela-resumo")
+    m = re.search(r"<tr[^>]*><td>Diferença anual</td>(.*?)</tr>", resumo, flags=re.S)
+    assert m
+    atual = re.search(r"<td class='atual'[^>]*>(.*?)</td>", m.group(1), flags=re.S)
+    assert atual and _visivel(atual.group(1)) == "—"
+
+    vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
+    faixas = _tabela_tela(render_html(vm_f), "tabela-faixas")
+    m = re.search(r"<tr><td>Diferença anual</td>(.*?)</tr>", faixas, flags=re.S)
+    assert m
+    atual = re.search(r"<td class='atual'[^>]*>(.*?)</td>", m.group(1), flags=re.S)
+    assert atual and _visivel(atual.group(1)) == "—"
+
+
+def test_22_modalidade_compulsorio_nao_copia_proposta(tmp_path: Path):
+    html, _ = _html_completo_anistia(tmp_path)
+    tela = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
+    m = re.search(
+        r"<tr class='linha-topo linha-topo-extra'><td>Modalidade</td>(.*?)</tr>",
+        tela,
+        flags=re.S,
+    )
+    assert m
+    cells = re.findall(r"<td[^>]*>(.*?)</td>", m.group(1), flags=re.S)
+    assert cells
+    assert _visivel(cells[0]) == "Compulsório"
+    for inner in cells[1:]:
+        assert "Compulsório" not in _visivel(inner)
+        assert _visivel(inner) == "—"
+
+    rascunho = _rascunho_anistia_seis()
+    assert all(op.modalidade is None for op in rascunho.opcoes_proposta)
+
+
+def test_23_faixas_totais_atual_e_consolidado(tmp_path: Path):
+    html, _ = _html_completo_anistia(tmp_path)
+    tela = _tabela_tela(_secao(html, "visao-faixas"), "tabela-faixas")
+    m = re.search(r"<tfoot><tr><td>Totais</td>(.*?)</tr>", tela, flags=re.S)
+    assert m
+    atual = re.search(r"<td class='atual'[^>]*>(.*?)</td>", m.group(1), flags=re.S)
+    assert atual
+    assert "48.479,31" in _visivel(atual.group(1))
+    assert sum(1 for c in _cols_bloco_plano(tela) if "class='atual'" in c) == 1
+
+
+def test_24_faixas_unitario_divergente_rotulado():
+    p1 = PlanoAtualApresentacao(
+        subgrupo_id="a",
+        operadora="AMIL",
+        plano_nome="S750",
+        faixas=[
+            FaixaApresentacao(
+                faixa=3,
+                rotulo="29 a 33 anos",
+                atual_reajustado_unitario_centavos=10000,
+            )
+        ],
+    )
+    p2 = PlanoAtualApresentacao(
+        subgrupo_id="b",
+        operadora="AMIL",
+        plano_nome="ONE",
+        faixas=[
+            FaixaApresentacao(
+                faixa=3,
+                rotulo="29 a 33 anos",
+                atual_reajustado_unitario_centavos=20000,
+            )
+        ],
+    )
+    html = _html_unitarios_atual([p1, p2], "29 a 33 anos")
+    assert "S750" in html and "ONE" in html
+    assert "100,00" in html and "200,00" in html
+    igual = _html_unitarios_atual(
+        [
+            p1,
+            PlanoAtualApresentacao(
+                subgrupo_id="b",
+                operadora="AMIL",
+                plano_nome="ONE",
+                faixas=[
+                    FaixaApresentacao(
+                        faixa=3,
+                        rotulo="29 a 33 anos",
+                        atual_reajustado_unitario_centavos=10000,
+                    )
+                ],
+            ),
+        ],
+        "29 a 33 anos",
+    )
+    assert "S750" not in igual and "ONE" not in igual
+    assert "100,00" in igual
+    vazio = _html_unitarios_atual([p1, p2], "59 a 99 anos")
+    assert vazio == "—"

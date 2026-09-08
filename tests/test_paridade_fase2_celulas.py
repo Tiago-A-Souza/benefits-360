@@ -155,10 +155,7 @@ def divergencias_html_completo(vm_r, vm_f, vm_b, html: str) -> list[str]:
                 f"completo/resumo: planos ausentes nas linhas: {falta_pl_r}"
             )
 
-    if iv_f.planos:
-        falta_pl = sorted(iv_f.planos - ih_f.planos)
-        if falta_pl:
-            divs.append(f"completo/faixas: planos ausentes no HTML: {falta_pl}")
+    # Faixas: vigentes não são mais colunas. Nomes ficam nas linhas do resumo.
 
     if iv_b.vidas:
         falta_v = sorted(iv_b.vidas - ih_b.vidas)

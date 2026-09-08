@@ -13,6 +13,7 @@ from typing import Any
 
 from newport_app.models.presentation import PresentationViewModel
 from newport_app.presentation.formatacao import formatar_reais
+from newport_app.presentation.tabela_densa import ROTULO_COLUNA_ATUAL
 
 _PLANO_SINTETICO = "vidas-incluidas"
 
@@ -216,7 +217,7 @@ def inventariar_html(
                 planos.add(nome)
         if tag == "span" and "op" in classes:
             t = _texto(node)
-            if t and t not in {"Contrato atual"}:
+            if t and t not in {ROTULO_COLUNA_ATUAL}:
                 propostas.add(t)
                 colunas.add(t)
         if "rv" in classes and tag == "span":
@@ -235,7 +236,7 @@ def inventariar_html(
                 t = _rotulo_coluna(th)
                 if t:
                     colunas.add(t)
-                if t and t != "Contrato atual":
+                if t and t != ROTULO_COLUNA_ATUAL:
                     for span in _iter(th, "span"):
                         if "op" in _attr_class(span) and _texto(span):
                             nome = _texto(span)
@@ -424,7 +425,7 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                 if pl.subgrupo_id == _PLANO_SINTETICO:
                     continue
                 if pl.subtotal_reajustado_centavos is not None:
-                    cells[(pl.plano_nome, pl.plano_nome)] = (
+                    cells[(pl.plano_nome, ROTULO_COLUNA_ATUAL)] = (
                         pl.subtotal_reajustado_centavos
                     )
                 for prop in props:
@@ -469,7 +470,7 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
             membros = [m for g in vm.grupos_familiares for m in g.membros]
         for b in membros:
             if b.atual_reajustado_centavos is not None:
-                cells[(b.nome, "Contrato atual")] = b.atual_reajustado_centavos
+                cells[(b.nome, ROTULO_COLUNA_ATUAL)] = b.atual_reajustado_centavos
             for col in b.propostas:
                 if col.valor_centavos is None:
                     continue
@@ -584,7 +585,9 @@ def divergencias_html_vm(vm: PresentationViewModel, html_doc: str) -> list[str]:
         # Linhas de plano no resumo — não vale h3 da visão faixas.
         _faltando("planos", iv.planos, ih.planos_linha_resumo or ih.planos)
     elif vm.modo == "faixas":
-        _faltando("planos", iv.planos, ih.planos)
+        # Vigentes não são colunas; nomes ficam no resumo e, se o unitário
+        # divergir na mesma faixa, como rótulo dentro da célula única.
+        pass
 
     if vm.modo == "faixas":
         _faltando("faixas", iv.faixas, ih.faixas)
