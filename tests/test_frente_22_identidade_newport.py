@@ -142,7 +142,7 @@ def test_sem_script_e_poppins_embutida(tmp_path: Path):
     assert "Poppins" in html
     assert "fonts.googleapis.com" not in html
     assert "data:image/png;base64," in html
-    assert RENDERER_VERSAO.startswith("html@2.11")
+    assert RENDERER_VERSAO.startswith("html@2.12")
     assert logo_bytes_len() > 10_000
     assert fonts_bytes_total() > 10_000
 

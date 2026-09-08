@@ -251,4 +251,4 @@ def test_14_tabela_com_respiro_e_rolagem_horizontal(tmp_path: Path):
 
 
 def test_renderer_sem_script_e_versao():
-    assert RENDERER_VERSAO.startswith("html@2.11")
+    assert RENDERER_VERSAO.startswith("html@2.12")

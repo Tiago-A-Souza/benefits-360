@@ -21,8 +21,14 @@ from newport_app.presentation.branding import (
 )
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
+from newport_app.presentation.regras_comerciais import (
+    MAX_OPERADORAS_POR_PAGINA,
+    TabelaRegrasComerciais,
+    montar_tabela as montar_tabela_regras,
+    nomes_operadora_do_view_model,
+)
 
-RENDERER_VERSAO = "html@2.11.2"
+RENDERER_VERSAO = "html@2.12.1"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -924,6 +930,42 @@ def _tit_secao(numero: str, linha1: str, linha2: str, lead: str) -> str:
     )
 
 
+def _cel_texto_multilinha(valor: str) -> str:
+    partes = html.escape(valor).split("\n")
+    return "<br>".join(partes)
+
+
+def _render_tabela_regras(
+    tabela: TabelaRegrasComerciais, operadoras: tuple[str, ...]
+) -> str:
+    thead = ["<th>Regra</th>"]
+    for op in operadoras:
+        thead.append(f"<th>{html.escape(op)}</th>")
+    linhas = [
+        "<div class='rolo'><table class='tabela-regras'><thead><tr>",
+        "".join(thead),
+        "</tr></thead><tbody>",
+    ]
+    for regra in tabela.regras:
+        linhas.append(f"<tr><td>{html.escape(regra)}</td>")
+        for op in operadoras:
+            linhas.append(
+                f"<td>{_cel_texto_multilinha(tabela.valor(op, regra))}</td>"
+            )
+        linhas.append("</tr>")
+    linhas.append("</tbody></table></div>")
+    return "".join(linhas)
+
+
+def _corpo_regras_contratuais(tabela: TabelaRegrasComerciais) -> str:
+    paginas: list[str] = []
+    ops = tabela.operadoras
+    for i in range(0, len(ops), MAX_OPERADORAS_POR_PAGINA):
+        chunk = ops[i : i + MAX_OPERADORAS_POR_PAGINA]
+        paginas.append(_render_tabela_regras(tabela, chunk))
+    return "".join(paginas)
+
+
 def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
     """Blocos de página da visão (sem capa)."""
     paginas: list[list[str]] = []
@@ -1111,7 +1153,8 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .doc-btn-voltar{display:none}
 #tab-resumo:checked ~ .doc-controles label[for=tab-resumo],
 #tab-faixas:checked ~ .doc-controles label[for=tab-faixas],
-#tab-benef:checked ~ .doc-controles label[for=tab-benef]{color:var(--grafite);border-bottom-color:var(--ouro)}
+#tab-benef:checked ~ .doc-controles label[for=tab-benef],
+#tab-regras:checked ~ .doc-controles label[for=tab-regras]{color:var(--grafite);border-bottom-color:var(--ouro)}
 #tab-todas:checked ~ .doc-controles .doc-btn-todas{background:var(--grafite);border-color:var(--grafite);color:#fff}
 #tab-todas:checked ~ .doc-controles .doc-btn-todas{display:none}
 #tab-todas:checked ~ .doc-controles .doc-btn-voltar{display:inline-block}
@@ -1119,7 +1162,8 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .visao { display: none; }
 #tab-resumo:checked ~ .doc-corpo .visao-resumo,
 #tab-faixas:checked ~ .doc-corpo .visao-faixas,
-#tab-benef:checked ~ .doc-corpo .visao-benef{display:block}
+#tab-benef:checked ~ .doc-corpo .visao-benef,
+#tab-regras:checked ~ .doc-corpo .visao-regras{display:block}
 #tab-todas:checked ~ .doc-corpo .visao { display: block !important; }
 .corpo,.doc-corpo{padding:0 56px 64px}
 .visao-titulo{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -1166,6 +1210,9 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
   border-top:2px solid var(--grafite);font-weight:700;font-size:13.5px;background:var(--papel-2)}
 .tabela-grupo-familiar tbody.grupo-familiar-total tr td.atual{background:#F1E7D6}
 .grupo-familiar-impressao{display:none}
+.tabela-regras th,.tabela-regras td{text-align:left;white-space:normal;vertical-align:top;line-height:1.5}
+.tabela-regras td{font-weight:300}
+.tabela-regras th:first-child,.tabela-regras td:first-child{font-weight:600;white-space:normal;min-width:11rem}
 tfoot tr td{border-top:2px solid var(--grafite);font-weight:700;font-size:14.5px;background:var(--papel-2)}
 tfoot tr td.atual{background:#F1E7D6}
 .ajuste{display:inline;font-size:11px;font-weight:600;color:var(--ouro-esc);margin-left:5px}
@@ -1174,6 +1221,7 @@ tfoot tr td.atual{background:#F1E7D6}
 #tab-resumo:focus-visible ~ .doc-controles label[for="tab-resumo"],
 #tab-faixas:focus-visible ~ .doc-controles label[for="tab-faixas"],
 #tab-benef:focus-visible ~ .doc-controles label[for="tab-benef"],
+#tab-regras:focus-visible ~ .doc-controles label[for="tab-regras"],
 #tab-todas:focus-visible ~ .doc-controles label[for="tab-todas"],
 #tab-resumo:focus-visible ~ .doc-controles label.doc-btn-voltar,
 #col-titdep:focus-visible ~ .ctrl-titdep{
@@ -1237,6 +1285,7 @@ tfoot tr td.atual{background:#F1E7D6}
   .grupo-familiar-tela{display:none !important}
   .grupo-familiar-impressao{display:block}
   .grupo-familiar-impressao .rolo + .rolo{page-break-before:always}
+  .tabela-regras{page-break-inside:avoid}
 }
 """
 
@@ -1288,9 +1337,10 @@ def render_html_completo(
     vm_faixas: PresentationViewModel,
     vm_grupos: PresentationViewModel,
 ) -> str:
-    """Documento cliente com três visões — abas em CSS puro (radios)."""
+    """Documento cliente com visões em abas — CSS puro (radios), sem script."""
     rotulos = _mapa_rotulos_propostas(vm_resumo)
     seguro_novo = vm_resumo.formato == "novo"
+    tabela_regras = montar_tabela_regras(nomes_operadora_do_view_model(vm_resumo))
     lead_resumo = (
         "As propostas são comparadas entre si."
         if seguro_novo
@@ -1331,44 +1381,79 @@ def render_html_completo(
     )
     del rotulos
 
+    radios = [
+        '<input type="radio" name="doc-visao" id="tab-resumo" class="doc-tab-input" checked '
+        'aria-label="Resumo executivo">',
+        '<input type="radio" name="doc-visao" id="tab-faixas" class="doc-tab-input" '
+        'aria-label="Faixas etárias">',
+        '<input type="radio" name="doc-visao" id="tab-benef" class="doc-tab-input" '
+        f'aria-label="{aria_detalhe}">',
+    ]
+    abas = [
+        '<label class="doc-aba" for="tab-resumo" role="tab" aria-controls="visao-resumo">'
+        "Resumo executivo</label>",
+        '<label class="doc-aba" for="tab-faixas" role="tab" aria-controls="visao-faixas">'
+        "Faixas etárias</label>",
+        '<label class="doc-aba" for="tab-benef" role="tab" aria-controls="visao-benef">'
+        f"{titulo_detalhe}</label>",
+    ]
+    secoes = [
+        '<section class="visao visao-resumo" id="visao-resumo" role="tabpanel" '
+        'aria-labelledby="tit-resumo">',
+        '<h2 class="visao-titulo" id="tit-resumo">Resumo executivo</h2>',
+        corpo_resumo,
+        "</section>",
+        '<section class="visao visao-faixas" id="visao-faixas" role="tabpanel" '
+        'aria-labelledby="tit-faixas">',
+        '<h2 class="visao-titulo" id="tit-faixas">Faixas etárias</h2>',
+        corpo_faixas,
+        "</section>",
+        '<section class="visao visao-benef" id="visao-benef" role="tabpanel" '
+        'aria-labelledby="tit-benef">',
+        f'<h2 class="visao-titulo" id="tit-benef">{titulo_detalhe}</h2>',
+        corpo_grupos,
+        "</section>",
+    ]
+    if tabela_regras is not None:
+        radios.append(
+            '<input type="radio" name="doc-visao" id="tab-regras" class="doc-tab-input" '
+            'aria-label="Regras contratuais">'
+        )
+        abas.append(
+            '<label class="doc-aba" for="tab-regras" role="tab" aria-controls="visao-regras">'
+            "Regras contratuais</label>"
+        )
+        secoes.extend(
+            [
+                '<section class="visao visao-regras" id="visao-regras" role="tabpanel" '
+                'aria-labelledby="tit-regras">',
+                '<h2 class="visao-titulo" id="tit-regras">Regras contratuais</h2>',
+                _tit_secao(
+                    "04",
+                    "Regras",
+                    "Contratuais",
+                    "Condições comerciais das operadoras que participam desta cotação.",
+                ),
+                _corpo_regras_contratuais(tabela_regras),
+                "</section>",
+            ]
+        )
+    radios.append(
+        '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
+        'aria-label="Ver todas as visões">'
+    )
     corpo = "".join(
         [
-            '<input type="radio" name="doc-visao" id="tab-resumo" class="doc-tab-input" checked '
-            'aria-label="Resumo executivo">',
-            '<input type="radio" name="doc-visao" id="tab-faixas" class="doc-tab-input" '
-            'aria-label="Faixas etárias">',
-            '<input type="radio" name="doc-visao" id="tab-benef" class="doc-tab-input" '
-            f'aria-label="{aria_detalhe}">',
-            '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
-            'aria-label="Ver as três visões">',
+            *radios,
             '<nav class="doc-controles no-print" aria-label="Visões do documento">',
             '<div class="doc-abas" role="tablist" aria-label="Visões">',
-            '<label class="doc-aba" for="tab-resumo" role="tab" aria-controls="visao-resumo">'
-            "Resumo executivo</label>",
-            '<label class="doc-aba" for="tab-faixas" role="tab" aria-controls="visao-faixas">'
-            "Faixas etárias</label>",
-            '<label class="doc-aba" for="tab-benef" role="tab" aria-controls="visao-benef">'
-            f"{titulo_detalhe}</label>",
+            *abas,
             "</div>",
-            '<label class="doc-btn-todas" for="tab-todas">Ver as três visões</label>',
+            '<label class="doc-btn-todas" for="tab-todas">Ver todas as visões</label>',
             '<label class="doc-btn-voltar" for="tab-resumo">Voltar às abas</label>',
             "</nav>",
             '<div class="doc-corpo">',
-            '<section class="visao visao-resumo" id="visao-resumo" role="tabpanel" '
-            'aria-labelledby="tit-resumo">',
-            '<h2 class="visao-titulo" id="tit-resumo">Resumo executivo</h2>',
-            corpo_resumo,
-            "</section>",
-            '<section class="visao visao-faixas" id="visao-faixas" role="tabpanel" '
-            'aria-labelledby="tit-faixas">',
-            '<h2 class="visao-titulo" id="tit-faixas">Faixas etárias</h2>',
-            corpo_faixas,
-            "</section>",
-            '<section class="visao visao-benef" id="visao-benef" role="tabpanel" '
-            'aria-labelledby="tit-benef">',
-            f'<h2 class="visao-titulo" id="tit-benef">{titulo_detalhe}</h2>',
-            corpo_grupos,
-            "</section>",
+            *secoes,
             "</div>",
         ]
     )
