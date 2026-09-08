@@ -7,6 +7,9 @@ Formulario-cotacao-newbusiness/
 Apresentacao-Template/
 .private/
 
+# PDF de estudo real com nomes de beneficiários — não versionar
+docs/Estudo Saude*.pdf
+
 # Temporários de revisão / extração
 .tmp*/
 
