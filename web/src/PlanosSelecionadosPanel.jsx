@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { obterRascunho, salvarRascunho } from "./api";
+import { obterMatrizEstimativa, obterRascunho, salvarRascunho } from "./api";
 import { novoId } from "./constants";
-import { mensagemLacunasAtribuicao } from "./fluxo/avancoEtapa";
+import { mensagemLacunasAtribuicao, rotuloOpcaoComDiff } from "./fluxo/avancoEtapa";
 
 function subgruposComVidas(rascunho) {
   const comVidas = new Set();
@@ -115,6 +115,13 @@ function lacunasCenario(cenario, subgrupos, opcoes) {
   return faltando;
 }
 
+function diffOpcaoNoSubgrupo(matriz, subgrupoId, opcaoId) {
+  const cel = (matriz?.celulas || []).find(
+    (c) => c.subgrupo_id === subgrupoId && c.opcao_id === opcaoId
+  );
+  return cel?.diff_centavos ?? null;
+}
+
 export default function PlanosSelecionadosPanel({
   estudoId,
   etapaIndice = 4,
@@ -126,6 +133,7 @@ export default function PlanosSelecionadosPanel({
   const [cenarios, setCenarios] = useState([]);
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [matrizEstimativa, setMatrizEstimativa] = useState(null);
 
   useEffect(() => {
     if (!estudoId) return;
@@ -137,6 +145,9 @@ export default function PlanosSelecionadosPanel({
         setRascunho({ ...r });
       })
       .catch((e) => setErro(e.message));
+    obterMatrizEstimativa(estudoId)
+      .then(setMatrizEstimativa)
+      .catch(() => setMatrizEstimativa(null));
   }, [estudoId]);
 
   const handleSalvar = useCallback(async () => {
@@ -360,10 +371,13 @@ export default function PlanosSelecionadosPanel({
                         <option value="">Escolha o plano…</option>
                         {opcoes.map((opcao) => (
                           <option key={opcao.id} value={opcao.id}>
-                            {opcao.plano_nome || opcao.id}
-                            {acomodacaoInformada(opcao)
-                              ? ` (${rotuloAcomodacao(acomodacaoInformada(opcao))})`
-                              : ""}
+                            {rotuloOpcaoComDiff(
+                              opcao.plano_nome || opcao.id,
+                              acomodacaoInformada(opcao)
+                                ? rotuloAcomodacao(acomodacaoInformada(opcao))
+                                : null,
+                              diffOpcaoNoSubgrupo(matrizEstimativa, sg.id, opcao.id)
+                            )}
                           </option>
                         ))}
                       </select>

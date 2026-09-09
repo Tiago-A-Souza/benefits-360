@@ -59,6 +59,7 @@ from newport_app.models.responses import (
     ConfirmarComparativoResponse,
     EstudoResumo,
     PendenciaItem,
+    MatrizEstimativaResponse,
     ResumoPlanoAtualResponse,
     SalvarSelecaoApresentacaoRequest,
     SalvarSelecaoApresentacaoResponse,
@@ -114,6 +115,7 @@ from newport_app.services.extracao_cotacao import (
     MotivoDescarteObrigatorioError,
     OpcaoNaoEncontradaError,
 )
+from newport_app.services.matriz_estimativa import montar_matriz_estimativa
 from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
 from newport_app.services.pendencias import pendencias_compilacao
 from newport_app.services.importacao_siscor import (
@@ -548,6 +550,16 @@ def create_app(
         if rascunho is None:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         return montar_resumo_plano_atual(rascunho)
+
+    @app.get(
+        "/api/estudos/{estudo_id}/estimativa-opcao-subgrupo",
+        response_model=MatrizEstimativaResponse,
+    )
+    def estimativa_opcao_subgrupo(estudo_id: str) -> MatrizEstimativaResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return montar_matriz_estimativa(rascunho)
 
     @app.post(
         "/api/estudos/{estudo_id}/importar-cotacao-pdf",

@@ -25,6 +25,15 @@ export function centavosParaReaisExibicao(centavos) {
   return `${sinal}R$ ${inteiro},${String(cents).padStart(2, "0")}`;
 }
 
+/** Formata um diff já calculado no backend. Não subtrai nem estima. */
+export function formatarDiffCentavos(centavos) {
+  if (centavos == null) return null;
+  const texto = centavosParaReaisExibicao(Math.abs(centavos));
+  if (centavos > 0) return `+${texto}`;
+  if (centavos < 0) return `-${texto}`;
+  return texto;
+}
+
 export function reaisTextoParaCentavos(texto) {
   if (texto == null) return { ok: false, erro: "Informe um valor." };
   const bruto = String(texto).trim().replace(/\s/g, "");

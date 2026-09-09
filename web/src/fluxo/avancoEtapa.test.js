@@ -4,6 +4,7 @@ import {
   mensagemExcecaoBase,
   mensagemLacunasAtribuicao,
   proximaEtapaClicavel,
+  rotuloOpcaoComDiff,
 } from "./avancoEtapa.js";
 
 describe("avancoEtapa", () => {
@@ -32,5 +33,18 @@ describe("avancoEtapa", () => {
     expect(mensagemLacunasAtribuicao([["S750"], []])).toBe(
       "Cenário 1: falta escolher cotação para S750"
     );
+  });
+
+  it("rótulo do dropdown usa o diff pronto e omite opção sem estimativa", () => {
+    expect(rotuloOpcaoComDiff("Diamante mais 1 Q", null, -573900)).toBe(
+      "Diamante mais 1 Q — -R$ 5.739,00"
+    );
+    expect(rotuloOpcaoComDiff("Ouro mais 1 Q", null, 78000)).toBe(
+      "Ouro mais 1 Q — +R$ 780,00"
+    );
+    expect(rotuloOpcaoComDiff("Prata", "Apartamento", null)).toBe("Prata (Apartamento)");
+    expect(rotuloOpcaoComDiff("Prata", "Apartamento", null)).not.toContain("R$ 0");
+    expect(rotuloOpcaoComDiff("Prata", null, null)).toBe("Prata");
+    expect(rotuloOpcaoComDiff("Prata", null, null)).not.toContain("—");
   });
 });

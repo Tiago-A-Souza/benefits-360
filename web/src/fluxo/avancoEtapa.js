@@ -1,5 +1,7 @@
 /** Avanço do wizard: etapas 1, 2 e 4 gravam a confirmação no «Próxima etapa». */
 
+import { formatarDiffCentavos } from "../money";
+
 export const ETAPAS_CONFIRMA_NO_AVANCO = new Set(["base", "plano", "selecionados"]);
 
 export function proximaEtapaClicavel(chave, passoAtual, ctx, proximaDisponivel) {
@@ -22,4 +24,11 @@ export function mensagemLacunasAtribuicao(lacunasPorCenario) {
   return partes.length
     ? partes.join(" · ")
     : "Complete todas as escolhas antes de confirmar.";
+}
+
+export function rotuloOpcaoComDiff(nome, acomodacaoRotulo, diffCentavos) {
+  let texto = nome || "";
+  if (acomodacaoRotulo) texto += ` (${acomodacaoRotulo})`;
+  if (diffCentavos == null) return texto;
+  return `${texto} — ${formatarDiffCentavos(diffCentavos)}`;
 }
