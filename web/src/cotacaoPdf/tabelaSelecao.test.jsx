@@ -103,6 +103,26 @@ describe("TabelaSelecaoCompacta", () => {
     expect(html).not.toContain(delta.textoPct);
   });
 
+  it("pinta economia de verde e acréscimo de vermelho na Δ R$", () => {
+    const htmlMaisCaro = renderTabela({
+      templateId: "amil-pme",
+      opcoes: [opcao("d", "Diamante")],
+      estimativasMotor: { d: diamante },
+      referenciaCentavos: referenciaDeltaExemplo,
+    });
+    expect(htmlMaisCaro).toContain("cmp-valor--aumento");
+    expect(htmlMaisCaro).toContain("+R$ 61.346,00");
+
+    const htmlMaisBarato = renderTabela({
+      templateId: "amil-pme",
+      opcoes: [opcao("p", "Prata")],
+      estimativasMotor: { p: prata },
+      referenciaCentavos: 4847931,
+    });
+    expect(htmlMaisBarato).toContain("cmp-valor--economia");
+    expect(htmlMaisBarato).toContain("-R$ 25.420,97");
+  });
+
   it("repete Copart. só quando não há título de seção", () => {
     const ops = [
       opcao("a", "Plano Apt", { acomodacao: "Apartamento" }),

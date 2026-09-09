@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { classeDiffEstimativa } from "../money.js";
 import {
   ETAPAS_CONFIRMA_NO_AVANCO,
   mensagemExcecaoBase,
   mensagemLacunasAtribuicao,
   proximaEtapaClicavel,
   rotuloOpcaoComDiff,
+  rotuloOpcaoNome,
 } from "./avancoEtapa.js";
 
 describe("avancoEtapa", () => {
@@ -36,6 +38,7 @@ describe("avancoEtapa", () => {
   });
 
   it("rótulo do dropdown usa o diff pronto e omite opção sem estimativa", () => {
+    expect(rotuloOpcaoNome("Prata", "Apartamento")).toBe("Prata (Apartamento)");
     expect(rotuloOpcaoComDiff("Diamante mais 1 Q", null, -573900)).toBe(
       "Diamante mais 1 Q — -R$ 5.739,00"
     );
@@ -46,5 +49,12 @@ describe("avancoEtapa", () => {
     expect(rotuloOpcaoComDiff("Prata", "Apartamento", null)).not.toContain("R$ 0");
     expect(rotuloOpcaoComDiff("Prata", null, null)).toBe("Prata");
     expect(rotuloOpcaoComDiff("Prata", null, null)).not.toContain("—");
+  });
+
+  it("diff negativo é economia (verde) e positivo é acréscimo (vermelho)", () => {
+    expect(classeDiffEstimativa(-577959)).toBe("cmp-valor--economia");
+    expect(classeDiffEstimativa(6346306)).toBe("cmp-valor--aumento");
+    expect(classeDiffEstimativa(0)).toBe("cmp-valor--neutro");
+    expect(classeDiffEstimativa(null)).toBe(null);
   });
 });

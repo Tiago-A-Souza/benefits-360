@@ -26,6 +26,7 @@ import FilePickerButton from "./components/FilePickerButton";
 import {
   centavosParaReaisExibicao,
   centavosParaReaisTexto,
+  classeDiffEstimativa,
   reaisTextoParaCentavos,
 } from "./money";
 import {
@@ -478,7 +479,9 @@ export function TabelaSelecaoCompacta({
                     {estimativaTexto}
                   </span>
                   <span
-                    className="linha-plano-meta linha-plano-meta--valor"
+                    className={`linha-plano-meta linha-plano-meta--valor${
+                      diff.indisponivel ? "" : ` ${classeDiffEstimativa(diff.diffCentavos) || ""}`
+                    }`}
                     title={diff.indisponivel ? undefined : diff.rotuloSemantica}
                   >
                     {diff.indisponivel ? (

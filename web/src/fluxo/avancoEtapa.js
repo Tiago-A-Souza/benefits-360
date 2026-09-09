@@ -26,9 +26,14 @@ export function mensagemLacunasAtribuicao(lacunasPorCenario) {
     : "Complete todas as escolhas antes de confirmar.";
 }
 
-export function rotuloOpcaoComDiff(nome, acomodacaoRotulo, diffCentavos) {
+export function rotuloOpcaoNome(nome, acomodacaoRotulo) {
   let texto = nome || "";
   if (acomodacaoRotulo) texto += ` (${acomodacaoRotulo})`;
+  return texto;
+}
+
+export function rotuloOpcaoComDiff(nome, acomodacaoRotulo, diffCentavos) {
+  const texto = rotuloOpcaoNome(nome, acomodacaoRotulo);
   if (diffCentavos == null) return texto;
   return `${texto} — ${formatarDiffCentavos(diffCentavos)}`;
 }

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { obterMatrizEstimativa, obterRascunho, salvarRascunho } from "./api";
 import { novoId } from "./constants";
-import { mensagemLacunasAtribuicao, rotuloOpcaoComDiff } from "./fluxo/avancoEtapa";
+import { mensagemLacunasAtribuicao, rotuloOpcaoComDiff, rotuloOpcaoNome } from "./fluxo/avancoEtapa";
+import { classeDiffEstimativa, formatarDiffCentavos } from "./money";
 
 function subgruposComVidas(rascunho) {
   const comVidas = new Set();
@@ -120,6 +121,159 @@ function diffOpcaoNoSubgrupo(matriz, subgrupoId, opcaoId) {
     (c) => c.subgrupo_id === subgrupoId && c.opcao_id === opcaoId
   );
   return cel?.diff_centavos ?? null;
+}
+
+function acomodacaoRotuloOpcao(opcao) {
+  const ac = acomodacaoInformada(opcao);
+  return ac ? rotuloAcomodacao(ac) : null;
+}
+
+function RotuloOpcaoComDiff({ nome, acomodacaoRotulo, diffCentavos }) {
+  const nomeTexto = rotuloOpcaoNome(nome, acomodacaoRotulo);
+  const diffTexto = formatarDiffCentavos(diffCentavos);
+  const diffClasse = classeDiffEstimativa(diffCentavos);
+  return (
+    <span className="mapping-select-rotulo">
+      <span className="mapping-select-nome">{nomeTexto}</span>
+      {diffTexto ? (
+        <span className={`mapping-select-diff ${diffClasse}`}>{diffTexto}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function SelectOpcaoComDiff({ value, opcoes, matriz, subgrupoId, ariaLabel, onChange }) {
+  const [aberto, setAberto] = useState(false);
+  const [ativo, setAtivo] = useState(0);
+  const rootRef = useRef(null);
+  const listId = useId();
+  const itens = [{ id: "", placeholder: true }, ...opcoes];
+  const selecionada = opcoes.find((o) => o.id === value);
+
+  useEffect(() => {
+    if (!aberto) return undefined;
+    const onDoc = (e) => {
+      if (!rootRef.current?.contains(e.target)) setAberto(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [aberto]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const idx = itens.findIndex((it) => it.id === (value || ""));
+    setAtivo(idx < 0 ? 0 : idx);
+    // Só reposiciona o destaque ao abrir ou ao mudar a escolha.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto, value]);
+
+  const escolher = (id) => {
+    onChange(id);
+    setAberto(false);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setAberto(false);
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!aberto) {
+        setAberto(true);
+        return;
+      }
+      setAtivo((i) => {
+        if (e.key === "ArrowDown") return Math.min(i + 1, itens.length - 1);
+        return Math.max(i - 1, 0);
+      });
+      return;
+    }
+    if ((e.key === "Enter" || e.key === " ") && aberto) {
+      e.preventDefault();
+      const it = itens[ativo];
+      if (it) escolher(it.placeholder ? "" : it.id);
+    }
+  };
+
+  return (
+    <div
+      className={`mapping-select${aberto ? " mapping-select--aberto" : ""}`}
+      ref={rootRef}
+    >
+      <button
+        type="button"
+        className="mapping-select-btn"
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        aria-controls={listId}
+        aria-label={ariaLabel}
+        title={
+          selecionada
+            ? rotuloOpcaoComDiff(
+                selecionada.plano_nome || selecionada.id,
+                acomodacaoRotuloOpcao(selecionada),
+                diffOpcaoNoSubgrupo(matriz, subgrupoId, selecionada.id)
+              )
+            : "Escolha o plano…"
+        }
+        onClick={() => setAberto((v) => !v)}
+        onKeyDown={onKeyDown}
+      >
+        {selecionada ? (
+          <RotuloOpcaoComDiff
+            nome={selecionada.plano_nome || selecionada.id}
+            acomodacaoRotulo={acomodacaoRotuloOpcao(selecionada)}
+            diffCentavos={diffOpcaoNoSubgrupo(matriz, subgrupoId, selecionada.id)}
+          />
+        ) : (
+          <span className="mapping-select-placeholder">Escolha o plano…</span>
+        )}
+      </button>
+      {aberto ? (
+        <ul id={listId} role="listbox" className="mapping-select-menu">
+          {itens.map((it, idx) => {
+            const escolhido = (it.id || "") === (value || "");
+            if (it.placeholder) {
+              return (
+                <li key="__vazio">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={escolhido}
+                    className={`mapping-select-item${idx === ativo ? " mapping-select-item--ativo" : ""}`}
+                    onMouseEnter={() => setAtivo(idx)}
+                    onClick={() => escolher("")}
+                  >
+                    <span className="mapping-select-placeholder">Escolha o plano…</span>
+                  </button>
+                </li>
+              );
+            }
+            return (
+              <li key={it.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={escolhido}
+                  className={`mapping-select-item${idx === ativo ? " mapping-select-item--ativo" : ""}`}
+                  onMouseEnter={() => setAtivo(idx)}
+                  onClick={() => escolher(it.id)}
+                >
+                  <RotuloOpcaoComDiff
+                    nome={it.plano_nome || it.id}
+                    acomodacaoRotulo={acomodacaoRotuloOpcao(it)}
+                    diffCentavos={diffOpcaoNoSubgrupo(matriz, subgrupoId, it.id)}
+                  />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 export default function PlanosSelecionadosPanel({
@@ -363,24 +517,14 @@ export default function PlanosSelecionadosPanel({
                           {acSg ? ` · ${rotuloAcomodacao(acSg)}` : ""}
                         </small>
                       </div>
-                      <select
+                      <SelectOpcaoComDiff
                         value={opId}
-                        onChange={(e) => atualizarAtribuicao(i, sg.id, e.target.value)}
-                        aria-label={`Cotação para ${sg.plano_nome} no cenário ${i + 1}`}
-                      >
-                        <option value="">Escolha o plano…</option>
-                        {opcoes.map((opcao) => (
-                          <option key={opcao.id} value={opcao.id}>
-                            {rotuloOpcaoComDiff(
-                              opcao.plano_nome || opcao.id,
-                              acomodacaoInformada(opcao)
-                                ? rotuloAcomodacao(acomodacaoInformada(opcao))
-                                : null,
-                              diffOpcaoNoSubgrupo(matrizEstimativa, sg.id, opcao.id)
-                            )}
-                          </option>
-                        ))}
-                      </select>
+                        opcoes={opcoes}
+                        matriz={matrizEstimativa}
+                        subgrupoId={sg.id}
+                        ariaLabel={`Cotação para ${sg.plano_nome} no cenário ${i + 1}`}
+                        onChange={(id) => atualizarAtribuicao(i, sg.id, id)}
+                      />
                       {incompletoAc && !diverge && (
                         <p className="alerta alerta-inline alerta-inline--info">
                           Acomodação incompleta — informe na etapa «Plano atual» e na conferência
