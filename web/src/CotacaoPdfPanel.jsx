@@ -38,8 +38,10 @@ import {
   calcularEstimadoCentavos,
   formatarDiferencaReferencia,
   formatarEstimativaSiscor,
+  abreviarAcomodacao,
   inferirAcomodacao,
   inferirRegiao,
+  ocultaColunaCopart,
   mapaQuantidadesFaixa,
   nomePlanoExibicao,
   resumoFinanceiroOpcao,
@@ -335,7 +337,7 @@ function PainelAuditoria({ op, onSalvarCampo }) {
   );
 }
 
-function TabelaSelecaoCompacta({
+export function TabelaSelecaoCompacta({
   opcoes,
   templateId,
   quantidades,
@@ -402,19 +404,24 @@ function TabelaSelecaoCompacta({
         )}
       </div>
 
-      {grupos.map(({ titulo, opcoes: opsGrupo }) => (
+      {grupos.map(({ titulo, opcoes: opsGrupo }) => {
+        const semCopart = ocultaColunaCopart(titulo);
+        const gradeCls = `linha-plano-selecao${semCopart ? "" : " linha-plano-selecao--com-copart"}`;
+        return (
         <div key={titulo || "geral"} className="grupo-planos">
           {titulo && <h4 className="grupo-planos-titulo">{titulo}</h4>}
           <div className="lista-planos-selecao">
-            <div className="linha-plano-selecao linha-plano-selecao--cabecalho" aria-hidden="true">
+            <div
+              className={`${gradeCls} linha-plano-selecao--cabecalho`}
+              aria-hidden="true"
+            >
               <span className="linha-plano-check" />
               <span>Plano</span>
               <span>Acom.</span>
-              <span>Copart.</span>
-              <span>Mensal est.</span>
-              <span>Δ R$</span>
-              <span>Δ %</span>
-              <span>Status</span>
+              {!semCopart && <span>Copart.</span>}
+              <span className="linha-plano-meta linha-plano-meta--valor">Mensal est.</span>
+              <span className="linha-plano-meta linha-plano-meta--valor">Δ R$</span>
+              <span className="linha-plano-status">Status</span>
             </div>
             {opsGrupo.map((op) => {
               const estado = estadoExibicaoOpcao(op, opcoesComparativo);
@@ -431,13 +438,14 @@ function TabelaSelecaoCompacta({
                 ? "Estimativa indisponível até selecionar o grupo de beneficiários"
                 : undefined;
               const estimativaTexto = est.destacarGrupo ? "Selecione o grupo" : est.texto;
+              const acomodacaoCompleta = inferirAcomodacao(op);
               return (
                 <div
                   key={op.id}
                   role="checkbox"
                   aria-checked={Boolean(op.selecionada_para_comparativo)}
                   tabIndex={0}
-                  className={`linha-plano-selecao linha-plano-selecao--clicavel${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${estado.codigo === "adicionado" ? " linha-plano-selecao--adicionada" : ""}${estado.codigo === "remover" ? " linha-plano-selecao--remover" : ""}`}
+                  className={`${gradeCls} linha-plano-selecao--clicavel${op.selecionada_para_comparativo ? " linha-plano-selecao--marcada" : ""}${estado.codigo === "adicionado" ? " linha-plano-selecao--adicionada" : ""}${estado.codigo === "remover" ? " linha-plano-selecao--remover" : ""}`}
                   onClick={() => onToggle(op.id, !op.selecionada_para_comparativo)}
                   onKeyDown={(e) => {
                     if (e.key === " " || e.key === "Enter") {
@@ -457,23 +465,27 @@ function TabelaSelecaoCompacta({
                   <span className="linha-plano-nome" title={nomePlanoExibicao(op)}>
                     {nomePlanoExibicao(op)}
                   </span>
-                  <span className="linha-plano-meta">{inferirAcomodacao(op)}</span>
-                  <span className="linha-plano-meta linha-plano-meta--copart">{rotuloRegime(op)}</span>
+                  <span className="linha-plano-meta linha-plano-meta--acom" title={acomodacaoCompleta}>
+                    {abreviarAcomodacao(acomodacaoCompleta)}
+                  </span>
+                  {!semCopart && (
+                    <span className="linha-plano-meta linha-plano-meta--copart">{rotuloRegime(op)}</span>
+                  )}
                   <span
                     className={`linha-plano-meta linha-plano-meta--valor${est.destacarGrupo ? " estimativa-indisponivel" : ""}`}
                     title={estimativaTitulo}
                   >
                     {estimativaTexto}
                   </span>
-                  <span className="linha-plano-meta linha-plano-meta--valor">
-                    {diff.indisponivel ? "—" : diff.textoDiff}
-                  </span>
-                  <span className="linha-plano-meta linha-plano-meta--valor">
+                  <span
+                    className="linha-plano-meta linha-plano-meta--valor"
+                    title={diff.indisponivel ? undefined : diff.rotuloSemantica}
+                  >
                     {diff.indisponivel ? (
                       "—"
                     ) : (
                       <>
-                        {diff.textoPct}
+                        {diff.textoDiff}
                         {diff.rotuloSemantica && (
                           <span className="linha-plano-diff-hint" title={diff.rotuloSemantica}>
                             {" "}
@@ -491,7 +503,8 @@ function TabelaSelecaoCompacta({
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
       {filtradas.length === 0 && (
         <p className="muted">Nenhum plano corresponde aos filtros.</p>
       )}
