@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { obterRascunho, salvarRascunho } from "./api";
 import { novoId } from "./constants";
+import { mensagemLacunasAtribuicao } from "./fluxo/avancoEtapa";
 
 function subgruposComVidas(rascunho) {
   const comVidas = new Set();
@@ -119,6 +120,7 @@ export default function PlanosSelecionadosPanel({
   etapaIndice = 4,
   totalEtapas = 5,
   onSalvo,
+  onRegistrarAvanco,
 }) {
   const [rascunho, setRascunho] = useState(null);
   const [cenarios, setCenarios] = useState([]);
@@ -137,6 +139,49 @@ export default function PlanosSelecionadosPanel({
       .catch((e) => setErro(e.message));
   }, [estudoId]);
 
+  const handleSalvar = useCallback(async () => {
+    if (!rascunho) {
+      setErro("Adicione planos ao comparativo");
+      return false;
+    }
+    const sgs = subgruposComVidas(rascunho);
+    if (sgs.length <= 1) {
+      onSalvo?.();
+      return true;
+    }
+    const ops = rascunho.opcoes_proposta || [];
+    const lacunas = cenarios.map((c) => lacunasCenario(c, sgs, ops));
+    if (lacunas.some((l) => l.length > 0)) {
+      setErro(mensagemLacunasAtribuicao(lacunas));
+      return false;
+    }
+    if (!ops.length) {
+      setErro("Adicione planos ao comparativo");
+      return false;
+    }
+    try {
+      const copia = structuredClone(rascunho);
+      copia.cenarios = cenarios.map((c) => ({
+        ...c,
+        rotulo: rotuloCenario(rascunho, c.atribuicoes || []),
+      }));
+      await salvarRascunho(estudoId, copia);
+      setRascunho(copia);
+      setCenarios(copia.cenarios);
+      setMsg("Atribuições confirmadas.");
+      onSalvo?.();
+      return true;
+    } catch (e) {
+      setErro(e.message);
+      return false;
+    }
+  }, [rascunho, cenarios, estudoId, onSalvo]);
+
+  useEffect(() => {
+    if (!onRegistrarAvanco) return undefined;
+    return onRegistrarAvanco(handleSalvar);
+  }, [onRegistrarAvanco, handleSalvar]);
+
   if (!rascunho) return <p className="muted">Carregando atribuições…</p>;
 
   const subgrupos = subgruposComVidas(rascunho);
@@ -148,14 +193,7 @@ export default function PlanosSelecionadosPanel({
   );
   const incompleto = lacunasPorCenario.some((l) => l.length > 0);
   const mensagemFalta = incompleto
-    ? lacunasPorCenario
-        .map((faltando, i) =>
-          faltando.length
-            ? `Cenário ${i + 1}: falta escolher cotação para ${faltando.join(", ")}`
-            : null
-        )
-        .filter(Boolean)
-        .join(" · ")
+    ? mensagemLacunasAtribuicao(lacunasPorCenario)
     : null;
 
   function atualizarAtribuicao(indiceCenario, subgrupoId, opcaoId) {
@@ -195,28 +233,6 @@ export default function PlanosSelecionadosPanel({
       return prev.filter((_, i) => i !== indice);
     });
     setMsg(null);
-  }
-
-  async function handleSalvar() {
-    setErro(null);
-    if (incompleto) {
-      setErro(mensagemFalta || "Complete todas as escolhas antes de confirmar.");
-      return;
-    }
-    try {
-      const copia = structuredClone(rascunho);
-      copia.cenarios = cenarios.map((c) => ({
-        ...c,
-        rotulo: rotuloCenario(rascunho, c.atribuicoes || []),
-      }));
-      await salvarRascunho(estudoId, copia);
-      setRascunho(copia);
-      setCenarios(copia.cenarios);
-      setMsg("Atribuições confirmadas.");
-      onSalvo?.();
-    } catch (e) {
-      setErro(e.message);
-    }
   }
 
   const { divergencias: avisosDivergencia, incompletos: avisosIncompletos } =
@@ -410,11 +426,6 @@ export default function PlanosSelecionadosPanel({
         <div className="action-left">
           {msg && <span className="action-note ok-inline">{msg}</span>}
           {erro && <span className="action-note erro-inline">{erro}</span>}
-        </div>
-        <div className="action-right">
-          <button type="button" onClick={handleSalvar} disabled={incompleto || !opcoes.length}>
-            Confirmar atribuições
-          </button>
         </div>
       </div>
     </section>

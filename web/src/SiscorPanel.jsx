@@ -19,6 +19,7 @@ export default function SiscorPanel({
   totalEtapas = 5,
   resumoPlanoAtual,
   onAtualizado,
+  onRegistrarAvanco,
 }) {
   const [conferencia, setConferencia] = useState(null);
   const [reimportOpções, setReimportOpções] = useState(null);
@@ -77,12 +78,37 @@ export default function SiscorPanel({
         `${res.confirmadas} confirmada(s); ${res.excecoes_restantes} exceção(ões) restante(s).`;
       setMsg(texto);
       recarregarConferencia();
+      return res;
     } catch (err) {
       setErro(err.message);
+      return null;
     } finally {
       setCarregando(false);
     }
   }
+
+  const confirmarParaAvancar = useCallback(async () => {
+    if (!conferencia?.linhas?.length) {
+      setErro("Importe a planilha SISCOR");
+      return false;
+    }
+    const res = await handleConfirmarLote();
+    if (!res) return false;
+    if ((res.excecoes_restantes || 0) > 0) {
+      setErro(`${res.excecoes_restantes} exceção(ões) na base`);
+      return false;
+    }
+    if ((res.confirmadas || 0) === 0) {
+      setErro("Confirme os beneficiários");
+      return false;
+    }
+    return true;
+  }, [conferencia, estudoId]);
+
+  useEffect(() => {
+    if (!onRegistrarAvanco) return undefined;
+    return onRegistrarAvanco(confirmarParaAvancar);
+  }, [onRegistrarAvanco, confirmarParaAvancar]);
 
   const stats = conferencia?.estatisticas;
   const titulares = stats?.qtd_titulares ?? 0;
@@ -642,11 +668,6 @@ export default function SiscorPanel({
                 {excecoes} beneficiário(s) com exceção — revise antes de confirmar.
               </span>
             )}
-          </div>
-          <div className="action-right">
-            <button type="button" onClick={handleConfirmarLote} disabled={carregando}>
-              Confirmar beneficiários sem exceção
-            </button>
           </div>
         </div>
       )}

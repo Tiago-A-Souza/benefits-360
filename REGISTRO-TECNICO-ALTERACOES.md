@@ -793,6 +793,18 @@ documento.
 
 ## 12. Em aberto
 
+### Consentimento do plano atual (etapa 2)
+
+O checkbox «Revisei e confirmo as informações do plano atual» saiu: a
+atestação do operador acontece na aprovação do snapshot, na etapa 5, e o
+checkbox era uma segunda declaração para a mesma coisa.
+
+O campo `escolhas.baseline_escolhido.confirmado` (e
+`escolhas.precedencia_atual_vida.confirmado` quando a precedência é exigida)
+**permanece no modelo** — removê-lo faria snapshot antigo reabrir sem ele,
+em silêncio. O «Próxima etapa» grava esses campos de forma explícita ao
+avançar da etapa 2. O consentimento passou a ser derivado do avanço.
+
 ### Regras comerciais — confirmações pendentes com o Wesley
 
 A aba «Regras contratuais» do documento lê `docs/regras_comerciais_base.csv`.

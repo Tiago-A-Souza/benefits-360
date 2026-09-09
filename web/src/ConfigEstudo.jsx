@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   obterPendencias,
   obterRascunho,
@@ -84,11 +84,16 @@ function CampoDataReferencia({ valor, onChange, periodo }) {
   );
 }
 
-export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 5, onSalvo }) {
+export default function ConfigEstudo({
+  estudoId,
+  etapaIndice = 2,
+  totalEtapas = 5,
+  onSalvo,
+  onRegistrarAvanco,
+}) {
   const [rascunho, setRascunho] = useState(null);
   const [pendencias, setPendencias] = useState([]);
   const [resumoAtual, setResumoAtual] = useState(null);
-  const [confirmacaoFinal, setConfirmacaoFinal] = useState(false);
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -112,13 +117,6 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
         setPendencias(p);
         setResumoAtual(resumo);
         setSugestaoPme(null);
-        setConfirmacaoFinal(
-          Boolean(
-            r.escolhas?.baseline_escolhido?.confirmado &&
-              (!resumo?.exige_escolha_precedencia ||
-                r.escolhas?.precedencia_atual_vida?.confirmado)
-          )
-        );
       })
       .catch((e) => setErro(e.message));
   }, [estudoId]);
@@ -193,8 +191,11 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
     });
   }
 
-  async function handleSalvar() {
-    if (!rascunho) return;
+  const handleSalvar = useCallback(async () => {
+    if (!rascunho) {
+      setErro("Configure o plano atual");
+      return false;
+    }
     setSalvando(true);
     setErro(null);
     const copia = structuredClone(rascunho);
@@ -206,9 +207,9 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
       copia.escolhas.precedencia_atual_vida.confirmado = false;
       copia.escolhas.precedencia_atual_vida.valor = null;
     } else {
-      copia.escolhas.baseline_escolhido.confirmado = confirmacaoFinal;
+      copia.escolhas.baseline_escolhido.confirmado = true;
       if (exigePrecedencia) {
-        copia.escolhas.precedencia_atual_vida.confirmado = confirmacaoFinal;
+        copia.escolhas.precedencia_atual_vida.confirmado = true;
       }
     }
     try {
@@ -228,21 +229,42 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
         mapaCarga[s.subgrupo_id] = s.reajuste_bps ?? null;
       }
       sugestaoNaCargaRef.current = mapaCarga;
-      setConfirmacaoFinal(
-        Boolean(
-          r.escolhas?.baseline_escolhido?.confirmado &&
-            (!resumo?.exige_escolha_precedencia ||
-              r.escolhas?.precedencia_atual_vida?.confirmado)
-        )
-      );
       setMsg(seguroNovo ? "Referência de idades salva." : "Informações do plano atual salvas.");
       onSalvo?.();
+      const bloqueios = (p || []).filter((x) => x.tipo === "bloqueio" && x.etapa === 2);
+      if (seguroNovo && !r.escolhas?.data_referencia_idade) {
+        setErro("Informe a data de referência das idades");
+        return false;
+      }
+      if (!seguroNovo && !r.escolhas?.baseline_escolhido?.confirmado) {
+        setErro("Confirme as informações do plano");
+        return false;
+      }
+      if (
+        !seguroNovo &&
+        resumo?.exige_escolha_precedencia &&
+        !r.escolhas?.precedencia_atual_vida?.confirmado
+      ) {
+        setErro("Confirme a origem dos valores atuais");
+        return false;
+      }
+      if (bloqueios.length) {
+        setErro(bloqueios[0].titulo);
+        return false;
+      }
+      return true;
     } catch (e) {
       setErro(e.message);
+      return false;
     } finally {
       setSalvando(false);
     }
-  }
+  }, [estudoId, onSalvo, rascunho, resumoAtual, sugestaoPme]);
+
+  useEffect(() => {
+    if (!onRegistrarAvanco) return undefined;
+    return onRegistrarAvanco(handleSalvar);
+  }, [onRegistrarAvanco, handleSalvar]);
 
   function vidasPlano(subgrupoId) {
     return resumoAtual?.planos?.find((p) => p.subgrupo_id === subgrupoId)
@@ -625,21 +647,9 @@ export default function ConfigEstudo({ estudoId, etapaIndice = 2, totalEtapas = 
 
       <div className="action-bar">
         <div className="action-left">
-          <label className="checkbox confirmacao-final">
-            <input
-              type="checkbox"
-              checked={confirmacaoFinal}
-              onChange={(e) => setConfirmacaoFinal(e.target.checked)}
-            />
-            Revisei e confirmo as informações do plano atual.
-          </label>
           {msg && <span className="action-note ok-inline">{msg}</span>}
           {erro && <span className="action-note erro-inline">{erro}</span>}
-        </div>
-        <div className="action-right">
-          <button type="button" onClick={handleSalvar} disabled={salvando}>
-            {salvando ? "Salvando…" : "Salvar plano atual"}
-          </button>
+          {salvando && <span className="action-note">Salvando…</span>}
         </div>
       </div>
 
