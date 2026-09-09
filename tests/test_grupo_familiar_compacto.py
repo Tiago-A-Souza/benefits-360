@@ -281,4 +281,52 @@ def test_15_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.13.4"
+    assert RENDERER_VERSAO == "html@2.13.5"
+
+
+def test_rotulo_reajuste_cabecalho():
+    from newport_app.presentation.html_renderer import _rotulo_reajuste_cabecalho
+
+    assert _rotulo_reajuste_cabecalho(None) == "REAJUSTADO"
+    assert _rotulo_reajuste_cabecalho("+12%") == "REAJUSTADO 12%"
+    assert _rotulo_reajuste_cabecalho("-3,50%") == "REAJUSTADO -3,50%"
+    assert _rotulo_reajuste_cabecalho("0%") == "REAJUSTADO 0%"
+
+
+def test_percentual_cabecalho_unico_nao_usa_o_primeiro():
+    """Dois planos vigentes com taxas distintas → sem taxa única no cabeçalho."""
+    from types import SimpleNamespace
+
+    from newport_app.presentation.html_renderer import (
+        _percentual_unico_membros,
+        _rotulo_reajuste_cabecalho,
+    )
+
+    model = SimpleNamespace(
+        grupos_familiares=[
+            SimpleNamespace(
+                membros=[
+                    SimpleNamespace(subgrupo_id="plano-a"),
+                    SimpleNamespace(subgrupo_id="plano-b"),
+                ]
+            )
+        ]
+    )
+    iguais = {"plano-a": "+12%", "plano-b": "+12%"}
+    assert _percentual_unico_membros(model, iguais) == "+12%"
+    distintos = {"plano-a": "+12%", "plano-b": "+8%"}
+    assert _percentual_unico_membros(model, distintos) is None
+    assert _rotulo_reajuste_cabecalho(None) == "REAJUSTADO"
+
+
+def test_reajuste_no_cabecalho_nao_nas_linhas(tmp_path: Path):
+    html, _vm = _html_anistia_grupos(tmp_path)
+    tabelas = re.findall(
+        r"<table class='tabela-grupo-familiar[^']*'>(.*?)</table>", html, re.S
+    )
+    assert tabelas
+    for tab in tabelas:
+        assert "data-l='REAJUSTADO 12%'" in tab
+        tbody = re.search(r"<tbody.*", tab, re.S)
+        assert tbody, "tbody ausente"
+        assert "class='ajuste'" not in tbody.group(0)

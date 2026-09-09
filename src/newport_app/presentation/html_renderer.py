@@ -34,7 +34,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.4"
+RENDERER_VERSAO = "html@2.13.5"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -234,12 +234,35 @@ def _td_proposta(col=None, *, valor_centavos: int | None = None, diff_centavos: 
     return f"<td>{val}</td>"
 
 
+def _rotulo_reajuste_cabecalho(percentual: str | None) -> str:
+    """Segunda linha do th: «REAJUSTADO» ou «REAJUSTADO 12%» (sem o «+» das células)."""
+    if not percentual:
+        return "REAJUSTADO"
+    rotulo = percentual[1:] if percentual.startswith("+") else percentual
+    return f"REAJUSTADO {rotulo}"
+
+
+def _percentual_unico_membros(model: PresentationViewModel, pct_por_subgrupo: dict[str, str | None]) -> str | None:
+    """Taxa única de todos os membros; None se faltar ou se houver taxas diferentes."""
+    vistos: set[str] = set()
+    for g in model.grupos_familiares:
+        for b in g.membros:
+            pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+            if not pct:
+                return None
+            vistos.add(pct)
+    if len(vistos) == 1:
+        return next(iter(vistos))
+    return None
+
+
 def _cabecalho_tabela_grupo(
     op_ids: list[str],
     rotulos: dict[str, str],
     *,
     agregados: bool,
     seguro_novo: bool,
+    percentual: str | None = None,
 ) -> str:
     col_rotulo = "Membro" if agregados else "Nome"
     cab = f"<th>{col_rotulo}</th>"
@@ -247,9 +270,10 @@ def _cabecalho_tabela_grupo(
         cab += "<th>Idade</th><th>Faixa</th><th>Vínculo</th>"
     cab += "<th>Plano atual</th>"
     if not seguro_novo:
+        segunda = html.escape(_rotulo_reajuste_cabecalho(percentual), quote=True)
         cab += (
             "<th class='atual'><span class='op'>Contrato atual</span>"
-            "<span class='od' data-l='REAJUSTADO'></span></th>"
+            f"<span class='od' data-l='{segunda}'></span></th>"
         )
     partes = ["<thead><tr>", cab]
     for op_id in op_ids:
@@ -348,6 +372,7 @@ def _render_tabela_grupo_familiar(
     for secao in model.secoes_regime:
         for pl in secao.planos_atuais:
             pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
+    pct_cabecalho = _percentual_unico_membros(model, pct_por_subgrupo)
     n_id = _n_cols_id_grupo(agregados=agregados, seguro_novo=seguro_novo)
     n_cols = n_id + len(op_ids)
     n_vidas = sum(len(g.membros) for g in model.grupos_familiares)
@@ -359,7 +384,11 @@ def _render_tabela_grupo_familiar(
     partes = [
         f"<div class='{classe_rolo}'><table class='{classe_tabela}'>",
         _cabecalho_tabela_grupo(
-            op_ids, rotulos, agregados=agregados, seguro_novo=seguro_novo
+            op_ids,
+            rotulos,
+            agregados=agregados,
+            seguro_novo=seguro_novo,
+            percentual=pct_cabecalho,
         ),
     ]
     for g in model.grupos_familiares:
@@ -370,7 +399,7 @@ def _render_tabela_grupo_familiar(
                 f"<tr class='grupo-cab'><td colspan='{n_cols}'>{titulo}</td></tr>"
             )
         for b in g.membros:
-            pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+            pct = None if pct_cabecalho else pct_por_subgrupo.get(b.subgrupo_id or "")
             partes.append(
                 _linha_membro_grupo(
                     b,

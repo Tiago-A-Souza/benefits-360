@@ -210,7 +210,7 @@ def test_24_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.13.4"
+    assert RENDERER_VERSAO == "html@2.13.5"
     src = _CMP.read_text(encoding="utf-8")
     assert "col-diffs" not in src
     assert "Ver diferenças contra o contrato atual" not in src
