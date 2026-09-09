@@ -34,7 +34,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.3"
+RENDERER_VERSAO = "html@2.13.5"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -48,6 +48,7 @@ def _rotulo_grupo_agregado(rotulo: str | None) -> bool:
 
 
 _ID_TITDEP = "col-titdep"
+_ID_DIFFS = "col-diffs"
 
 
 def _controle_titdep() -> str:
@@ -61,6 +62,22 @@ def _controle_titdep() -> str:
         "</label>"
         '<p class="sr-only" id="hint-titdep">'
         "Mostra ou oculta as colunas Tit., Dep. e Vidas em todas as tabelas de faixa etária."
+        "</p>"
+    )
+
+
+def _controle_diffs() -> str:
+    """Checkbox + rótulo irmãos. A visibilidade das diferenças é CSS puro."""
+    return (
+        f'<input type="checkbox" id="{_ID_DIFFS}" class="doc-tab-input" '
+        'aria-describedby="hint-diffs">'
+        f'<label class="ctrl-diffs no-print" for="{_ID_DIFFS}">'
+        '<span class="ctrl-diffs-abrir">Ver diferenças contra o contrato atual</span>'
+        '<span class="ctrl-diffs-fechar">Ocultar diferenças contra o contrato atual</span>'
+        "</label>"
+        '<p class="sr-only" id="hint-diffs">'
+        "Mostra ou oculta as diferenças contra o contrato atual em todas as "
+        "tabelas de grupo familiar."
         "</p>"
     )
 
@@ -213,8 +230,30 @@ def _td_proposta(col=None, *, valor_centavos: int | None = None, diff_centavos: 
     val = _cel(valor_centavos)
     diff = _cel_diff(diff_centavos)
     if diff:
-        return f"<td>{val}<span class='uni'>{diff}</span></td>"
+        return f"<td>{val}<span class='uni diff-vs-atual'>{diff}</span></td>"
     return f"<td>{val}</td>"
+
+
+def _rotulo_reajuste_cabecalho(percentual: str | None) -> str:
+    """Segunda linha do th: «REAJUSTADO» ou «REAJUSTADO 12%» (sem o «+» das células)."""
+    if not percentual:
+        return "REAJUSTADO"
+    rotulo = percentual[1:] if percentual.startswith("+") else percentual
+    return f"REAJUSTADO {rotulo}"
+
+
+def _percentual_unico_membros(model: PresentationViewModel, pct_por_subgrupo: dict[str, str | None]) -> str | None:
+    """Taxa única de todos os membros; None se faltar ou se houver taxas diferentes."""
+    vistos: set[str] = set()
+    for g in model.grupos_familiares:
+        for b in g.membros:
+            pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+            if not pct:
+                return None
+            vistos.add(pct)
+    if len(vistos) == 1:
+        return next(iter(vistos))
+    return None
 
 
 def _cabecalho_tabela_grupo(
@@ -223,6 +262,7 @@ def _cabecalho_tabela_grupo(
     *,
     agregados: bool,
     seguro_novo: bool,
+    percentual: str | None = None,
 ) -> str:
     col_rotulo = "Membro" if agregados else "Nome"
     cab = f"<th>{col_rotulo}</th>"
@@ -230,9 +270,10 @@ def _cabecalho_tabela_grupo(
         cab += "<th>Idade</th><th>Faixa</th><th>Vínculo</th>"
     cab += "<th>Plano atual</th>"
     if not seguro_novo:
+        segunda = html.escape(_rotulo_reajuste_cabecalho(percentual), quote=True)
         cab += (
             "<th class='atual'><span class='op'>Contrato atual</span>"
-            "<span class='od' data-l='REAJUSTADO'></span></th>"
+            f"<span class='od' data-l='{segunda}'></span></th>"
         )
     partes = ["<thead><tr>", cab]
     for op_id in op_ids:
@@ -331,6 +372,7 @@ def _render_tabela_grupo_familiar(
     for secao in model.secoes_regime:
         for pl in secao.planos_atuais:
             pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
+    pct_cabecalho = _percentual_unico_membros(model, pct_por_subgrupo)
     n_id = _n_cols_id_grupo(agregados=agregados, seguro_novo=seguro_novo)
     n_cols = n_id + len(op_ids)
     n_vidas = sum(len(g.membros) for g in model.grupos_familiares)
@@ -342,7 +384,11 @@ def _render_tabela_grupo_familiar(
     partes = [
         f"<div class='{classe_rolo}'><table class='{classe_tabela}'>",
         _cabecalho_tabela_grupo(
-            op_ids, rotulos, agregados=agregados, seguro_novo=seguro_novo
+            op_ids,
+            rotulos,
+            agregados=agregados,
+            seguro_novo=seguro_novo,
+            percentual=pct_cabecalho,
         ),
     ]
     for g in model.grupos_familiares:
@@ -353,7 +399,7 @@ def _render_tabela_grupo_familiar(
                 f"<tr class='grupo-cab'><td colspan='{n_cols}'>{titulo}</td></tr>"
             )
         for b in g.membros:
-            pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+            pct = None if pct_cabecalho else pct_por_subgrupo.get(b.subgrupo_id or "")
             partes.append(
                 _linha_membro_grupo(
                     b,
@@ -398,13 +444,14 @@ def _render_visao_grupo_familiar(
         for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA)
     ]
     if len(chunks) <= 1:
-        return _render_tabela_grupo_familiar(
+        tabelas = _render_tabela_grupo_familiar(
             model,
             op_ids,
             rotulos,
             agregados=agregados,
             seguro_novo=seguro_novo,
         )
+        return _controle_diffs() + tabelas
     partes = [
         _render_tabela_grupo_familiar(
             model,
@@ -428,7 +475,7 @@ def _render_visao_grupo_familiar(
             )
         )
     partes.append("</div>")
-    return "".join(partes)
+    return _controle_diffs() + "".join(partes)
 
 
 def _tem_copart_percentual(model: PresentationViewModel) -> bool:
@@ -1171,7 +1218,8 @@ tfoot tr td.atual{background:#F1E7D6}
 #tab-regras:focus-visible ~ .doc-controles label[for="tab-regras"],
 #tab-todas:focus-visible ~ .doc-controles label[for="tab-todas"],
 #tab-resumo:focus-visible ~ .doc-controles label.doc-btn-voltar,
-#col-titdep:focus-visible ~ .ctrl-titdep{
+#col-titdep:focus-visible ~ .ctrl-titdep,
+#col-diffs:focus-visible ~ .ctrl-diffs{
   outline:3px solid #93c5fd;outline-offset:2px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .ctrl-titdep{display:inline-block;margin:18px 0 4px;padding:7px 13px;font-size:11.5px;font-weight:600;
@@ -1187,6 +1235,15 @@ tfoot tr td.atual{background:#F1E7D6}
 #col-titdep:checked ~ * .tabela-faixas td.col-titdep,
 #col-titdep:checked ~ * .tabela-faixas th.col-vidas,
 #col-titdep:checked ~ * .tabela-faixas td.col-vidas{display:table-cell}
+.ctrl-diffs{display:inline-block;margin:18px 0 4px;padding:7px 13px;font-size:11.5px;font-weight:600;
+  letter-spacing:.03em;color:var(--grafite-2);border:1px solid var(--risco);border-radius:2px;
+  cursor:pointer;background:var(--papel)}
+.ctrl-diffs:hover{border-color:var(--ouro);color:var(--ouro-esc);background:var(--ouro-cl)}
+.ctrl-diffs-fechar{display:none}
+.tabela-grupo-familiar .diff-vs-atual{display:none}
+#col-diffs:checked ~ .ctrl-diffs .ctrl-diffs-abrir{display:none}
+#col-diffs:checked ~ .ctrl-diffs .ctrl-diffs-fechar{display:inline}
+#col-diffs:checked ~ * .tabela-grupo-familiar .diff-vs-atual{display:block}
 .recomenda{display:flex;gap:0;flex-wrap:wrap;margin:30px 0 0;border:1px solid var(--risco)}
 .rc{flex:1;min-width:190px;padding:20px 22px;border-right:1px solid var(--risco)}
 .rc:last-child{border-right:0}
@@ -1210,7 +1267,7 @@ tfoot tr td.atual{background:#F1E7D6}
 @media print{
   body{background:#fff}
   .folha{box-shadow:none;max-width:none}
-  .doc-controles,.doc-tab-input,.ctrl-titdep{display:none !important}
+  .doc-controles,.doc-tab-input,.ctrl-titdep,.ctrl-diffs{display:none !important}
   .rolo{overflow:visible}
   thead{display:table-header-group}
   .tit,.secao-regime{page-break-after:avoid}

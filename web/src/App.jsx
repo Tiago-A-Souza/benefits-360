@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listarExtracoesCotacao,
   obterConferenciaSiscor,
@@ -19,6 +19,7 @@ import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
 import { linhaEstadoPasso } from "./fluxo/linhasEstado";
 import { passosVisiveis } from "./fluxo/passos";
+import { proximaEtapaClicavel } from "./fluxo/avancoEtapa";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 
 export default function App() {
@@ -35,6 +36,13 @@ export default function App() {
   });
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [cestaGlobal, setCestaGlobal] = useState([]);
+  const avancarEtapaRef = useRef(null);
+  const registrarAvancoEtapa = useCallback((fn) => {
+    avancarEtapaRef.current = fn;
+    return () => {
+      if (avancarEtapaRef.current === fn) avancarEtapaRef.current = null;
+    };
+  }, []);
 
   const recarregarContexto = useCallback(async () => {
     if (!estudoId) return;
@@ -101,8 +109,8 @@ export default function App() {
 
   const chavePassoAtual = passos[passo - 1]?.chave;
 
-  function irProximo() {
-    if (passo >= passos.length || !proximaEtapaDisponivel(passo, ctxFluxo)) return;
+  async function irProximo() {
+    if (passo >= passos.length) return;
     if (chavePassoAtual === "cotacoes") {
       const aviso = avisoAvancoCotacoesPendentes(
         ctxFluxo.extracoes,
@@ -110,7 +118,15 @@ export default function App() {
       );
       if (aviso && !window.confirm(aviso)) return;
     }
-    setPasso(passo + 1);
+    const confirmar = avancarEtapaRef.current;
+    if (typeof confirmar === "function") {
+      const ok = await confirmar();
+      if (!ok) return;
+      await recarregarContexto();
+    } else if (!proximaEtapaDisponivel(passo, ctxFluxo)) {
+      return;
+    }
+    setPasso((atual) => atual + 1);
   }
 
   function irAnterior() {
@@ -216,6 +232,7 @@ export default function App() {
                 totalEtapas={passos.length}
                 resumoPlanoAtual={ctxFluxo.resumoPlanoAtual}
                 onAtualizado={recarregarContexto}
+                onRegistrarAvanco={registrarAvancoEtapa}
               />
             )}
             {chavePassoAtual === "plano" && (
@@ -224,6 +241,7 @@ export default function App() {
                 etapaIndice={passo}
                 totalEtapas={passos.length}
                 onSalvo={recarregarContexto}
+                onRegistrarAvanco={registrarAvancoEtapa}
               />
             )}
             {chavePassoAtual === "cotacoes" && (
@@ -245,6 +263,7 @@ export default function App() {
                 etapaIndice={passo}
                 totalEtapas={passos.length}
                 onSalvo={recarregarContexto}
+                onRegistrarAvanco={registrarAvancoEtapa}
               />
             )}
             {chavePassoAtual === "comparativo" && (
@@ -280,7 +299,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={irProximo}
-                  disabled={!proximaEtapaDisponivel(passo, ctxFluxo)}
+                  disabled={
+                    !proximaEtapaClicavel(
+                      chavePassoAtual,
+                      passo,
+                      ctxFluxo,
+                      proximaEtapaDisponivel
+                    )
+                  }
                   title={
                     !proximaEtapaDisponivel(passo, ctxFluxo)
                       ? statusPassos[passo]?.pendencia || "Conclua esta etapa primeiro"

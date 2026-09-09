@@ -225,6 +225,11 @@ export async function obterResumoPlanoAtual(estudoId) {
   return tratarResposta(res, "Não foi possível carregar o resumo do plano atual.");
 }
 
+export async function obterMatrizEstimativa(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/estimativa-opcao-subgrupo`);
+  return tratarResposta(res, "Não foi possível carregar a estimativa por plano vigente.");
+}
+
 export async function obterSugestaoReajustePme(estudoId, dataReferenciaIdade) {
   const params = new URLSearchParams();
   params.set("data_referencia_idade", dataReferenciaIdade || "");

@@ -58,6 +58,20 @@ export function inferirAcomodacao(op) {
   return "—";
 }
 
+/** Rótulo curto na grade; o nome completo vai no title. */
+export function abreviarAcomodacao(texto) {
+  if (!texto || texto === "—") return texto;
+  const t = String(texto).trim().toLowerCase();
+  if (t === "apartamento" || t.startsWith("apart")) return "Apt.";
+  if (t === "enfermaria" || t.startsWith("enferm")) return "Enf.";
+  return texto;
+}
+
+/** Coluna Copart. some só quando a seção já nomeia o regime. */
+export function ocultaColunaCopart(tituloGrupo) {
+  return Boolean(tituloGrupo);
+}
+
 export function inferirRegiao(op) {
   const n = (op.plano_nome?.texto || "").toUpperCase();
   if (n.includes("RIO")) return "Rio";

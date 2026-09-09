@@ -85,6 +85,17 @@ class ResumoPlanoAtualItem(BaseModel):
     observacao: str | None = None
 
 
+class CelulaEstimativaSubgrupo(BaseModel):
+    opcao_id: str
+    subgrupo_id: str
+    estimado_centavos: int | None = None
+    diff_centavos: int | None = None
+
+
+class MatrizEstimativaResponse(BaseModel):
+    celulas: list[CelulaEstimativaSubgrupo] = Field(default_factory=list)
+
+
 class ResumoPlanoAtualResponse(BaseModel):
     planos: list[ResumoPlanoAtualItem] = Field(default_factory=list)
     total_vigente_centavos: int | None = None

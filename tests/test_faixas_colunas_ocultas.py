@@ -161,9 +161,8 @@ def test_07_modo_completo_controle_presente(tmp_path: Path):
 def test_08_impressao_respeita_estado_e_esconde_controle(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
     assert "@media print" in html
-    assert ".ctrl-titdep{display:none !important}" in html.replace(" ", "") or (
-        ".doc-controles,.doc-tab-input,.ctrl-titdep{display:none !important}" in html
-    )
+    compacto = html.replace(" ", "")
+    assert ".ctrl-titdep" in compacto and "display:none!important" in compacto
     # Nenhuma regra de impressão força as colunas a aparecer ou sumir — o
     # :checked do checkbox continua valendo no papel.
     bloco_print = html.split("@media print")[1].split("}", 8)[0]

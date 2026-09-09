@@ -25,6 +25,23 @@ export function centavosParaReaisExibicao(centavos) {
   return `${sinal}R$ ${inteiro},${String(cents).padStart(2, "0")}`;
 }
 
+/** Formata um diff já calculado no backend. Não subtrai nem estima. */
+export function formatarDiffCentavos(centavos) {
+  if (centavos == null) return null;
+  const texto = centavosParaReaisExibicao(Math.abs(centavos));
+  if (centavos > 0) return `+${texto}`;
+  if (centavos < 0) return `-${texto}`;
+  return texto;
+}
+
+/** Mesma regra do HTML: negativo (economia) verde, positivo (acréscimo) vermelho. */
+export function classeDiffEstimativa(centavos) {
+  if (centavos == null) return null;
+  if (centavos < 0) return "cmp-valor--economia";
+  if (centavos > 0) return "cmp-valor--aumento";
+  return "cmp-valor--neutro";
+}
+
 export function reaisTextoParaCentavos(texto) {
   if (texto == null) return { ok: false, erro: "Informe um valor." };
   const bruto = String(texto).trim().replace(/\s/g, "");
