@@ -310,6 +310,39 @@ export async function selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, sel
   return tratarResposta(res, "Não foi possível atualizar a seleção. Recarregue a cotação e tente de novo.");
 }
 
+export async function obterSelecaoPorGrupo(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/selecao-planos-grupo`);
+  return tratarResposta(res, "Não foi possível carregar a seleção por grupo.");
+}
+
+export async function salvarSelecaoPorGrupo(
+  estudoId,
+  { subgrupoId, opcaoIds, confirmarRemocoes = false }
+) {
+  const res = await fetch(`${API}/estudos/${estudoId}/selecao-planos-grupo`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subgrupo_id: subgrupoId,
+      opcao_ids: opcaoIds,
+      confirmar_remocoes: confirmarRemocoes,
+    }),
+  });
+  if (res.status === 409) {
+    const body = await res.json();
+    if (body.detail?.codigo === "APP-SEL-001") {
+      const err = new Error(
+        body.detail?.mensagem || "Esta seleção remove planos em uso na etapa 4."
+      );
+      err.impactoRemocao = body.detail?.impacto_remocao || null;
+      err.codigo = "APP-SEL-001";
+      throw err;
+    }
+    throw montarErroApi(res, body, "Não foi possível gravar a seleção.");
+  }
+  return tratarResposta(res, "Não foi possível gravar a seleção.");
+}
+
 export async function confirmarLoteExtracao(estudoId, extracaoId) {
   const res = await fetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/confirmar-lote`,

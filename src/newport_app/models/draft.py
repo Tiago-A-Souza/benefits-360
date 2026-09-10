@@ -243,6 +243,19 @@ class CenarioRascunho(BaseModel):
     atribuicoes: list[AtribuicaoRascunho] = Field(default_factory=list)
 
 
+class SelecaoPlanosGrupoRascunho(BaseModel):
+    """Quais cotações competem com um plano vigente — molde de AtribuicaoRascunho,
+    um-para-muitos.
+
+    Ausência de entrada para um subgrupo **não** é seleção vazia: significa «todo
+    o catálogo», e é lida assim por `opcoes_do_subgrupo`. Por isso não há default
+    preenchido em silêncio no modelo.
+    """
+
+    subgrupo_id: str
+    opcao_ids: list[str] = Field(default_factory=list)
+
+
 class RegimeCopartRascunho(BaseModel):
     id: str
     tipo: Literal["sem", "parcial", "percentual"]
@@ -261,6 +274,7 @@ class RascunhoEstudo(BaseModel):
     opcoes_proposta: list[OpcaoPropostaRascunho] = Field(default_factory=list)
     regimes_copart: list[RegimeCopartRascunho] = Field(default_factory=list)
     cenarios: list[CenarioRascunho] = Field(default_factory=list)
+    selecao_planos_por_grupo: list[SelecaoPlanosGrupoRascunho] = Field(default_factory=list)
     documentos_cotacao: list[DocumentoCotacaoRascunho] = Field(default_factory=list)
     documentos_siscor: list[DocumentoSiscorRascunho] = Field(default_factory=list)
     escolhas: EscolhasEstudo = Field(default_factory=EscolhasEstudo)

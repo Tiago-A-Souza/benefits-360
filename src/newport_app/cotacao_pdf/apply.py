@@ -20,13 +20,9 @@ from newport_app.models.draft import (
     RegimeCopartRascunho,
     TabelaFaixaRascunho,
 )
-from newport_app.models.responses_cotacao import (
-    AtribuicaoDesfeitaExtracao,
-    CenarioIncompletoExtracao,
-    ImpactoRemocaoExtracao,
-)
+from newport_app.models.responses_remocao import ImpactoRemocao
 from newport_app.rascunho.acomodacao import chave_plano_equivalente, tabela_por_faixa
-from newport_app.rascunho.cenarios_sync import rotulo_cenario, subgrupos_com_vidas
+from newport_app.rascunho.impacto_remocao import montar_impacto_remocao
 
 _MOTIVO_SELECAO_CONSCIENTE = (
     "Selecione conscientemente quais planos levar ao comparativo "
@@ -94,83 +90,24 @@ def _ids_removidos(
     }
 
 
-def _rotulo_subgrupo(rascunho: RascunhoEstudo, alvo_id: str) -> str:
-    sg = next((s for s in rascunho.subgrupos_atuais if s.id == alvo_id), None)
-    return sg.plano_nome if sg and sg.plano_nome else alvo_id
-
-
 def impacto_remocao_reaplicacao(
     rascunho: RascunhoEstudo,
     extracao: ExtracaoCotacaoCandidata,
-) -> ImpactoRemocaoExtracao:
+) -> ImpactoRemocao:
     """Inventário do que a re-aplicação vai remover — sem mutar o rascunho.
 
-    Roda antes de qualquer escrita para o operador poder desistir. Um cenário é
-    dado como incompleto pela mesma regra do B-06: todo subgrupo com vidas
-    incluídas precisa de atribuição.
+    Roda antes de qualquer escrita para o operador poder desistir.
     """
     opcoes_atuais = _opcoes_apos_exclusoes(rascunho, extracao)
     aplicaveis, _bloqueios, abortar = _ids_aplicaveis(opcoes_atuais, extracao)
     if abortar:
-        return ImpactoRemocaoExtracao()
+        return ImpactoRemocao()
 
     ids_removidos = _ids_removidos(opcoes_atuais, extracao, aplicaveis)
     ids_excluidos = {op.id for op in rascunho.opcoes_proposta} - {
         op.id for op in opcoes_atuais
     }
-    saindo = ids_removidos | ids_excluidos
-    if not saindo:
-        return ImpactoRemocaoExtracao()
-
-    por_id = {op.id: op for op in rascunho.opcoes_proposta}
-    planos = [
-        (por_id[oid].plano_nome or oid) for oid in saindo if oid in por_id
-    ]
-
-    desfeitas: list[AtribuicaoDesfeitaExtracao] = []
-    incompletos: list[CenarioIncompletoExtracao] = []
-    obrigatorios = subgrupos_com_vidas(rascunho)
-
-    for cenario in rascunho.cenarios:
-        rotulo = rotulo_cenario(rascunho, cenario)
-        perdidas = [a for a in cenario.atribuicoes if a.opcao_plano_id in saindo]
-        for a in perdidas:
-            desfeitas.append(
-                AtribuicaoDesfeitaExtracao(
-                    cenario_id=cenario.id,
-                    cenario_rotulo=rotulo,
-                    alvo_id=a.alvo_id,
-                    alvo_rotulo=_rotulo_subgrupo(rascunho, a.alvo_id),
-                    plano=(por_id[a.opcao_plano_id].plano_nome or a.opcao_plano_id)
-                    if a.opcao_plano_id in por_id
-                    else (a.opcao_plano_id or ""),
-                )
-            )
-        if not perdidas:
-            continue
-        atendidos = {
-            a.alvo_id
-            for a in cenario.atribuicoes
-            if a.opcao_plano_id and a.opcao_plano_id not in saindo
-        }
-        orfaos = [sg for sg in obrigatorios if sg not in atendidos]
-        if orfaos:
-            incompletos.append(
-                CenarioIncompletoExtracao(
-                    cenario_id=cenario.id,
-                    cenario_rotulo=rotulo,
-                    alvos_sem_atribuicao=[
-                        _rotulo_subgrupo(rascunho, sg) for sg in orfaos
-                    ],
-                    ficou_vazio=not atendidos,
-                )
-            )
-
-    return ImpactoRemocaoExtracao(
-        planos_removidos=sorted(planos),
-        atribuicoes_desfeitas=desfeitas,
-        cenarios_incompletos=incompletos,
-    )
+    return montar_impacto_remocao(rascunho, ids_removidos | ids_excluidos)
 
 
 def _validade_documento(extracao: ExtracaoCotacaoCandidata):

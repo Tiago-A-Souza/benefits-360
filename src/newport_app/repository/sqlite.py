@@ -12,6 +12,7 @@ from newport_app.draft_compiler.structural import (
 )
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
+from newport_app.rascunho.selecao_grupo import sanear_selecao_por_grupo
 from newport_app.services.comparativo_confirmacao import sanitizar_confirmacao_comparativo
 from newport_app.services.comparativo_ui import sanitizar_selecao_apresentacao
 from newport_app.repository.migration import migrar_estudos_db
@@ -38,12 +39,14 @@ class SQLiteStudyRepository:
         rascunho = sincronizar_cenarios(rascunho)
         sanitizar_selecao_apresentacao(rascunho)
         sanitizar_confirmacao_comparativo(rascunho)
+        sanear_selecao_por_grupo(rascunho)
         return rascunho
 
     def salvar_rascunho(self, rascunho: RascunhoEstudo) -> None:
         rascunho = sincronizar_cenarios(rascunho)
         sanitizar_selecao_apresentacao(rascunho)
         sanitizar_confirmacao_comparativo(rascunho)
+        sanear_selecao_por_grupo(rascunho)
         erros = validar_estrutura(rascunho)
         if erros:
             raise RascunhoEstruturalInvalidoError(erros)

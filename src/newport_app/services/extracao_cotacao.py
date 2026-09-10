@@ -26,11 +26,11 @@ from newport_app.cotacao_pdf.reconcile import reconciliar_opcao
 from newport_app.cotacao_pdf.validation import pendencias_opcao
 from newport_app.models.cotacao_pdf import ExtracaoCotacaoCandidata, OpcaoCotacaoCandidata, ValorExtraido
 from newport_app.models.draft import PriceBasisRascunho
+from newport_app.models.responses_remocao import ImpactoRemocao
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     BloqueioOpcaoExtracao,
     ConfirmacaoExtracaoResponse,
-    ImpactoRemocaoExtracao,
     DescartarExtracaoResponse,
     EstimarPropostasResponse,
     RemoverExtracaoResponse,
@@ -74,7 +74,7 @@ class AplicacaoExtracaoError(Exception):
 class RemocaoExigeConfirmacaoError(Exception):
     """Re-aplicação que desfaz atribuição de cenário — nada foi gravado ainda."""
 
-    def __init__(self, mensagem: str, impacto: ImpactoRemocaoExtracao) -> None:
+    def __init__(self, mensagem: str, impacto: ImpactoRemocao) -> None:
         super().__init__(mensagem)
         self.impacto = impacto
 

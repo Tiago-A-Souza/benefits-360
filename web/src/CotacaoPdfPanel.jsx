@@ -55,6 +55,7 @@ import {
   textoRelatoRemocao,
   traduzirAlerta,
 } from "./cotacaoPdf/utils";
+import SelecaoPorGrupo from "./cotacaoPdf/SelecaoPorGrupo.jsx";
 import {
   executarUploadLote,
   formatarResumoUploads,
@@ -1379,6 +1380,7 @@ export default function CotacaoPdfPanel({
     <div className="cotacao-pdf-panel">
       {fase === "lista" && (
         <>
+          <SelecaoPorGrupo estudoId={estudoId} onAlterado={onAplicado} />
           <ComparativoResumo
             opcoesComparativo={opcoesComparativo}
             extracoes={extracoes}

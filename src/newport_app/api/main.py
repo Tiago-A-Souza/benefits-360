@@ -66,6 +66,17 @@ from newport_app.models.responses import (
     SugestaoReajustePmeItem,
     SugestaoReajustePmeResponse,
 )
+from newport_app.models.responses_selecao_grupo import (
+    SalvarSelecaoGrupoRequest,
+    SalvarSelecaoGrupoResponse,
+    SelecaoPlanosGrupoResponse,
+)
+from newport_app.services.selecao_grupo import (
+    SelecaoRemocaoExigeConfirmacaoError,
+    SubgrupoDesconhecidoError,
+    aplicar_selecao_do_grupo,
+    montar_selecao_por_grupo,
+)
 from newport_app.models.responses_cotacao import (
     AplicarExtracaoRequest,
     AplicarExtracaoResponse,
@@ -929,6 +940,53 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(exc)) from None
         service.salvar_rascunho(rascunho)
         return resp
+
+    @app.get(
+        "/api/estudos/{estudo_id}/selecao-planos-grupo",
+        response_model=SelecaoPlanosGrupoResponse,
+    )
+    def obter_selecao_planos_grupo(estudo_id: str) -> SelecaoPlanosGrupoResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return montar_selecao_por_grupo(rascunho)
+
+    @app.put(
+        "/api/estudos/{estudo_id}/selecao-planos-grupo",
+        response_model=SalvarSelecaoGrupoResponse,
+    )
+    def salvar_selecao_planos_grupo(
+        estudo_id: str,
+        body: SalvarSelecaoGrupoRequest,
+    ) -> SalvarSelecaoGrupoResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        try:
+            impacto = aplicar_selecao_do_grupo(
+                rascunho,
+                body.subgrupo_id,
+                body.opcao_ids,
+                confirmar_remocoes=body.confirmar_remocoes,
+            )
+        except SubgrupoDesconhecidoError:
+            raise HTTPException(
+                status_code=404, detail="Grupo de beneficiários não encontrado"
+            ) from None
+        except SelecaoRemocaoExigeConfirmacaoError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "codigo": "APP-SEL-001",
+                    "mensagem": str(exc),
+                    "impacto_remocao": exc.impacto.model_dump(mode="json"),
+                },
+            ) from None
+        service.salvar_rascunho(rascunho)
+        return SalvarSelecaoGrupoResponse(
+            selecao=montar_selecao_por_grupo(rascunho),
+            impacto_remocao=impacto if impacto.houve_remocao else None,
+        )
 
     @app.post(
         "/api/estudos/{estudo_id}/comparativo/confirmar",

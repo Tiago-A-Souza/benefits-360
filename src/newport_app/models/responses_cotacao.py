@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from newport_app.models.cotacao_pdf import AlertaExtracaoCotacao, ExtracaoCotacaoCandidata
+from newport_app.models.responses_remocao import ImpactoRemocao
 
 
 class MaturidadeExtracaoResponse(BaseModel):
@@ -37,48 +38,12 @@ class BloqueioOpcaoExtracao(BaseModel):
     motivos: list[str] = Field(default_factory=list)
 
 
-class AtribuicaoDesfeitaExtracao(BaseModel):
-    cenario_id: str
-    cenario_rotulo: str
-    alvo_id: str
-    alvo_rotulo: str
-    plano: str
-
-
-class CenarioIncompletoExtracao(BaseModel):
-    cenario_id: str
-    cenario_rotulo: str
-    alvos_sem_atribuicao: list[str] = Field(default_factory=list)
-    ficou_vazio: bool = False
-
-
-class ImpactoRemocaoExtracao(BaseModel):
-    """Planos que a re-aplicação descarta e o que isso desfaz na etapa 4."""
-
-    planos_removidos: list[str] = Field(default_factory=list)
-    atribuicoes_desfeitas: list[AtribuicaoDesfeitaExtracao] = Field(default_factory=list)
-    cenarios_incompletos: list[CenarioIncompletoExtracao] = Field(default_factory=list)
-
-    @property
-    def houve_remocao(self) -> bool:
-        return bool(self.planos_removidos)
-
-    @property
-    def exige_confirmacao(self) -> bool:
-        """Confirmação só quando a remoção derruba atribuição de cenário.
-
-        Remoção sem dano colateral é relatada e aplicada: pedir confirmação nela
-        treinaria o operador a passar direto pelo caso que importa.
-        """
-        return bool(self.atribuicoes_desfeitas)
-
-
 class AplicarExtracaoResponse(BaseModel):
     opcoes_adicionadas: int
     opcoes_atualizadas: int = 0
     total_opcoes: int
     bloqueios: list[BloqueioOpcaoExtracao] = Field(default_factory=list)
-    impacto_remocao: ImpactoRemocaoExtracao | None = None
+    impacto_remocao: ImpactoRemocao | None = None
 
 
 class AplicarExtracaoRequest(BaseModel):

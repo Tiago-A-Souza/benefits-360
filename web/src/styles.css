@@ -6967,3 +6967,178 @@ a.btn-link {
   }
 }
 
+
+/* ===== FASE 1 — seleção de planos por grupo de beneficiários ===== */
+
+.selecao-grupo-cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.85rem;
+}
+
+.selecao-grupo-titulo {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.grupo-abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.grupo-aba {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  min-width: 15rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.grupo-aba:hover {
+  border-color: #b8c9dc;
+}
+
+.grupo-aba[aria-current="page"] {
+  background: var(--surface);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(22 104 227 / 8%);
+}
+
+.grupo-aba-nome {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.grupo-aba-sub {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.grupo-aba-selo {
+  margin-top: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.selo-ok {
+  background: #e7f6ef;
+  color: var(--green);
+}
+
+.selo-herdado {
+  background: #eef2f7;
+  color: var(--muted);
+}
+
+.selo-vazio {
+  background: #fdeaec;
+  color: var(--red);
+}
+
+.selecao-grupo-contexto {
+  margin: 0 0 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-left: 3px solid var(--blue);
+  background: #f5f9ff;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.selecao-grupo-herdado {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.tabela-selecao-grupo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabela-selecao-grupo th {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.tabela-selecao-grupo td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #eef2f6;
+  vertical-align: middle;
+}
+
+.tabela-selecao-grupo .n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabela-selecao-grupo .linha-escolhida {
+  background: #f5f9ff;
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.selecao-grupo-plano {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.selecao-grupo-plano .plano-nome {
+  display: block;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.selecao-grupo-plano .plano-operadora {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.tabela-selecao-grupo .delta-neg {
+  color: var(--green);
+}
+
+.tabela-selecao-grupo .delta-pos {
+  color: var(--red);
+}
+
+.tabela-selecao-grupo .tag {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tag-escolhido {
+  background: #e7f6ef;
+  color: var(--green);
+}
+
+.tag-disponivel {
+  background: #eef2f7;
+  color: var(--muted);
+}
