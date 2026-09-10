@@ -48,6 +48,7 @@ from newport_app.presentation.reajuste import (
     rotulo_reajuste_consolidado_dos_planos,
     rotulo_reajuste_exibicao,
 )
+from newport_app.presentation.regras_comerciais import operadoras_do_cenario
 from newport_app.presentation.rotulos import copart_descricao, qualificar_rotulos_propostas, rotulo_regime
 from newport_app.snapshot.comparativo import ler_comparativo_congelado
 
@@ -258,6 +259,7 @@ def _montar_proposta_meta(
             if atr.opcao_plano_id and atr.alvo_tipo == "subgrupo":
                 nomes_sg[atr.alvo_id] = nomes.get(atr.opcao_plano_id, atr.opcao_plano_id)
     unicos = {atr.opcao_plano_id for atr in (cenario.atribuicoes if cenario else []) if atr.opcao_plano_id}
+    operadora_coluna = prop.operadora or (op.operadora if op else "")
     return PropostaApresentacao(
         opcao_id=prop.opcao_id,
         coluna_id=chave_de_coluna(prop),
@@ -266,7 +268,8 @@ def _montar_proposta_meta(
             s.subgrupo_id: s.proposta_centavos for s in prop.subgrupos
         },
         nomes_atribuidos_por_subgrupo=nomes_sg,
-        operadora=prop.operadora or (op.operadora if op else ""),
+        operadoras_participantes=operadoras_do_cenario(rascunho, cenario, operadora_coluna),
+        operadora=operadora_coluna,
         plano_nome=prop.plano_nome,
         regime_rotulo=_rotulo_regime(regime_tipo, pct_secao),
         regime_tipo=regime_tipo,

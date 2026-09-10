@@ -25,6 +25,8 @@ from newport_app.presentation.regras_comerciais import (
     carregar_aliases,
     carregar_base,
     montar_tabela,
+    nomes_operadora_do_view_model,
+    operadoras_do_cenario,
     reconhecer_operadora,
 )
 from newport_app.services.comparativo_confirmacao import montar_payload_nucleo_congelamento
@@ -358,6 +360,69 @@ def test_normalizacao_reutilizada():
     assert "normalizar_cabecalho(variacao)" in src
     assert "normalizar_cabecalho(nome)" in src
     assert normalizar_cabecalho("Sul\u00a0América") == "SUL AMERICA"
+
+
+def test_17_coluna_mista_traz_porto_e_sulamerica():
+    class _Opcao:
+        def __init__(self, oid: str, operadora: str) -> None:
+            self.id = oid
+            self.operadora = operadora
+
+    class _Atr:
+        def __init__(self, oid: str) -> None:
+            self.opcao_plano_id = oid
+
+    class _Cenario:
+        atribuicoes = [_Atr("op-porto"), _Atr("op-sula")]
+
+    class _Rascunho:
+        opcoes_proposta = [
+            _Opcao("op-porto", "Porto Seguro"),
+            _Opcao("op-sula", "SulAmérica"),
+        ]
+
+    nomes = operadoras_do_cenario(_Rascunho(), _Cenario(), "Porto Seguro")
+    assert nomes == ["Porto Seguro", "SulAmérica"]
+
+    class _Prop:
+        operadora = "Porto Seguro"
+        operadoras_participantes = ["Porto Seguro", "SulAmérica"]
+
+    class _Secao:
+        propostas = [_Prop()]
+
+    class _VM:
+        secoes_regime = [_Secao()]
+
+    assert nomes_operadora_do_view_model(_VM()) == [
+        "Porto Seguro",
+        "Porto Seguro",
+        "SulAmérica",
+    ]
+    tabela = montar_tabela(nomes_operadora_do_view_model(_VM()))
+    assert tabela is not None
+    assert tabela.operadoras == ("Porto Seguro", "SulAmérica")
+
+
+def test_18_html_misto_abre_coluna_sulamerica(tmp_path: Path):
+    r = _com_operadoras(
+        _rascunho_anistia_seis(),
+        ["Porto Seguro", "Porto Seguro", "Porto Seguro", "Porto Seguro", "SulAmérica", "SulAmérica"],
+    )
+    sgs = [sg.id for sg in r.subgrupos_atuais]
+    assert len(sgs) >= 2
+    porto = next(op for op in r.opcoes_proposta if op.operadora == "Porto Seguro")
+    sula = next(op for op in r.opcoes_proposta if op.operadora == "SulAmérica")
+    cen = next(
+        c for c in r.cenarios if any(a.opcao_plano_id == porto.id for a in c.atribuicoes)
+    )
+    for atr in cen.atribuicoes:
+        if atr.alvo_id == sgs[-1]:
+            atr.opcao_plano_id = sula.id
+    html, _ = _html_de(tmp_path, r, ids=[porto.id])
+    cab = _tabelas_regras(html)[0][0]
+    assert "Porto Seguro" in cab
+    assert "SulAmérica" in cab
 
 
 def test_16_tabela_regras_cabe_na_folha(tmp_path: Path):

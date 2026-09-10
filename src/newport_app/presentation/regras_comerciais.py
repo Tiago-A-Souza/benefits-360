@@ -236,12 +236,41 @@ def montar_tabela(
     )
 
 
+def operadoras_do_cenario(rascunho, cenario, operadora_coluna: str) -> list[str]:
+    """Operadoras de todas as opções atribuídas no cenário, não só a de referência.
+
+    Uma coluna mista (Porto num grupo, SulAmérica no outro) precisa das duas
+    nas regras contratuais — o HTML já mostra os dois planos.
+    """
+    saida: list[str] = []
+    por_id = {op.id: op for op in getattr(rascunho, "opcoes_proposta", []) or []}
+    if cenario is not None:
+        for atr in getattr(cenario, "atribuicoes", []) or []:
+            oid = getattr(atr, "opcao_plano_id", None)
+            if not oid:
+                continue
+            opcao = por_id.get(oid)
+            nome = (getattr(opcao, "operadora", None) or "").strip()
+            if nome and nome not in saida:
+                saida.append(nome)
+    coluna = (operadora_coluna or "").strip()
+    if coluna and coluna not in saida:
+        saida.insert(0, coluna)
+    return saida
+
+
 def nomes_operadora_do_view_model(vm) -> list[str]:
-    """Nomes crus das cotações no ViewModel — só propostas, não plano vigente."""
+    """Nomes crus das cotações no ViewModel — só propostas, não plano vigente.
+
+    Inclui `operadoras_participantes` para coluna mista: o rótulo da coluna
+    pode ser Porto e o outro grupo ter SulAmérica.
+    """
     nomes: list[str] = []
     for secao in getattr(vm, "secoes_regime", []) or []:
         for prop in getattr(secao, "propostas", []) or []:
-            nome = (getattr(prop, "operadora", None) or "").strip()
-            if nome:
-                nomes.append(nome)
+            extras = getattr(prop, "operadoras_participantes", None) or []
+            for nome in (getattr(prop, "operadora", None), *extras):
+                texto = (nome or "").strip()
+                if texto:
+                    nomes.append(texto)
     return nomes
