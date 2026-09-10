@@ -40,6 +40,75 @@ def selecao_efetiva(rascunho: RascunhoEstudo) -> dict[str, list[str]]:
     return {sg: opcoes_do_subgrupo(rascunho, sg) for sg in subgrupos_com_vidas(rascunho)}
 
 
+def ids_do_pdf_no_grupo(
+    rascunho: RascunhoEstudo, subgrupo_id: str, extracao_id: str
+) -> set[str]:
+    """Opções deste PDF que o grupo já escolheu (ids do catálogo)."""
+    if not tem_selecao_propria(rascunho, subgrupo_id):
+        return set()
+    escolhidos = set(opcoes_do_subgrupo(rascunho, subgrupo_id))
+    return {
+        op.id
+        for op in rascunho.opcoes_proposta
+        if op.extracao_id == extracao_id and op.id in escolhidos
+    }
+
+
+def ids_extracao_protegidos_por_outros_grupos(
+    rascunho: RascunhoEstudo, extracao_id: str, subgrupo_alvo: str
+) -> set[str]:
+    """Opções deste PDF que outros grupos já escolheram — a re-aplicação não pode tirá-las."""
+    from newport_app.rascunho.cenarios_sync import subgrupos_com_vidas
+
+    protegidos: set[str] = set()
+    for sg in subgrupos_com_vidas(rascunho):
+        if sg == subgrupo_alvo:
+            continue
+        ids_catalogo = ids_do_pdf_no_grupo(rascunho, sg, extracao_id)
+        if not ids_catalogo:
+            continue
+        for op in rascunho.opcoes_proposta:
+            if op.id in ids_catalogo and op.extracao_opcao_id:
+                protegidos.add(op.extracao_opcao_id)
+    return protegidos
+
+
+def atribui_planos_do_pdf_ao_grupo(
+    rascunho: RascunhoEstudo,
+    subgrupo_id: str,
+    extracao_id: str,
+    opcao_ids: list[str],
+) -> None:
+    """Grava a escolha deste PDF neste grupo, sem copiar para os outros.
+
+    Outros grupos ainda sem entrada própria ganham entrada vazia: senão o
+    fallback de leitura herdaria o catálogo e a escolha do primeiro grupo
+    apareceria no segundo. Estudos antigos, que nunca passaram por este
+    caminho, continuam herdando — nada é gravado só por abrir o rascunho.
+    """
+    from newport_app.rascunho.cenarios_sync import subgrupos_com_vidas
+
+    if len(subgrupos_com_vidas(rascunho)) <= 1:
+        return
+
+    for sg in subgrupos_com_vidas(rascunho):
+        if sg != subgrupo_id and not tem_selecao_propria(rascunho, sg):
+            definir_selecao_do_subgrupo(rascunho, sg, [])
+
+    ids_deste_pdf = {
+        op.id for op in rascunho.opcoes_proposta if op.extracao_id == extracao_id
+    }
+    if tem_selecao_propria(rascunho, subgrupo_id):
+        manter = [
+            oid
+            for oid in opcoes_do_subgrupo(rascunho, subgrupo_id)
+            if oid not in ids_deste_pdf
+        ]
+    else:
+        manter = []
+    definir_selecao_do_subgrupo(rascunho, subgrupo_id, manter + list(opcao_ids))
+
+
 def uniao_das_selecoes(rascunho: RascunhoEstudo) -> list[str]:
     """União das seleções efetivas, sem duplicata, na ordem do catálogo.
 

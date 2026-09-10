@@ -48,6 +48,7 @@ class AplicarExtracaoResponse(BaseModel):
 
 class AplicarExtracaoRequest(BaseModel):
     confirmar_remocoes: bool = False
+    subgrupo_id: str | None = None
 
 
 class ListaExtracaoCotacaoResponse(BaseModel):

@@ -158,7 +158,7 @@ export function statusEtapaPorChave(chave, ctx) {
       if (!ops) {
         return {
           concluida: false,
-          pendencia: "Adicione planos ao comparativo (botão no fim da revisão)",
+          pendencia: "Confirme a seleção dos planos nas cotações",
         };
       }
       if (!exigeCorrespondenciaManual(rascunho) && !cenariosSincronizados(rascunho)) {

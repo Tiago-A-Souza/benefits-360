@@ -6970,6 +6970,17 @@ a.btn-link {
 
 /* ===== FASE 1 — seleção de planos por grupo de beneficiários ===== */
 
+.selecao-grupo--documento {
+  margin-top: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-left: 3px solid #1565c0;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef4fb 100%);
+}
+
+.selecao-grupo--documento .grupo-abas {
+  margin-bottom: 0.5rem;
+}
+
 .selecao-grupo-cabecalho {
   display: flex;
   flex-direction: column;

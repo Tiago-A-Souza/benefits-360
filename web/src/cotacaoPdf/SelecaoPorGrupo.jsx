@@ -16,7 +16,8 @@ import {
   visaoSelecaoPorGrupo,
   seloGrupo,
   subtituloGrupo,
-  textoContexto,
+  textoResumoGrupo,
+  planosAtribuidosDoGrupo,
 } from "./selecaoPorGrupo.js";
 
 function AbaGrupo({ grupo, ativo, onSelecionar }) {
@@ -45,6 +46,11 @@ export default function SelecaoPorGrupo({
   estudoId,
   onAlterado,
   exigeSelecaoPorGrupo = false,
+  grupoAtivo,
+  onSelecionarGrupo,
+  recargaChave,
+  somenteAbas = false,
+  esconderAbas = false,
 }) {
   const [selecao, setSelecao] = useState(null);
   const [subgrupoAtivo, setSubgrupoAtivo] = useState("");
@@ -67,14 +73,18 @@ export default function SelecaoPorGrupo({
 
   useEffect(() => {
     recarregar();
-  }, [recarregar]);
+  }, [recarregar, recargaChave]);
 
   useEffect(() => {
     const grupos = selecao?.grupos || [];
+    if (grupoAtivo && grupos.some((g) => g.subgrupo_id === grupoAtivo)) {
+      if (subgrupoAtivo !== grupoAtivo) setSubgrupoAtivo(grupoAtivo);
+      return;
+    }
     if (grupos.length && !grupos.some((g) => g.subgrupo_id === subgrupoAtivo)) {
       setSubgrupoAtivo(grupos[0].subgrupo_id);
     }
-  }, [selecao, subgrupoAtivo]);
+  }, [selecao, subgrupoAtivo, grupoAtivo]);
 
   const grupo = useMemo(
     () => (selecao?.grupos || []).find((g) => g.subgrupo_id === subgrupoAtivo),
@@ -127,44 +137,60 @@ export default function SelecaoPorGrupo({
     return null;
   }
 
-  const aviso = grupo
-    ? avisoSelecaoVazia(
-        (grupo.planos || []).filter((p) => p.escolhido).map((p) => p.opcao_id)
-      )
-    : null;
+  const catalogoVazio = (selecao.total_catalogo || 0) === 0;
+  const planosAtribuidos = planosAtribuidosDoGrupo(grupo);
+  const aviso =
+    grupo && grupo.selecao_propria && !catalogoVazio
+      ? avisoSelecaoVazia(planosAtribuidos.map((p) => p.opcao_id))
+      : null;
+
+  function escolherGrupo(id) {
+    setSubgrupoAtivo(id);
+    onSelecionarGrupo?.(id);
+  }
 
   return (
     <section className="selecao-grupo cartao">
-      <header className="selecao-grupo-cabecalho">
-        <span className="selecao-grupo-titulo">Planos por grupo de beneficiários</span>
-        <span className="muted">
-          Cada grupo compete com os planos que você escolher para ele
-        </span>
-      </header>
+      {!esconderAbas && (
+        <header className="selecao-grupo-cabecalho">
+          <span className="selecao-grupo-titulo">Planos por grupo de beneficiários</span>
+          <span className="muted">
+            Cada grupo compete com os planos que você escolher para ele
+          </span>
+        </header>
+      )}
 
-      <div className="grupo-abas">
-        {(selecao.grupos || []).map((g) => (
-          <AbaGrupo
-            key={g.subgrupo_id}
-            grupo={g}
-            ativo={g.subgrupo_id === subgrupoAtivo}
-            onSelecionar={setSubgrupoAtivo}
-          />
-        ))}
-      </div>
+      {!esconderAbas && (
+        <div className="grupo-abas">
+          {(selecao.grupos || []).map((g) => (
+            <AbaGrupo
+              key={g.subgrupo_id}
+              grupo={g}
+              ativo={g.subgrupo_id === subgrupoAtivo}
+              onSelecionar={escolherGrupo}
+            />
+          ))}
+        </div>
+      )}
 
-      {grupo && <p className="selecao-grupo-contexto">{textoContexto(grupo)}</p>}
+      {grupo && <p className="selecao-grupo-contexto">{textoResumoGrupo(grupo)}</p>}
 
-      {grupo && !grupo.selecao_propria && (
-        <p className="selecao-grupo-herdado">
-          Este grupo ainda não tem escolha própria, então compete com todos os
-          {" "}
-          {selecao.total_catalogo} planos do estudo. Marcar ou desmarcar aqui cria a
-          escolha deste grupo, sem afetar os outros.
+      {catalogoVazio && !somenteAbas && (
+        <p className="muted">
+          Importe as cotações e, em cada aba, marque os planos daquele grupo. Um
+          único confirmar grava os dois.
         </p>
       )}
 
-      {grupo && (
+      {grupo && !grupo.selecao_propria && !catalogoVazio && !somenteAbas && (
+        <p className="muted">Este grupo ainda não recebeu planos nesta etapa.</p>
+      )}
+
+      {grupo && grupo.selecao_propria && planosAtribuidos.length === 0 && !catalogoVazio && !somenteAbas && (
+        <p className="muted">Nenhum plano atribuído a este grupo.</p>
+      )}
+
+      {grupo && planosAtribuidos.length > 0 && !somenteAbas && (
         <table className="tabela-selecao-grupo">
           <thead>
             <tr>
@@ -176,13 +202,13 @@ export default function SelecaoPorGrupo({
             </tr>
           </thead>
           <tbody>
-            {(grupo.planos || []).map((p) => (
-              <tr key={p.opcao_id} className={p.escolhido ? "linha-escolhida" : undefined}>
+            {planosAtribuidos.map((p) => (
+              <tr key={p.opcao_id} className="linha-escolhida">
                 <td>
                   <label className="selecao-grupo-plano">
                     <input
                       type="checkbox"
-                      checked={p.escolhido}
+                      checked
                       disabled={salvando}
                       onChange={() => gravar(alternarPlano(grupo, p.opcao_id))}
                     />
@@ -198,9 +224,7 @@ export default function SelecaoPorGrupo({
                   {p.diff_reais || "—"}
                 </td>
                 <td>
-                  <span className={`tag ${p.escolhido ? "tag-escolhido" : "tag-disponivel"}`}>
-                    {p.escolhido ? "Escolhido" : "Disponível"}
-                  </span>
+                  <span className="tag tag-escolhido">Atribuído</span>
                 </td>
               </tr>
             ))}
@@ -208,8 +232,8 @@ export default function SelecaoPorGrupo({
         </table>
       )}
 
-      {aviso && <p className="alerta-inline">{aviso}</p>}
-      {relato && (
+      {aviso && !somenteAbas && <p className="alerta-inline">{aviso}</p>}
+      {relato && !somenteAbas && (
         <div className="pendencias-box">
           <strong>Planos removidos do comparativo</strong>
           <p>{relato}</p>

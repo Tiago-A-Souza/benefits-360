@@ -801,6 +801,7 @@ def create_app(
             return cotacao.aplicar_ao_rascunho(
                 extracao_id,
                 confirmar_remocoes=bool(payload and payload.confirmar_remocoes),
+                subgrupo_id=(payload.subgrupo_id if payload else None),
             )
         except ExtracaoNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None

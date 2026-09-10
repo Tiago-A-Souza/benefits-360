@@ -410,6 +410,7 @@ class ExtracaoCotacaoService:
         extracao_id: str,
         *,
         confirmar_remocoes: bool = False,
+        subgrupo_id: str | None = None,
     ) -> AplicarExtracaoResponse:
         extracao = self.obter_extracao(extracao_id)
         if extracao.descartada:
@@ -419,8 +420,25 @@ class ExtracaoCotacaoService:
         if rascunho is None:
             rascunho = rascunho_vazio(extracao.estudo_id, f"Estudo {extracao.estudo_id}")
 
+        from newport_app.cotacao_pdf.maturidade import opcoes_ativas
+        from newport_app.rascunho.selecao_grupo import (
+            atribui_planos_do_pdf_ao_grupo,
+            ids_extracao_protegidos_por_outros_grupos,
+        )
+
+        protegidos: set[str] = set()
+        if subgrupo_id:
+            protegidos = ids_extracao_protegidos_por_outros_grupos(
+                rascunho, extracao.id, subgrupo_id
+            )
+
         # Pré-voo antes de qualquer escrita: o operador ainda pode desistir.
-        impacto = impacto_remocao_reaplicacao(rascunho, extracao)
+        impacto = impacto_remocao_reaplicacao(
+            rascunho,
+            extracao,
+            ids_extracao_protegidos=protegidos or None,
+            selecao_vazia_nao_leva_todos=bool(subgrupo_id),
+        )
         if impacto.exige_confirmacao and not confirmar_remocoes:
             raise RemocaoExigeConfirmacaoError(
                 "Esta aplicação remove planos que estão em uso na etapa 4.",
@@ -435,7 +453,12 @@ class ExtracaoCotacaoService:
             for op in rascunho.opcoes_proposta
             if op.extracao_id == extracao.id and op.extracao_opcao_id
         }
-        rascunho, bloqueios_brutos = aplicar_extracao_confirmada(rascunho, extracao)
+        rascunho, bloqueios_brutos = aplicar_extracao_confirmada(
+            rascunho,
+            extracao,
+            ids_extracao_protegidos=protegidos or None,
+            selecao_vazia_nao_leva_todos=bool(subgrupo_id),
+        )
 
         depois_ids = {
             op.extracao_opcao_id
@@ -458,6 +481,18 @@ class ExtracaoCotacaoService:
             raise AplicacaoExtracaoError(
                 "Nenhuma proposta pôde ser aplicada — confira os campos pendentes.",
                 bloqueios,
+            )
+
+        if subgrupo_id:
+            ativas = opcoes_ativas(extracao)
+            marcadas = {o.id for o in ativas if o.selecionada_para_comparativo}
+            ids_rascunho = [
+                op.id
+                for op in rascunho.opcoes_proposta
+                if op.extracao_id == extracao.id and op.extracao_opcao_id in marcadas
+            ]
+            atribui_planos_do_pdf_ao_grupo(
+                rascunho, subgrupo_id, extracao.id, ids_rascunho
             )
 
         self._estudos.salvar_rascunho(rascunho)

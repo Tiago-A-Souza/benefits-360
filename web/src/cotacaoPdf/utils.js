@@ -58,6 +58,71 @@ export function inferirAcomodacao(op) {
   return "—";
 }
 
+/** Valor canônico para gravar (apartamento|enfermaria), inclusive pelo nome do plano. */
+export function valorAcomodacaoCanonica(op) {
+  const texto = String(op?.acomodacao?.texto || "").trim().toLowerCase();
+  if (texto === "apartamento" || texto.startsWith("apart")) return "apartamento";
+  if (texto === "enfermaria" || texto.startsWith("enferm")) return "enfermaria";
+  const inferida = inferirAcomodacao({
+    ...op,
+    acomodacao: { texto: "" },
+  });
+  if (inferida === "Apartamento") return "apartamento";
+  if (inferida === "Enfermaria") return "enfermaria";
+  return null;
+}
+
+export function rotuloAcomodacaoRevisao(op) {
+  const valor = valorAcomodacaoCanonica(op);
+  if (valor === "apartamento") return "Apartamento";
+  if (valor === "enfermaria") return "Enfermaria";
+  const bruto = op?.acomodacao?.texto;
+  return bruto || null;
+}
+
+/** Só pede declaração quando nem o campo nem o nome resolvem Apt./Enf. */
+export function acomodacaoPrecisaDeclarar(op) {
+  return valorAcomodacaoCanonica(op) == null;
+}
+
+/** Campos vazios que o nome já resolve — para gravar na aplicação, sem dropdown. */
+export function camposAcomodacaoInferidaParaGravar(opcoes) {
+  return (opcoes || [])
+    .filter((o) => o?.acomodacao?.id && !String(o.acomodacao.texto || "").trim())
+    .map((o) => {
+      const texto = valorAcomodacaoCanonica(o);
+      return texto ? { id: o.acomodacao.id, texto } : null;
+    })
+    .filter(Boolean);
+}
+
+export function tiposFiscaisDistintos(opcoes) {
+  return [...new Set((opcoes || []).map((o) => o?.tipo_fiscal?.texto).filter(Boolean))];
+}
+
+export function tipoFiscalPrecisaDeclararNaCotacao(opcoes) {
+  return (opcoes || []).some((o) => !o?.tipo_fiscal?.texto);
+}
+
+export function idsTipoFiscalPendentes(opcoes) {
+  return (opcoes || [])
+    .filter((o) => o?.tipo_fiscal?.id && !o.tipo_fiscal?.texto)
+    .map((o) => o.tipo_fiscal.id);
+}
+
+export function rotuloTipoFiscal(texto) {
+  if (texto === "operadora") return "Operadora";
+  if (texto === "seguradora") return "Seguradora";
+  return null;
+}
+
+export function rotuloTipoFiscalCotacao(opcoes) {
+  const tipos = tiposFiscaisDistintos(opcoes)
+    .map((t) => rotuloTipoFiscal(t))
+    .filter(Boolean);
+  return tipos.length ? tipos.join(" / ") : null;
+}
+
 /** Rótulo curto na grade; o nome completo vai no title. */
 export function abreviarAcomodacao(texto) {
   if (!texto || texto === "—") return texto;

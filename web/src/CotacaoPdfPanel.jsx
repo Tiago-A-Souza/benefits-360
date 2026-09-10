@@ -9,6 +9,7 @@ import {
   estimarPropostasExtracao,
   obterRascunho,
   obterResumoPlanoAtual,
+  obterSelecaoPorGrupo,
   removerExtracaoCotacao,
   reverterDescarteExtracaoCotacao,
   salvarRascunho,
@@ -40,25 +41,39 @@ import {
   formatarDiferencaReferencia,
   formatarEstimativaSiscor,
   abreviarAcomodacao,
+  acomodacaoPrecisaDeclarar,
+  camposAcomodacaoInferidaParaGravar,
   inferirAcomodacao,
   inferirRegiao,
+  idsTipoFiscalPendentes,
   ocultaColunaCopart,
   mapaQuantidadesFaixa,
   nomePlanoExibicao,
   resumoFinanceiroOpcao,
+  rotuloAcomodacaoRevisao,
   rotuloEstado,
   rotuloReconciliacao,
   rotuloRegime,
+  rotuloTipoFiscal,
+  rotuloTipoFiscalCotacao,
   resumirMotivosBloqueio,
   situacaoOpcao,
   textoConfirmacaoRemocao,
   textoRelatoRemocao,
+  tipoFiscalPrecisaDeclararNaCotacao,
   traduzirAlerta,
 } from "./cotacaoPdf/utils";
 import SelecaoPorGrupo from "./cotacaoPdf/SelecaoPorGrupo.jsx";
 import {
-  aposUltimoPdfDeveVoltarLista,
   avancoDeveRevelarSelecaoPorGrupo,
+  estadoExibicaoOpcao,
+  fraseEscolhaGrupo,
+  marcasAposTrocarGrupo,
+  marcasDoPdfPorGrupo,
+  modoSelecaoPorGrupo,
+  pulaRevisaoPorGrupo,
+  uniaoMarcas,
+  ordemGruposParaConfirmar,
 } from "./cotacaoPdf/selecaoPorGrupo.js";
 import {
   executarUploadLote,
@@ -66,12 +81,6 @@ import {
   primeiroUploadComSucesso,
 } from "./cotacaoPdf/uploadLote";
 import { ACOMODACOES, REGIMES_COPART, TIPOS_FISCAIS } from "./constants";
-
-function rotuloTipoFiscal(texto) {
-  if (texto === "operadora") return "Operadora";
-  if (texto === "seguradora") return "Seguradora";
-  return null;
-}
 
 function BadgeSituacao({ situacao }) {
   const cls =
@@ -83,24 +92,6 @@ function BadgeSituacao({ situacao }) {
         ? "badge--alerta"
         : "badge--muted";
   return <span className={`badge ${cls}`}>{situacao.rotulo}</span>;
-}
-
-function opcaoJaNoComparativo(op, opcoesComparativo) {
-  return opcoesComparativo.some((o) => o.extracao_opcao_id === op.id);
-}
-
-function estadoExibicaoOpcao(op, opcoesComparativo) {
-  const adicionado = opcaoJaNoComparativo(op, opcoesComparativo);
-  if (adicionado && op.selecionada_para_comparativo) {
-    return { codigo: "adicionado", rotulo: "No comparativo" };
-  }
-  if (adicionado && !op.selecionada_para_comparativo) {
-    return { codigo: "remover", rotulo: "Será removido" };
-  }
-  if (op.selecionada_para_comparativo) {
-    return { codigo: "selecionado", rotulo: "Selecionado" };
-  }
-  return { codigo: "disponivel", rotulo: "Disponível" };
 }
 
 function metaGrupoComparativo(extracaoId, opcoes, extracoes, documentosCotacao) {
@@ -354,6 +345,7 @@ export function TabelaSelecaoCompacta({
   referenciaCentavos,
   selecionados,
   opcoesComparativo,
+  idsUniao = null,
   onToggle,
 }) {
   const [maisFiltros, setMaisFiltros] = useState(false);
@@ -432,7 +424,7 @@ export function TabelaSelecaoCompacta({
               <span className="linha-plano-status">Status</span>
             </div>
             {opsGrupo.map((op) => {
-              const estado = estadoExibicaoOpcao(op, opcoesComparativo);
+              const estado = estadoExibicaoOpcao(op, opcoesComparativo, idsUniao);
               const est = formatarEstimativaSiscor(
                 op,
                 quantidades,
@@ -522,7 +514,7 @@ export function TabelaSelecaoCompacta({
   );
 }
 
-function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDocumento, onSalvarCampo }) {
+export function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDocumento, onSalvarCampo }) {
   const faixasPorIndice = Object.fromEntries((op.tabela || []).map((fx) => [fx.faixa, fx]));
   let subtotalBruto = 0;
   const sit = situacaoOpcao(op);
@@ -533,14 +525,10 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
   const validadeAtual = op.validade_oficial?.data || validadeDocumento || "";
   const validadePendente = !validadeAtual;
   const tipoFiscalAtual = op.tipo_fiscal?.texto || "";
-  const tipoFiscalPendente = !tipoFiscalAtual;
   const regimeAtual = op.regime_copart?.texto || "";
   const regimePendente = !regimeAtual;
-  const acomodacaoAtual = op.acomodacao?.texto || "";
-  const acomodacaoPendente = !acomodacaoAtual;
-  const rotuloAcomodacaoAtual =
-    ACOMODACOES.find((a) => a.value === acomodacaoAtual)?.label ||
-    (acomodacaoAtual ? acomodacaoAtual : null);
+  const acomodacaoPendente = acomodacaoPrecisaDeclarar(op);
+  const rotuloAcomodacaoAtual = rotuloAcomodacaoRevisao(op);
 
   return (
     <div className="cartao cartao--fluxo revisao-plano">
@@ -572,33 +560,6 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </div>
       </dl>
 
-      {tipoFiscalPendente && (
-        <label className="campo-revisao">
-          <span>Tipo fiscal</span>
-          <select
-            defaultValue=""
-            onChange={(e) => {
-              if (op.tipo_fiscal?.id && e.target.value) {
-                onSalvarCampo(op.tipo_fiscal.id, {
-                  texto: e.target.value,
-                  confirmado: true,
-                });
-              }
-            }}
-          >
-            <option value="">Selecione…</option>
-            {TIPOS_FISCAIS.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-          <span className="muted revisao-plano-dica">
-            O IOF de 2,38% só se aplica a seguradora.
-          </span>
-        </label>
-      )}
-
       {acomodacaoPendente && (
         <label className="campo-revisao">
           <span>Acomodação</span>
@@ -621,7 +582,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
             ))}
           </select>
           <span className="muted revisao-plano-dica">
-            Não extraída do PDF — declare antes de adicionar ao comparativo.
+            Não extraída do PDF nem do nome do plano — declare antes de adicionar ao comparativo.
           </span>
         </label>
       )}
@@ -660,7 +621,7 @@ function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, validadeDoc
         </p>
       )}
 
-      {!validadePendente && !tipoFiscalPendente && !acomodacaoPendente && !regimePendente && (
+      {!validadePendente && !acomodacaoPendente && !regimePendente && (
         <p className="muted revisao-plano-dica">
           Dados extraídos do PDF. Use <strong>Corrigir</strong> na tabela apenas se algum valor estiver errado.
         </p>
@@ -877,6 +838,64 @@ function VisualizadorPdfInline({ estudoId, documentoId, titulo, onFechar }) {
   );
 }
 
+function AbasGruposBeneficiarios({
+  planos,
+  subgrupoSimulacao,
+  selecionadas,
+  marcasPorGrupo,
+  fase,
+  planoSiscor,
+  onEscolher,
+  variante,
+}) {
+  return (
+    <section
+      className={
+        variante === "documento"
+          ? "selecao-grupo cartao cartao--interno selecao-grupo--documento"
+          : "selecao-grupo cartao"
+      }
+      aria-label="Grupo de beneficiários"
+    >
+      <header className="selecao-grupo-cabecalho">
+        <span className="selecao-grupo-titulo">Planos por grupo de beneficiários</span>
+        <span className="muted">
+          {fase === "lista"
+            ? "Cada grupo compete só com os planos atribuídos a ele"
+            : "Marque os planos da aba ativa, depois da outra, e confirme uma vez"}
+        </span>
+      </header>
+      <div className="grupo-abas">
+        {planos.map((p) => {
+          const nMarcas =
+            p.subgrupo_id === subgrupoSimulacao
+              ? selecionadas.length
+              : (marcasPorGrupo[p.subgrupo_id] || []).length;
+          return (
+            <button
+              key={p.subgrupo_id}
+              type="button"
+              className="grupo-aba"
+              aria-current={p.subgrupo_id === subgrupoSimulacao ? "page" : undefined}
+              onClick={() => onEscolher(p.subgrupo_id)}
+            >
+              <span className="grupo-aba-nome">{p.plano_nome}</span>
+              <span className="grupo-aba-sub">
+                {p.quantidade_beneficiarios}{" "}
+                {p.quantidade_beneficiarios === 1 ? "vida" : "vidas"}
+                {fase !== "lista" ? ` · ${nMarcas} ${nMarcas === 1 ? "plano" : "planos"}` : ""}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {fase !== "lista" && planoSiscor && (
+        <p className="selecao-grupo-contexto">{fraseEscolhaGrupo(planoSiscor.plano_nome)}</p>
+      )}
+    </section>
+  );
+}
+
 export default function CotacaoPdfPanel({
   estudoId,
   onAplicado,
@@ -913,6 +932,8 @@ export default function CotacaoPdfPanel({
   const [descarteExId, setDescarteExId] = useState(null);
   const [motivoDescarte, setMotivoDescarte] = useState("");
   const [proximoPendenteId, setProximoPendenteId] = useState(null);
+  const [gruposAplicadosNestePdf, setGruposAplicadosNestePdf] = useState([]);
+  const [marcasPorGrupo, setMarcasPorGrupo] = useState({});
 
   const recarregar = useCallback(() => {
     listarExtracoesCotacao(estudoId)
@@ -949,10 +970,13 @@ export default function CotacaoPdfPanel({
   }, [estudoId, extracaoId]);
 
   useEffect(() => {
-    if (resumoSiscor?.planos?.length === 1) {
-      setSubgrupoSimulacao(resumoSiscor.planos[0].subgrupo_id);
+    const planos = resumoSiscor?.planos || [];
+    if (planos.length === 1) {
+      setSubgrupoSimulacao(planos[0].subgrupo_id);
+    } else if (planos.length > 1 && !subgrupoSimulacao) {
+      setSubgrupoSimulacao(planos[0].subgrupo_id);
     }
-  }, [resumoSiscor]);
+  }, [resumoSiscor, subgrupoSimulacao]);
 
   const planoSiscor = useMemo(
     () => resumoSiscor?.planos?.find((p) => p.subgrupo_id === subgrupoSimulacao),
@@ -962,6 +986,10 @@ export default function CotacaoPdfPanel({
   const siscorCtx = useMemo(
     () => contextoSiscorSimulacao(resumoSiscor, subgrupoSimulacao),
     [resumoSiscor, subgrupoSimulacao]
+  );
+  const selecaoPorGrupoAtiva = modoSelecaoPorGrupo(
+    exigeSelecaoPorGrupo,
+    resumoSiscor?.planos?.length || 0
   );
 
   useEffect(() => {
@@ -987,6 +1015,16 @@ export default function CotacaoPdfPanel({
     () => opcoesAtivas.filter((o) => o.selecionada_para_comparativo),
     [opcoesAtivas]
   );
+  const marcasEfetivas = useMemo(
+    () =>
+      marcasAposTrocarGrupo(
+        marcasPorGrupo,
+        subgrupoSimulacao,
+        selecionadas.map((o) => o.id)
+      ),
+    [marcasPorGrupo, subgrupoSimulacao, selecionadas]
+  );
+  const uniaoMarcasAtuais = useMemo(() => uniaoMarcas(marcasEfetivas), [marcasEfetivas]);
   const noComparativoDestaExtracao = useMemo(
     () => opcoesComparativo.filter((o) => o.extracao_id === extracaoId),
     [opcoesComparativo, extracaoId]
@@ -1021,12 +1059,30 @@ export default function CotacaoPdfPanel({
     setMsg(null);
     setBloqueios([]);
     setPdfInlineDocumentoId(null);
+    setGruposAplicadosNestePdf([]);
+    setMarcasPorGrupo({});
     setCarregandoDetalhe(true);
     obterExtracaoCotacao(estudoId, id)
-      .then((d) => {
+      .then(async (d) => {
         setDetalhe(d);
         const ativas = (d.opcoes || []).filter((o) => !o.excluida);
         sincronizarCesta(id, ativas, d.documento);
+        if (!selecaoPorGrupoAtiva) return;
+        try {
+          const [sel, rascunho] = await Promise.all([
+            obterSelecaoPorGrupo(estudoId),
+            obterRascunho(estudoId),
+          ]);
+          const marcas = marcasDoPdfPorGrupo(sel, rascunho.opcoes_proposta || [], id);
+          setMarcasPorGrupo(marcas);
+          const ativo =
+            subgrupoSimulacao && marcas[subgrupoSimulacao] != null
+              ? subgrupoSimulacao
+              : Object.keys(marcas)[0];
+          await sincronizarMarcasNaExtracao(id, marcas[ativo] || [], d);
+        } catch {
+          await sincronizarMarcasNaExtracao(id, [], d);
+        }
       })
       .catch((err) => {
         setErro(err.message || "Não foi possível abrir a cotação.");
@@ -1038,6 +1094,10 @@ export default function CotacaoPdfPanel({
   }
 
   async function handleEditarSelecao(ex) {
+    if (pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)) {
+      abrirDocumento(ex.id);
+      return;
+    }
     setCarregando(true);
     setErro(null);
     setMsg(null);
@@ -1071,15 +1131,15 @@ export default function CotacaoPdfPanel({
   }
 
   useEffect(() => {
-    if (!onRegistrarAvanco || !exigeSelecaoPorGrupo) return undefined;
+    if (!onRegistrarAvanco || !selecaoPorGrupoAtiva) return undefined;
     return onRegistrarAvanco(async () => {
-      if (avancoDeveRevelarSelecaoPorGrupo(exigeSelecaoPorGrupo, fase)) {
+      if (avancoDeveRevelarSelecaoPorGrupo(selecaoPorGrupoAtiva, fase)) {
         voltarLista();
         return false;
       }
       return true;
     });
-  }, [onRegistrarAvanco, exigeSelecaoPorGrupo, fase]);
+  }, [onRegistrarAvanco, selecaoPorGrupoAtiva, fase]);
 
   async function processarUploads(files) {
     if (!files.length) return;
@@ -1251,6 +1311,24 @@ export default function CotacaoPdfPanel({
     if (recarregar) await recarregarDetalhe();
   }
 
+  async function aplicarTipoFiscalDocumento(valor) {
+    if (!valor) return;
+    const marcas = marcasAposTrocarGrupo(
+      marcasPorGrupo,
+      subgrupoSimulacao,
+      selecionadas.map((o) => o.id)
+    );
+    const uniao = new Set(uniaoMarcas(marcas));
+    const alvos = opcoesAtivas.filter(
+      (o) => uniao.has(o.id) || o.selecionada_para_comparativo
+    );
+    const ids = idsTipoFiscalPendentes(alvos.length ? alvos : selecionadas);
+    for (const id of ids) {
+      await salvarCampo(id, { texto: valor, confirmado: true }, { recarregar: false });
+    }
+    if (ids.length) await recarregarDetalhe();
+  }
+
   async function handleToggle(opcaoId, selecionada) {
     if (!extracaoId || alternandoOpcao) return;
     setAlternandoOpcao(opcaoId);
@@ -1261,6 +1339,14 @@ export default function CotacaoPdfPanel({
       setDetalhe(d);
       const ativas = (d.opcoes || []).filter((o) => !o.excluida);
       sincronizarCesta(extracaoId, ativas, d.documento);
+      if (selecaoPorGrupoAtiva && subgrupoSimulacao) {
+        setMarcasPorGrupo((prev) => {
+          const ids = new Set(prev[subgrupoSimulacao] || []);
+          if (selecionada) ids.add(opcaoId);
+          else ids.delete(opcaoId);
+          return { ...prev, [subgrupoSimulacao]: [...ids] };
+        });
+      }
     } catch (err) {
       const mensagem = mensagemErroOperador(
         err,
@@ -1287,10 +1373,151 @@ export default function CotacaoPdfPanel({
     }
   }
 
-  async function handleAdicionarComparativo() {
+  async function sincronizarMarcasNaExtracao(extId, idsQueridos, detalheAtual = null) {
+    if (!extId) return;
+    const quer = new Set(idsQueridos || []);
+    let d = detalheAtual || (await obterExtracaoCotacao(estudoId, extId));
+    for (const op of (d.opcoes || []).filter((o) => !o.excluida)) {
+      const deve = quer.has(op.id);
+      if (Boolean(op.selecionada_para_comparativo) !== deve) {
+        await selecionarOpcaoExtracao(estudoId, extId, op.id, deve);
+      }
+    }
+    d = await obterExtracaoCotacao(estudoId, extId);
+    setDetalhe(d);
+    const ativas = (d.opcoes || []).filter((o) => !o.excluida);
+    sincronizarCesta(extId, ativas, d.documento);
+  }
+
+  async function alinharMarcasAoGrupo(grupoId, opsComp, extId) {
+    if (!extId || !grupoId) return;
+    const resp = await obterSelecaoPorGrupo(estudoId);
+    const grupo = (resp.grupos || []).find((g) => g.subgrupo_id === grupoId);
+    const escolhidos = new Set(
+      (grupo?.planos || []).filter((p) => p.escolhido).map((p) => p.opcao_id)
+    );
+    const quer = (opsComp || [])
+      .filter((o) => o.extracao_id === extId && escolhidos.has(o.id))
+      .map((o) => o.extracao_opcao_id)
+      .filter(Boolean);
+    await sincronizarMarcasNaExtracao(extId, quer);
+  }
+
+  async function escolherGrupoAtivo(grupoId) {
+    if (!grupoId) return;
+    if (grupoId === subgrupoSimulacao) return;
+    if (pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) && fase !== "lista" && extracaoId) {
+      const proximas = marcasPorGrupo[grupoId] || [];
+      setMarcasPorGrupo((prev) =>
+        marcasAposTrocarGrupo(prev, subgrupoSimulacao, selecionadas.map((o) => o.id))
+      );
+      setSubgrupoSimulacao(grupoId);
+      try {
+        await sincronizarMarcasNaExtracao(extracaoId, proximas);
+      } catch {
+        /* a estimativa ainda atualiza pelo subgrupo */
+      }
+      return;
+    }
+    setSubgrupoSimulacao(grupoId);
+    if (fase !== "lista" && extracaoId) {
+      try {
+        const r = await obterRascunho(estudoId);
+        await alinharMarcasAoGrupo(grupoId, r.opcoes_proposta || [], extracaoId);
+      } catch {
+        /* a estimativa ainda atualiza pelo subgrupo */
+      }
+    }
+  }
+
+  async function handleConfirmarPorGrupos() {
     setErro(null);
     setBloqueios([]);
-    const podeAplicar = selecionadas.length > 0 || noComparativoDestaExtracao.length > 0;
+    const idsGrupos = (resumoSiscor?.planos || []).map((p) => p.subgrupo_id);
+    const marcas = marcasAposTrocarGrupo(
+      marcasPorGrupo,
+      subgrupoSimulacao,
+      selecionadas.map((o) => o.id)
+    );
+    setMarcasPorGrupo(marcas);
+    const uniao = uniaoMarcas(marcas);
+    if (!uniao.length && noComparativoDestaExtracao.length === 0) {
+      setErro("Selecione ao menos um plano em algum grupo antes de confirmar.");
+      return;
+    }
+    try {
+      await sincronizarMarcasNaExtracao(extracaoId, uniao);
+      const dUniao = await obterExtracaoCotacao(estudoId, extracaoId);
+      const opsUniao = (dUniao.opcoes || []).filter((o) => uniao.includes(o.id));
+      const semTipoFiscal = opsUniao.filter((o) => !o.tipo_fiscal?.texto);
+      if (semTipoFiscal.length) {
+        setDetalhe(dUniao);
+        setErro("Declare o tipo fiscal (Operadora ou Seguradora) — vale para esta cotação.");
+        return;
+      }
+      const semRegime = opsUniao.filter((o) => !o.regime_copart?.texto);
+      if (semRegime.length) {
+        setDetalhe(dUniao);
+        setErro("Declare o regime de coparticipação antes de confirmar.");
+        return;
+      }
+      const inferidas = camposAcomodacaoInferidaParaGravar(opsUniao);
+      for (const campo of inferidas) {
+        await salvarCampo(campo.id, { texto: campo.texto, confirmado: true }, { recarregar: false });
+      }
+      let res;
+      for (const sg of ordemGruposParaConfirmar(idsGrupos, marcas)) {
+        await sincronizarMarcasNaExtracao(extracaoId, marcas[sg] || []);
+        try {
+          res = await aplicarExtracaoCotacao(estudoId, extracaoId, { subgrupoId: sg });
+        } catch (err) {
+          if (!err.impactoRemocao) throw err;
+          if (!window.confirm(textoConfirmacaoRemocao(err.impactoRemocao))) {
+            setMsg("Nenhum plano foi removido — a seleção anterior continua no comparativo.");
+            return;
+          }
+          res = await aplicarExtracaoCotacao(estudoId, extracaoId, {
+            confirmarRemocoes: true,
+            subgrupoId: sg,
+          });
+        }
+        if (res?.bloqueios?.length) setBloqueios(res.bloqueios);
+      }
+      const listaAtualizada = await listarExtracoesCotacao(estudoId)
+        .then((r) => r.extracoes || [])
+        .catch(() => extracoes);
+      const opsComp = await obterRascunho(estudoId)
+        .then((r) => r.opcoes_proposta || [])
+        .catch(() => opcoesComparativo);
+      const prox = proximaExtracaoPendente(listaAtualizada, opsComp, extracaoId);
+      setExtracoes(listaAtualizada);
+      setMarcasPorGrupo({});
+      if (setCestaGlobal) {
+        setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
+      }
+      onAplicado?.();
+      if (prox) {
+        setMsg("Seleção confirmada. Abrindo a próxima cotação.");
+        abrirDocumento(prox.id);
+      } else {
+        setMsg("Seleção confirmada. Conferir os planos de cada grupo abaixo.");
+        voltarLista();
+      }
+    } catch (err) {
+      if (err.bloqueios) setBloqueios(err.bloqueios);
+      setErro(err.message);
+    }
+  }
+
+  async function handleAdicionarComparativo() {
+    if (pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)) {
+      return handleConfirmarPorGrupos();
+    }
+    setErro(null);
+    setBloqueios([]);
+    const podeAplicar = selecaoPorGrupoAtiva
+      ? selecionadas.length > 0 || gruposAplicadosNestePdf.length > 0
+      : selecionadas.length > 0 || noComparativoDestaExtracao.length > 0;
     if (!podeAplicar) {
       setErro("Selecione ao menos um plano antes de adicionar ao comparativo.");
       return;
@@ -1308,10 +1535,17 @@ export default function CotacaoPdfPanel({
       return;
     }
     setRelatoRemocao(null);
+    const destinoGrupo = selecaoPorGrupoAtiva ? subgrupoSimulacao : undefined;
     try {
+      const inferidas = camposAcomodacaoInferidaParaGravar(selecionadas);
+      for (const campo of inferidas) {
+        await salvarCampo(campo.id, { texto: campo.texto, confirmado: true }, { recarregar: false });
+      }
       let res;
       try {
-        res = await aplicarExtracaoCotacao(estudoId, extracaoId);
+        res = await aplicarExtracaoCotacao(estudoId, extracaoId, {
+          subgrupoId: destinoGrupo,
+        });
       } catch (err) {
         if (!err.impactoRemocao) throw err;
         // Nada foi gravado ainda: o operador decide antes de perder a etapa 4.
@@ -1321,6 +1555,7 @@ export default function CotacaoPdfPanel({
         }
         res = await aplicarExtracaoCotacao(estudoId, extracaoId, {
           confirmarRemocoes: true,
+          subgrupoId: destinoGrupo,
         });
       }
       const listaAtualizada = await listarExtracoesCotacao(estudoId)
@@ -1349,11 +1584,7 @@ export default function CotacaoPdfPanel({
         setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
       }
       setExtracoes(listaAtualizada);
-      if (aposUltimoPdfDeveVoltarLista(exigeSelecaoPorGrupo, Boolean(prox))) {
-        voltarLista();
-      } else {
-        await recarregarDetalhe();
-      }
+      await recarregarDetalhe();
       onAplicado?.();
     } catch (err) {
       if (err.bloqueios) setBloqueios(err.bloqueios);
@@ -1399,13 +1630,31 @@ export default function CotacaoPdfPanel({
 
   return (
     <div className="cotacao-pdf-panel">
+      {fase === "lista" && selecaoPorGrupoAtiva && (resumoSiscor?.planos?.length || 0) > 1 && (
+        <AbasGruposBeneficiarios
+          planos={resumoSiscor.planos}
+          subgrupoSimulacao={subgrupoSimulacao}
+          selecionadas={selecionadas}
+          marcasPorGrupo={marcasPorGrupo}
+          fase={fase}
+          planoSiscor={planoSiscor}
+          onEscolher={escolherGrupoAtivo}
+          variante="lista"
+        />
+      )}
+      {fase === "lista" && (
+        <SelecaoPorGrupo
+          estudoId={estudoId}
+          onAlterado={onAplicado}
+          exigeSelecaoPorGrupo={selecaoPorGrupoAtiva}
+          grupoAtivo={subgrupoSimulacao}
+          onSelecionarGrupo={escolherGrupoAtivo}
+          recargaChave={opcoesComparativo.map((o) => o.id).join("|")}
+          esconderAbas={selecaoPorGrupoAtiva}
+        />
+      )}
       {fase === "lista" && (
         <>
-          <SelecaoPorGrupo
-            estudoId={estudoId}
-            onAlterado={onAplicado}
-            exigeSelecaoPorGrupo={exigeSelecaoPorGrupo}
-          />
           <ComparativoResumo
             opcoesComparativo={opcoesComparativo}
             extracoes={extracoes}
@@ -1577,6 +1826,7 @@ export default function CotacaoPdfPanel({
         </>
       )}
 
+      {fase === "lista" && (
       <UploadZona
         carregando={carregando}
         dragAtivo={dragAtivo}
@@ -1584,6 +1834,7 @@ export default function CotacaoPdfPanel({
         compacto={fase === "lista" && temPdfs}
         onUpload={processarUploads}
       />
+      )}
 
       {fase !== "lista" && !detalhe && carregandoDetalhe && (
         <p className="muted cotacao-estado-vazio">Carregando planos da cotação…</p>
@@ -1670,7 +1921,7 @@ export default function CotacaoPdfPanel({
             </p>
           )}
 
-          {resumoSiscor?.planos?.length > 1 && (
+          {resumoSiscor?.planos?.length > 1 && !selecaoPorGrupoAtiva && (
             <label className={siscorCtx.exigeEscolha ? "siscor-grupo-destaque" : ""}>
               Escolha o grupo de beneficiários para simular:
               <select
@@ -1690,7 +1941,19 @@ export default function CotacaoPdfPanel({
             <p className="alerta">Estimativa indisponível até selecionar o grupo de beneficiários.</p>
           )}
 
-          {planoSiscor && (
+          {selecaoPorGrupoAtiva && (resumoSiscor?.planos?.length || 0) > 1 ? (
+            <AbasGruposBeneficiarios
+              planos={resumoSiscor.planos}
+              subgrupoSimulacao={subgrupoSimulacao}
+              selecionadas={selecionadas}
+              marcasPorGrupo={marcasPorGrupo}
+              fase={fase}
+              planoSiscor={planoSiscor}
+              onEscolher={escolherGrupoAtivo}
+              variante="documento"
+            />
+          ) : (
+            planoSiscor && (
             <div className="cartao cartao--interno referencia-plano-atual">
               <div className="referencia-plano-cabecalho">
                 <div>
@@ -1727,6 +1990,7 @@ export default function CotacaoPdfPanel({
                 </div>
               </dl>
             </div>
+            )
           )}
 
           {opcoesAtivas.length === 0 && (
@@ -1759,8 +2023,15 @@ export default function CotacaoPdfPanel({
             <>
               <div className="selecao-resumo-bar">
                 <strong>
-                  Selecionados: {selecionadas.length} de {opcoesAtivas.length}
+                  {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)
+                    ? `Nesta aba: ${selecionadas.length} de ${opcoesAtivas.length}`
+                    : `Selecionados: ${selecionadas.length} de ${opcoesAtivas.length}`}
                 </strong>
+                {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) && (
+                  <span className="muted">
+                    {uniaoMarcasAtuais.length} plano(s) no total das abas — um confirmar grava os dois grupos
+                  </span>
+                )}
                 {selecionadas.length > 3 && (
                   <span className="alerta-inline">
                     Muitos planos selecionados — o comparativo fica mais legível com até 3.
@@ -1795,24 +2066,58 @@ export default function CotacaoPdfPanel({
                 referenciaCentavos={planoSiscor?.referencia_comparativo_centavos}
                 selecionados={{ filtros, setFiltro }}
                 opcoesComparativo={opcoesComparativo}
+                idsUniao={
+                  pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) ? uniaoMarcasAtuais : null
+                }
                 onToggle={handleToggle}
               />
+
+              {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) &&
+                tipoFiscalPrecisaDeclararNaCotacao(
+                  opcoesAtivas.filter((o) => uniaoMarcasAtuais.includes(o.id))
+                ) && (
+                  <label className="campo-revisao">
+                    <span>Tipo fiscal</span>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => aplicarTipoFiscalDocumento(e.target.value)}
+                    >
+                      <option value="">Selecione…</option>
+                      {TIPOS_FISCAIS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="muted revisao-plano-dica">
+                      O IOF de 2,38% só se aplica a seguradora. Vale para esta cotação.
+                    </span>
+                  </label>
+                )}
 
               <div className="selecao-fluxo-rodape">
                 <button
                   type="button"
-                  disabled={selecionadas.length === 0 && noComparativoDestaExtracao.length === 0}
-                  onClick={() => setFase("revisao")}
+                  disabled={
+                    uniaoMarcasAtuais.length === 0 && noComparativoDestaExtracao.length === 0
+                  }
+                  onClick={
+                    pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)
+                      ? handleConfirmarPorGrupos
+                      : () => setFase("revisao")
+                  }
                 >
-                  {noComparativoDestaExtracao.length > 0
-                    ? `Revisar alterações (${selecionadas.length} selecionado(s))`
-                    : `Revisar ${selecionadas.length} plano(s) selecionado(s)`}
+                  {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)
+                    ? "Confirmar seleção"
+                    : noComparativoDestaExtracao.length > 0
+                      ? `Revisar alterações (${selecionadas.length} selecionado(s))`
+                      : `Revisar ${selecionadas.length} plano(s) selecionado(s)`}
                 </button>
               </div>
             </>
           )}
 
-          {fase === "revisao" && (
+          {fase === "revisao" && !pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) && (
             <>
               <div className="campos-documento-comuns cartao cartao--interno">
                 <span className="doc-confirmacoes-rotulo">Dados do documento</span>
@@ -1832,21 +2137,29 @@ export default function CotacaoPdfPanel({
                   </div>
                   <div>
                     <dt>Tipo fiscal</dt>
-                    <dd>
-                      {(() => {
-                        const tipos = [
-                          ...new Set(
-                            selecionadas
-                              .map((o) => rotuloTipoFiscal(o.tipo_fiscal?.texto))
-                              .filter(Boolean)
-                          ),
-                        ];
-                        if (!tipos.length) return "A declarar por plano";
-                        return tipos.join(" / ");
-                      })()}
-                    </dd>
+                    <dd>{rotuloTipoFiscalCotacao(selecionadas) || "A declarar"}</dd>
                   </div>
                 </dl>
+                {tipoFiscalPrecisaDeclararNaCotacao(selecionadas) && (
+                  <label className="campo-revisao">
+                    <span>Tipo fiscal</span>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => aplicarTipoFiscalDocumento(e.target.value)}
+                    >
+                      <option value="">Selecione…</option>
+                      {TIPOS_FISCAIS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="muted revisao-plano-dica">
+                      O IOF de 2,38% só se aplica a seguradora. Vale para os{" "}
+                      {selecionadas.length} plano(s) desta cotação ainda sem tipo fiscal.
+                    </span>
+                  </label>
+                )}
                 {(() => {
                   const validadeAtual =
                     detalhe.validade_oficial?.data ||

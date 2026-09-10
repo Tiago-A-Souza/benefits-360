@@ -354,14 +354,17 @@ export async function confirmarLoteExtracao(estudoId, extracaoId) {
 export async function aplicarExtracaoCotacao(
   estudoId,
   extracaoId,
-  { confirmarRemocoes = false } = {}
+  { confirmarRemocoes = false, subgrupoId = null } = {}
 ) {
   const res = await fetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/aplicar`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirmar_remocoes: confirmarRemocoes }),
+      body: JSON.stringify({
+        confirmar_remocoes: confirmarRemocoes,
+        subgrupo_id: subgrupoId || null,
+      }),
     }
   );
   if (res.status === 409) {

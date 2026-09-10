@@ -141,6 +141,37 @@ def test_04_grupo_sem_entrada_herda_o_catalogo_inteiro():
     assert opcoes_do_subgrupo(r, "sg-2") == ["op-1", "op-2", "op-3", "op-4", "op-5"]
 
 
+def test_04e_atribuir_pdf_ao_grupo_a_nao_herda_no_b():
+    from newport_app.rascunho.selecao_grupo import atribui_planos_do_pdf_ao_grupo
+
+    r = _rascunho()
+    for op in r.opcoes_proposta:
+        if op.id in ("op-1", "op-2"):
+            op.extracao_id = "ext-1"
+            op.extracao_opcao_id = op.id
+
+    atribui_planos_do_pdf_ao_grupo(r, "sg-1", "ext-1", ["op-1", "op-2"])
+
+    assert opcoes_do_subgrupo(r, "sg-1") == ["op-1", "op-2"]
+    assert tem_selecao_propria(r, "sg-2")
+    assert opcoes_do_subgrupo(r, "sg-2") == []
+
+
+def test_04f_segundo_grupo_escolhe_outros_planos_do_mesmo_pdf():
+    from newport_app.rascunho.selecao_grupo import atribui_planos_do_pdf_ao_grupo
+
+    r = _rascunho()
+    for op in r.opcoes_proposta[:4]:
+        op.extracao_id = "ext-1"
+        op.extracao_opcao_id = op.id
+
+    atribui_planos_do_pdf_ao_grupo(r, "sg-1", "ext-1", ["op-1", "op-2"])
+    atribui_planos_do_pdf_ao_grupo(r, "sg-2", "ext-1", ["op-3", "op-4"])
+
+    assert opcoes_do_subgrupo(r, "sg-1") == ["op-1", "op-2"]
+    assert opcoes_do_subgrupo(r, "sg-2") == ["op-3", "op-4"]
+
+
 def test_04b_grupo_sem_entrada_impede_a_uniao_de_podar():
     """Com um grupo herdando o catálogo, a união nunca fica menor que ele."""
     r = _rascunho()
@@ -358,6 +389,46 @@ def test_endpoint_409_quando_a_poda_derruba_cenario(tmp_path: Path):
 
     depois = repo.obter_rascunho("est-fase1")
     assert {op.id for op in depois.opcoes_proposta} == {"op-2", "op-4", "op-5"}
+
+
+def test_grupo_sem_marca_nao_bloqueia_tabela_extensa():
+    """S750 vazio + ONE marcado: o vazio é escolha, não «levar todos»."""
+    from datetime import datetime, timezone
+
+    from newport_app.cotacao_pdf.apply import _ids_aplicaveis
+    from newport_app.models.cotacao_pdf import (
+        DocumentoCotacaoPDF,
+        ExtracaoCotacaoCandidata,
+        OpcaoCotacaoCandidata,
+    )
+
+    extracao = ExtracaoCotacaoCandidata(
+        id="ext-sula",
+        estudo_id="est-fase1",
+        versao=1,
+        documento=DocumentoCotacaoPDF(
+            id="doc-sula",
+            nome_arquivo="sula.pdf",
+            hash_sha256="h",
+            template_id="sulamerica-pme-v2",
+        ),
+        estado="extraido",
+        criado_em=datetime.now(timezone.utc),
+        opcoes=[
+            OpcaoCotacaoCandidata(id=f"ex-{i}", selecionada_para_comparativo=False)
+            for i in range(22)
+        ],
+    )
+    ids, bloqueios, abortar = _ids_aplicaveis(
+        [], extracao, selecao_vazia_nao_leva_todos=True
+    )
+    assert ids == set()
+    assert bloqueios == []
+    assert abortar is False
+
+    ids_estudo, bloqueios_estudo, abortar_estudo = _ids_aplicaveis([], extracao)
+    assert abortar_estudo is True
+    assert "conscientemente" in bloqueios_estudo[0]["motivos"][0]
 
 
 def test_endpoint_subgrupo_desconhecido_da_404(tmp_path: Path):

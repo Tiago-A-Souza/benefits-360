@@ -50,6 +50,8 @@ def _opcoes_apos_exclusoes(
 def _ids_aplicaveis(
     opcoes_atuais: list[OpcaoPropostaRascunho],
     extracao: ExtracaoCotacaoCandidata,
+    *,
+    selecao_vazia_nao_leva_todos: bool = False,
 ) -> tuple[set[str], list[dict[str, str | list[str]]], bool]:
     """Opções da extração que vão ao comparativo, bloqueios e se é para abortar.
 
@@ -62,6 +64,10 @@ def _ids_aplicaveis(
     if exige_selecao_consciente(extracao):
         if selecionadas:
             return {o.id for o in selecionadas}, [], False
+        # Atribuição por grupo: zero planos neste grupo é escolha explícita.
+        # O bloqueio existe para não levar a tabela inteira sem marcar nada.
+        if selecao_vazia_nao_leva_todos:
+            return set(), [], False
         if any(op.extracao_id == extracao.id for op in opcoes_atuais):
             return set(), [], False
         bloqueio: dict[str, str | list[str]] = {
@@ -72,6 +78,8 @@ def _ids_aplicaveis(
         return set(), [bloqueio], True
     if selecionadas:
         return {o.id for o in selecionadas}, [], False
+    if selecao_vazia_nao_leva_todos:
+        return set(), [], False
     return {o.id for o in ativas}, [], False
 
 
@@ -93,13 +101,20 @@ def _ids_removidos(
 def impacto_remocao_reaplicacao(
     rascunho: RascunhoEstudo,
     extracao: ExtracaoCotacaoCandidata,
+    *,
+    ids_extracao_protegidos: set[str] | None = None,
+    selecao_vazia_nao_leva_todos: bool = False,
 ) -> ImpactoRemocao:
     """Inventário do que a re-aplicação vai remover — sem mutar o rascunho.
 
     Roda antes de qualquer escrita para o operador poder desistir.
     """
     opcoes_atuais = _opcoes_apos_exclusoes(rascunho, extracao)
-    aplicaveis, _bloqueios, abortar = _ids_aplicaveis(opcoes_atuais, extracao)
+    aplicaveis, _bloqueios, abortar = _ids_aplicaveis(
+        opcoes_atuais, extracao, selecao_vazia_nao_leva_todos=selecao_vazia_nao_leva_todos
+    )
+    if ids_extracao_protegidos:
+        aplicaveis = aplicaveis | ids_extracao_protegidos
     if abortar:
         return ImpactoRemocao()
 
@@ -349,6 +364,9 @@ def _equivalente_com_tabela_divergente(
 def aplicar_extracao_confirmada(
     rascunho: RascunhoEstudo,
     extracao: ExtracaoCotacaoCandidata,
+    *,
+    ids_extracao_protegidos: set[str] | None = None,
+    selecao_vazia_nao_leva_todos: bool = False,
 ) -> tuple[RascunhoEstudo, list[dict[str, str | list[str]]]]:
     doc = extracao.documento
     bloqueios: list[dict[str, str | list[str]]] = []
@@ -374,8 +392,12 @@ def aplicar_extracao_confirmada(
     rascunho.opcoes_proposta = _opcoes_apos_exclusoes(rascunho, extracao)
 
     ids_aplicaveis, bloqueios_selecao, abortar = _ids_aplicaveis(
-        rascunho.opcoes_proposta, extracao
+        rascunho.opcoes_proposta,
+        extracao,
+        selecao_vazia_nao_leva_todos=selecao_vazia_nao_leva_todos,
     )
+    if ids_extracao_protegidos:
+        ids_aplicaveis = ids_aplicaveis | ids_extracao_protegidos
     if abortar:
         bloqueios.extend(bloqueios_selecao)
         return rascunho, bloqueios
