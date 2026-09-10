@@ -151,6 +151,7 @@ def test_html_resumo_sem_vigente_com_percentual():
     )
     html_doc = render_html(vm)
     assert "R$ 29.386,76" in html_doc
-    assert "+12%" in html_doc
+    assert "Contrato atual 12%" in html_doc
+    assert "class='ajuste'" not in html_doc
     assert " vigente" not in html_doc
     assert "reajustado</small>" not in html_doc

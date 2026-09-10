@@ -34,7 +34,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.5"
+RENDERER_VERSAO = "html@2.13.6"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 

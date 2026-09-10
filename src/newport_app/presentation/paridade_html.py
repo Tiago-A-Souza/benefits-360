@@ -141,13 +141,22 @@ def _colspan(cell: dict[str, Any]) -> int:
         return 1
 
 
+def _rotulo_coluna_canonico(texto: str) -> str:
+    """«Contrato atual 12%» no cabeçalho continua sendo a coluna Contrato atual."""
+    if not texto:
+        return texto
+    if texto == ROTULO_COLUNA_ATUAL or texto.startswith(ROTULO_COLUNA_ATUAL + " "):
+        return ROTULO_COLUNA_ATUAL
+    return texto
+
+
 def _rotulo_coluna(th: dict[str, Any]) -> str:
     for span in _iter(th, "span"):
         if "op" in _attr_class(span):
             t = _texto(span)
             if t:
-                return t
-    return _texto(th)
+                return _rotulo_coluna_canonico(t)
+    return _rotulo_coluna_canonico(_texto(th))
 
 
 def _expandir_cabecalho(tr: dict[str, Any]) -> list[str]:
@@ -216,7 +225,7 @@ def inventariar_html(
                 )
                 planos.add(nome)
         if tag == "span" and "op" in classes:
-            t = _texto(node)
+            t = _rotulo_coluna_canonico(_texto(node))
             if t and t not in {ROTULO_COLUNA_ATUAL}:
                 propostas.add(t)
                 colunas.add(t)
@@ -239,7 +248,7 @@ def inventariar_html(
                 if t and t != ROTULO_COLUNA_ATUAL:
                     for span in _iter(th, "span"):
                         if "op" in _attr_class(span) and _texto(span):
-                            nome = _texto(span)
+                            nome = _rotulo_coluna_canonico(_texto(span))
                             propostas.add(nome)
                             if "atual" in _attr_class(th):
                                 planos.add(nome)

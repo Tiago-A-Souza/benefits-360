@@ -171,7 +171,31 @@ def montar_blocos(
     return [b for b in blocos if b.n_cols > 0]
 
 
-def _th_col_atual(planos: list[PlanoAtualApresentacao]) -> str:
+def _pct_exibicao_cabecalho(percentual: str | None) -> str | None:
+    """Remove o «+» das células; mantém «-» e decimais («11,98%»)."""
+    if not percentual:
+        return None
+    return percentual[1:] if percentual.startswith("+") else percentual
+
+
+def _percentual_unico_planos(planos: list[PlanoAtualApresentacao]) -> str | None:
+    """Taxa única de todos os planos da coluna; None se faltar ou se divergirem."""
+    vistos: set[str] = set()
+    for pl in planos:
+        pct = pl.reajuste_percentual_exibicao
+        if not pct:
+            return None
+        vistos.add(pct)
+    if len(vistos) == 1:
+        return next(iter(vistos))
+    return None
+
+
+def _th_col_atual(
+    planos: list[PlanoAtualApresentacao],
+    *,
+    percentual: str | None = None,
+) -> str:
     ops = sorted(
         {(p.operadora or "").strip() for p in planos if (p.operadora or "").strip()}
     )
@@ -181,8 +205,12 @@ def _th_col_atual(planos: list[PlanoAtualApresentacao]) -> str:
         if operadora
         else ""
     )
+    rotulo = ROTULO_COLUNA_ATUAL
+    pct = _pct_exibicao_cabecalho(percentual)
+    if pct:
+        rotulo = f"{ROTULO_COLUNA_ATUAL} {pct}"
     return (
-        f"<th class='atual'><span class='op'>{html.escape(ROTULO_COLUNA_ATUAL)}</span>"
+        f"<th class='atual'><span class='op'>{html.escape(rotulo)}</span>"
         f"{od}</th>"
     )
 
@@ -207,6 +235,7 @@ def _cabecalho_blocos(
     *,
     primeira: str,
     extras: str = "",
+    percentual_atual: str | None = None,
 ) -> str:
     n_extras = extras.count("<th")
     partes = ["<thead>"]
@@ -221,7 +250,7 @@ def _cabecalho_blocos(
     partes.append("</tr><tr class='bloco-plano'>")
     for b in blocos:
         if b.atual:
-            partes.append(_th_col_atual(b.planos))
+            partes.append(_th_col_atual(b.planos, percentual=percentual_atual))
         else:
             for oid in b.op_ids:
                 partes.append(_th_col_prop(_prop(model, oid), rotulos.get(oid, "Proposta")))
@@ -373,31 +402,42 @@ def render_tabela_resumo(
     seguro_novo: bool,
 ) -> str:
     blocos = montar_blocos(model, op_ids, seguro_novo=seguro_novo)
+    planos_atual: list[PlanoAtualApresentacao] = []
+    for b in blocos:
+        if b.atual:
+            planos_atual = b.planos
+            break
+    pct_cabecalho = (
+        None if seguro_novo else _percentual_unico_planos(planos_atual)
+    )
     partes = ["<div class='rolo'><table class='tabela-densa tabela-resumo'>"]
     partes.append(
-        _cabecalho_blocos(blocos, model, rotulos, primeira="Indicador")
+        _cabecalho_blocos(
+            blocos,
+            model,
+            rotulos,
+            primeira="Indicador",
+            percentual_atual=pct_cabecalho,
+        )
     )
     partes.append("<tbody>")
     partes.append(_linha_topo(blocos, "Acomodação", "acomodacao"))
     partes.append(_linha_topo(blocos, "Modalidade", "modalidade"))
 
     if not seguro_novo:
-        planos: list[PlanoAtualApresentacao] = []
-        for b in blocos:
-            if b.atual:
-                planos = b.planos
-                break
+        planos = planos_atual
         for plano in planos:
             vidas = sum(fx.qtd_total for fx in plano.faixas)
             vidas_attr = f" data-vidas='{vidas}'" if vidas > 0 else ""
             partes.append(f"<tr><td{vidas_attr}>{html.escape(plano.plano_nome)}</td>")
+            pct_cel = None if pct_cabecalho else plano.reajuste_percentual_exibicao
             for b in blocos:
                 if b.atual:
                     partes.append(
                         "<td class='atual'>"
                         + _contrato_atual_html(
                             plano.subtotal_reajustado_centavos,
-                            plano.reajuste_percentual_exibicao,
+                            pct_cel,
                         )
                         + "</td>"
                     )
@@ -418,7 +458,7 @@ def render_tabela_resumo(
         if planos:
             partes.append("<tr data-row='consolidado'><td><strong>Consolidado</strong></td>")
             reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in planos) or None
-            pct = model.reajuste_consolidado_percentual_exibicao
+            pct = None if pct_cabecalho else model.reajuste_consolidado_percentual_exibicao
             for b in blocos:
                 if b.atual:
                     partes.append(

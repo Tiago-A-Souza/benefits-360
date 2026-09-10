@@ -502,5 +502,52 @@ def test_percentual_ao_lado_do_valor_resumo_e_faixas(tmp_path: Path):
     assert ".tabela-resumo .ajuste,.tabela-faixas .ajuste{display:inline}" in html
     assert "table.tabela-grupo-familiar .ajuste{display:block" in html
     resumo = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
-    assert "class='ajuste'" in resumo
-    assert "+12%" in resumo
+    assert "Contrato atual 12%" in resumo
+    thead = re.search(r"<thead>(.*?)</thead>", resumo, re.S)
+    assert thead and "Contrato atual 12%" in thead.group(1)
+    # Reajuste do contrato sai das células; «ajuste» nas linhas de variação permanece.
+    assert re.search(r"class='ajuste'>\+12%", resumo) is None
+    faixas = _tabela_tela(_secao(html, "visao-faixas"), "tabela-faixas")
+    assert "class='ajuste'" in faixas
+    assert "+12%" in faixas
+
+
+def test_pct_cabecalho_resumo_preserva_decimais():
+    from newport_app.presentation.tabela_densa import (
+        _pct_exibicao_cabecalho,
+        _percentual_unico_planos,
+    )
+    from newport_app.models.presentation import PlanoAtualApresentacao
+
+    assert _pct_exibicao_cabecalho("+11,98%") == "11,98%"
+    assert _pct_exibicao_cabecalho("-3,50%") == "-3,50%"
+    iguais = [
+        PlanoAtualApresentacao(
+            subgrupo_id="a",
+            operadora="Amil",
+            plano_nome="A",
+            reajuste_percentual_exibicao="+11,98%",
+        ),
+        PlanoAtualApresentacao(
+            subgrupo_id="b",
+            operadora="Amil",
+            plano_nome="B",
+            reajuste_percentual_exibicao="+11,98%",
+        ),
+    ]
+    assert _percentual_unico_planos(iguais) == "+11,98%"
+    distintos = [
+        PlanoAtualApresentacao(
+            subgrupo_id="a",
+            operadora="Amil",
+            plano_nome="A",
+            reajuste_percentual_exibicao="+11,98%",
+        ),
+        PlanoAtualApresentacao(
+            subgrupo_id="b",
+            operadora="Amil",
+            plano_nome="B",
+            reajuste_percentual_exibicao="+12%",
+        ),
+    ]
+    assert _percentual_unico_planos(distintos) is None
