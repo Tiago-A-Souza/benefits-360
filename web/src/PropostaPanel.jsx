@@ -54,6 +54,7 @@ export default function PropostaPanel({
   etapaIndice = 3,
   totalEtapas = 5,
   onSalvo,
+  onRegistrarAvanco,
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
@@ -291,6 +292,8 @@ export default function PropostaPanel({
           onSalvo?.();
         }}
         onPreencherManualmente={abrirManualDesdeExtracao}
+        onRegistrarAvanco={onRegistrarAvanco}
+        exigeSelecaoPorGrupo={planosAtuais.length > 1}
         cestaGlobal={cestaGlobal}
         setCestaGlobal={setCestaGlobal}
         opcoesComparativo={opcoesComparativo}

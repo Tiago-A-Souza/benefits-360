@@ -57,6 +57,10 @@ import {
 } from "./cotacaoPdf/utils";
 import SelecaoPorGrupo from "./cotacaoPdf/SelecaoPorGrupo.jsx";
 import {
+  aposUltimoPdfDeveVoltarLista,
+  avancoDeveRevelarSelecaoPorGrupo,
+} from "./cotacaoPdf/selecaoPorGrupo.js";
+import {
   executarUploadLote,
   formatarResumoUploads,
   primeiroUploadComSucesso,
@@ -877,6 +881,8 @@ export default function CotacaoPdfPanel({
   estudoId,
   onAplicado,
   onPreencherManualmente,
+  onRegistrarAvanco,
+  exigeSelecaoPorGrupo = false,
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
@@ -1063,6 +1069,17 @@ export default function CotacaoPdfPanel({
     setDetalhe(null);
     setPdfInlineDocumentoId(null);
   }
+
+  useEffect(() => {
+    if (!onRegistrarAvanco || !exigeSelecaoPorGrupo) return undefined;
+    return onRegistrarAvanco(async () => {
+      if (avancoDeveRevelarSelecaoPorGrupo(exigeSelecaoPorGrupo, fase)) {
+        voltarLista();
+        return false;
+      }
+      return true;
+    });
+  }, [onRegistrarAvanco, exigeSelecaoPorGrupo, fase]);
 
   async function processarUploads(files) {
     if (!files.length) return;
@@ -1332,7 +1349,11 @@ export default function CotacaoPdfPanel({
         setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
       }
       setExtracoes(listaAtualizada);
-      await recarregarDetalhe();
+      if (aposUltimoPdfDeveVoltarLista(exigeSelecaoPorGrupo, Boolean(prox))) {
+        voltarLista();
+      } else {
+        await recarregarDetalhe();
+      }
       onAplicado?.();
     } catch (err) {
       if (err.bloqueios) setBloqueios(err.bloqueios);
@@ -1380,7 +1401,11 @@ export default function CotacaoPdfPanel({
     <div className="cotacao-pdf-panel">
       {fase === "lista" && (
         <>
-          <SelecaoPorGrupo estudoId={estudoId} onAlterado={onAplicado} />
+          <SelecaoPorGrupo
+            estudoId={estudoId}
+            onAlterado={onAplicado}
+            exigeSelecaoPorGrupo={exigeSelecaoPorGrupo}
+          />
           <ComparativoResumo
             opcoesComparativo={opcoesComparativo}
             extracoes={extracoes}

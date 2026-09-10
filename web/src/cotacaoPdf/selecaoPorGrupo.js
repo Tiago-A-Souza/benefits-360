@@ -5,6 +5,31 @@ export function exibeSelecaoPorGrupo(selecao) {
   return (selecao?.grupos?.length || 0) > 1;
 }
 
+/**
+ * Depois das cotações, a seleção por grupo é a última tela da etapa 3.
+ * Se o operador ainda estiver dentro de um PDF, o avanço revela essa tela
+ * em vez de pular para a etapa 4. Já na lista, o clique segue — sem exigir
+ * seleção própria; grupo sem entrada herda o catálogo.
+ */
+export function avancoDeveRevelarSelecaoPorGrupo(exigeSelecao, fase) {
+  return Boolean(exigeSelecao) && fase !== "lista";
+}
+
+/** Último PDF aplicado, dois grupos: volta à lista com as abas e o catálogo. */
+export function aposUltimoPdfDeveVoltarLista(exigeSelecao, temProximoPendente) {
+  return Boolean(exigeSelecao) && !temProximoPendente;
+}
+
+/**
+ * O que a seção mostra. GET falho com dois grupos vira erro visível;
+ * um plano vigente continua sem tela, mesmo se o GET falhar.
+ */
+export function visaoSelecaoPorGrupo(selecao, erro, exigeSelecao = false) {
+  if (exibeSelecaoPorGrupo(selecao)) return "tela";
+  if (erro && exigeSelecao) return "erro";
+  return null;
+}
+
 function plural(n, singular, formaPlural) {
   return `${n} ${n === 1 ? singular : formaPlural}`;
 }

@@ -13,7 +13,7 @@ import {
 import {
   alternarPlano,
   avisoSelecaoVazia,
-  exibeSelecaoPorGrupo,
+  visaoSelecaoPorGrupo,
   seloGrupo,
   subtituloGrupo,
   textoContexto,
@@ -41,7 +41,11 @@ function AbaGrupo({ grupo, ativo, onSelecionar }) {
   );
 }
 
-export default function SelecaoPorGrupo({ estudoId, onAlterado }) {
+export default function SelecaoPorGrupo({
+  estudoId,
+  onAlterado,
+  exigeSelecaoPorGrupo = false,
+}) {
   const [selecao, setSelecao] = useState(null);
   const [subgrupoAtivo, setSubgrupoAtivo] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -51,9 +55,11 @@ export default function SelecaoPorGrupo({ estudoId, onAlterado }) {
   const recarregar = useCallback(async () => {
     try {
       const resp = await obterSelecaoPorGrupo(estudoId);
+      setErro(null);
       setSelecao(resp);
       return resp;
     } catch (err) {
+      setSelecao(null);
       setErro(mensagemErroOperador(err, "Não foi possível carregar a seleção por grupo."));
       return null;
     }
@@ -109,7 +115,17 @@ export default function SelecaoPorGrupo({ estudoId, onAlterado }) {
     }
   }
 
-  if (!exibeSelecaoPorGrupo(selecao)) return null;
+  const visao = visaoSelecaoPorGrupo(selecao, erro, exigeSelecaoPorGrupo);
+  if (visao !== "tela") {
+    if (visao === "erro") {
+      return (
+        <section className="selecao-grupo cartao">
+          <p className="erro">{erro}</p>
+        </section>
+      );
+    }
+    return null;
+  }
 
   const aviso = grupo
     ? avisoSelecaoVazia(

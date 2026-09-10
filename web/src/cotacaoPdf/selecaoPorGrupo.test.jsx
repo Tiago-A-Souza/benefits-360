@@ -9,7 +9,10 @@ globalThis.React = React;
 import {
   alternarPlano,
   avisoSelecaoVazia,
+  aposUltimoPdfDeveVoltarLista,
+  avancoDeveRevelarSelecaoPorGrupo,
   exibeSelecaoPorGrupo,
+  visaoSelecaoPorGrupo,
   seloGrupo,
   subtituloGrupo,
   textoContexto,
@@ -46,6 +49,58 @@ describe("visibilidade da tela", () => {
 
   it("resposta ausente não quebra", () => {
     expect(exibeSelecaoPorGrupo(null)).toBe(false);
+  });
+});
+
+describe("avanço revela a seleção por grupo", () => {
+  it("dentro de um PDF, com dois grupos, o avanço fica na etapa 3", () => {
+    expect(avancoDeveRevelarSelecaoPorGrupo(true, "selecao")).toBe(true);
+    expect(avancoDeveRevelarSelecaoPorGrupo(true, "revisao")).toBe(true);
+  });
+
+  it("já na lista, o avanço segue para a etapa 4", () => {
+    expect(avancoDeveRevelarSelecaoPorGrupo(true, "lista")).toBe(false);
+  });
+
+  it("estudo de um plano vigente não intercepta", () => {
+    expect(avancoDeveRevelarSelecaoPorGrupo(false, "selecao")).toBe(false);
+    expect(avancoDeveRevelarSelecaoPorGrupo(false, "lista")).toBe(false);
+  });
+});
+
+describe("último PDF volta à lista", () => {
+  it("dois grupos e sem próximo documento voltam à lista", () => {
+    expect(aposUltimoPdfDeveVoltarLista(true, false)).toBe(true);
+  });
+
+  it("ainda há PDF pendente: segue o documento, não a lista", () => {
+    expect(aposUltimoPdfDeveVoltarLista(true, true)).toBe(false);
+  });
+
+  it("um plano vigente não muda o fluxo de hoje", () => {
+    expect(aposUltimoPdfDeveVoltarLista(false, false)).toBe(false);
+    expect(aposUltimoPdfDeveVoltarLista(false, true)).toBe(false);
+  });
+});
+
+describe("visao da secao", () => {
+  it("dois grupos mostram a tela", () => {
+    expect(
+      visaoSelecaoPorGrupo(
+        { grupos: [grupo(), grupo({ subgrupo_id: "sg-2" })] },
+        null,
+        true
+      )
+    ).toBe("tela");
+  });
+
+  it("GET falho com dois grupos mostra o erro", () => {
+    expect(visaoSelecaoPorGrupo(null, "falha de rede", true)).toBe("erro");
+  });
+
+  it("um plano vigente não mostra tela nem erro de GET", () => {
+    expect(visaoSelecaoPorGrupo({ grupos: [grupo()] }, null, false)).toBe(null);
+    expect(visaoSelecaoPorGrupo(null, "falha de rede", false)).toBe(null);
   });
 });
 

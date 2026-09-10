@@ -111,13 +111,6 @@ export default function App() {
 
   async function irProximo() {
     if (passo >= passos.length) return;
-    if (chavePassoAtual === "cotacoes") {
-      const aviso = avisoAvancoCotacoesPendentes(
-        ctxFluxo.extracoes,
-        ctxFluxo.rascunho?.opcoes_proposta || []
-      );
-      if (aviso && !window.confirm(aviso)) return;
-    }
     const confirmar = avancarEtapaRef.current;
     if (typeof confirmar === "function") {
       const ok = await confirmar();
@@ -125,6 +118,13 @@ export default function App() {
       await recarregarContexto();
     } else if (!proximaEtapaDisponivel(passo, ctxFluxo)) {
       return;
+    }
+    if (chavePassoAtual === "cotacoes") {
+      const aviso = avisoAvancoCotacoesPendentes(
+        ctxFluxo.extracoes,
+        ctxFluxo.rascunho?.opcoes_proposta || []
+      );
+      if (aviso && !window.confirm(aviso)) return;
     }
     setPasso((atual) => atual + 1);
   }
@@ -255,6 +255,7 @@ export default function App() {
                 extracoes={ctxFluxo.extracoes || []}
                 subgruposAtuais={ctxFluxo.rascunho?.subgrupos_atuais || []}
                 onSalvo={recarregarContexto}
+                onRegistrarAvanco={registrarAvancoEtapa}
               />
             )}
             {chavePassoAtual === "selecionados" && (
