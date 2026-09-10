@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seleção por grupo — etapas 3 e 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0b1f36; --azul:#1668e3; --azul-2:#0f56c4; --azul-50:#eef5ff; --azul-100:#dceaff;
+  --verde:#0f8a5f; --verde-50:#eaf8f2; --ambar:#b96b06; --ambar-50:#fff5e7;
+  --vermelho:#c43a46; --vermelho-50:#fff0f1;
+  --tinta:#142236; --mudo:#4b5c70; --mudo-2:#8c9aad;
+  --linha:#dfe5ec; --linha-2:#ccd5df;
+  --sup:#fff; --sup-2:#f8fafc; --pag:#f3f6f9;
+  --r:14px; --r2:10px;
+  --f:Inter,ui-sans-serif,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--pag);color:var(--tinta);font-family:var(--f);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.n{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 22px 70px}
+
+.cap{margin:0 0 20px}
+.cap .k{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--azul);margin:0 0 5px}
+.cap h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.03em}
+.cap p{margin:8px 0 0;font-size:13.5px;color:var(--mudo);max-width:82ch}
+
+.tela{background:var(--sup);border:1px solid var(--linha);border-radius:var(--r);
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.045);margin:0 0 26px;overflow:hidden}
+.tela > header{padding:14px 20px;border-bottom:1px solid var(--linha);background:var(--sup-2);
+  display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.tela > header .t{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mudo-2)}
+.tela > header .d{font-size:12.5px;color:var(--mudo)}
+.corpo{padding:20px}
+
+/* abas de grupo */
+.grupos{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+.gtab{flex:1;min-width:250px;text-align:left;border:1.5px solid var(--linha);border-radius:var(--r2);
+  padding:13px 15px;background:var(--sup);cursor:default}
+.gtab .nm{font-size:14.5px;font-weight:650;letter-spacing:-.015em}
+.gtab .sub{font-size:12px;color:var(--mudo);margin-top:2px}
+.gtab .st{display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:11.5px;font-weight:600;
+  padding:3px 9px;border-radius:100px}
+.gtab .st::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.st-ok{color:var(--verde);background:var(--verde-50)}
+.st-pd{color:var(--ambar);background:var(--ambar-50)}
+.gtab[aria-current]{border-color:var(--azul);background:var(--azul-50);box-shadow:0 0 0 1px var(--azul)}
+.gtab[aria-current] .nm{color:var(--azul-2)}
+
+.ctx{display:flex;align-items:center;gap:9px;padding:10px 14px;background:var(--azul-50);
+  border:1px solid var(--azul-100);border-radius:var(--r2);margin:0 0 14px;font-size:13px}
+.ctx b{font-weight:650}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 12px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th:nth-child(2),td:nth-child(2){text-align:left}
+thead th{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mudo-2);
+  border-bottom:1px solid var(--linha-2);padding-bottom:8px}
+tbody td{border-bottom:1px solid var(--linha)}
+tbody tr.sel td{background:var(--azul-50)}
+tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--azul)}
+.cx{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:4px;border:1.5px solid var(--linha-2);
+  background:var(--sup);margin-right:9px;vertical-align:-3px;font-size:11px;color:#fff}
+tr.sel .cx{background:var(--azul);border-color:var(--azul)}
+.pl{font-weight:600}
+.op{font-size:11.5px;color:var(--mudo-2)}
+.neg{color:var(--verde);font-weight:600}
+.pos{color:var(--vermelho);font-weight:600}
+.pct{display:block;font-size:11px;font-weight:500;margin-top:1px}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:100px;white-space:nowrap}
+.tg-in{color:var(--verde);background:var(--verde-50)}
+.tg-out{color:var(--mudo);background:var(--sup-2)}
+
+.rod{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:14px 20px;border-top:1px solid var(--linha);background:var(--sup-2)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--r2);
+  font-size:13.5px;font-weight:600;border:1px solid var(--linha-2);background:var(--sup)}
+.btn-1{background:var(--azul);border-color:var(--azul);color:#fff}
+.rod .msg{font-size:12.5px;color:var(--mudo)}
+
+/* etapa 4 */
+.cen{border:1px solid var(--linha);border-radius:var(--r2);margin:0 0 12px;overflow:hidden}
+.cen > header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:11px 15px;background:var(--sup-2);border-bottom:1px solid var(--linha)}
+.cen .cn{font-size:13.5px;font-weight:700}
+.cen .cc{font-size:12.5px;color:var(--mudo)}
+.par{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:16px;align-items:center;
+  padding:12px 15px;border-bottom:1px solid var(--linha)}
+.par:last-child{border-bottom:0}
+.par .pn{font-size:13.5px;font-weight:600}
+.par .pn small{display:block;font-weight:400;color:var(--mudo-2);font-size:11.5px;margin-top:1px}
+.dd{border:1.5px solid var(--linha-2);border-radius:8px;background:var(--sup);overflow:hidden}
+.dd .cur{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;font-size:13px;font-weight:500}
+.dd .lista{border-top:1px solid var(--linha)}
+.dd .it{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:12.5px;border-bottom:1px solid var(--linha)}
+.dd .it:last-child{border-bottom:0}
+.dd .it.on{background:var(--azul);color:#fff}
+.dd .it.on .neg,.dd .it.on .pos{color:#fff}
+.dd .ph{padding:8px 12px;font-size:12.5px;color:var(--mudo-2);border-bottom:1px solid var(--linha)}
+
+.nota{margin:16px 0 0;padding:13px 17px;background:var(--sup-2);border-left:2px solid var(--azul);font-size:12.5px;color:var(--mudo)}
+.nota b{font-weight:650;color:var(--tinta)}
+.seta{text-align:center;margin:0 0 26px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mudo-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="cap">
+    <p class="k">Proposta · seleção por grupo</p>
+    <h1>Como ficaria a etapa 3 e a etapa 4</h1>
+    <p>Hoje a seleção de planos é uma só para o estudo inteiro — escolher para um grupo sobrescreve o outro. Passa a ser uma seleção por grupo de beneficiários, e a etapa 4 oferece a cada plano vigente só o que foi escolhido para ele.</p>
+  </div>
+
+  <!-- ===== TELA 1 ===== -->
+  <div class="tela">
+    <header><span class="t">Etapa 3 · cotações</span><span class="d">grupo ativo: funcionários</span></header>
+    <div class="corpo">
+
+      <div class="grupos">
+        <div class="gtab" aria-current="page">
+          <div class="nm">AMIL S750 — Apto.</div>
+          <div class="sub">36 vidas · funcionários · R$ 28.862,01 reajustado</div>
+          <span class="st st-ok">3 planos escolhidos</span>
+        </div>
+        <div class="gtab">
+          <div class="nm">AMIL ONE S2500 — Apto.</div>
+          <div class="sub">5 vidas · diretoria · R$ 18.751,61 reajustado</div>
+          <span class="st st-ok">2 planos escolhidos</span>
+        </div>
+      </div>
+
+      <div class="ctx">Você está escolhendo os planos que vão competir com o <b>AMIL S750</b>. Os valores abaixo são calculados para as 36 vidas deste grupo.</div>
+
+      <table class="n">
+        <thead><tr><th>Plano</th><th>Acom.</th><th>Mensal est.</th><th>Δ R$</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr class="sel"><td><span class="cx">✓</span><span class="pl">Direto Apartamento</span><br><span class="op" style="margin-left:26px">SulAmérica</span></td>
+            <td>Apt.</td><td>R$ 18.912,97</td><td class="neg">−R$ 9.949,04<span class="pct neg">−34,5%</span></td><td><span class="tag tg-in">Escolhido</span></td></tr>
+          <tr class="sel"><td><span class="cx">✓</span><span class="pl">Bronze Brasil I Q</span><br><span class="op" style="margin-left:26px">Porto Seguro</span></td>
+            <td>Apt.</td><td>R$ 21.354,64</td><td class="neg">−R$ 7.507,37<span class="pct neg">−26,0%</span></td><td><span class="tag tg-in">Escolhido</span></td></tr>
+          <tr class="sel"><td><span class="cx">✓</span><span class="pl">Prata Mais I Q</span><br><span class="op" style="margin-left:26px">Porto Seguro</span></td>
+            <td>Apt.</td><td>R$ 23.607,17</td><td class="neg">−R$ 5.254,84<span class="pct neg">−18,2%</span></td><td><span class="tag tg-in">Escolhido</span></td></tr>
+          <tr><td><span class="cx"></span><span class="pl">Ouro Mais I Q</span><br><span class="op" style="margin-left:26px">Porto Seguro</span></td>
+            <td>Apt.</td><td>R$ 33.551,83</td><td class="pos">+R$ 4.689,82<span class="pct pos">+16,2%</span></td><td><span class="tag tg-out">Disponível</span></td></tr>
+          <tr><td><span class="cx"></span><span class="pl">Executivo R2</span><br><span class="op" style="margin-left:26px">SulAmérica</span></td>
+            <td>Apt.</td><td>R$ 57.323,43</td><td class="pos">+R$ 28.461,42<span class="pct pos">+98,6%</span></td><td><span class="tag tg-out">Disponível</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rod"><span class="msg">Escolhas gravadas para o AMIL S750. Passe para o outro grupo ou avance.</span><span class="btn btn-1">Próxima etapa →</span></div>
+  </div>
+
+  <p class="seta">o operador troca de grupo · a escolha anterior permanece</p>
+
+  <!-- ===== TELA 2 ===== -->
+  <div class="tela">
+    <header><span class="t">Etapa 3 · cotações</span><span class="d">grupo ativo: diretoria</span></header>
+    <div class="corpo">
+
+      <div class="grupos">
+        <div class="gtab">
+          <div class="nm">AMIL S750 — Apto.</div>
+          <div class="sub">36 vidas · funcionários · R$ 28.862,01 reajustado</div>
+          <span class="st st-ok">3 planos escolhidos</span>
+        </div>
+        <div class="gtab" aria-current="page">
+          <div class="nm">AMIL ONE S2500 — Apto.</div>
+          <div class="sub">5 vidas · diretoria · R$ 18.751,61 reajustado</div>
+          <span class="st st-ok">2 planos escolhidos</span>
+        </div>
+      </div>
+
+      <div class="ctx">Agora as escolhas são do <b>AMIL ONE S2500</b>. Os mesmos planos, recalculados para as 5 vidas deste grupo — e a seleção do outro grupo não muda.</div>
+
+      <table class="n">
+        <thead><tr><th>Plano</th><th>Acom.</th><th>Mensal est.</th><th>Δ R$</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><span class="cx"></span><span class="pl">Direto Apartamento</span><br><span class="op" style="margin-left:26px">SulAmérica</span></td>
+            <td>Apt.</td><td>R$ 5.503,17</td><td class="neg">−R$ 13.248,44<span class="pct neg">−70,7%</span></td><td><span class="tag tg-out">Disponível</span></td></tr>
+          <tr><td><span class="cx"></span><span class="pl">Bronze Brasil I Q</span><br><span class="op" style="margin-left:26px">Porto Seguro</span></td>
+            <td>Apt.</td><td>R$ 5.518,50</td><td class="neg">−R$ 13.233,11<span class="pct neg">−70,6%</span></td><td><span class="tag tg-out">Disponível</span></td></tr>
+          <tr><td><span class="cx"></span><span class="pl">Prata Mais I Q</span><br><span class="op" style="margin-left:26px">Porto Seguro</span></td>
+            <td>Apt.</td><td>R$ 6.100,61</td><td class="neg">−R$ 12.651,00<span class="pct neg">−67,5%</span></td><td><span class="tag tg-out">Disponível</span></td></tr>
+          <tr class="sel"><td><span class="cx">✓</span><span class="pl">Ouro Mais I Q</span><br><span class="op" style="margin-left:26px">Porto Seguro</span></td>
+            <td>Apt.</td><td>R$ 8.670,54</td><td class="neg">−R$ 10.081,07<span class="pct neg">−53,8%</span></td><td><span class="tag tg-in">Escolhido</span></td></tr>
+          <tr class="sel"><td><span class="cx">✓</span><span class="pl">Executivo R2</span><br><span class="op" style="margin-left:26px">SulAmérica</span></td>
+            <td>Apt.</td><td>R$ 16.679,70</td><td class="neg">−R$ 2.071,91<span class="pct neg">−11,0%</span></td><td><span class="tag tg-in">Escolhido</span></td></tr>
+        </tbody>
+      </table>
+
+      <p class="nota"><b>Repare no essencial.</b> Os cinco planos aparecem nos dois grupos, com valores diferentes — porque o preço depende das vidas. O que muda é <b>quais foram escolhidos</b>: três aqui, dois ali, sem um anular o outro.</p>
+    </div>
+    <div class="rod"><span class="msg">Dois grupos com escolhas gravadas.</span><span class="btn btn-1">Próxima etapa →</span></div>
+  </div>
+
+  <p class="seta">a etapa 4 recebe as escolhas de cada grupo</p>
+
+  <!-- ===== TELA 3 ===== -->
+  <div class="tela">
+    <header><span class="t">Etapa 4 · correspondência</span><span class="d">cada dropdown oferece só o que foi escolhido para aquele grupo</span></header>
+    <div class="corpo">
+
+      <div class="cen">
+        <header><span class="cn">Cenário 1</span><span class="cc">Prata Mais I Q + Ouro Mais I Q</span></header>
+        <div class="par">
+          <span class="pn">AMIL S750 — Apto.<small>36 vidas · funcionários</small></span>
+          <div class="dd">
+            <div class="cur"><span>Prata Mais I Q</span><span class="neg n">−R$ 5.254,84</span></div>
+            <div class="lista">
+              <div class="it"><span>Direto Apartamento</span><span class="neg n">−R$ 9.949,04</span></div>
+              <div class="it"><span>Bronze Brasil I Q</span><span class="neg n">−R$ 7.507,37</span></div>
+              <div class="it on"><span>Prata Mais I Q</span><span class="neg n">−R$ 5.254,84</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="par">
+          <span class="pn">AMIL ONE S2500 — Apto.<small>5 vidas · diretoria</small></span>
+          <div class="dd">
+            <div class="cur"><span>Ouro Mais I Q</span><span class="neg n">−R$ 10.081,07</span></div>
+            <div class="lista">
+              <div class="it on"><span>Ouro Mais I Q</span><span class="neg n">−R$ 10.081,07</span></div>
+              <div class="it"><span>Executivo R2</span><span class="neg n">−R$ 2.071,91</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="nota"><b>É aqui que a correção aparece.</b> O dropdown dos funcionários lista três planos; o da diretoria, dois. Hoje os dois listam os cinco, e é isso que faz o Executivo R2 aparecer como opção para as 36 vidas do S750 — a Ferrari para todo mundo.</p>
+
+      <p class="nota"><b>O componente não muda.</b> O dropdown continua igual, com o valor ao lado de cada plano. O que muda é a lista que ele recebe: hoje vem da seleção do estudo, passa a vir da seleção daquele grupo.</p>
+    </div>
+    <div class="rod"><span class="msg">Cenário 1 completo.</span><span class="btn">+ Adicionar cenário</span></div>
+  </div>
+
+</div>
+</body>
+</html>

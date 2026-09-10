@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faixas etárias por grupo — proposta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --grafite:#232932; --grafite-2:#3A3F47; --grafite-3:#5B5B58;
+  --ouro:#BF995B; --ouro-cl:#F6F0E6; --ouro-esc:#A68055;
+  --papel:#fff; --papel-2:#F7F7F5; --risco:#DEDCD6;
+  --verde:#1E7A5A; --verde-cl:#E9F4EF;
+  --vinho:#A8323C; --vinho-cl:#FBEDEE;
+  --f:'Poppins',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--papel-2);color:var(--grafite);font-family:var(--f);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.n{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.folha{max-width:1240px;margin:0 auto;padding:0 0 60px;background:var(--papel);box-shadow:0 1px 3px rgba(35,41,50,.07)}
+.topo{background:var(--grafite);color:#fff;padding:26px 38px}
+.topo .m{font-size:11px;font-weight:600;letter-spacing:.26em;color:var(--ouro);margin:0 0 8px}
+.topo h1{margin:0;font-size:23px;font-weight:800;letter-spacing:-.03em}
+.topo p{margin:9px 0 0;font-size:13px;font-weight:300;color:#C9CDD3;max-width:84ch}
+
+.bloco{padding:30px 38px 0}
+.tit{margin:0 0 3px;font-size:11px;font-weight:600;letter-spacing:.24em;color:var(--ouro)}
+.bloco h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.03em;text-transform:uppercase}
+.bloco h2 span{display:block;font-weight:300;color:var(--grafite-3);text-transform:none}
+.lead{margin:11px 0 18px;font-size:13px;font-weight:300;color:var(--grafite-2);max-width:90ch}
+.ok{padding:12px 15px;border-left:3px solid var(--verde);background:var(--verde-cl);font-size:12.5px;margin:0 0 4px}
+.ok b{font-weight:600}
+
+.grupo-cab{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:12px 16px;background:var(--grafite);color:#fff;margin:26px 0 0}
+.grupo-cab .g{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.grupo-cab .g small{display:block;font-size:10.5px;font-weight:400;letter-spacing:.12em;color:var(--ouro);text-transform:uppercase;margin-bottom:2px}
+.grupo-cab .q{font-size:12px;font-weight:300;color:#C9CDD3}
+
+.rolo{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:7px 11px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{background:#2f363f;color:#fff;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+thead th.reg{font-size:9.5px;letter-spacing:.13em;text-align:center;background:#1a2028;padding:6px 11px}
+thead th.atual{background:var(--ouro)}
+thead th.atual.reg{background:var(--ouro-esc)}
+thead th .pl{display:block;font-size:11.5px;font-weight:600;letter-spacing:-.01em;text-transform:none}
+thead th .op{display:block;font-size:9.5px;font-weight:400;letter-spacing:.09em;color:#9AA0A8;margin-top:1px}
+thead th.atual .op{color:#F2E7D5}
+tr.meta td{background:var(--papel-2);font-size:11.5px;color:var(--grafite-2);border-bottom:1px solid var(--risco)}
+tr.meta td:first-child{font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--grafite-3)}
+td.atual{background:var(--ouro-cl)}
+tbody td{border-bottom:1px solid var(--risco)}
+tr.tot td{border-top:2px solid var(--grafite);border-bottom:0;font-weight:700;font-size:13.5px;background:var(--papel-2)}
+tr.tot td.atual{background:#F1E7D6}
+tr.dif td{font-size:12px;border-bottom:0;padding-top:6px}
+tr.dif td:first-child{font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--grafite-3)}
+.neg{color:var(--verde)} .pos{color:var(--vinho)}
+.nota{margin:14px 0 0;padding:13px 17px;background:var(--papel-2);border-left:2px solid var(--ouro);font-size:12.5px;font-weight:300;color:var(--grafite-2)}
+.nota b{font-weight:600;color:var(--grafite)}
+.nota.alerta{border-left-color:var(--vinho);background:var(--vinho-cl)}
+</style>
+</head>
+<body>
+<div class="folha">
+
+  <header class="topo">
+    <p class="m">Proposta de correção · faixas etárias</p>
+    <h1>Uma tabela por grupo de beneficiários</h1>
+    <p>Cada grupo com o plano atual dele e apenas os planos escolhidos para ele. Formato do estudo que a Newport entrega hoje. Dados da Anistia, reajuste de 10%.</p>
+  </header>
+
+  <section class="bloco">
+    <p class="tit">Proposta</p>
+    <h2>Por grupo<span>cada um com os planos dele</span></h2>
+    <p class="lead">Os funcionários recebem opções econômicas; a diretoria recebe opções premium. Nenhum plano aparece aplicado ao grupo errado — é o Fusca comparado com Monza e Celta, o Porsche comparado com Ferrari e Lamborghini.</p>
+    <div class="ok"><b>Repare que os conjuntos não se cruzam:</b> Bronze, Prata e Direto são candidatos do S750; Ouro e Executivo R2, da diretoria. Nenhum plano se repete entre os grupos neste exemplo — mas poderia, se alguém o escolhesse nos dois.</div>
+
+    <!-- ===== GRUPO 1 ===== -->
+    <div class="grupo-cab">
+      <span class="g"><small>Grupo de beneficiários · funcionários</small>AMIL S750 — Apartamento</span>
+      <span class="q">36 vidas · compulsório · sem coparticipação</span>
+    </div>
+    <div class="rolo">
+      <table class="n">
+        <thead>
+          <tr>
+            <th rowspan="2">Faixa etária</th><th rowspan="2">Vidas</th>
+            <th class="reg atual">Plano atual</th>
+            <th class="reg" colspan="3">Propostas para este grupo</th>
+          </tr>
+          <tr>
+            <th class="atual"><span class="pl">AMIL S750</span><span class="op">REAJUSTADO 10%</span></th>
+            <th><span class="pl">Direto Apartamento</span><span class="op">SULAMÉRICA</span></th>
+            <th><span class="pl">Bronze Brasil I Q</span><span class="op">PORTO SEGURO</span></th>
+            <th><span class="pl">Prata Mais I Q</span><span class="op">PORTO SEGURO</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="meta"><td>Acomodação</td><td></td><td class="atual">Apartamento</td><td>Apartamento</td><td>Apartamento</td><td>Apartamento</td></tr>
+          <tr class="meta"><td>Modalidade</td><td></td><td class="atual">Compulsório</td><td>Compulsório</td><td>Compulsório</td><td>Compulsório</td></tr>
+          <tr><td>0 a 18</td><td>3</td><td class="atual">R$ 1.351,58</td><td>R$ 906,85</td><td>R$ 1.023,92</td><td>R$ 1.131,93</td></tr>
+          <tr><td>19 a 23</td><td>4</td><td class="atual">R$ 2.032,94</td><td>R$ 1.466,34</td><td>R$ 1.655,64</td><td>R$ 1.830,28</td></tr>
+          <tr><td>24 a 28</td><td>4</td><td class="atual">R$ 2.573,69</td><td>R$ 1.768,88</td><td>R$ 1.997,25</td><td>R$ 2.207,92</td></tr>
+          <tr><td>29 a 33</td><td>10</td><td class="atual">R$ 7.721,12</td><td>R$ 5.062,65</td><td>R$ 5.716,24</td><td>R$ 6.319,20</td></tr>
+          <tr><td>34 a 38</td><td>10</td><td class="atual">R$ 8.068,61</td><td>R$ 5.485,42</td><td>R$ 6.193,59</td><td>R$ 6.846,90</td></tr>
+          <tr><td>39 a 43</td><td>2</td><td class="atual">R$ 1.783,58</td><td>R$ 1.133,01</td><td>R$ 1.279,28</td><td>R$ 1.414,22</td></tr>
+          <tr><td>44 a 48</td><td>1</td><td class="atual">R$ 1.114,73</td><td>R$ 676,70</td><td>R$ 764,06</td><td>R$ 844,66</td></tr>
+          <tr><td>54 a 58</td><td>1</td><td class="atual">R$ 1.532,76</td><td>R$ 900,11</td><td>R$ 1.016,32</td><td>R$ 1.123,52</td></tr>
+          <tr><td>59 ou +</td><td>1</td><td class="atual">R$ 2.683,00</td><td>R$ 1.513,01</td><td>R$ 1.708,34</td><td>R$ 1.888,54</td></tr>
+          <tr class="tot"><td>Total</td><td>36</td><td class="atual">R$ 28.862,01</td><td>R$ 18.912,97</td><td>R$ 21.354,64</td><td>R$ 23.607,17</td></tr>
+          <tr class="dif"><td>Diferença mês</td><td></td><td class="atual">referência</td>
+            <td class="neg">−R$ 9.949,04</td><td class="neg">−R$ 7.507,37</td><td class="neg">−R$ 5.254,84</td></tr>
+          <tr class="dif"><td>Diferença ano</td><td></td><td class="atual">—</td>
+            <td class="neg">−R$ 119.388,48</td><td class="neg">−R$ 90.088,44</td><td class="neg">−R$ 63.058,08</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== GRUPO 2 ===== -->
+    <div class="grupo-cab">
+      <span class="g"><small>Grupo de beneficiários · diretoria</small>AMIL ONE S2500 — Apartamento</span>
+      <span class="q">5 vidas · compulsório · sem coparticipação</span>
+    </div>
+    <div class="rolo">
+      <table class="n">
+        <thead>
+          <tr>
+            <th rowspan="2">Faixa etária</th><th rowspan="2">Vidas</th>
+            <th class="reg atual">Plano atual</th>
+            <th class="reg" colspan="2">Propostas para este grupo</th>
+          </tr>
+          <tr>
+            <th class="atual"><span class="pl">AMIL ONE S2500</span><span class="op">REAJUSTADO 10%</span></th>
+            <th><span class="pl">Ouro Mais I Q</span><span class="op">PORTO SEGURO</span></th>
+            <th><span class="pl">Executivo R2</span><span class="op">SULAMÉRICA</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="meta"><td>Acomodação</td><td></td><td class="atual">Apartamento</td><td>Apartamento</td><td>Apartamento</td></tr>
+          <tr class="meta"><td>Modalidade</td><td></td><td class="atual">Compulsório</td><td>Compulsório</td><td>Compulsório</td></tr>
+          <tr><td>39 a 43</td><td>2</td><td class="atual">R$ 3.993,68</td><td>R$ 2.009,96</td><td>R$ 3.866,60</td></tr>
+          <tr><td>49 a 53</td><td>1</td><td class="atual">R$ 2.745,67</td><td>R$ 1.292,36</td><td>R$ 2.486,14</td></tr>
+          <tr><td>59 ou +</td><td>2</td><td class="atual">R$ 12.012,26</td><td>R$ 5.368,22</td><td>R$ 10.326,96</td></tr>
+          <tr class="tot"><td>Total</td><td>5</td><td class="atual">R$ 18.751,61</td><td>R$ 8.670,54</td><td>R$ 16.679,70</td></tr>
+          <tr class="dif"><td>Diferença mês</td><td></td><td class="atual">referência</td>
+            <td class="neg">−R$ 10.081,07</td><td class="neg">−R$ 2.071,91</td></tr>
+          <tr class="dif"><td>Diferença ano</td><td></td><td class="atual">—</td>
+            <td class="neg">−R$ 120.972,84</td><td class="neg">−R$ 24.862,92</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="nota"><b>Faixas sem vidas não aparecem.</b> A diretoria tem três faixas ocupadas, de dez possíveis. Mostrar as sete vazias com zero encheria a tabela sem informar nada.</p>
+
+    <p class="nota"><b>Largura.</b> O grupo dos funcionários tem três propostas e cabe confortavelmente. Se um grupo tiver seis, vale a mesma paginação por colunas que o documento já usa nas outras visões.</p>
+
+    <p class="nota alerta"><b>Sobre os números deste exemplo.</b> Os totais de todos os planos são reais e conferidos — R$ 18.912,97 no Direto, R$ 21.354,64 no Bronze, R$ 23.607,17 na Prata, R$ 8.670,54 no Ouro, R$ 16.679,70 no Executivo R2. Os valores por faixa do <b>Direto</b>, do <b>Bronze</b> e do <b>Executivo R2</b> foram derivados para somar esses totais, porque eu não tinha a tabela por faixa desses três. Os do plano atual, da Prata e do Ouro são reais linha a linha.</p>
+  </section>
+
+</div>
+</body>
+</html>

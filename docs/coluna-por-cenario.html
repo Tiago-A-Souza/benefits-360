@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coluna por cenário — proposta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --grafite:#232932; --grafite-2:#3A3F47; --grafite-3:#5B5B58;
+  --ouro:#BF995B; --ouro-cl:#F6F0E6; --ouro-esc:#A68055;
+  --papel:#fff; --papel-2:#F7F7F5; --risco:#DEDCD6;
+  --verde:#1E7A5A; --verde-cl:#E9F4EF;
+  --vinho:#A8323C; --vinho-cl:#FBEDEE;
+  --f:'Poppins',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--papel-2);color:var(--grafite);font-family:var(--f);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.n{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.folha{max-width:1240px;margin:0 auto;padding:0 0 70px;background:var(--papel);box-shadow:0 1px 3px rgba(35,41,50,.07)}
+.topo{background:var(--grafite);color:#fff;padding:26px 40px}
+.topo .m{font-size:11px;font-weight:600;letter-spacing:.26em;color:var(--ouro);margin:0 0 8px}
+.topo h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.03em}
+.topo p{margin:8px 0 0;font-size:13px;font-weight:300;color:#C9CDD3;max-width:80ch}
+
+.bloco{padding:34px 40px 0}
+.tit{margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.24em;color:var(--ouro)}
+.bloco h2{margin:0;font-size:21px;font-weight:800;letter-spacing:-.03em;text-transform:uppercase}
+.bloco h2 span{display:block;font-weight:300;color:var(--grafite-3);text-transform:none}
+.bloco .lead{margin:12px 0 20px;font-size:13.5px;font-weight:300;color:var(--grafite-2);max-width:88ch}
+
+.aviso{padding:13px 16px;border-left:3px solid var(--vinho);background:var(--vinho-cl);font-size:13px;margin:0 0 18px}
+.aviso b{font-weight:600}
+.ok{padding:13px 16px;border-left:3px solid var(--verde);background:var(--verde-cl);font-size:13px;margin:0 0 18px}
+.ok b{font-weight:600}
+
+.rolo{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:9px 12px;text-align:right;white-space:nowrap;vertical-align:middle}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{background:var(--grafite);color:#fff;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+thead th.reg{font-size:9.5px;letter-spacing:.14em;padding:7px 12px;text-align:center;background:#1a2028}
+thead th.atual{background:var(--ouro)}
+thead th.atual.reg{background:var(--ouro-esc)}
+thead th .pl{display:block;font-size:12px;font-weight:600;letter-spacing:-.01em;text-transform:none}
+thead th .op{display:block;font-size:9.5px;font-weight:400;letter-spacing:.1em;color:#9AA0A8;margin-top:1px}
+thead th.atual .op{color:#F2E7D5}
+td.atual{background:var(--ouro-cl)}
+tbody td{border-bottom:1px solid var(--risco)}
+tr.lin td:first-child{font-weight:600}
+tr.lin .vd{display:block;font-size:10.5px;font-weight:400;color:var(--grafite-3);margin-top:1px}
+tr.tot td{border-top:2px solid var(--grafite);border-bottom:0;font-weight:700;font-size:14px;background:var(--papel-2)}
+tr.tot td.atual{background:#F1E7D6}
+.aj{font-size:10.5px;font-weight:600;color:var(--ouro-esc);margin-left:4px}
+.pl-cel{display:block;font-size:10px;font-weight:500;color:var(--grafite-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
+.neg{color:var(--verde)} .pos{color:var(--vinho)}
+.pct{display:block;font-size:10.5px;font-weight:500;margin-top:1px}
+.ref{color:var(--grafite-3);font-weight:400}
+
+.nota{margin:16px 0 0;padding:14px 18px;background:var(--papel-2);border-left:2px solid var(--ouro);font-size:12.5px;font-weight:300;color:var(--grafite-2)}
+.nota b{font-weight:600;color:var(--grafite)}
+.sep{height:1px;background:var(--risco);margin:36px 40px 0}
+.leg{display:flex;gap:22px;flex-wrap:wrap;margin:14px 0 0;font-size:11.5px;color:var(--grafite-3)}
+.leg i{font-style:normal;display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<div class="folha">
+
+  <header class="topo">
+    <p class="m">Proposta de correção</p>
+    <h1>Coluna por cenário</h1>
+    <p>Comparação entre o que a matriz mostra hoje e o que ela mostraria por cenário. Números reais do estudo apresentado na reunião de 09/09: 25 vidas no AMIL S750, 4 vidas no AMIL ONE S2500, reajuste de 11,98%.</p>
+  </header>
+
+  <!-- ============ HOJE ============ -->
+  <section class="bloco">
+    <p class="tit">Como está hoje</p>
+    <h2>Uma coluna<span>por plano cotado</span></h2>
+    <p class="lead">Cada plano é aplicado aos dois grupos. A coluna do Diamante responde «e se as 25 pessoas do S750 também fossem para o Diamante?».</p>
+
+    <div class="aviso"><b>O problema.</b> O Diamante é o plano da diretoria — as 4 vidas do ONE S2500. Aplicá-lo às 25 vidas do S750 produz um cenário que ninguém pretende contratar, e ele aparece como se fosse uma opção real: +131,1%.</div>
+
+    <div class="rolo">
+      <table class="n">
+        <thead>
+          <tr>
+            <th rowspan="2">Indicador</th>
+            <th class="reg atual">Plano atual · sem coparticipação</th>
+            <th class="reg" colspan="2">Propostas sem coparticipação</th>
+          </tr>
+          <tr>
+            <th class="atual"><span class="pl">Contrato atual</span><span class="op">AMIL</span></th>
+            <th><span class="pl">Ouro Mais I Q</span><span class="op">PORTO SEGURO</span></th>
+            <th><span class="pl">Diamante Mais I Q</span><span class="op">PORTO SEGURO</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="lin"><td>AMIL S750 — Apto.<span class="vd">25 vidas</span></td>
+            <td class="atual">R$ 21.168,12<span class="aj">+11,98%</span></td>
+            <td>R$ 23.906,72</td><td>R$ 66.158,37</td></tr>
+          <tr class="lin"><td>AMIL ONE S2500 — Apto.<span class="vd">4 vidas</span></td>
+            <td class="atual">R$ 16.294,04<span class="aj">+11,98%</span></td>
+            <td>R$ 7.378,18</td><td>R$ 20.418,04</td></tr>
+          <tr class="tot"><td>Consolidado</td>
+            <td class="atual">R$ 37.462,16<span class="aj">+11,98%</span></td>
+            <td>R$ 31.284,90</td><td>R$ 86.576,41</td></tr>
+          <tr><td>Diferença mensal</td><td class="atual ref">referência</td>
+            <td class="neg">−R$ 6.177,26<span class="pct neg">−16,5%</span></td>
+            <td class="pos">+R$ 49.114,25<span class="pct pos">+131,1%</span></td></tr>
+          <tr><td>Diferença anual</td><td class="atual">—</td>
+            <td class="neg">−R$ 74.127,12</td><td class="pos">+R$ 589.371,00</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="sep"></div>
+
+  <!-- ============ PROPOSTA ============ -->
+  <section class="bloco">
+    <p class="tit">Proposta</p>
+    <h2>Uma coluna<span>por cenário</span></h2>
+    <p class="lead">Cada coluna é um arranjo: um plano para cada grupo de beneficiários. O cabeçalho e a própria célula dizem qual plano foi para qual grupo.</p>
+
+    <div class="ok"><b>O cenário 1 é o que o Leonardo descreveu na reunião:</b> Ouro Mais para as 25 vidas do S750, Diamante Mais para as 4 da diretoria. R$ 23.906,72 mais R$ 20.418,04, dando R$ 44.324,76.</div>
+
+    <div class="rolo">
+      <table class="n">
+        <thead>
+          <tr>
+            <th rowspan="2">Indicador</th>
+            <th class="reg atual">Plano atual</th>
+            <th class="reg" colspan="3">Cenários montados</th>
+          </tr>
+          <tr>
+            <th class="atual"><span class="pl">Contrato atual</span><span class="op">AMIL</span></th>
+            <th><span class="pl">Cenário 1</span><span class="op">OURO + DIAMANTE</span></th>
+            <th><span class="pl">Cenário 2</span><span class="op">OURO MAIS I Q</span></th>
+            <th><span class="pl">Cenário 3</span><span class="op">DIAMANTE MAIS I Q</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="lin"><td>AMIL S750 — Apto.<span class="vd">25 vidas</span></td>
+            <td class="atual">R$ 21.168,12<span class="aj">+11,98%</span></td>
+            <td><span class="pl-cel">Ouro Mais I Q</span>R$ 23.906,72</td>
+            <td><span class="pl-cel">Ouro Mais I Q</span>R$ 23.906,72</td>
+            <td><span class="pl-cel">Diamante Mais I Q</span>R$ 66.158,37</td></tr>
+          <tr class="lin"><td>AMIL ONE S2500 — Apto.<span class="vd">4 vidas</span></td>
+            <td class="atual">R$ 16.294,04<span class="aj">+11,98%</span></td>
+            <td><span class="pl-cel">Diamante Mais I Q</span>R$ 20.418,04</td>
+            <td><span class="pl-cel">Ouro Mais I Q</span>R$ 7.378,18</td>
+            <td><span class="pl-cel">Diamante Mais I Q</span>R$ 20.418,04</td></tr>
+          <tr class="tot"><td>Consolidado</td>
+            <td class="atual">R$ 37.462,16<span class="aj">+11,98%</span></td>
+            <td>R$ 44.324,76</td><td>R$ 31.284,90</td><td>R$ 86.576,41</td></tr>
+          <tr><td>Diferença mensal</td><td class="atual ref">referência</td>
+            <td class="pos">+R$ 6.862,60<span class="pct pos">+18,3%</span></td>
+            <td class="neg">−R$ 6.177,26<span class="pct neg">−16,5%</span></td>
+            <td class="pos">+R$ 49.114,25<span class="pct pos">+131,1%</span></td></tr>
+          <tr><td>Diferença anual</td><td class="atual">—</td>
+            <td class="pos">+R$ 82.351,20</td>
+            <td class="neg">−R$ 74.127,12</td>
+            <td class="pos">+R$ 589.371,00</td></tr>
+          <tr><td>Acomodação</td><td class="atual">Apartamento</td>
+            <td>Apartamento</td><td>Apartamento</td><td>Apartamento</td></tr>
+          <tr><td>Coparticipação</td><td class="atual">Sem coparticipação</td>
+            <td>Sem coparticipação</td><td>Sem coparticipação</td><td>Sem coparticipação</td></tr>
+          <tr><td>Validade da cotação</td><td class="atual">—</td>
+            <td>02/07/2026</td><td>02/07/2026</td><td>02/07/2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="leg">
+      <span><i style="background:var(--ouro)"></i>contrato atual</span>
+      <span><i style="background:var(--verde)"></i>economia</span>
+      <span><i style="background:var(--vinho)"></i>aumento</span>
+    </div>
+
+    <p class="nota"><b>O que muda na leitura.</b> O cenário 2 e o 3 são uniformes — o mesmo plano nos dois grupos —, e por isso o cabeçalho traz só o nome do plano. O cenário 1 é misto, e o cabeçalho traz «Ouro + Diamante». Em todos, a célula de cada grupo diz qual plano foi aplicado ali, para o leitor não precisar voltar ao cabeçalho.</p>
+
+    <p class="nota"><b>Ponto a definir.</b> Nos cenários mistos, acomodação e coparticipação podem divergir entre os grupos — se o Ouro for apartamento e o Diamante enfermaria, a linha precisa mostrar os dois, como a visão de faixas já faz quando o valor unitário difere entre planos. Aqui os três cenários são apartamento e sem coparticipação, então a questão não aparece.</p>
+  </section>
+
+</div>
+</body>
+</html>
