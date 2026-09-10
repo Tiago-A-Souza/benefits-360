@@ -935,6 +935,22 @@ de plano vigente traz o plano atribuído (`.pl-cel`); consolidado = soma dos
 grupos daquele cenário. Acomodação e coparticipação agregadas, «misto»
 quando divergem.
 
+### Validade da cotação em cenário misto — aberto
+
+Validade da cotação em cenário misto vem só da opção de referência — a
+primeira atribuição. Acomodação e regime ganharam agregação com «misto» nas
+fases 3 e 4; a validade não. Consequência dupla: se a referência não tiver
+validade, a coluna mostra «—» mesmo havendo data em outro plano do cenário,
+que é descartada. Reproduzido no estudo teste 333: referência Porto sem
+validade, SulAmérica Executivo R2 com 10/04/2026 ignorada.
+
+É o mesmo padrão do 8.6 e do defeito da acomodação já registrado. Correção
+prevista: espelhar `_acomodacao_cenario` — data única em todos os planos
+exibe; datas divergentes exibem «misto» ou as duas, sem eleger uma. Trava:
+inverter a ordem das atribuições não pode mudar o exibido.
+
+**Não corrigir nesta entrega.**
+
 ### Resolvido na FASE 5 — faixas por grupo
 
 O documento de faixas deixou a tabela agregada (`n_atual == 1` para todos os
