@@ -298,7 +298,7 @@ def test_15_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.13.6"
+    assert RENDERER_VERSAO == "html@2.13.7"
 
 
 def test_rotulo_reajuste_cabecalho():

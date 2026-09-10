@@ -25,6 +25,19 @@ ROTULO_COLUNA_ATUAL = "Contrato atual"
 rotulo_coluna_hook = None
 
 
+def html_linhas_nome_plano(nome: str) -> str:
+    """Quebra «A + B» em linhas. O nome inteiro continua no title da coluna."""
+    partes = [p.strip() for p in (nome or "").split(" + ") if p.strip()]
+    if len(partes) < 2:
+        return html.escape(nome or "")
+    linhas = [f"<span class='op-linha'>{html.escape(partes[0])}</span>"]
+    for parte in partes[1:]:
+        linhas.append(
+            f"<span class='op-linha'><span class='op-mais'>+</span> {html.escape(parte)}</span>"
+        )
+    return " ".join(linhas)
+
+
 def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao]:
     return [p for p in secao.planos_atuais if p.subgrupo_id != _PLANO_SINTETICO]
 
@@ -269,8 +282,9 @@ def _th_col_atual(
     if pct:
         rotulo = f"{ROTULO_COLUNA_ATUAL} {pct}"
     return (
-        f"<th class='atual'><span class='op'>{html.escape(rotulo)}</span>"
-        f"{od}</th>"
+        f"<th class='atual'><span class='cab-stack'>"
+        f"<span class='op'>{html.escape(rotulo)}</span>{od}"
+        f"</span></th>"
     )
 
 
@@ -291,20 +305,24 @@ def _th_col_prop(
         if atribuido:
             nome = atribuido
         return (
-            f"<th title='{html.escape(nome, quote=True)}'>"
-            f"<span class='op'>{html.escape(nome)}</span>{od}</th>"
+            f"<th title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
+            f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+            f"</span></th>"
         )
     if prop is not None and prop.misto:
         indice = prop.indice_cenario or 1
         titulo = f"Cenário {indice}"
         return (
             f"<th title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
+            f"<span class='cab-stack'>"
             f"<span class='pl'>{html.escape(titulo)}</span>"
-            f"<span class='op'>{html.escape(nome)}</span>{od}</th>"
+            f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+            f"</span></th>"
         )
     return (
-        f"<th title='{html.escape(nome, quote=True)}'>"
-        f"<span class='op'>{html.escape(nome)}</span>{od}</th>"
+        f"<th title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
+        f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+        f"</span></th>"
     )
 
 

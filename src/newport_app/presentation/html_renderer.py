@@ -28,6 +28,7 @@ from newport_app.presentation.tabela_densa import (
     _cabecalho_grupo,
     chunks_propostas,
     envelopar_tela_impressao,
+    html_linhas_nome_plano,
     ids_do_grupo,
     planos_das_faixas,
     render_tabela_resumo,
@@ -42,7 +43,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.6"
+RENDERER_VERSAO = "html@2.13.7"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -213,7 +214,11 @@ def _th_proposta(op_id: str, propostas: list[PropostaApresentacao], rotulos: dic
         if operadora
         else ""
     )
-    return f"<th{attrs}><span class='op'>{html.escape(nome)}</span>{od}</th>"
+    return (
+        f"<th{attrs} title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
+        f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+        f"</span></th>"
+    )
 
 
 def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao]:
@@ -1354,9 +1359,16 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0 20px}
 th,td{padding:13px 14px;text-align:right;white-space:nowrap;vertical-align:top}
 th:first-child,td:first-child{text-align:left;white-space:normal}
 thead th{background:var(--grafite);color:#fff;font-size:10.5px;font-weight:600;letter-spacing:.1em;
-  text-transform:uppercase;padding-top:12px;padding-bottom:12px;vertical-align:bottom}
-thead th .op{display:block;font-size:12.5px;font-weight:600;letter-spacing:-.01em;text-transform:none;margin-bottom:3px}
-thead th .od{display:block;font-size:10px;font-weight:400;letter-spacing:.1em;color:#9AA0A8}
+  text-transform:uppercase;padding-top:12px;padding-bottom:12px;vertical-align:top}
+thead th .cab-stack{display:inline-block;text-align:left;max-width:100%;vertical-align:top}
+thead th .pl,thead th .op,thead th .od{display:block;text-align:left;max-width:none}
+thead th .pl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:none;
+  color:#C9CDD3;margin-bottom:4px}
+thead th .op{font-size:12.5px;font-weight:600;letter-spacing:-.01em;text-transform:none;margin-bottom:3px;
+  white-space:normal;line-height:1.25}
+thead th .op-linha{display:block}
+thead th .op-mais{margin-right:.15em;font-weight:500;opacity:.7}
+thead th .od{font-size:10px;font-weight:400;letter-spacing:.1em;color:#9AA0A8}
 thead th .od::before{content:attr(data-l)}
 th.atual{background:var(--ouro)}
 th.atual .od{color:#F2E7D5}
@@ -1370,9 +1382,10 @@ tbody tr[data-row=consolidado] td{border-top:2px solid var(--grafite);font-weigh
 tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
 .tabela-densa{font-size:11.5px;margin:8px 0 16px}
 .tabela-densa th,.tabela-densa td{padding:5px 8px;vertical-align:middle}
-.tabela-densa thead th{white-space:normal}
-.tabela-densa thead th .pl{display:block;font-size:12px;font-weight:600;letter-spacing:-.01em;text-transform:none}
-.tabela-densa thead th .op{white-space:normal;max-width:8.2rem;line-height:1.2}
+.tabela-densa thead th{white-space:normal;vertical-align:top}
+.tabela-densa thead th .cab-stack{display:inline-block;text-align:left;max-width:100%}
+.tabela-densa thead th .pl,.tabela-densa thead th .op{display:block;text-align:left}
+.tabela-densa thead th .op{white-space:normal;max-width:none;line-height:1.25}
 .tabela-densa .pl-cel{display:block;font-size:10px;font-weight:500;color:var(--grafite-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
 .grupo-cab{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
   padding:12px 16px;background:var(--grafite);color:#fff;margin:22px 0 0}

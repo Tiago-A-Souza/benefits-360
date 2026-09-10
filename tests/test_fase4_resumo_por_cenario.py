@@ -133,6 +133,8 @@ def test_05_cabecalho_misto_e_uniforme(tmp_path: Path):
     assert "Proposta prata + Proposta ouro" in html
     assert "Proposta prata" in html
     assert "Cenário 2" not in html
+    assert "op-linha" in html
+    assert "class='pl'>Cenário 1</span>" in html
 
 
 def test_06_celula_traz_nome_do_plano_atribuido(tmp_path: Path):
@@ -293,3 +295,15 @@ def test_fallback_selecao_por_opcao_id():
     matriz, _ = _calcular_matriz(rascunho)
     resolvidos = resolver_colunas_selecionadas(["op-prata"], matriz.propostas)
     assert set(resolvidos) == {"c-uniforme", "c-misto"}
+
+
+def test_10_nome_misto_quebra_em_linhas_alinhadas():
+    from newport_app.presentation.tabela_densa import html_linhas_nome_plano
+
+    unico = html_linhas_nome_plano("PRATA MAIS I Q")
+    assert unico == "PRATA MAIS I Q"
+    misto = html_linhas_nome_plano("PRATA MAIS I Q + DIAMANTE MAIS I Q")
+    assert "op-linha" in misto
+    assert "PRATA MAIS I Q" in misto
+    assert "DIAMANTE MAIS I Q" in misto
+    assert misto.index("PRATA MAIS I Q") < misto.index("DIAMANTE MAIS I Q")
