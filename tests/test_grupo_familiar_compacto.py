@@ -51,6 +51,13 @@ def _html_anistia_grupos(tmp_path: Path, *, agregados: bool = False) -> tuple[st
 
 
 def _html_tela(html: str) -> str:
+    wrap = re.search(
+        r"<div class='grupo-familiar-tela'>(.*?)</div>\s*<div class='grupo-familiar-impressao'",
+        html,
+        re.S,
+    )
+    if wrap:
+        return wrap.group(1)
     tela = re.search(
         r"<div class='rolo grupo-familiar-tela'>(.*?)</div>\s*<div class='grupo-familiar-impressao'",
         html,
@@ -58,9 +65,11 @@ def _html_tela(html: str) -> str:
     )
     if tela:
         return tela.group(1)
-    unica = re.search(r"<table class='tabela-grupo-familiar[^']*'>.*?</table>", html, re.S)
-    assert unica, "tabela de grupo familiar ausente"
-    return unica.group(0)
+    tabelas = re.findall(
+        r"<table class='tabela-grupo-familiar[^']*'>.*?</table>", html, re.S
+    )
+    assert tabelas, "tabela de grupo familiar ausente"
+    return "".join(tabelas)
 
 
 def _rotulos_th(html: str) -> list[str]:
@@ -83,8 +92,11 @@ def test_01_anistia_uma_tabela_um_cabecalho(tmp_path: Path):
     tela = _html_tela(html)
     assert len(vm.grupos_familiares) == 27
     assert sum(len(g.membros) for g in vm.grupos_familiares) == 41
-    assert tela.count("<table class='tabela-grupo-familiar") == 1
-    assert tela.count("<thead>") == 1
+    n_grupos = len({m.subgrupo_id for g in vm.grupos_familiares for m in g.membros if m.subgrupo_id})
+    assert n_grupos >= 2
+    assert tela.count("<table class='tabela-grupo-familiar") == n_grupos
+    assert tela.count("<thead>") == n_grupos
+    assert tela.count("<div class='grupo-cab'") == n_grupos
     assert "grupo-familiar-titulo" not in html
     assert tela.count("<tbody class='grupo-familiar'>") == 27
 
@@ -103,9 +115,13 @@ def test_02_subtotal_so_grupos_com_mais_de_uma_pessoa(tmp_path: Path):
 
 
 def test_03_total_geral_com_contagem_de_vidas(tmp_path: Path):
-    html, _vm = _html_anistia_grupos(tmp_path)
-    assert "Total 41 Vidas" in html
+    html, vm = _html_anistia_grupos(tmp_path)
+    tela = _html_tela(html)
+    totais = re.findall(r"Total (\d+) Vidas", tela)
+    assert totais
+    assert sum(int(n) for n in totais) == 41
     assert "grupo-familiar-total" in html
+    del vm
 
 
 def test_04_soma_grupos_igual_faixas_por_proposta(tmp_path: Path):

@@ -6,7 +6,9 @@ import html
 import re
 
 from newport_app.models.presentation import (
+    BeneficiarioPropostaColuna,
     FaixaApresentacao,
+    GrupoFamiliarApresentacao,
     PlanoAtualApresentacao,
     PresentationViewModel,
     PropostaApresentacao,
@@ -23,6 +25,7 @@ from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.colisao_coluna import coluna_bate, id_coluna_vm
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 from newport_app.presentation.tabela_densa import (
+    _cabecalho_grupo,
     chunks_propostas,
     envelopar_tela_impressao,
     ids_do_grupo,
@@ -250,18 +253,88 @@ def _rotulo_reajuste_cabecalho(percentual: str | None) -> str:
     return f"REAJUSTADO {rotulo}"
 
 
-def _percentual_unico_membros(model: PresentationViewModel, pct_por_subgrupo: dict[str, str | None]) -> str | None:
-    """Taxa única de todos os membros; None se faltar ou se houver taxas diferentes."""
+def _percentual_unico_membros(
+    model: PresentationViewModel,
+    pct_por_subgrupo: dict[str, str | None],
+    *,
+    membros: list | None = None,
+) -> str | None:
+    """Taxa única dos membros (da seção, se informados)."""
     vistos: set[str] = set()
-    for g in model.grupos_familiares:
-        for b in g.membros:
-            pct = pct_por_subgrupo.get(b.subgrupo_id or "")
-            if not pct:
-                return None
-            vistos.add(pct)
+    if membros is None:
+        iter_membros = (
+            b for g in model.grupos_familiares for b in g.membros
+        )
+    else:
+        iter_membros = membros
+    for b in iter_membros:
+        pct = pct_por_subgrupo.get(b.subgrupo_id or "")
+        if not pct:
+            return None
+        vistos.add(pct)
     if len(vistos) == 1:
         return next(iter(vistos))
     return None
+
+
+def _somar_centavos_gf(vals: list[int | None]) -> int | None:
+    presentes = [v for v in vals if v is not None]
+    return sum(presentes) if presentes else None
+
+
+def _familia_dividida(g: GrupoFamiliarApresentacao, subgrupo_id: str) -> bool:
+    sgs = {(m.subgrupo_id or "") for m in g.membros}
+    return subgrupo_id in sgs and any(s != subgrupo_id for s in sgs)
+
+
+def _recorte_familia(
+    g: GrupoFamiliarApresentacao,
+    subgrupo_id: str | None,
+    op_ids: list[str],
+) -> tuple[GrupoFamiliarApresentacao, bool] | None:
+    """Família só com os membros deste grupo; subtotal daquele pedaço."""
+    if subgrupo_id is None:
+        membros = list(g.membros)
+        dividida = False
+    else:
+        membros = [m for m in g.membros if (m.subgrupo_id or "") == subgrupo_id]
+        if not membros:
+            return None
+        dividida = _familia_dividida(g, subgrupo_id)
+    exibir = len(membros) > 1
+    sub_atual = None
+    sub_props: list[BeneficiarioPropostaColuna] = []
+    if exibir:
+        sub_atual = _somar_centavos_gf([m.atual_reajustado_centavos for m in membros])
+        for oid in op_ids:
+            vals: list[int | None] = []
+            diffs: list[int | None] = []
+            opcao = oid
+            for m in membros:
+                col = next((c for c in m.propostas if coluna_bate(c, oid)), None)
+                vals.append(col.valor_centavos if col else None)
+                diffs.append(col.diff_centavos if col else None)
+                if col is not None:
+                    opcao = col.opcao_id
+            sub_props.append(
+                BeneficiarioPropostaColuna(
+                    opcao_id=opcao,
+                    coluna_id=oid,
+                    valor_centavos=_somar_centavos_gf(vals),
+                    diff_centavos=_somar_centavos_gf(diffs),
+                )
+            )
+    return (
+        g.model_copy(
+            update={
+                "membros": membros,
+                "exibir_subtotal": exibir,
+                "subtotal_atual_reajustado_centavos": sub_atual,
+                "subtotal_propostas": sub_props,
+            }
+        ),
+        dividida,
+    )
 
 
 def _cabecalho_tabela_grupo(
@@ -271,6 +344,7 @@ def _cabecalho_tabela_grupo(
     agregados: bool,
     seguro_novo: bool,
     percentual: str | None = None,
+    propostas: list[PropostaApresentacao] | None = None,
 ) -> str:
     col_rotulo = "Membro" if agregados else "Nome"
     cab = f"<th>{col_rotulo}</th>"
@@ -283,9 +357,10 @@ def _cabecalho_tabela_grupo(
             "<th class='atual'><span class='op'>Contrato atual</span>"
             f"<span class='od' data-l='{segunda}'></span></th>"
         )
+    props = propostas or []
     partes = ["<thead><tr>", cab]
     for op_id in op_ids:
-        partes.append(_th_proposta(op_id, [], rotulos))
+        partes.append(_th_proposta(op_id, props, rotulos))
     partes.append("</tr></thead>")
     return "".join(partes)
 
@@ -339,12 +414,14 @@ def _linha_subtotal_grupo(
 
 
 def _linha_total_geral_grupo(
-    model: PresentationViewModel,
     op_ids: list[str],
     *,
     agregados: bool,
     seguro_novo: bool,
     n_vidas: int,
+    atual_centavos: int | None,
+    propostas: dict[str, int | None],
+    diffs: dict[str, int | None],
 ) -> str:
     rotulo = f"Total {n_vidas} Vida" if n_vidas == 1 else f"Total {n_vidas} Vidas"
     partes = [f"<tr class='total-row total-geral'><td>{html.escape(rotulo)}</td>"]
@@ -352,14 +429,12 @@ def _linha_total_geral_grupo(
         partes.append("<td></td><td></td><td></td>")
     partes.append("<td></td>")
     if not seguro_novo:
-        partes.append(
-            f"<td class='atual'>{_cel(model.totais_gerais.atual_centavos)}</td>"
-        )
+        partes.append(f"<td class='atual'>{_cel(atual_centavos)}</td>")
     for op_id in op_ids:
         partes.append(
             _td_proposta(
-                valor_centavos=model.totais_gerais.propostas.get(op_id),
-                diff_centavos=model.totais_gerais.diff_mensal.get(op_id),
+                valor_centavos=propostas.get(op_id),
+                diff_centavos=diffs.get(op_id),
             )
         )
     partes.append("</tr>")
@@ -375,20 +450,31 @@ def _render_tabela_grupo_familiar(
     seguro_novo: bool,
     classe_rolo: str = "rolo",
     para_impressao: bool = False,
+    plano: PlanoAtualApresentacao | None = None,
 ) -> str:
     pct_por_subgrupo: dict[str, str | None] = {}
     for secao in model.secoes_regime:
         for pl in secao.planos_atuais:
             pct_por_subgrupo[pl.subgrupo_id] = pl.reajuste_percentual_exibicao
-    pct_cabecalho = _percentual_unico_membros(model, pct_por_subgrupo)
+    sg = plano.subgrupo_id if plano is not None else None
+    recortes: list[tuple[GrupoFamiliarApresentacao, bool]] = []
+    for g in model.grupos_familiares:
+        rec = _recorte_familia(g, sg, op_ids)
+        if rec is not None:
+            recortes.append(rec)
+    membros_secao = [m for g, _ in recortes for m in g.membros]
+    pct_cabecalho = _percentual_unico_membros(
+        model, pct_por_subgrupo, membros=membros_secao
+    )
     n_id = _n_cols_id_grupo(agregados=agregados, seguro_novo=seguro_novo)
     n_cols = n_id + len(op_ids)
-    n_vidas = sum(len(g.membros) for g in model.grupos_familiares)
+    n_vidas = len(membros_secao)
     classe_tabela = "tabela-grupo-familiar"
     if not agregados:
         classe_tabela += " tabela-grupo-detalhe"
     if para_impressao:
         classe_tabela += " tabela-grupo-bloco"
+    propostas = [p for s in model.secoes_regime for p in s.propostas]
     partes = [
         f"<div class='{classe_rolo}'><table class='{classe_tabela}'>",
         _cabecalho_tabela_grupo(
@@ -397,14 +483,22 @@ def _render_tabela_grupo_familiar(
             agregados=agregados,
             seguro_novo=seguro_novo,
             percentual=pct_cabecalho,
+            propostas=propostas,
         ),
     ]
-    for g in model.grupos_familiares:
+    for g, dividida in recortes:
         partes.append("<tbody class='grupo-familiar'>")
-        if g.sem_vinculo_resolvido:
-            titulo = html.escape(g.rotulo) + " · sem vínculo resolvido"
+        if g.sem_vinculo_resolvido or dividida:
+            titulo = html.escape(g.rotulo)
+            if g.sem_vinculo_resolvido:
+                titulo += " · sem vínculo resolvido"
+            if dividida:
+                titulo += " · também em outro grupo"
+            cls = "grupo-cab"
+            if dividida:
+                cls += " familia-dividida"
             partes.append(
-                f"<tr class='grupo-cab'><td colspan='{n_cols}'>{titulo}</td></tr>"
+                f"<tr class='{cls}'><td colspan='{n_cols}'>{titulo}</td></tr>"
             )
         for b in g.membros:
             pct = None if pct_cabecalho else pct_por_subgrupo.get(b.subgrupo_id or "")
@@ -424,17 +518,64 @@ def _render_tabela_grupo_familiar(
                 )
             )
         partes.append("</tbody>")
+    atual_c = _somar_centavos_gf([m.atual_reajustado_centavos for m in membros_secao])
+    props_tot: dict[str, int | None] = {}
+    diffs_tot: dict[str, int | None] = {}
+    for oid in op_ids:
+        props_tot[oid] = _somar_centavos_gf(
+            [
+                next((c.valor_centavos for c in m.propostas if coluna_bate(c, oid)), None)
+                for m in membros_secao
+            ]
+        )
+        diffs_tot[oid] = _somar_centavos_gf(
+            [
+                next((c.diff_centavos for c in m.propostas if coluna_bate(c, oid)), None)
+                for m in membros_secao
+            ]
+        )
     partes.append("<tbody class='grupo-familiar-total'>")
     partes.append(
         _linha_total_geral_grupo(
-            model,
             op_ids,
             agregados=agregados,
             seguro_novo=seguro_novo,
             n_vidas=n_vidas,
+            atual_centavos=atual_c,
+            propostas=props_tot,
+            diffs=diffs_tot,
         )
     )
     partes.append("</tbody></table></div>")
+    return "".join(partes)
+
+
+def _secao_grupo_familiar(
+    model: PresentationViewModel,
+    op_ids: list[str],
+    rotulos: dict[str, str],
+    plano: PlanoAtualApresentacao | None,
+    *,
+    agregados: bool,
+    seguro_novo: bool,
+    classe_rolo: str = "rolo",
+    para_impressao: bool = False,
+) -> str:
+    partes: list[str] = []
+    if plano is not None and not seguro_novo:
+        partes.append(_cabecalho_grupo(plano))
+    partes.append(
+        _render_tabela_grupo_familiar(
+            model,
+            op_ids,
+            rotulos,
+            agregados=agregados,
+            seguro_novo=seguro_novo,
+            classe_rolo=classe_rolo,
+            para_impressao=para_impressao,
+            plano=plano,
+        )
+    )
     return "".join(partes)
 
 
@@ -446,44 +587,61 @@ def _render_visao_grupo_familiar(
     agregados: bool,
     seguro_novo: bool,
 ) -> str:
-    """Tela: uma tabela. Impressão: blocos de MAX_PROPOSTAS_POR_PAGINA colunas."""
-    chunks = [
-        op_ids[i : i + MAX_PROPOSTAS_POR_PAGINA]
-        for i in range(0, len(op_ids), MAX_PROPOSTAS_POR_PAGINA)
-    ]
-    if len(chunks) <= 1:
-        tabelas = _render_tabela_grupo_familiar(
+    """Tela: uma seção por grupo. Impressão: o mesmo critério de colunas, por grupo."""
+    grupos = planos_das_faixas(model, seguro_novo=seguro_novo)
+    if seguro_novo or not grupos:
+        tabela = _render_tabela_grupo_familiar(
             model,
             op_ids,
             rotulos,
             agregados=agregados,
             seguro_novo=seguro_novo,
         )
-        return _controle_diffs() + tabelas
-    partes = [
-        _render_tabela_grupo_familiar(
-            model,
-            op_ids,
-            rotulos,
-            agregados=agregados,
-            seguro_novo=seguro_novo,
-            classe_rolo="rolo grupo-familiar-tela",
-        ),
-        "<div class='grupo-familiar-impressao'>",
-    ]
-    for chunk in chunks:
-        partes.append(
-            _render_tabela_grupo_familiar(
+        return _controle_diffs() + tabela
+
+    precisa_impressao = any(
+        len(chunks_propostas(ids_do_grupo(model, list(op_ids), plano))) > 1
+        for plano in grupos
+    )
+
+    tela_partes: list[str] = []
+    for plano in grupos:
+        ids_g = ids_do_grupo(model, list(op_ids), plano)
+        tela_partes.append(
+            _secao_grupo_familiar(
                 model,
-                chunk,
+                ids_g,
                 rotulos,
+                plano,
                 agregados=agregados,
-                seguro_novo=seguro_novo,
-                para_impressao=True,
+                seguro_novo=False,
             )
         )
-    partes.append("</div>")
-    return _controle_diffs() + "".join(partes)
+    tela = "".join(tela_partes)
+    if precisa_impressao:
+        tela = f"<div class='grupo-familiar-tela'>{tela}</div>"
+    if not precisa_impressao:
+        return _controle_diffs() + tela
+
+    impressos: list[str] = ["<div class='grupo-familiar-impressao'>"]
+    for plano in grupos:
+        ids_g = ids_do_grupo(model, list(op_ids), plano)
+        for ch in chunks_propostas(ids_g):
+            impressos.append(
+                "<div class='gf-pagina'>"
+                + _secao_grupo_familiar(
+                    model,
+                    ch,
+                    rotulos,
+                    plano,
+                    agregados=agregados,
+                    seguro_novo=False,
+                    para_impressao=True,
+                )
+                + "</div>"
+            )
+    impressos.append("</div>")
+    return _controle_diffs() + tela + "".join(impressos)
 
 
 def _tem_copart_percentual(model: PresentationViewModel) -> bool:
@@ -1246,6 +1404,7 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
   border-top:2px solid var(--grafite);font-weight:700;font-size:13.5px;background:var(--papel-2)}
 .tabela-grupo-familiar tbody.grupo-familiar-total tr td.atual{background:#F1E7D6}
 .grupo-familiar-impressao{display:none}
+.grupo-familiar-impressao .gf-pagina + .gf-pagina{page-break-before:always}
 .visao-regras .rolo{overflow-x:visible}
 .visao-regras .rolo table.tabela-regras{width:100%;min-width:0;max-width:100%;table-layout:fixed}
 .tabela-regras th,.tabela-regras td{text-align:left;white-space:normal;vertical-align:top;line-height:1.25;
@@ -1338,6 +1497,7 @@ tfoot tr td.atual{background:#F1E7D6}
   .grupo-familiar-tela{display:none !important}
   .grupo-familiar-impressao{display:block}
   .grupo-familiar-impressao .rolo + .rolo{page-break-before:always}
+  .grupo-cab + .rolo + .grupo-cab{page-break-before:always}
   .tabela-regras{page-break-inside:avoid}
   .layout-tela{display:none !important}
   .layout-impressao{display:block}

@@ -943,9 +943,18 @@ vigentes) e passou a uma seção por grupo, como a tela e o mockup
 `col-titdep` permanece um controle só: o seletor `#col-titdep:checked ~ *`
 já liga todas as `.tabela-faixas`. Faixas sem vidas não aparecem.
 
+### Resolvido na FASE 6 — grupo familiar por grupo
+
+A aba de grupo familiar passou a uma seção por vigente, com as famílias
+cujos membros pertencem àquele grupo e só as colunas escolhidas para ele.
+Família que atravessa subgrupos aparece nas duas seções, cada pedaço com
+o subtotal daquele grupo e o cabeçalho «também em outro grupo». A soma
+das seções é o total de vidas. Compactação, ordem alfabética e paginação
+por `MAX_PROPOSTAS_POR_PAGINA` permanecem dentro de cada seção.
+
 ### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
 
-`html_renderer.py:698` chama `_th_proposta(op_id, [], rotulos)` no modo
+`html_renderer.py:1217` chama `_th_proposta(op_id, [], rotulos)` no modo
 beneficiário. Com a lista vazia, o cabeçalho não recebe o
 `PropostaApresentacao` e perde a operadora. O nome vem do mapa de rótulos,
 então o valor não erra — mas duas propostas com o mesmo nome base não são
