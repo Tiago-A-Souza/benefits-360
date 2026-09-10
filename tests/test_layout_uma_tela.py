@@ -186,11 +186,13 @@ def test_06_faixas_padrao_sem_tit_dep_vidas(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
     assert ".tabela-faixas th.col-titdep,.tabela-faixas td.col-titdep" in html
     assert ".tabela-faixas th.col-vidas,.tabela-faixas td.col-vidas{display:none}" in html
-    tela = _tabela_tela(_secao(html, "visao-faixas"), "tabela-faixas")
-    for rotulo in ROTULOS_FAIXA:
-        assert rotulo in tela
+    visao = _secao(html, "visao-faixas")
+    tela = _tabela_tela(visao, "tabela-faixas")
     assert "class='col-titdep'" in tela
     assert "class='col-vidas'" in tela
+    assert "grupo-cab" in visao
+    # Faixas sem vidas não entram — o rótulo some da seção, não fica zerado.
+    assert "0 a 18" in tela or "19 a 23" in tela
 
 
 def test_07_controle_titdep_permanece(tmp_path: Path):
@@ -332,14 +334,28 @@ def test_17_paridade_estrutural_verde(tmp_path: Path):
 
 def test_18_atual_uma_coluna_dois_vigentes(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
-    for classe in ("tabela-resumo", "tabela-faixas"):
-        secao = "visao-resumo" if classe == "tabela-resumo" else "visao-faixas"
-        tela = _tabela_tela(_secao(html, secao), classe)
-        cols = _cols_bloco_plano(tela)
-        n_atual = sum(1 for c in cols if "class='atual'" in c)
-        assert n_atual == 1, classe
-        assert ROTULO_COLUNA_ATUAL in tela
-        assert "<td class='atual'></td>" not in tela
+    resumo = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
+    cols = _cols_bloco_plano(resumo)
+    assert sum(1 for c in cols if "class='atual'" in c) == 1
+    assert ROTULO_COLUNA_ATUAL in resumo
+    assert "<td class='atual'></td>" not in resumo
+
+    visao = _secao(html, "visao-faixas")
+    tela_m = re.search(
+        r"<div class='layout-tela'>(.*?)</div>\s*<div class='layout-impressao'>",
+        visao,
+        flags=re.S,
+    )
+    bloco = tela_m.group(1) if tela_m else visao
+    tabelas = re.findall(
+        r"<table class='[^']*tabela-faixas[^']*'>(.*?)</table>", bloco, flags=re.S
+    )
+    assert len(tabelas) >= 2
+    for tab in tabelas:
+        cols = _cols_bloco_plano(tab)
+        assert sum(1 for c in cols if "class='atual'" in c) == 1
+        assert ROTULO_COLUNA_ATUAL in tab
+        assert "<td class='atual'></td>" not in tab
 
 
 def test_19_tres_vigentes_continua_uma_coluna(tmp_path: Path):
@@ -435,13 +451,27 @@ def test_22_modalidade_compulsorio_nao_copia_proposta(tmp_path: Path):
 
 def test_23_faixas_totais_atual_e_consolidado(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
-    tela = _tabela_tela(_secao(html, "visao-faixas"), "tabela-faixas")
-    m = re.search(r"<tfoot><tr><td>Totais</td>(.*?)</tr>", tela, flags=re.S)
-    assert m
-    atual = re.search(r"<td class='atual'[^>]*>(.*?)</td>", m.group(1), flags=re.S)
-    assert atual
-    assert "48.479,31" in _visivel(atual.group(1))
-    assert sum(1 for c in _cols_bloco_plano(tela) if "class='atual'" in c) == 1
+    visao = _secao(html, "visao-faixas")
+    tela_m = re.search(
+        r"<div class='layout-tela'>(.*?)</div>\s*<div class='layout-impressao'>",
+        visao,
+        flags=re.S,
+    )
+    bloco = tela_m.group(1) if tela_m else visao
+    tabelas = re.findall(
+        r"<table class='[^']*tabela-faixas[^']*'>(.*?)</table>", bloco, flags=re.S
+    )
+    assert len(tabelas) >= 2
+    totais_atual: list[str] = []
+    for tab in tabelas:
+        m = re.search(r"<tfoot><tr><td>Total</td>(.*?)</tr>", tab, flags=re.S)
+        assert m
+        atual = re.search(r"<td class='atual'[^>]*>(.*?)</td>", m.group(1), flags=re.S)
+        assert atual
+        totais_atual.append(_visivel(atual.group(1)))
+        assert sum(1 for c in _cols_bloco_plano(tab) if "class='atual'" in c) == 1
+    assert any("29.386,76" in t or "28.862,01" in t for t in totais_atual)
+    assert any("19.092,55" in t or "18.751,61" in t for t in totais_atual)
 
 
 def test_24_faixas_unitario_divergente_rotulado():

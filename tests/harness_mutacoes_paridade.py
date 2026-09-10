@@ -173,11 +173,38 @@ _orig_tabela_faixas = html_renderer._render_tabela_faixas
 
 @contextmanager
 def mut_01_resumo_omite_plano() -> Iterator[None]:
+    """Omite o mesmo vigente em todas as seções — o resumo agrega (FASE 4)."""
+
     def wrapped(model, secao, rotulos, op_ids, *, seguro_novo):
-        if not seguro_novo and secao.planos_atuais:
-            secao = secao.model_copy(
-                update={"planos_atuais": list(secao.planos_atuais)[1:]}
-            )
+        if not seguro_novo:
+            alvo = None
+            for s in model.secoes_regime:
+                reais = [
+                    p
+                    for p in s.planos_atuais
+                    if p.subgrupo_id != "vidas-incluidas"
+                ]
+                if reais:
+                    alvo = reais[0].subgrupo_id
+                    break
+            if alvo:
+                secoes = [
+                    s.model_copy(
+                        update={
+                            "planos_atuais": [
+                                p
+                                for p in s.planos_atuais
+                                if p.subgrupo_id != alvo
+                            ]
+                        }
+                    )
+                    for s in model.secoes_regime
+                ]
+                model = model.model_copy(update={"secoes_regime": secoes})
+                secao = next(
+                    (s for s in secoes if s.regime_tipo == secao.regime_tipo),
+                    secoes[0] if secoes else secao,
+                )
         return _orig_render_resumo(
             model, secao, rotulos, op_ids, seguro_novo=seguro_novo
         )
@@ -221,44 +248,54 @@ def mut_03_html_descarta_ultima_proposta() -> Iterator[None]:
 
 @contextmanager
 def mut_04_rotulo_divergente_documento() -> Iterator[None]:
-    # _rotulo_proposta prefere prop.plano_nome; mutar só o mapa rotulos é no-op
-    # quando a lista de propostas não está vazia (resumo/faixas).
+    # Cabeçalhos do resumo/faixas passam por tabela_densa.rotulo_coluna_hook,
+    # ligado ao _rotulo_proposta original no import — patch só no renderer
+    # deixaria o hook apontando para a função antiga.
+    from newport_app.presentation import tabela_densa
+
     def wrapped(op_id, propostas, rotulos):
         return f"ROTULO_ERRADO_{op_id}"
 
+    prev_hook = tabela_densa.rotulo_coluna_hook
     html_renderer._rotulo_proposta = wrapped  # type: ignore[assignment]
+    tabela_densa.rotulo_coluna_hook = wrapped
     try:
         yield
     finally:
         html_renderer._rotulo_proposta = _orig_rotulo
+        tabela_densa.rotulo_coluna_hook = prev_hook
 
 
 @contextmanager
 def mut_05_ultima_faixa_some() -> Iterator[None]:
+    """Cai a última faixa ocupada na função que de fato desenha cada seção."""
     from newport_app.presentation import tabela_densa
 
-    orig = tabela_densa.render_tabela_faixas
+    orig = tabela_densa.render_secao_faixas_grupo
 
-    def wrapped(model, op_ids, rotulos, *, seguro_novo=False):
+    def wrapped(model, op_ids, rotulos, plano, *, seguro_novo=False):
         secoes = []
         for secao in model.secoes_regime:
             planos = []
             for pl in secao.planos_atuais:
-                if pl.faixas:
-                    planos.append(
-                        pl.model_copy(update={"faixas": list(pl.faixas)[:-1]})
-                    )
+                if plano is not None and pl.subgrupo_id != plano.subgrupo_id:
+                    planos.append(pl)
+                    continue
+                ocupadas = [fx for fx in pl.faixas if fx.qtd_total > 0]
+                if ocupadas:
+                    restante = [fx for fx in pl.faixas if fx is not ocupadas[-1]]
+                    planos.append(pl.model_copy(update={"faixas": restante}))
                 else:
                     planos.append(pl)
             secoes.append(secao.model_copy(update={"planos_atuais": planos}))
         model = model.model_copy(update={"secoes_regime": secoes})
-        return orig(model, op_ids, rotulos, seguro_novo=seguro_novo)
+        return orig(model, op_ids, rotulos, plano, seguro_novo=seguro_novo)
 
-    tabela_densa.render_tabela_faixas = wrapped  # type: ignore[assignment]
+    tabela_densa.render_secao_faixas_grupo = wrapped  # type: ignore[assignment]
     try:
         yield
     finally:
-        tabela_densa.render_tabela_faixas = orig
+        tabela_densa.render_secao_faixas_grupo = orig
 
 
 @contextmanager
@@ -459,16 +496,47 @@ def mut_14_consolidado_soma_errado() -> Iterator[None]:
 
 @contextmanager
 def mut_15_grade_celula_outra_opcao() -> Iterator[None]:
-    """Troca o conteúdo de duas células da grade (mesmos subgrupos, opções distintas)."""
+    """Troca duas células do mesmo subgrupo entre opções/cenários distintos.
+
+    A grade continua sendo trocada (intenção original). Depois da FASE 3 a
+    coluna lê ``resultado.cenarios``, então o mesmo par também é trocado lá
+    — senão ``_montar_propostas`` ignora a mutação.
+    """
+
+    def _sg_em(cenario, sg_id):
+        for secao in cenario.secoes:
+            for sg in secao.subgrupos:
+                if sg.subgrupo_id == sg_id:
+                    return sg
+        return None
+
+    def _aplica_sg(cenario, sg_id, fonte):
+        secoes = []
+        for secao in cenario.secoes:
+            sgs = []
+            for sg in secao.subgrupos:
+                if sg.subgrupo_id == sg_id:
+                    sgs.append(
+                        sg.model_copy(
+                            update={
+                                "subtotal_proposta_centavos": fonte.subtotal_proposta_centavos,
+                                "vidas": fonte.vidas,
+                            }
+                        )
+                    )
+                else:
+                    sgs.append(sg)
+            secoes.append(secao.model_copy(update={"subgrupos": sgs}))
+        return cenario.model_copy(update={"secoes": secoes})
 
     def wrapped(rascunho, resultado):
         grade = list(resultado.grade_opcao_subgrupo)
-        # Emparelha por subgrupo e troca proposta entre duas opções
         por_sg: dict[str, list[ResultadoSubgrupo]] = {}
         for cel in grade:
             por_sg.setdefault(cel.subgrupo_id, []).append(cel)
         novos: list[ResultadoSubgrupo] = []
         vistos: set[int] = set()
+        sg_trocado: str | None = None
         for cel in grade:
             if id(cel) in vistos:
                 continue
@@ -493,10 +561,24 @@ def mut_15_grade_celula_outra_opcao() -> Iterator[None]:
                 )
                 vistos.add(id(a))
                 vistos.add(id(b))
+                if sg_trocado is None:
+                    sg_trocado = cel.subgrupo_id
             else:
                 novos.append(cel)
                 vistos.add(id(cel))
-        resultado_mut = resultado.model_copy(update={"grade_opcao_subgrupo": novos})
+
+        cenarios = list(resultado.cenarios)
+        if sg_trocado and len(cenarios) >= 2:
+            s0 = _sg_em(cenarios[0], sg_trocado)
+            s1 = _sg_em(cenarios[1], sg_trocado)
+            if s0 is not None and s1 is not None:
+                c0 = _aplica_sg(cenarios[0], sg_trocado, s1)
+                c1 = _aplica_sg(cenarios[1], sg_trocado, s0)
+                cenarios = [c0, c1, *cenarios[2:]]
+
+        resultado_mut = resultado.model_copy(
+            update={"grade_opcao_subgrupo": novos, "cenarios": cenarios}
+        )
         return _orig_montar(rascunho, resultado_mut)
 
     motor_out._montar_propostas = wrapped  # type: ignore[assignment]
@@ -508,14 +590,32 @@ def mut_15_grade_celula_outra_opcao() -> Iterator[None]:
 
 @contextmanager
 def mut_16_resumo_omite_indicador() -> Iterator[None]:
-    """Remove um indicador do resumo do documento (cegueira de cabeçalho)."""
+    """Remove um indicador que o resumo realmente desenha (não o topo)."""
+
+    _topo = {"Acomodação", "Modalidade"}
+
+    def _omite(inds):
+        for i, lin in enumerate(inds):
+            if lin.rotulo in _topo:
+                continue
+            return inds[:i] + inds[i + 1 :]
+        return inds[1:] if inds else inds
 
     def wrapped(model, secao, rotulos, op_ids, *, seguro_novo):
-        inds = list(secao.indicadores_resumo)
-        if inds:
-            secao = secao.model_copy(
-                update={"indicadores_resumo": inds[1:]}  # omite o primeiro
-            )
+        secoes = []
+        for s in model.secoes_regime:
+            inds = list(s.indicadores_resumo)
+            if inds:
+                secoes.append(
+                    s.model_copy(update={"indicadores_resumo": _omite(inds)})
+                )
+            else:
+                secoes.append(s)
+        model = model.model_copy(update={"secoes_regime": secoes})
+        secao = next(
+            (s for s in secoes if s.regime_tipo == secao.regime_tipo),
+            secoes[0] if secoes else secao,
+        )
         return _orig_render_resumo(
             model, secao, rotulos, op_ids, seguro_novo=seguro_novo
         )

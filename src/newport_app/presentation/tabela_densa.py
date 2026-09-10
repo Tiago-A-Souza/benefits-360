@@ -113,25 +113,74 @@ class BlocoColuna:
         )
 
 
+def planos_das_faixas(
+    model: PresentationViewModel, *, seguro_novo: bool
+) -> list[PlanoAtualApresentacao]:
+    """Vigentes únicos, na ordem em que aparecem — uma seção de faixas cada."""
+    if seguro_novo:
+        for secao in model.secoes_regime:
+            if secao.planos_atuais:
+                return list(secao.planos_atuais)
+        return []
+    vistos: set[str] = set()
+    planos: list[PlanoAtualApresentacao] = []
+    for secao in model.secoes_regime:
+        for pl in _planos_reais(secao):
+            if pl.subgrupo_id in vistos:
+                continue
+            vistos.add(pl.subgrupo_id)
+            planos.append(pl)
+    return planos
+
+
+def ids_do_grupo(
+    model: PresentationViewModel, op_ids: list[str], plano: PlanoAtualApresentacao
+) -> list[str]:
+    """Colunas que este grupo vê.
+
+    Sem mapa de atribuição (legado): todas as selecionadas, como a tela.
+    Com mapa: só as que a fase 3 atribuiu a este subgrupo.
+    """
+    out: list[str] = []
+    for oid in op_ids:
+        prop = _prop(model, oid)
+        if prop is None:
+            out.append(oid)
+            continue
+        atribuidos = prop.nomes_atribuidos_por_subgrupo
+        if atribuidos and plano.subgrupo_id not in atribuidos:
+            continue
+        out.append(oid)
+    return out
+
+
 def montar_blocos(
     model: PresentationViewModel,
     op_ids: list[str],
     *,
     seguro_novo: bool,
+    plano: PlanoAtualApresentacao | None = None,
 ) -> list[BlocoColuna]:
+    """Blocos de coluna. Sem `plano`: resumo (atual agregado). Com `plano`: faixas do grupo."""
     blocos: list[BlocoColuna] = []
     if not seguro_novo:
-        planos: list[PlanoAtualApresentacao] = []
-        vistos: set[str] = set()
-        secao_ref: SecaoRegimeApresentacao | None = None
-        for secao in model.secoes_regime:
-            for pl in _planos_reais(secao):
-                if pl.subgrupo_id in vistos:
-                    continue
-                vistos.add(pl.subgrupo_id)
-                planos.append(pl)
-                if secao_ref is None:
-                    secao_ref = secao
+        if plano is not None:
+            planos = [plano]
+            secao_ref = _secao_da_proposta(model, op_ids[0]) if op_ids else None
+            if secao_ref is None and model.secoes_regime:
+                secao_ref = model.secoes_regime[0]
+        else:
+            planos = []
+            vistos: set[str] = set()
+            secao_ref = None
+            for secao in model.secoes_regime:
+                for pl in _planos_reais(secao):
+                    if pl.subgrupo_id in vistos:
+                        continue
+                    vistos.add(pl.subgrupo_id)
+                    planos.append(pl)
+                    if secao_ref is None:
+                        secao_ref = secao
         if planos:
             acs = [p.acomodacao for p in planos]
             mds = [p.modalidade for p in planos]
@@ -157,6 +206,8 @@ def montar_blocos(
             for oid in op_ids
             if any(id_coluna_vm(p) == oid for p in secao.propostas)
         ]
+        if plano is not None:
+            ids = ids_do_grupo(model, ids, plano)
         if not ids:
             continue
         props = [_prop(model, oid) for oid in ids]
@@ -223,13 +274,26 @@ def _th_col_atual(
     )
 
 
-def _th_col_prop(prop: PropostaApresentacao | None, nome: str) -> str:
+def _th_col_prop(
+    prop: PropostaApresentacao | None,
+    nome: str,
+    *,
+    subgrupo_id: str | None = None,
+) -> str:
     operadora = ((prop.operadora if prop else "") or "").strip()
     od = (
         f"<span class='od' data-l='{html.escape(operadora, quote=True)}'></span>"
         if operadora
         else ""
     )
+    if prop is not None and subgrupo_id:
+        atribuido = (prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or "").strip()
+        if atribuido:
+            nome = atribuido
+        return (
+            f"<th title='{html.escape(nome, quote=True)}'>"
+            f"<span class='op'>{html.escape(nome)}</span>{od}</th>"
+        )
     if prop is not None and prop.misto:
         indice = prop.indice_cenario or 1
         titulo = f"Cenário {indice}"
@@ -252,6 +316,7 @@ def _cabecalho_blocos(
     primeira: str,
     extras: str = "",
     percentual_atual: str | None = None,
+    subgrupo_id: str | None = None,
 ) -> str:
     n_extras = extras.count("<th")
     partes = ["<thead>"]
@@ -271,6 +336,12 @@ def _cabecalho_blocos(
             for oid in b.op_ids:
                 prop = _prop(model, oid)
                 nome = rotulos.get(oid, "Proposta")
+                if subgrupo_id and prop is not None:
+                    atribuido = (
+                        prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or ""
+                    ).strip()
+                    if atribuido:
+                        nome = atribuido
                 if rotulo_coluna_hook is not None:
                     nome = rotulo_coluna_hook(
                         oid,
@@ -553,7 +624,9 @@ def _valor_faixa_prop(fx, op_id: str) -> int | None:
     col = next((c for c in fx.propostas if coluna_bate(c, op_id)), None)
     if col is None or col.quantidade == 0:
         return None
-    return col.valor_unitario_centavos
+    if col.valor_unitario_centavos is not None:
+        return col.valor_unitario_centavos
+    return col.subtotal_centavos
 
 
 def _html_unitarios_atual(planos: list[PlanoAtualApresentacao], rotulo_fx: str) -> str:
@@ -580,38 +653,74 @@ def _html_unitarios_atual(planos: list[PlanoAtualApresentacao], rotulo_fx: str) 
     return "".join(partes)
 
 
-def render_tabela_faixas(
+def _cabecalho_grupo(plano: PlanoAtualApresentacao) -> str:
+    vidas = sum(fx.qtd_total for fx in plano.faixas)
+    meta: list[str] = []
+    if vidas:
+        meta.append(f"{vidas} {'vida' if vidas == 1 else 'vidas'}")
+    if (plano.modalidade or "").strip():
+        meta.append(plano.modalidade.strip())
+    if (plano.copart_descricao or "").strip():
+        meta.append(plano.copart_descricao.strip())
+    nome = html.escape(plano.plano_nome)
+    if (plano.acomodacao or "").strip():
+        nome = f"{nome} — {html.escape(plano.acomodacao.strip())}"
+    return (
+        "<div class='grupo-cab'>"
+        f"<span class='g'><small>Grupo de beneficiários</small>{nome}</span>"
+        f"<span class='q'>{html.escape(' · '.join(meta))}</span>"
+        "</div>"
+    )
+
+
+def render_secao_faixas_grupo(
     model: PresentationViewModel,
     op_ids: list[str],
     rotulos: dict[str, str],
+    plano: PlanoAtualApresentacao | None,
     *,
     seguro_novo: bool,
 ) -> str:
-    blocos = montar_blocos(model, op_ids, seguro_novo=seguro_novo)
-    cabeca = (
-        "<h4>Comparativo entre propostas</h4>"
-        if seguro_novo
-        else "<h4>Plano atual</h4>"
-    )
-    planos: list[PlanoAtualApresentacao] = []
-    for b in blocos:
-        if b.atual:
-            planos = b.planos
-            break
-    if not planos:
+    """Uma tabela de faixas: o vigente deste grupo e só as colunas escolhidas para ele."""
+    if plano is not None:
         for secao in model.secoes_regime:
-            planos.extend(_planos_reais(secao) or secao.planos_atuais)
-            if planos:
+            achado = next(
+                (pl for pl in secao.planos_atuais if pl.subgrupo_id == plano.subgrupo_id),
+                None,
+            )
+            if achado is not None:
+                plano = achado
                 break
+    blocos = montar_blocos(model, op_ids, seguro_novo=seguro_novo, plano=plano)
     extras = (
         "<th class='col-titdep' rowspan='2'>Tit.</th>"
         "<th class='col-titdep' rowspan='2'>Dep.</th>"
         "<th class='col-vidas' rowspan='2'>Vidas</th>"
     )
-    partes = [cabeca, "<div class='rolo'><table class='tabela-faixas tabela-densa'>"]
+    planos = [plano] if plano is not None else []
+    if not planos:
+        for secao in model.secoes_regime:
+            planos.extend(secao.planos_atuais)
+            if planos:
+                break
+    pct_cabecalho = None
+    if plano is not None:
+        pct_cabecalho = _pct_exibicao_cabecalho(plano.reajuste_percentual_exibicao)
+    partes: list[str] = []
+    if plano is not None and not seguro_novo:
+        partes.append(_cabecalho_grupo(plano))
+    elif seguro_novo:
+        partes.append("<h4>Comparativo entre propostas</h4>")
+    partes.append("<div class='rolo'><table class='tabela-faixas tabela-densa'>")
     partes.append(
         _cabecalho_blocos(
-            blocos, model, rotulos, primeira="Faixa", extras=extras
+            blocos,
+            model,
+            rotulos,
+            primeira="Faixa",
+            extras=extras,
+            percentual_atual=pct_cabecalho,
+            subgrupo_id=plano.subgrupo_id if plano else None,
         )
     )
     partes.append("<tbody>")
@@ -620,29 +729,30 @@ def render_tabela_faixas(
     partes.append(_linha_validade_faixas(model, blocos))
 
     rotulos_linhas = list(ROTULOS_FAIXA)
-    existentes = []
+    existentes: list[str] = []
     for pl in planos:
         for fx in pl.faixas:
             if fx.rotulo not in rotulos_linhas and fx.rotulo not in existentes:
                 existentes.append(fx.rotulo)
     rotulos_linhas.extend(existentes)
 
+    vidas_total = 0
     for rotulo_fx in rotulos_linhas:
         faixas_planos = [_faixa_do_plano(pl, rotulo_fx) for pl in planos]
         tit = sum((fx.qtd_titulares if fx else 0) for fx in faixas_planos)
         dep = sum((fx.qtd_dependentes if fx else 0) for fx in faixas_planos)
         vidas = sum((fx.qtd_total if fx else 0) for fx in faixas_planos)
-        if not any(faixas_planos) and not planos:
-            # Seguro novo: faixas vêm do plano sintético.
-            for secao in model.secoes_regime:
-                for pl in secao.planos_atuais:
-                    fx = _faixa_do_plano(pl, rotulo_fx)
-                    if fx:
-                        tit += fx.qtd_titulares
-                        dep += fx.qtd_dependentes
-                        vidas += fx.qtd_total
-                        faixas_planos.append(fx)
-        partes.append(f"<tr><td>{html.escape(rotulo_fx)}</td>")
+        if vidas == 0:
+            continue
+        vidas_total += vidas
+        fx0 = next((fx for fx in faixas_planos if fx is not None), None)
+        obs = ((fx0.observacao_valor or "").strip() if fx0 else "")
+        rotulo_html = html.escape(rotulo_fx)
+        if obs:
+            rotulo_html += f"<span class='fx-obs'>{html.escape(obs)}</span>"
+        partes.append(
+            f"<tr><td data-fx='{html.escape(rotulo_fx, quote=True)}'>{rotulo_html}</td>"
+        )
         partes.append(
             f"<td class='col-titdep'>{tit}</td>"
             f"<td class='col-titdep'>{dep}</td>"
@@ -656,60 +766,104 @@ def render_tabela_faixas(
             else:
                 for oid in b.op_ids:
                     valor = None
-                    for secao in model.secoes_regime:
-                        for pl in secao.planos_atuais:
-                            valor = _valor_faixa_prop(
-                                _faixa_do_plano(pl, rotulo_fx), oid
-                            )
-                            if valor is not None:
-                                break
+                    alvos = [
+                        pl
+                        for secao in model.secoes_regime
+                        for pl in secao.planos_atuais
+                        if plano is None or pl.subgrupo_id == plano.subgrupo_id
+                    ] or planos
+                    for pl in alvos:
+                        valor = _valor_faixa_prop(_faixa_do_plano(pl, rotulo_fx), oid)
                         if valor is not None:
                             break
                     partes.append(
-                        f"<td>{_cel_money(valor)}</td>" if valor is not None else "<td></td>"
+                        f"<td>{_cel_money(valor)}</td>"
+                        if valor is not None
+                        else "<td></td>"
                     )
         partes.append("</tr>")
 
-    partes.append("</tbody><tfoot><tr><td>Totais</td>")
-    partes.append("<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>")
+    partes.append("</tbody><tfoot><tr><td>Total</td>")
+    partes.append(
+        "<td class='col-titdep'></td>"
+        "<td class='col-titdep'></td>"
+        f"<td class='col-vidas'>{vidas_total}</td>"
+    )
+    sg = plano.subgrupo_id if plano is not None else None
+    atual_c = plano.subtotal_reajustado_centavos if plano is not None else None
     for b in blocos:
         if b.atual:
-            reaj_c = sum((p.subtotal_reajustado_centavos or 0) for p in b.planos) or None
-            pct = model.reajuste_consolidado_percentual_exibicao
+            reaj_c = (
+                (plano.subtotal_reajustado_centavos if plano is not None else None)
+                or sum((p.subtotal_reajustado_centavos or 0) for p in b.planos)
+                or None
+            )
+            pct = (
+                plano.reajuste_percentual_exibicao
+                if plano is not None
+                else model.reajuste_consolidado_percentual_exibicao
+            )
             partes.append(
-                "<td class='atual'>"
-                + _contrato_atual_html(reaj_c, pct)
-                + "</td>"
+                "<td class='atual'>" + _contrato_atual_html(reaj_c, pct) + "</td>"
             )
         else:
             for oid in b.op_ids:
-                total = model.totais_gerais.propostas.get(oid)
-                if total is None:
-                    for secao in model.secoes_regime:
-                        total = secao.totais.propostas.get(oid)
-                        if total is not None:
-                            break
+                total = (
+                    _subtotal_proposta_todas_secoes(model, sg, oid)
+                    if sg
+                    else model.totais_gerais.propostas.get(oid)
+                )
                 partes.append(f"<td>{_cel_money(total)}</td>")
     partes.append("</tr>")
-    if not seguro_novo:
+    if not seguro_novo and atual_c is not None:
         partes.append("<tr><td>Diferença mensal</td>")
-        partes.append("<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>")
+        partes.append(
+            "<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>"
+        )
         for b in blocos:
             if b.atual:
-                partes.append(f"<td class='atual'>referência</td>")
+                partes.append("<td class='atual'>referência</td>")
             else:
                 for oid in b.op_ids:
-                    partes.append(f"<td>{_cel_money(model.totais_gerais.diff_mensal.get(oid), diff=True)}</td>")
+                    prop_c = _subtotal_proposta_todas_secoes(model, sg, oid) if sg else None
+                    diff = None if prop_c is None else prop_c - atual_c
+                    partes.append(f"<td>{_cel_money(diff, diff=True)}</td>")
         partes.append("</tr><tr><td>Diferença anual</td>")
-        partes.append("<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>")
+        partes.append(
+            "<td class='col-titdep'></td><td class='col-titdep'></td><td class='col-vidas'></td>"
+        )
         for b in blocos:
             if b.atual:
                 partes.append(f"<td class='atual'>{_AUSENCIA}</td>")
             else:
                 for oid in b.op_ids:
-                    partes.append(f"<td>{_cel_money(model.totais_gerais.diff_anual.get(oid), diff=True)}</td>")
+                    prop_c = _subtotal_proposta_todas_secoes(model, sg, oid) if sg else None
+                    diff = None if prop_c is None else (prop_c - atual_c) * 12
+                    partes.append(f"<td>{_cel_money(diff, diff=True)}</td>")
         partes.append("</tr>")
     partes.append("</tfoot></table></div>")
+    return "".join(partes)
+
+
+def render_tabela_faixas(
+    model: PresentationViewModel,
+    op_ids: list[str],
+    rotulos: dict[str, str],
+    *,
+    seguro_novo: bool,
+) -> str:
+    """Documento: uma seção de faixas por grupo, como a tela já faz."""
+    planos = planos_das_faixas(model, seguro_novo=seguro_novo)
+    if seguro_novo or not planos:
+        return render_secao_faixas_grupo(
+            model, op_ids, rotulos, None, seguro_novo=seguro_novo
+        )
+    partes = [
+        render_secao_faixas_grupo(
+            model, op_ids, rotulos, plano, seguro_novo=False
+        )
+        for plano in planos
+    ]
     return "".join(partes)
 
 

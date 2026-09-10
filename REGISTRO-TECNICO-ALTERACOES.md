@@ -935,6 +935,14 @@ de plano vigente traz o plano atribuído (`.pl-cel`); consolidado = soma dos
 grupos daquele cenário. Acomodação e coparticipação agregadas, «misto»
 quando divergem.
 
+### Resolvido na FASE 5 — faixas por grupo
+
+O documento de faixas deixou a tabela agregada (`n_atual == 1` para todos os
+vigentes) e passou a uma seção por grupo, como a tela e o mockup
+`docs/faixas-por-grupo.html`. `montar_blocos` do resumo continua agregado.
+`col-titdep` permanece um controle só: o seletor `#col-titdep:checked ~ *`
+já liga todas as `.tabela-faixas`. Faixas sem vidas não aparecem.
+
 ### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
 
 `html_renderer.py:698` chama `_th_proposta(op_id, [], rotulos)` no modo

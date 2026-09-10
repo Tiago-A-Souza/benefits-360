@@ -45,6 +45,8 @@ class InventarioRender:
     # Planos que aparecem como linha de tabela de resumo (não só h3 de faixas).
     planos_linha_resumo: frozenset[str] = field(default_factory=frozenset)
     faixas: frozenset[str] = field(default_factory=frozenset)
+    # (nome do grupo, rótulo da faixa ocupada) — N tabelas, como a tela.
+    faixas_por_grupo: frozenset[str] = field(default_factory=frozenset)
     vidas: frozenset[str] = field(default_factory=frozenset)
     valores_centavos: frozenset[int] = field(default_factory=frozenset)
     linhas: frozenset[str] = field(default_factory=frozenset)
@@ -142,6 +144,14 @@ def _colspan(cell: dict[str, Any]) -> int:
         return 1
 
 
+def _rowspan(cell: dict[str, Any]) -> int:
+    raw = (cell.get("attrs") or {}).get("rowspan") or "1"
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 1
+
+
 def _rotulo_coluna_canonico(texto: str) -> str:
     """«Contrato atual 12%» no cabeçalho continua sendo a coluna Contrato atual."""
     if not texto:
@@ -178,10 +188,34 @@ def _cabecalho_completo(trs: list[dict[str, Any]]) -> list[str]:
     if len(trs) == 1:
         return row1
     row2 = _expandir_cabecalho(trs[1])
+    n_rowspan = 0
+    for th in _celulas_linha(trs[0]):
+        if _rowspan(th) >= 2:
+            n_rowspan += _colspan(th)
+    if n_rowspan:
+        return row1[:n_rowspan] + row2
     n_prefix = len(row1) - len(row2)
     if n_prefix < 0:
         return row1
     return row1[:n_prefix] + row2
+
+
+def _nome_grupo_cab(node: dict[str, Any]) -> str:
+    nome = ""
+    for span in _iter(node, "span"):
+        if "g" in _attr_class(span):
+            nome = _texto(span)
+            break
+    if not nome:
+        nome = _texto(node)
+    nome = nome.replace("Grupo de beneficiários", "").strip()
+    if "—" in nome:
+        nome = nome.split("—", 1)[0].strip()
+    return _norm(nome)
+
+
+def _chave_faixa_grupo(grupo: str, rotulo: str) -> str:
+    return f"{grupo}::{rotulo}" if grupo else rotulo
 
 
 def _escopo_raiz(root: dict[str, Any], secao_id: str | None) -> dict[str, Any]:
@@ -202,11 +236,19 @@ def inventariar_html(
     planos: set[str] = set()
     planos_linha: set[str] = set()
     faixas: set[str] = set()
+    faixas_por_grupo: set[str] = set()
     vidas: set[str] = set()
     valores: set[int] = set()
     linhas: set[str] = set()
     colunas: set[str] = set()
     celulas_pos: dict[tuple[str, str], int] = {}
+    grupo_por_tabela: dict[int, str] = {}
+    grupo_atual = ""
+    for node in _iter(root):
+        if node.get("tag") == "div" and "grupo-cab" in _attr_class(node):
+            grupo_atual = _nome_grupo_cab(node)
+        if node.get("tag") == "table" and "tabela-faixas" in _attr_class(node):
+            grupo_por_tabela[id(node)] = grupo_atual
 
     for node in _iter(root):
         classes = _attr_class(node)
@@ -260,7 +302,9 @@ def inventariar_html(
                 cells = _celulas_linha(tr)
                 if not cells:
                     continue
-                rotulo = _texto(cells[0])
+                rotulo = (cells[0].get("attrs") or {}).get("data-fx") or _texto(
+                    cells[0]
+                )
                 if rotulo:
                     linhas.add(rotulo)
                 # Expande células do body conforme colspan para alinhar ao cab.
@@ -290,15 +334,19 @@ def inventariar_html(
                     celulas_pos[(rotulo, col_rotulo)] = cent
 
         if primeiro_th == "Faixa":
+            grupo_tab = grupo_por_tabela.get(id(table), "")
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
                     cells = _celulas_linha(tr)
                     if not cells:
                         continue
-                    rotulo_fx = _texto(cells[0])
+                    rotulo_fx = (cells[0].get("attrs") or {}).get("data-fx") or _texto(
+                        cells[0]
+                    )
                     if rotulo_fx in {"Acomodação", "Modalidade", "Validade"}:
                         continue
                     faixas.add(rotulo_fx)
+                    faixas_por_grupo.add(_chave_faixa_grupo(grupo_tab, rotulo_fx))
         elif primeiro_th in {"Beneficiário", "Nome", "Membro"}:
             for tbody in _filhos(table, "tbody"):
                 for tr in _filhos(tbody, "tr"):
@@ -336,6 +384,7 @@ def inventariar_html(
         planos=frozenset(planos),
         planos_linha_resumo=frozenset(planos_linha),
         faixas=frozenset(faixas),
+        faixas_por_grupo=frozenset(faixas_por_grupo),
         vidas=frozenset(vidas),
         valores_centavos=frozenset(valores),
         linhas=frozenset(linhas),
@@ -389,6 +438,14 @@ def _valores_derivados_vm(vm: PresentationViewModel) -> set[int]:
                 acc.add(t - menor)
                 acc.add(abs(t - menor))
         for pl in secao.planos_atuais:
+            atual = pl.subtotal_reajustado_centavos
+            for prop in secao.propostas:
+                sub = prop.subtotais_por_subgrupo.get(pl.subgrupo_id)
+                if isinstance(sub, int) and isinstance(atual, int):
+                    acc.add(sub - atual)
+                    acc.add((sub - atual) * 12)
+                    acc.add(abs(sub - atual))
+                    acc.add(abs(sub - atual) * 12)
             for op_id in vm.propostas_selecionadas:
                 sub = sum(
                     col.subtotal_centavos or 0
@@ -464,6 +521,8 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
             props = list(secao.propostas)
             for pl in secao.planos_atuais:
                 for fx in pl.faixas:
+                    if fx.qtd_total == 0:
+                        continue
                     for prop in props:
                         from newport_app.presentation.colisao_coluna import id_coluna_vm
 
@@ -473,11 +532,15 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                         )
                         if col is None or col.quantidade == 0:
                             continue
+                        nome = (
+                            prop.nomes_atribuidos_por_subgrupo.get(pl.subgrupo_id)
+                            or prop.plano_nome
+                        )
                         unit = col.valor_unitario_centavos
                         if unit is not None:
-                            cells[(fx.rotulo, prop.plano_nome)] = unit
+                            cells[(fx.rotulo, nome)] = unit
                         elif col.subtotal_centavos is not None:
-                            cells[(fx.rotulo, prop.plano_nome)] = col.subtotal_centavos
+                            cells[(fx.rotulo, nome)] = col.subtotal_centavos
         return cells
 
     if vm.modo in ("beneficiario", "grupo_familiar"):
@@ -511,8 +574,10 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
     propostas: set[str] = set()
     planos: set[str] = set()
     faixas: set[str] = set()
+    faixas_por_grupo: set[str] = set()
     vidas: set[str] = set()
     valores: set[int] = set()
+    vistos_sg: set[str] = set()
 
     for secao in vm.secoes_regime:
         if secao.regime_rotulo:
@@ -523,8 +588,19 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
         for pl in secao.planos_atuais:
             if pl.subgrupo_id != _PLANO_SINTETICO:
                 planos.add(pl.plano_nome)
+            chave_sg = pl.subgrupo_id or pl.plano_nome
+            if chave_sg in vistos_sg:
+                continue
+            vistos_sg.add(chave_sg)
             for fx in pl.faixas:
-                faixas.add(fx.rotulo)
+                if fx.qtd_total > 0:
+                    faixas.add(fx.rotulo)
+                    grupo = (
+                        ""
+                        if pl.subgrupo_id == _PLANO_SINTETICO
+                        else pl.plano_nome
+                    )
+                    faixas_por_grupo.add(_chave_faixa_grupo(grupo, fx.rotulo))
 
     for b in vm.beneficiarios:
         vidas.add(b.nome)
@@ -542,6 +618,7 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
         planos=frozenset(planos),
         planos_linha_resumo=frozenset(planos),
         faixas=frozenset(faixas),
+        faixas_por_grupo=frozenset(faixas_por_grupo),
         vidas=frozenset(vidas),
         valores_centavos=frozenset(valores),
         celulas_pos=celulas_pos,
@@ -549,6 +626,17 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
 
 
 def valores_principais_vm(vm: PresentationViewModel) -> frozenset[int]:
+    if vm.modo == "faixas":
+        vals: set[int] = set()
+        for secao in vm.secoes_regime:
+            for pl in secao.planos_atuais:
+                if isinstance(pl.subtotal_reajustado_centavos, int):
+                    vals.add(pl.subtotal_reajustado_centavos)
+                for prop in secao.propostas:
+                    sub = prop.subtotais_por_subgrupo.get(pl.subgrupo_id)
+                    if isinstance(sub, int):
+                        vals.add(sub)
+        return frozenset(vals)
     vals = {v for v in vm.totais_gerais.propostas.values() if isinstance(v, int)}
     for secao in vm.secoes_regime:
         for v in secao.totais.propostas.values():
@@ -616,6 +704,7 @@ def divergencias_html_vm(vm: PresentationViewModel, html_doc: str) -> list[str]:
 
     if vm.modo == "faixas":
         _faltando("faixas", iv.faixas, ih.faixas)
+        _faltando("faixas_por_grupo", iv.faixas_por_grupo, ih.faixas_por_grupo)
         if iv.faixas and len(ih.faixas) < len(iv.faixas):
             divs.append(
                 f"contagem faixas: modelo={len(iv.faixas)} html={len(ih.faixas)} "

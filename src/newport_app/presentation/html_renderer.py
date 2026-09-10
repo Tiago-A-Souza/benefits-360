@@ -25,7 +25,8 @@ from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 from newport_app.presentation.tabela_densa import (
     chunks_propostas,
     envelopar_tela_impressao,
-    render_tabela_faixas,
+    ids_do_grupo,
+    planos_das_faixas,
     render_tabela_resumo,
 )
 from newport_app.presentation import tabela_densa as _tabela_densa
@@ -999,20 +1000,40 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
 
     if model.modo == "faixas":
         op_ids = list(model.propostas_selecionadas)
-        chunks = chunks_propostas(op_ids)
 
-        def _bloco_faixas(ids: list[str]) -> str:
+        def _bloco_faixas_tela() -> str:
             return (
                 "<section class='secao-regime'><h2>Distribuição por faixa etária</h2>"
-                + render_tabela_faixas(
-                    model, ids, rotulos, seguro_novo=seguro_novo
+                + _tabela_densa.render_tabela_faixas(
+                    model, op_ids, rotulos, seguro_novo=seguro_novo
                 )
                 + "</section>"
             )
 
-        tela = _bloco_faixas(op_ids)
-        impressos = [_bloco_faixas(ch) for ch in chunks]
-        paginas.append([envelopar_tela_impressao(tela, impressos)])
+        tela = _bloco_faixas_tela()
+        impressos: list[str] = []
+        grupos = planos_das_faixas(model, seguro_novo=seguro_novo)
+        if seguro_novo or not grupos:
+            for ch in chunks_propostas(op_ids):
+                impressos.append(
+                    "<section class='secao-regime'><h2>Distribuição por faixa etária</h2>"
+                    + _tabela_densa.render_secao_faixas_grupo(
+                        model, ch, rotulos, None, seguro_novo=seguro_novo
+                    )
+                    + "</section>"
+                )
+        else:
+            for plano in grupos:
+                ids_g = ids_do_grupo(model, op_ids, plano)
+                for ch in chunks_propostas(ids_g):
+                    impressos.append(
+                        "<section class='secao-regime'><h2>Distribuição por faixa etária</h2>"
+                        + _tabela_densa.render_secao_faixas_grupo(
+                            model, ch, rotulos, plano, seguro_novo=False
+                        )
+                        + "</section>"
+                    )
+        paginas.append([envelopar_tela_impressao(tela, impressos or [tela])])
 
     if model.modo == "beneficiario" and model.beneficiarios:
         op_ids = model.propostas_selecionadas
@@ -1195,6 +1216,13 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
 .tabela-densa thead th .pl{display:block;font-size:12px;font-weight:600;letter-spacing:-.01em;text-transform:none}
 .tabela-densa thead th .op{white-space:normal;max-width:8.2rem;line-height:1.2}
 .tabela-densa .pl-cel{display:block;font-size:10px;font-weight:500;color:var(--grafite-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
+.grupo-cab{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:12px 16px;background:var(--grafite);color:#fff;margin:22px 0 0}
+.grupo-cab .g{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.grupo-cab .g small{display:block;font-size:10.5px;font-weight:400;letter-spacing:.12em;color:var(--ouro);text-transform:uppercase;margin-bottom:2px}
+.grupo-cab .q{font-size:12px;font-weight:300;color:#C9CDD3}
+.grupo-cab + .rolo{margin-top:0}
+.tabela-faixas .fx-obs{display:block;font-size:10.5px;font-weight:400;color:var(--grafite-3);margin-top:2px;text-transform:none;letter-spacing:0}
 .tabela-densa thead tr.bloco-regime th{text-align:center;font-size:10px;letter-spacing:.08em;
   text-transform:uppercase}
 .tabela-densa thead tr.bloco-plano th{font-size:10.5px}
