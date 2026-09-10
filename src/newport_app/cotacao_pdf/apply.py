@@ -20,7 +20,157 @@ from newport_app.models.draft import (
     RegimeCopartRascunho,
     TabelaFaixaRascunho,
 )
+from newport_app.models.responses_cotacao import (
+    AtribuicaoDesfeitaExtracao,
+    CenarioIncompletoExtracao,
+    ImpactoRemocaoExtracao,
+)
 from newport_app.rascunho.acomodacao import chave_plano_equivalente, tabela_por_faixa
+from newport_app.rascunho.cenarios_sync import rotulo_cenario, subgrupos_com_vidas
+
+_MOTIVO_SELECAO_CONSCIENTE = (
+    "Selecione conscientemente quais planos levar ao comparativo "
+    "(documento com tabela geral extensa)."
+)
+
+
+def _opcoes_apos_exclusoes(
+    rascunho: RascunhoEstudo,
+    extracao: ExtracaoCotacaoCandidata,
+) -> list[OpcaoPropostaRascunho]:
+    """Catálogo do estudo sem as opções que esta extração marcou como excluídas."""
+    ids_excluidos = {op.id for op in extracao.opcoes if op.excluida}
+    return [
+        op
+        for op in rascunho.opcoes_proposta
+        if not (
+            op.extracao_id == extracao.id
+            and op.extracao_opcao_id
+            and op.extracao_opcao_id in ids_excluidos
+        )
+    ]
+
+
+def _ids_aplicaveis(
+    opcoes_atuais: list[OpcaoPropostaRascunho],
+    extracao: ExtracaoCotacaoCandidata,
+) -> tuple[set[str], list[dict[str, str | list[str]]], bool]:
+    """Opções da extração que vão ao comparativo, bloqueios e se é para abortar.
+
+    Fonte única: o pré-voo do impacto e a aplicação derivam daqui. Recalcular por
+    fora faria o aviso divergir do que a aplicação de fato faz.
+    """
+    ativas = opcoes_ativas(extracao)
+    selecionadas = [o for o in ativas if o.selecionada_para_comparativo]
+
+    if exige_selecao_consciente(extracao):
+        if selecionadas:
+            return {o.id for o in selecionadas}, [], False
+        if any(op.extracao_id == extracao.id for op in opcoes_atuais):
+            return set(), [], False
+        bloqueio: dict[str, str | list[str]] = {
+            "opcao_id": "",
+            "plano": "Seleção de planos",
+            "motivos": [_MOTIVO_SELECAO_CONSCIENTE],
+        }
+        return set(), [bloqueio], True
+    if selecionadas:
+        return {o.id for o in selecionadas}, [], False
+    return {o.id for o in ativas}, [], False
+
+
+def _ids_removidos(
+    opcoes_atuais: list[OpcaoPropostaRascunho],
+    extracao: ExtracaoCotacaoCandidata,
+    ids_aplicaveis: set[str],
+) -> set[str]:
+    """Opções do estudo, vindas desta extração, que a re-aplicação vai descartar."""
+    return {
+        op.id
+        for op in opcoes_atuais
+        if op.extracao_id == extracao.id
+        and op.extracao_opcao_id
+        and op.extracao_opcao_id not in ids_aplicaveis
+    }
+
+
+def _rotulo_subgrupo(rascunho: RascunhoEstudo, alvo_id: str) -> str:
+    sg = next((s for s in rascunho.subgrupos_atuais if s.id == alvo_id), None)
+    return sg.plano_nome if sg and sg.plano_nome else alvo_id
+
+
+def impacto_remocao_reaplicacao(
+    rascunho: RascunhoEstudo,
+    extracao: ExtracaoCotacaoCandidata,
+) -> ImpactoRemocaoExtracao:
+    """Inventário do que a re-aplicação vai remover — sem mutar o rascunho.
+
+    Roda antes de qualquer escrita para o operador poder desistir. Um cenário é
+    dado como incompleto pela mesma regra do B-06: todo subgrupo com vidas
+    incluídas precisa de atribuição.
+    """
+    opcoes_atuais = _opcoes_apos_exclusoes(rascunho, extracao)
+    aplicaveis, _bloqueios, abortar = _ids_aplicaveis(opcoes_atuais, extracao)
+    if abortar:
+        return ImpactoRemocaoExtracao()
+
+    ids_removidos = _ids_removidos(opcoes_atuais, extracao, aplicaveis)
+    ids_excluidos = {op.id for op in rascunho.opcoes_proposta} - {
+        op.id for op in opcoes_atuais
+    }
+    saindo = ids_removidos | ids_excluidos
+    if not saindo:
+        return ImpactoRemocaoExtracao()
+
+    por_id = {op.id: op for op in rascunho.opcoes_proposta}
+    planos = [
+        (por_id[oid].plano_nome or oid) for oid in saindo if oid in por_id
+    ]
+
+    desfeitas: list[AtribuicaoDesfeitaExtracao] = []
+    incompletos: list[CenarioIncompletoExtracao] = []
+    obrigatorios = subgrupos_com_vidas(rascunho)
+
+    for cenario in rascunho.cenarios:
+        rotulo = rotulo_cenario(rascunho, cenario)
+        perdidas = [a for a in cenario.atribuicoes if a.opcao_plano_id in saindo]
+        for a in perdidas:
+            desfeitas.append(
+                AtribuicaoDesfeitaExtracao(
+                    cenario_id=cenario.id,
+                    cenario_rotulo=rotulo,
+                    alvo_id=a.alvo_id,
+                    alvo_rotulo=_rotulo_subgrupo(rascunho, a.alvo_id),
+                    plano=(por_id[a.opcao_plano_id].plano_nome or a.opcao_plano_id)
+                    if a.opcao_plano_id in por_id
+                    else (a.opcao_plano_id or ""),
+                )
+            )
+        if not perdidas:
+            continue
+        atendidos = {
+            a.alvo_id
+            for a in cenario.atribuicoes
+            if a.opcao_plano_id and a.opcao_plano_id not in saindo
+        }
+        orfaos = [sg for sg in obrigatorios if sg not in atendidos]
+        if orfaos:
+            incompletos.append(
+                CenarioIncompletoExtracao(
+                    cenario_id=cenario.id,
+                    cenario_rotulo=rotulo,
+                    alvos_sem_atribuicao=[
+                        _rotulo_subgrupo(rascunho, sg) for sg in orfaos
+                    ],
+                    ficou_vazio=not atendidos,
+                )
+            )
+
+    return ImpactoRemocaoExtracao(
+        planos_removidos=sorted(planos),
+        atribuicoes_desfeitas=desfeitas,
+        cenarios_incompletos=incompletos,
+    )
 
 
 def _validade_documento(extracao: ExtracaoCotacaoCandidata):
@@ -284,51 +434,16 @@ def aplicar_extracao_confirmada(
             )
         )
 
-    ids_excluidos = {op.id for op in extracao.opcoes if op.excluida}
-    rascunho.opcoes_proposta = [
-        op
-        for op in rascunho.opcoes_proposta
-        if not (
-            op.extracao_id == extracao.id
-            and op.extracao_opcao_id
-            and op.extracao_opcao_id in ids_excluidos
-        )
-    ]
+    rascunho.opcoes_proposta = _opcoes_apos_exclusoes(rascunho, extracao)
 
-    ativas = opcoes_ativas(extracao)
-    ja_no_rascunho = any(op.extracao_id == extracao.id for op in rascunho.opcoes_proposta)
-    selecionadas_explicitas = [o for o in ativas if o.selecionada_para_comparativo]
+    ids_aplicaveis, bloqueios_selecao, abortar = _ids_aplicaveis(
+        rascunho.opcoes_proposta, extracao
+    )
+    if abortar:
+        bloqueios.extend(bloqueios_selecao)
+        return rascunho, bloqueios
 
-    if exige_selecao_consciente(extracao):
-        if not selecionadas_explicitas:
-            if ja_no_rascunho:
-                ids_aplicaveis: set[str] = set()
-            else:
-                bloqueios.append(
-                    {
-                        "opcao_id": "",
-                        "plano": "Seleção de planos",
-                        "motivos": [
-                            "Selecione conscientemente quais planos levar ao comparativo "
-                            "(documento com tabela geral extensa)."
-                        ],
-                    }
-                )
-                return rascunho, bloqueios
-        else:
-            ids_aplicaveis = {o.id for o in selecionadas_explicitas}
-    elif selecionadas_explicitas:
-        ids_aplicaveis = {o.id for o in selecionadas_explicitas}
-    else:
-        ids_aplicaveis = {o.id for o in ativas}
-
-    ids_removidos = {
-        op.id
-        for op in rascunho.opcoes_proposta
-        if op.extracao_id == extracao.id
-        and op.extracao_opcao_id
-        and op.extracao_opcao_id not in ids_aplicaveis
-    }
+    ids_removidos = _ids_removidos(rascunho.opcoes_proposta, extracao, ids_aplicaveis)
     if ids_removidos:
         rascunho.opcoes_proposta = [
             op for op in rascunho.opcoes_proposta if op.id not in ids_removidos

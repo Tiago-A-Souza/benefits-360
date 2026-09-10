@@ -318,11 +318,29 @@ export async function confirmarLoteExtracao(estudoId, extracaoId) {
   return tratarResposta(res, "Não foi possível confirmar o lote.");
 }
 
-export async function aplicarExtracaoCotacao(estudoId, extracaoId) {
+export async function aplicarExtracaoCotacao(
+  estudoId,
+  extracaoId,
+  { confirmarRemocoes = false } = {}
+) {
   const res = await fetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/aplicar`,
-    { method: "POST" }
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmar_remocoes: confirmarRemocoes }),
+    }
   );
+  if (res.status === 409) {
+    const body = await res.json();
+    if (body.detail?.codigo === "PDF-REAP-001") {
+      const err = new Error(body.detail?.mensagem || "Esta aplicação remove planos em uso.");
+      err.impactoRemocao = body.detail?.impacto_remocao || null;
+      err.codigo = "PDF-REAP-001";
+      throw err;
+    }
+    throw montarErroApi(res, body, "Não foi possível aplicar a extração.");
+  }
   if (res.status === 422) {
     const body = await res.json();
     const err = new Error(body.detail?.mensagem || "Não foi possível aplicar a extração.");

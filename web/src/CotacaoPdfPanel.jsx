@@ -51,6 +51,8 @@ import {
   rotuloRegime,
   resumirMotivosBloqueio,
   situacaoOpcao,
+  textoConfirmacaoRemocao,
+  textoRelatoRemocao,
   traduzirAlerta,
 } from "./cotacaoPdf/utils";
 import {
@@ -895,6 +897,7 @@ export default function CotacaoPdfPanel({
   const [msg, setMsg] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [bloqueios, setBloqueios] = useState([]);
+  const [relatoRemocao, setRelatoRemocao] = useState(null);
   const [dragAtivo, setDragAtivo] = useState(false);
   const [pdfInlineDocumentoId, setPdfInlineDocumentoId] = useState(null);
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false);
@@ -1286,8 +1289,22 @@ export default function CotacaoPdfPanel({
       setErro("Declare o regime de coparticipação de cada plano antes de adicionar ao comparativo.");
       return;
     }
+    setRelatoRemocao(null);
     try {
-      const res = await aplicarExtracaoCotacao(estudoId, extracaoId);
+      let res;
+      try {
+        res = await aplicarExtracaoCotacao(estudoId, extracaoId);
+      } catch (err) {
+        if (!err.impactoRemocao) throw err;
+        // Nada foi gravado ainda: o operador decide antes de perder a etapa 4.
+        if (!window.confirm(textoConfirmacaoRemocao(err.impactoRemocao))) {
+          setMsg("Nenhum plano foi removido — a seleção anterior continua no comparativo.");
+          return;
+        }
+        res = await aplicarExtracaoCotacao(estudoId, extracaoId, {
+          confirmarRemocoes: true,
+        });
+      }
       const listaAtualizada = await listarExtracoesCotacao(estudoId)
         .then((r) => r.extracoes || [])
         .catch(() => extracoes);
@@ -1309,6 +1326,7 @@ export default function CotacaoPdfPanel({
         setMsg(prox ? "Comparativo atualizado. Há outra cotação pendente." : "Comparativo atualizado.");
       }
       if (res.bloqueios?.length) setBloqueios(res.bloqueios);
+      if (res.impacto_remocao) setRelatoRemocao(textoRelatoRemocao(res.impacto_remocao));
       if (setCestaGlobal) {
         setCestaGlobal((prev) => prev.filter((x) => x.extracaoId !== extracaoId));
       }
@@ -1874,6 +1892,13 @@ export default function CotacaoPdfPanel({
             </>
           )}
           </div>
+        </div>
+      )}
+
+      {relatoRemocao && (
+        <div className="pendencias-box">
+          <strong>Planos removidos do comparativo</strong>
+          <p>{relatoRemocao}</p>
         </div>
       )}
 

@@ -67,6 +67,7 @@ from newport_app.models.responses import (
     SugestaoReajustePmeResponse,
 )
 from newport_app.models.responses_cotacao import (
+    AplicarExtracaoRequest,
     AplicarExtracaoResponse,
     ConfirmacaoExtracaoResponse,
     DescartarExtracaoRequest,
@@ -114,6 +115,7 @@ from newport_app.services.extracao_cotacao import (
     ExtracaoNaoEncontradaError,
     MotivoDescarteObrigatorioError,
     OpcaoNaoEncontradaError,
+    RemocaoExigeConfirmacaoError,
 )
 from newport_app.services.matriz_estimativa import montar_matriz_estimativa
 from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
@@ -776,14 +778,30 @@ def create_app(
         "/api/estudos/{estudo_id}/extracao-cotacao/{extracao_id}/aplicar",
         response_model=AplicarExtracaoResponse,
     )
-    def aplicar_extracao(estudo_id: str, extracao_id: str) -> AplicarExtracaoResponse:
+    def aplicar_extracao(
+        estudo_id: str,
+        extracao_id: str,
+        payload: AplicarExtracaoRequest | None = None,
+    ) -> AplicarExtracaoResponse:
         try:
             ext = cotacao.obter_extracao(extracao_id)
             if ext.estudo_id != estudo_id:
                 raise HTTPException(status_code=404, detail="Extração não encontrada") from None
-            return cotacao.aplicar_ao_rascunho(extracao_id)
+            return cotacao.aplicar_ao_rascunho(
+                extracao_id,
+                confirmar_remocoes=bool(payload and payload.confirmar_remocoes),
+            )
         except ExtracaoNaoEncontradaError:
             raise HTTPException(status_code=404, detail="Extração não encontrada") from None
+        except RemocaoExigeConfirmacaoError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "codigo": "PDF-REAP-001",
+                    "mensagem": str(exc),
+                    "impacto_remocao": exc.impacto.model_dump(mode="json"),
+                },
+            ) from None
         except CotacaoDescartadaError:
             raise HTTPException(
                 status_code=409,

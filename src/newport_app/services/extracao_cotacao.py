@@ -12,7 +12,10 @@ from newport_app.config.paths import diretorio_uploads_cotacao
 from newport_app.diagnostico import registrar_evento
 from newport_app.cotacao_pdf.estimativa import estimar_opcao_candidata
 from newport_app.cotacao_pdf.maturidade import avaliar_maturidade
-from newport_app.cotacao_pdf.apply import aplicar_extracao_confirmada
+from newport_app.cotacao_pdf.apply import (
+    aplicar_extracao_confirmada,
+    impacto_remocao_reaplicacao,
+)
 from newport_app.cotacao_pdf.confirmacao import (
     confirmar_extracao_selecionadas,
     confirmar_opcao_implicita,
@@ -27,6 +30,7 @@ from newport_app.models.responses_cotacao import (
     AplicarExtracaoResponse,
     BloqueioOpcaoExtracao,
     ConfirmacaoExtracaoResponse,
+    ImpactoRemocaoExtracao,
     DescartarExtracaoResponse,
     EstimarPropostasResponse,
     RemoverExtracaoResponse,
@@ -65,6 +69,14 @@ class AplicacaoExtracaoError(Exception):
     def __init__(self, mensagem: str, bloqueios: list[BloqueioOpcaoExtracao]) -> None:
         super().__init__(mensagem)
         self.bloqueios = bloqueios
+
+
+class RemocaoExigeConfirmacaoError(Exception):
+    """Re-aplicação que desfaz atribuição de cenário — nada foi gravado ainda."""
+
+    def __init__(self, mensagem: str, impacto: ImpactoRemocaoExtracao) -> None:
+        super().__init__(mensagem)
+        self.impacto = impacto
 
 
 class ExtracaoCotacaoService:
@@ -393,15 +405,30 @@ class ExtracaoCotacaoService:
                 return op
         raise OpcaoNaoEncontradaError(opcao_id)
 
-    def aplicar_ao_rascunho(self, extracao_id: str) -> AplicarExtracaoResponse:
+    def aplicar_ao_rascunho(
+        self,
+        extracao_id: str,
+        *,
+        confirmar_remocoes: bool = False,
+    ) -> AplicarExtracaoResponse:
         extracao = self.obter_extracao(extracao_id)
         if extracao.descartada:
             raise CotacaoDescartadaError(extracao_id)
-        confirmar_extracao_selecionadas(extracao, confirmado_por="aplicacao")
-        self._extracoes.salvar(extracao)
+
         rascunho = self._estudos.obter_rascunho(extracao.estudo_id)
         if rascunho is None:
             rascunho = rascunho_vazio(extracao.estudo_id, f"Estudo {extracao.estudo_id}")
+
+        # Pré-voo antes de qualquer escrita: o operador ainda pode desistir.
+        impacto = impacto_remocao_reaplicacao(rascunho, extracao)
+        if impacto.exige_confirmacao and not confirmar_remocoes:
+            raise RemocaoExigeConfirmacaoError(
+                "Esta aplicação remove planos que estão em uso na etapa 4.",
+                impacto,
+            )
+
+        confirmar_extracao_selecionadas(extracao, confirmado_por="aplicacao")
+        self._extracoes.salvar(extracao)
 
         antes_ids = {
             op.extracao_opcao_id
@@ -444,6 +471,7 @@ class ExtracaoCotacaoService:
             opcoes_atualizadas=atualizadas,
             total_opcoes=len(rascunho.opcoes_proposta),
             bloqueios=bloqueios,
+            impacto_remocao=impacto if impacto.houve_remocao else None,
         )
 
     def _retirar_planos_do_rascunho(

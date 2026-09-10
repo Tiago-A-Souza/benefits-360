@@ -145,6 +145,69 @@ export function resumirMotivosBloqueio(motivos = []) {
   return ["Revise os dados do plano ou escolha outra opção na lista."];
 }
 
+function listaPlanos(planos = []) {
+  return planos.map((p) => `\u2022 ${p}`).join("\n");
+}
+
+function plural(n, singular, formaPlural) {
+  return `${n} ${n === 1 ? singular : formaPlural}`;
+}
+
+/** Texto do gate: o que sai e o que isso desfaz na etapa 4, antes de aplicar. */
+export function textoConfirmacaoRemocao(impacto) {
+  const planos = impacto?.planos_removidos || [];
+  const desfeitas = impacto?.atribuicoes_desfeitas || [];
+  const incompletos = impacto?.cenarios_incompletos || [];
+  if (!planos.length) return "";
+
+  const partes = [
+    `Esta aplicação remove ${plural(planos.length, "plano", "planos")} do comparativo:`,
+    listaPlanos(planos),
+  ];
+
+  const porCenario = new Map();
+  desfeitas.forEach((a) => {
+    if (!porCenario.has(a.cenario_rotulo)) porCenario.set(a.cenario_rotulo, []);
+    porCenario.get(a.cenario_rotulo).push(`\u2022 ${a.alvo_rotulo} \u2192 ${a.plano}`);
+  });
+  porCenario.forEach((linhas, cenario) => {
+    partes.push(
+      "",
+      `Isso desfaz ${plural(linhas.length, "atribuição", "atribuições")} em «${cenario}»:`,
+      linhas.join("\n")
+    );
+  });
+
+  incompletos.forEach((c) => {
+    partes.push(
+      "",
+      c.ficou_vazio
+        ? `O cenário «${c.cenario_rotulo}» fica sem nenhum plano atribuído e terá de ser remontado na etapa 4.`
+        : `O cenário «${c.cenario_rotulo}» fica incompleto: ${c.alvos_sem_atribuicao.join(", ")} ${
+            c.alvos_sem_atribuicao.length === 1 ? "fica" : "ficam"
+          } sem plano atribuído e a etapa 4 terá de ser remontada.`
+    );
+  });
+
+  partes.push("", "Continuar?");
+  return partes.join("\n");
+}
+
+/** Relato persistente do que saiu — não é diálogo, fica na tela depois de aplicar. */
+export function textoRelatoRemocao(impacto) {
+  const planos = impacto?.planos_removidos || [];
+  if (!planos.length) return "";
+  const desfeitas = impacto?.atribuicoes_desfeitas || [];
+  const base = `${plural(planos.length, "plano", "planos")} ${
+    planos.length === 1 ? "saiu" : "saíram"
+  } do comparativo: ${planos.join(", ")}.`;
+  if (!desfeitas.length) return base;
+  const cenarios = [...new Set(desfeitas.map((a) => a.cenario_rotulo))];
+  return `${base} ${plural(desfeitas.length, "atribuição", "atribuições")} ${
+    desfeitas.length === 1 ? "foi desfeita" : "foram desfeitas"
+  } em ${cenarios.map((c) => `«${c}»`).join(", ")}.`;
+}
+
 export function contextoSiscorSimulacao(resumoSiscor, subgrupoSelecionado) {
   const planos = resumoSiscor?.planos || [];
   return {
