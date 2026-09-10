@@ -28,7 +28,9 @@ def _resumo(tmp: Path, rascunho):
     sincronizar_cenarios(rascunho)
     matriz, _ = _calcular_matriz(rascunho)
     snap = _aprovar(tmp, rascunho)
-    ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
+    from newport_app.presentation.colisao_coluna import chave_de_coluna
+
+    ids = [chave_de_coluna(p) for p in matriz.propostas if p.calculo_realizado]
     vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
     return matriz, vm, render_html(vm), ids
 

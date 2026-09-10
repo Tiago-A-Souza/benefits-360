@@ -60,44 +60,26 @@ def opcao_atribuida_por_cenario(
 
 
 def cenario_por_chave_de_coluna(rascunho: RascunhoEstudo) -> dict[str, str]:
-    """Chave de coluna (opção de referência) → cenário.
-
-    Ambíguo exatamente nos casos que `APP-COL-001` sinaliza; aqui fica a
-    primeira, igual ao que `builder.py` faz, para que a paridade meça o que o
-    documento realmente mostra.
-    """
-    from newport_app.rascunho.cenarios_sync import opcao_referencia_cenario
-
-    out: dict[str, str] = {}
-    for cenario in rascunho.cenarios:
-        chave = opcao_referencia_cenario(cenario)
-        if chave and chave not in out:
-            out[chave] = cenario.id
-    return out
+    """Chave de coluna → cenário. Desde a FASE 4 a chave é o próprio cenário."""
+    return {c.id: c.id for c in rascunho.cenarios if c.id}
 
 
 def mapa_esperado_por_coluna(
     motor: MotorResult,
     rascunho: RascunhoEstudo,
 ) -> dict[tuple[str, str], int]:
-    """(chave de coluna, subgrupo_id) → subtotal que a coluna deve exibir.
-
-    A ponte entre a grade, indexada por `(opção, subgrupo)`, e a coluna, que
-    desde a FASE 3 é um cenário: para cada grupo, a célula da grade do plano que
-    aquele cenário atribui àquele grupo.
-    """
+    """(coluna_id=cenario_id, subgrupo_id) → subtotal que a coluna deve exibir."""
     grade = mapa_grade_proposta(motor)
     atribuido = opcao_atribuida_por_cenario(rascunho)
-    por_chave = cenario_por_chave_de_coluna(rascunho)
     out: dict[tuple[str, str], int] = {}
-    for chave, cenario_id in por_chave.items():
+    for cenario in rascunho.cenarios:
         for sg_id in subgrupos_com_vidas(rascunho):
-            opcao = atribuido.get((cenario_id, sg_id))
+            opcao = atribuido.get((cenario.id, sg_id))
             if opcao is None:
                 continue
             valor = grade.get((opcao, sg_id))
             if valor is not None:
-                out[(chave, sg_id)] = valor
+                out[(cenario.id, sg_id)] = valor
     return out
 
 
@@ -297,8 +279,18 @@ def divergencias_grade_vs_recalculo(
 def mapa_vm_proposta_por_subgrupo(
     vm: PresentationViewModel,
 ) -> dict[tuple[str, str], int]:
-    """Agrega subtotais de faixa por (opcao_id, subgrupo_id) no VM."""
+    """Agrega subtotais por (coluna_id, subgrupo_id) no VM."""
+    from newport_app.presentation.colisao_coluna import id_coluna_vm
+
     acc: dict[tuple[str, str], int] = {}
+    for secao in vm.secoes_regime:
+        for prop in secao.propostas:
+            cid = id_coluna_vm(prop)
+            for sg_id, val in prop.subtotais_por_subgrupo.items():
+                if val is not None:
+                    acc[(cid, sg_id)] = val
+    if acc:
+        return acc
     for secao in vm.secoes_regime:
         for plano in secao.planos_atuais:
             if plano.subgrupo_id == "vidas-incluidas":
@@ -337,16 +329,19 @@ def divergencias_vm_vs_grade(
         # Modo resumo: só consolidado
         for secao in vm.secoes_regime:
             for prop in secao.propostas:
-                if prop.opcao_id not in vm.propostas_selecionadas:
+                from newport_app.presentation.colisao_coluna import id_coluna_vm
+
+                cid = id_coluna_vm(prop)
+                if cid not in vm.propostas_selecionadas:
                     continue
                 sgs = subgrupos_com_vidas(rascunho)
-                soma = sum(esperado.get((prop.opcao_id, sg), 0) for sg in sgs)
+                soma = sum(esperado.get((cid, sg), 0) for sg in sgs)
                 total = prop.total_mensal_centavos
                 if total is None:
-                    total = secao.totais.propostas.get(prop.opcao_id)
+                    total = secao.totais.propostas.get(cid)
                 if total is not None and total != soma:
                     divs.append(
-                        f"vm_consolidado {prop.opcao_id}: vm={total} "
+                        f"vm_consolidado {cid}: vm={total} "
                         f"soma_grade={soma}"
                     )
         return divs
@@ -375,9 +370,22 @@ def divergencias_html_vs_grade(
     if rascunho.formato == "novo" or not motor.grade_opcao_subgrupo:
         return []
     esperado = mapa_esperado_por_coluna(motor, rascunho)
+    ids_filtro = set(opcao_ids)
+    # Aceita opcao_id legado: resolve para coluna_id sem perder a checagem.
+    if rascunho.cenarios:
+        ids_filtro.update(
+            c.id
+            for c in rascunho.cenarios
+            if c.id in opcao_ids
+            or any(
+                a.opcao_plano_id in opcao_ids
+                for a in c.atribuicoes
+                if a.opcao_plano_id
+            )
+        )
     divs: list[str] = []
     for (oid, sg_id), centavos in esperado.items():
-        if oid not in opcao_ids:
+        if oid not in ids_filtro:
             continue
         texto = formatar_reais(centavos)
         if texto not in html:

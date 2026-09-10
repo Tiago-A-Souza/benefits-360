@@ -56,10 +56,12 @@ def montar_indicadores_resumo(
 ) -> list[LinhaIndicadorResumo]:
     """Monta as linhas de indicador a partir dos campos já no VM."""
     seguro_novo = model.formato == "novo"
+    from newport_app.presentation.colisao_coluna import id_coluna_vm
+
     props = {
-        p.opcao_id: p
+        id_coluna_vm(p): p
         for p in secao.propostas
-        if p.opcao_id in op_ids
+        if id_coluna_vm(p) in op_ids
     }
     planos = _planos_reais(secao)
     linhas: list[LinhaIndicadorResumo] = []

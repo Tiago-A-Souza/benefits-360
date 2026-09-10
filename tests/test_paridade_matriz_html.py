@@ -32,6 +32,7 @@ from newport_app.models.draft import (
 from newport_app.models.snapshot import AprovarSnapshotRequest
 from newport_app.policy.registry import POLICY_SET_VERSAO_PADRAO, default_registry
 from newport_app.presentation.builder import construir_view_model
+from newport_app.presentation.colisao_coluna import id_coluna_vm
 from newport_app.cotacao_pdf.faixas import ROTULOS_FAIXA
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.repository.historico import HistoricoRepository
@@ -137,7 +138,9 @@ def _planos_vm_por_subgrupo(vm) -> dict[str, dict]:
                 slot["reajustado"] = pl.subtotal_reajustado_centavos or 0
             for fx in pl.faixas:
                 for col in fx.propostas:
-                    slot["propostas"][col.opcao_id] += col.subtotal_centavos or 0
+                    slot["propostas"][col.coluna_id or col.opcao_id] += (
+                        col.subtotal_centavos or 0
+                    )
     return acc
 
 
@@ -145,7 +148,9 @@ def _rotulos_vm(vm) -> dict[str, str]:
     rotulos: dict[str, str] = {}
     for secao in vm.secoes_regime:
         for prop in secao.propostas:
-            rotulos.setdefault(prop.opcao_id, prop.plano_nome)
+            from newport_app.presentation.colisao_coluna import id_coluna_vm
+
+            rotulos.setdefault(id_coluna_vm(prop), prop.plano_nome)
     return rotulos
 
 
@@ -153,7 +158,7 @@ def assert_paridade_rotulos(matriz, vm) -> None:
     rotulos_vm = _rotulos_vm(vm)
     vistos: list[str] = []
     for prop in matriz.propostas:
-        assert prop.plano_nome == rotulos_vm[prop.opcao_id]
+        assert prop.plano_nome == rotulos_vm[prop.cenario_id]
         vistos.append(prop.plano_nome)
     assert len(vistos) == len(set(vistos))
 
@@ -162,14 +167,16 @@ def _datas_vm(vm) -> dict[str, str | None]:
     vals: dict[str, str | None] = {}
     for secao in vm.secoes_regime:
         for prop in secao.propostas:
-            vals.setdefault(prop.opcao_id, prop.validade)
+            vals.setdefault(id_coluna_vm(prop), prop.validade)
     return vals
 
 
 def assert_paridade_datas(matriz, vm) -> None:
+    from newport_app.presentation.colisao_coluna import id_coluna_vm
+
     datas_vm = _datas_vm(vm)
     for prop in matriz.propostas:
-        assert prop.validade_oficial == datas_vm.get(prop.opcao_id)
+        assert prop.validade_oficial == datas_vm.get(prop.cenario_id)
         if prop.validade_oficial:
             assert "/" in prop.validade_oficial
             assert not (
@@ -328,7 +335,7 @@ def assert_paridade_planos(matriz, vm) -> None:
         for prop in matriz.propostas:
             rec = next((s for s in prop.subgrupos if s.subgrupo_id == pl.subgrupo_id), None)
             assert rec is not None
-            assert (rec.proposta_centavos or 0) == slot["propostas"][prop.opcao_id]
+            assert (rec.proposta_centavos or 0) == slot["propostas"][prop.cenario_id]
 
 
 def assert_coerencia_interna(matriz) -> None:
@@ -385,10 +392,10 @@ def assert_gabarito_propostas(matriz, vm, gab) -> None:
         assert soma == spec["consolidado_centavos"]
         assert prop.numerico is not None
         assert prop.numerico.proposta_mensal_centavos == spec["consolidado_centavos"]
-        assert vm_planos[mapa_sg["plano_a"]]["propostas"][spec["opcao_id"]] == spec[
+        assert vm_planos[mapa_sg["plano_a"]]["propostas"][prop.cenario_id] == spec[
             "plano_a_centavos"
         ]
-        assert vm_planos[mapa_sg["plano_b"]]["propostas"][spec["opcao_id"]] == spec[
+        assert vm_planos[mapa_sg["plano_b"]]["propostas"][prop.cenario_id] == spec[
             "plano_b_centavos"
         ]
         assert vm.totais_gerais.propostas[spec["opcao_id"]] == spec["consolidado_centavos"]

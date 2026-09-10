@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class PropostaFaixaColuna(BaseModel):
     opcao_id: str
+    coluna_id: str = ""
     valor_unitario_centavos: int | None = None
     quantidade: int = 0
     subtotal_centavos: int | None = None
@@ -49,6 +50,11 @@ class LinhaIndicadorResumo(BaseModel):
 
 class PropostaApresentacao(BaseModel):
     opcao_id: str
+    coluna_id: str = ""
+    misto: bool = False
+    indice_cenario: int | None = None
+    subtotais_por_subgrupo: dict[str, int | None] = Field(default_factory=dict)
+    nomes_atribuidos_por_subgrupo: dict[str, str] = Field(default_factory=dict)
     operadora: str
     plano_nome: str
     regime_rotulo: str
@@ -81,6 +87,7 @@ class PlanoAtualApresentacao(BaseModel):
 
 class BeneficiarioPropostaColuna(BaseModel):
     opcao_id: str
+    coluna_id: str = ""
     valor_centavos: int | None = None
     diff_centavos: int | None = None
 

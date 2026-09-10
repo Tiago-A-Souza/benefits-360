@@ -27,6 +27,7 @@ from newport_app.models.draft import (
 from newport_app.models.snapshot import AprovarSnapshotRequest
 from newport_app.policy.registry import POLICY_SET_VERSAO_PADRAO
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA, construir_view_model
+from newport_app.presentation.colisao_coluna import id_coluna_vm
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.html_renderer import _subtotal_proposta_plano, render_html
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
@@ -76,7 +77,9 @@ def _ids(snap) -> list[str]:
     from newport_app.snapshot.comparativo import ler_comparativo_congelado
 
     matriz = ler_comparativo_congelado(snap.payload)
-    return [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
+    from newport_app.presentation.colisao_coluna import chave_de_coluna
+
+    return [chave_de_coluna(p) for p in matriz.propostas if p.calculo_realizado]
 
 
 def _strip_tags(texto: str) -> str:
@@ -121,11 +124,15 @@ def _celula_resumo(
                 continue
             if linha and linha[0] == plano_nome:
                 if len(linha) == len(cab):
-                    return linha[col]
-                if len(linha) == len(cab) + 1:
-                    return linha[col + 1]
-                if col < len(linha):
-                    return linha[col]
+                    bruto = linha[col]
+                elif len(linha) == len(cab) + 1:
+                    bruto = linha[col + 1]
+                elif col < len(linha):
+                    bruto = linha[col]
+                else:
+                    continue
+                dinheiro = re.search(r"R\$\s*-?[\d.]+,\d{2}", bruto)
+                return dinheiro.group(0) if dinheiro else bruto
     raise AssertionError(f"célula não encontrada: {plano_nome!r} × {proposta_nome!r}")
 
 
@@ -231,7 +238,7 @@ def test_01_resumo_exibe_valor_por_plano_em_todos_os_regimes(tmp_path: Path):
             if plano.subgrupo_id == "vidas-incluidas":
                 continue
             for prop in secao.propostas:
-                valor = _subtotal_proposta_plano(plano, prop.opcao_id)
+                valor = _subtotal_proposta_plano(plano, id_coluna_vm(prop))
                 assert valor is not None, (plano.plano_nome, prop.plano_nome)
                 cel = _celula_resumo(tabelas, plano.plano_nome, prop.plano_nome)
                 assert cel == formatar_reais(valor)
@@ -252,7 +259,7 @@ def test_02_soma_por_plano_igual_ao_consolidado_resumo(tmp_path: Path):
             for plano in secao.planos_atuais:
                 if plano.subgrupo_id == "vidas-incluidas":
                     continue
-                valor = _subtotal_proposta_plano(plano, prop.opcao_id)
+                valor = _subtotal_proposta_plano(plano, id_coluna_vm(prop))
                 assert valor is not None
                 soma += valor
             consolidado = secao.totais.propostas.get(prop.opcao_id)
@@ -324,7 +331,7 @@ def test_05_unico_regime_inalterado(tmp_path: Path):
             if plano.subgrupo_id == "vidas-incluidas":
                 continue
             for prop in secao.propostas:
-                valor = _subtotal_proposta_plano(plano, prop.opcao_id)
+                valor = _subtotal_proposta_plano(plano, id_coluna_vm(prop))
                 assert valor is not None
                 cel = _celula_resumo(tabelas, plano.plano_nome, prop.plano_nome)
                 assert cel == formatar_reais(valor)

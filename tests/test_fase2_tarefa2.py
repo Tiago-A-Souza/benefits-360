@@ -63,7 +63,9 @@ def _aprovar(repo, snap_svc, rascunho):
 
 
 def _ids(matriz) -> list[str]:
-    return [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
+    from newport_app.presentation.colisao_coluna import chave_de_coluna
+
+    return [chave_de_coluna(p) for p in matriz.propostas if p.calculo_realizado]
 
 
 def _calcular_ao_vivo(rascunho):
@@ -104,7 +106,12 @@ def test_documento_idêntico_a_matriz_do_mesmo_snapshot(tmp_path: Path):
                 assert b.atual_vigente_centavos == origem.vigente_centavos
                 assert b.atual_reajustado_centavos == origem.reajustado_centavos
                 for col in b.propostas:
-                    prop = next(p for p in matriz.propostas if p.opcao_id == col.opcao_id)
+                    prop = next(
+                        p
+                        for p in matriz.propostas
+                        if p.cenario_id == (col.coluna_id or col.opcao_id)
+                        or p.opcao_id == col.opcao_id
+                    )
                     vd = next(
                         v
                         for sec in prop.secoes

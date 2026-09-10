@@ -66,7 +66,9 @@ def _preparar(tmp: Path, celula: CelulaEstrutural) -> _EstadoPrep:
     rc = compile(rascunho, policy_registry=default_registry)
     assert rc.compilavel and rc.compilado is not None
     snap = _aprovar(tmp, rascunho)
-    ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
+    from newport_app.presentation.colisao_coluna import chave_de_coluna
+
+    ids = [chave_de_coluna(p) for p in matriz.propostas if p.calculo_realizado]
     return _EstadoPrep(
         rascunho=rascunho,
         matriz=matriz,
@@ -233,18 +235,30 @@ def mut_04_rotulo_divergente_documento() -> Iterator[None]:
 
 @contextmanager
 def mut_05_ultima_faixa_some() -> Iterator[None]:
-    def wrapped(plano, propostas, op_ids, rotulos, *, seguro_novo=False):
-        if plano.faixas:
-            plano = plano.model_copy(update={"faixas": list(plano.faixas)[:-1]})
-        return _orig_tabela_faixas(
-            plano, propostas, op_ids, rotulos, seguro_novo=seguro_novo
-        )
+    from newport_app.presentation import tabela_densa
 
-    html_renderer._render_tabela_faixas = wrapped  # type: ignore[assignment]
+    orig = tabela_densa.render_tabela_faixas
+
+    def wrapped(model, op_ids, rotulos, *, seguro_novo=False):
+        secoes = []
+        for secao in model.secoes_regime:
+            planos = []
+            for pl in secao.planos_atuais:
+                if pl.faixas:
+                    planos.append(
+                        pl.model_copy(update={"faixas": list(pl.faixas)[:-1]})
+                    )
+                else:
+                    planos.append(pl)
+            secoes.append(secao.model_copy(update={"planos_atuais": planos}))
+        model = model.model_copy(update={"secoes_regime": secoes})
+        return orig(model, op_ids, rotulos, seguro_novo=seguro_novo)
+
+    tabela_densa.render_tabela_faixas = wrapped  # type: ignore[assignment]
     try:
         yield
     finally:
-        html_renderer._render_tabela_faixas = _orig_tabela_faixas
+        tabela_densa.render_tabela_faixas = orig
 
 
 @contextmanager

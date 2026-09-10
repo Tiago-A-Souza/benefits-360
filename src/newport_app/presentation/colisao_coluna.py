@@ -1,20 +1,9 @@
-"""Colisão de chave de coluna — dois cenários que começam pelo mesmo plano.
+"""Identidade da coluna (`coluna_id` = cenário) e rede contra colisão.
 
-Desde a FASE 3 a coluna da matriz é um cenário, mas a camada de apresentação
-ainda identifica coluna por `opcao_id`, e o `opcao_id` de uma coluna é a opção
-da **primeira atribuição** do cenário (`opcao_referencia_cenario`). Quando dois
-cenários começam pelo mesmo plano, as duas colunas saem com a mesma chave, e o
-`{p.opcao_id: p for p in ...}` de `builder.py` mantém uma e perde a outra.
-
-A matriz aguenta — as colunas são uma lista. Quem perde é o documento.
-
-A correção definitiva é `coluna_id` = cenário, prevista para a FASE 4, que já
-reescreve esses mesmos pontos para pôr o resumo executivo por cenário. Até lá o
-caso é **detectado e sinalizado**: uma coluna não pode desaparecer em silêncio.
-
-Alerta, não bloqueio: a matriz continua correta e três estudos já gravados
-cairiam em bloqueio novo, o que esta fase não permite. O operador precisa saber
-que o documento sairá com uma coluna a menos — não ser impedido de trabalhar.
+A apresentação identifica coluna por `chave_de_coluna` — desde a FASE 4, o
+`cenario_id`. A opção de referência (`opcao_id`) continua no comparativo para
+metadado da cotação; não é mais a chave. `APP-COL-001` permanece: se a chave
+voltar a colapsar duas colunas, o alerta dispara.
 """
 
 from __future__ import annotations
@@ -26,14 +15,61 @@ CODIGO_COLISAO_COLUNA = "APP-COL-001"
 
 
 def chave_de_coluna(prop: ResultadoPropostaComparativo) -> str:
-    """Identificador que a apresentação usa para achar a coluna.
+    """Identidade da coluna = cenário (`coluna_id`).
 
-    Hoje é `opcao_id` — a opção de referência do cenário, a primeira atribuição.
-    Na FASE 4 passa a ser `cenario_id`. Quem colapsa as colunas
-    (`builder._propostas_por_id`) e quem detecta a colisão leem daqui, para o
-    sinal desaparecer no mesmo commit que a causa.
+    Não entra no payload do comparativo — `cenario_id` já está lá. Quem colapsa
+    as colunas e quem detecta a colisão leem daqui. Com esta chave a colisão
+    da opção de referência some; o alerta `APP-COL-001` fica como rede.
     """
+    return prop.cenario_id
+
+
+def coluna_bate(col, key: str) -> bool:
+    """A célula pertence à coluna `key` (`coluna_id` ou `opcao_id` legado)."""
+    cid = getattr(col, "coluna_id", None) or ""
+    return key == cid or key == getattr(col, "opcao_id", None)
+
+
+def id_coluna_vm(prop) -> str:
+    """Chave da coluna no ViewModel — `coluna_id`, com fallback ao `opcao_id`."""
+    cid = getattr(prop, "coluna_id", None)
+    if cid:
+        return cid
     return prop.opcao_id
+
+
+def resolver_colunas_selecionadas(
+    ids_gravados: list[str],
+    propostas: list[ResultadoPropostaComparativo],
+) -> list[str]:
+    """Resolve seleção gravada (opcao_id ou cenario_id) para `coluna_id`.
+
+    Os 49 estudos com `selecao_apresentacao.opcao_ids` continuam abrindo:
+    um `opcao_id` vira todas as colunas cuja opção de referência é aquela —
+    o mesmo espírito do fallback da FASE 1. Sem migração do JSON gravado.
+    """
+    calculadas = [p for p in propostas if p.calculo_realizado]
+    ids_coluna = {chave_de_coluna(p) for p in calculadas}
+    if not ids_gravados:
+        return [chave_de_coluna(p) for p in calculadas]
+
+    out: list[str] = []
+    vistos: set[str] = set()
+
+    def _add(cid: str) -> None:
+        if cid in vistos:
+            return
+        vistos.add(cid)
+        out.append(cid)
+
+    for gravado in ids_gravados:
+        if gravado in ids_coluna:
+            _add(gravado)
+            continue
+        for prop in calculadas:
+            if prop.opcao_id == gravado:
+                _add(chave_de_coluna(prop))
+    return out
 
 
 def colisoes_de_chave_de_coluna(

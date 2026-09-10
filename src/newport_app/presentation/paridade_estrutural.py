@@ -105,8 +105,10 @@ def _centavos_de_modelo(obj: Any, celulas: dict[tuple[Any, ...], int | None], pr
 
 
 def extrair_estrutura_matriz(matriz: ComparativoResponse) -> EstruturaApresentacao:
+    from newport_app.presentation.colisao_coluna import chave_de_coluna
+
     propostas = frozenset(
-        p.opcao_id for p in matriz.propostas if p.calculo_realizado
+        chave_de_coluna(p) for p in matriz.propostas if p.calculo_realizado
     )
     planos = frozenset(p.subgrupo_id for p in matriz.planos_atuais)
     regimes = frozenset(p.regime_tipo for p in matriz.propostas if p.calculo_realizado)
@@ -114,10 +116,14 @@ def extrair_estrutura_matriz(matriz: ComparativoResponse) -> EstruturaApresentac
     vidas: set[str] = set()
     celulas: dict[tuple[Any, ...], int | None] = {}
     rotulos_propostas = frozenset(
-        (p.opcao_id, (p.plano_nome or "").strip())
+        (chave_de_coluna(p), (p.plano_nome or "").strip())
         for p in matriz.propostas
         if p.calculo_realizado
     )
+    cens_por_op: dict[str, list[str]] = {}
+    for p in matriz.propostas:
+        if p.calculo_realizado:
+            cens_por_op.setdefault(p.opcao_id, []).append(chave_de_coluna(p))
     rotulos_planos = frozenset(
         (p.subgrupo_id, (p.plano_nome or "").strip()) for p in matriz.planos_atuais
     )
@@ -129,34 +135,37 @@ def extrair_estrutura_matriz(matriz: ComparativoResponse) -> EstruturaApresentac
             faixas.add((pk, fx.faixa))
             _centavos_de_modelo(fx, celulas, ("faixa", pk, fx.faixa))
             for col in fx.propostas:
-                _centavos_de_modelo(
-                    col, celulas, ("faixa_prop", pk, fx.faixa, col.opcao_id)
-                )
+                for cid in cens_por_op.get(col.opcao_id, [col.opcao_id]):
+                    _centavos_de_modelo(
+                        col, celulas, ("faixa_prop", pk, fx.faixa, cid)
+                    )
 
     if matriz.formato == "novo" or not matriz.planos_atuais:
         for fx in matriz.faixas_estudo or []:
             faixas.add((_ESTUDO, fx.faixa))
             _centavos_de_modelo(fx, celulas, ("faixa", _ESTUDO, fx.faixa))
             for col in fx.propostas:
-                _centavos_de_modelo(
-                    col, celulas, ("faixa_prop", _ESTUDO, fx.faixa, col.opcao_id)
-                )
+                for cid in cens_por_op.get(col.opcao_id, [col.opcao_id]):
+                    _centavos_de_modelo(
+                        col, celulas, ("faixa_prop", _ESTUDO, fx.faixa, cid)
+                    )
 
     for prop in matriz.propostas:
         if not prop.calculo_realizado:
             continue
+        cid = chave_de_coluna(prop)
         if prop.numerico is not None:
-            _centavos_de_modelo(prop.numerico, celulas, ("prop", prop.opcao_id))
+            _centavos_de_modelo(prop.numerico, celulas, ("prop", cid))
         for sg in prop.subgrupos:
             _centavos_de_modelo(
-                sg, celulas, ("prop_sg", prop.opcao_id, _plano_key(sg.subgrupo_id))
+                sg, celulas, ("prop_sg", cid, _plano_key(sg.subgrupo_id))
             )
         for fx in prop.faixas:
-            _centavos_de_modelo(fx, celulas, ("prop_faixa", prop.opcao_id, fx.faixa))
+            _centavos_de_modelo(fx, celulas, ("prop_faixa", cid, fx.faixa))
         for sec in prop.secoes:
             for v in sec.vidas:
                 vidas.add(v.vida_id)
-                _centavos_de_modelo(v, celulas, ("vida", prop.opcao_id, v.vida_id))
+                _centavos_de_modelo(v, celulas, ("vida", cid, v.vida_id))
 
     return EstruturaApresentacao(
         propostas=propostas,
@@ -171,6 +180,8 @@ def extrair_estrutura_matriz(matriz: ComparativoResponse) -> EstruturaApresentac
 
 
 def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
+    from newport_app.presentation.colisao_coluna import id_coluna_vm
+
     propostas = frozenset(vm.propostas_selecionadas)
     planos: set[str] = set()
     regimes = frozenset(s.regime_tipo for s in vm.secoes_regime)
@@ -193,29 +204,37 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
                 _centavos_de_modelo(fx, celulas, ("faixa", pk, fx.faixa))
                 for col in fx.propostas:
                     _centavos_de_modelo(
-                        col, celulas, ("faixa_prop", pk, fx.faixa, col.opcao_id)
+                        col,
+                        celulas,
+                        ("faixa_prop", pk, fx.faixa, col.coluna_id or col.opcao_id),
                     )
         for prop in secao.propostas:
-            rotulos_propostas.add((prop.opcao_id, (prop.plano_nome or "").strip()))
-            _centavos_de_modelo(prop, celulas, ("prop", prop.opcao_id))
-            # Totais da seção por proposta
-            if prop.opcao_id in secao.totais.propostas:
+            cid = id_coluna_vm(prop)
+            rotulos_propostas.add((cid, (prop.plano_nome or "").strip()))
+            _centavos_de_modelo(prop, celulas, ("prop", cid))
+            if cid in secao.totais.propostas:
                 _put(
                     celulas,
-                    ("prop", prop.opcao_id, "proposta_mensal"),
-                    secao.totais.propostas.get(prop.opcao_id),
+                    ("prop", cid, "proposta_mensal"),
+                    secao.totais.propostas.get(cid),
                 )
-            if prop.opcao_id in secao.totais.diff_mensal:
+            if cid in secao.totais.diff_mensal:
                 _put(
                     celulas,
-                    ("prop", prop.opcao_id, "diff_mes"),
-                    secao.totais.diff_mensal.get(prop.opcao_id),
+                    ("prop", cid, "diff_mes"),
+                    secao.totais.diff_mensal.get(cid),
                 )
-            if prop.opcao_id in secao.totais.diff_anual:
+            if cid in secao.totais.diff_anual:
                 _put(
                     celulas,
-                    ("prop", prop.opcao_id, "diff_ano"),
-                    secao.totais.diff_anual.get(prop.opcao_id),
+                    ("prop", cid, "diff_ano"),
+                    secao.totais.diff_anual.get(cid),
+                )
+            for sg_id, val in prop.subtotais_por_subgrupo.items():
+                _put(
+                    celulas,
+                    ("prop_sg", cid, _plano_key(sg_id), "proposta"),
+                    val,
                 )
 
     tg = vm.totais_gerais
@@ -265,7 +284,7 @@ def extrair_estrutura_vm(vm: PresentationViewModel) -> EstruturaApresentacao:
 
     # Restringe propostas ao que de fato aparece nas seções (interseção).
     ids_secoes = {
-        p.opcao_id for s in vm.secoes_regime for p in s.propostas
+        id_coluna_vm(p) for s in vm.secoes_regime for p in s.propostas
     }
     if ids_secoes:
         propostas = frozenset(propostas & ids_secoes) if propostas else frozenset(ids_secoes)

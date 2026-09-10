@@ -9,6 +9,7 @@ from pathlib import Path
 from newport_app.models.snapshot import GerarApresentacaoRequest
 from newport_app.policy.registry import default_registry
 from newport_app.presentation.builder import construir_view_model
+from newport_app.presentation.colisao_coluna import coluna_bate
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.grupos_familiares import montar_grupos_familiares
 from newport_app.presentation.html_renderer import render_html, render_html_completo
@@ -143,12 +144,12 @@ def test_05_subtotal_e_soma_direta_das_vidas(tmp_path: Path):
     for g in vm.grupos_familiares:
         if not g.exibir_subtotal:
             continue
-        for op_id in ids:
+        for op_id in vm.propostas_selecionadas:
             esperado = sum(
-                next(c.valor_centavos for c in m.propostas if c.opcao_id == op_id) or 0
+                next(c.valor_centavos for c in m.propostas if coluna_bate(c, op_id)) or 0
                 for m in g.membros
             )
-            col = next(c for c in g.subtotal_propostas if c.opcao_id == op_id)
+            col = next(c for c in g.subtotal_propostas if coluna_bate(c, op_id))
             assert col.valor_centavos == esperado
         atual_esp = sum(m.atual_reajustado_centavos or 0 for m in g.membros)
         assert g.subtotal_atual_reajustado_centavos == atual_esp
@@ -160,11 +161,11 @@ def test_06_soma_grupos_igual_totais_faixas(tmp_path: Path):
     ids = _ids_seis()
     vm_g = construir_view_model(snap, modo="grupo_familiar", propostas_selecionadas=ids)
     vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    for op_id in ids:
+    for op_id in vm_g.propostas_selecionadas:
         soma_g = 0
         for g in vm_g.grupos_familiares:
             for m in g.membros:
-                col = next(c for c in m.propostas if c.opcao_id == op_id)
+                col = next(c for c in m.propostas if coluna_bate(c, op_id))
                 soma_g += col.valor_centavos or 0
         assert soma_g == vm_f.totais_gerais.propostas[op_id]
         assert soma_g == vm_g.totais_gerais.propostas[op_id]

@@ -28,7 +28,12 @@ from newport_app.models.responses import (
     ResultadoPropostaComparativo,
 )
 from newport_app.models.snapshot import SnapshotCalculo
-from newport_app.presentation.colisao_coluna import chave_de_coluna
+from newport_app.presentation.colisao_coluna import (
+    chave_de_coluna,
+    coluna_bate,
+    id_coluna_vm,
+    resolver_colunas_selecionadas,
+)
 from newport_app.presentation.formatacao import (
     formatar_data_br,
     normalizar_acomodacao_exibicao,
@@ -93,8 +98,7 @@ def _paginar_propostas(propostas_ids: list[str]) -> list[PaginaFaixasApresentaca
 def _propostas_por_id(
     comparativo: ComparativoResponse,
 ) -> dict[str, ResultadoPropostaComparativo]:
-    # Mesma chave que `colisao_coluna` observa. Hoje colapsa dois cenários que
-    # começam pelo mesmo plano; a FASE 4 troca a chave e o colapso some junto.
+    # `coluna_id` = cenário. Não entra no comparativo canônico — o hash não muda.
     return {
         chave_de_coluna(p): p
         for p in comparativo.propostas
@@ -158,18 +162,26 @@ def _mapear_faixa(
     propostas_ids: list[str],
     vidas: dict[str, DetalheVidaComparativo],
     subgrupo_id: str | None,
+    por_id: dict[str, ResultadoPropostaComparativo] | None = None,
 ) -> FaixaApresentacao:
     vidas_fx = _vidas_da_faixa(vidas, fx.faixa, subgrupo_id)
     tit, dep = _contar_parentesco(vidas_fx)
     cols: list[PropostaFaixaColuna] = []
-    for op_id in propostas_ids:
-        col = next((c for c in fx.propostas if c.opcao_id == op_id), None)
+    for col_id in propostas_ids:
+        prop = por_id.get(col_id) if por_id else None
+        chave_faixa = prop.opcao_id if prop else col_id
+        col = next((c for c in fx.propostas if c.opcao_id == chave_faixa), None)
         if col is None:
-            cols.append(PropostaFaixaColuna(opcao_id=op_id, quantidade=0))
+            cols.append(
+                PropostaFaixaColuna(
+                    opcao_id=chave_faixa, coluna_id=col_id, quantidade=0
+                )
+            )
             continue
         cols.append(
             PropostaFaixaColuna(
-                opcao_id=op_id,
+                opcao_id=chave_faixa,
+                coluna_id=col_id,
                 valor_unitario_centavos=col.unitario_centavos,
                 quantidade=col.quantidade,
                 subtotal_centavos=col.subtotal_centavos,
@@ -195,10 +207,12 @@ def _mapear_plano(
     rascunho: RascunhoEstudo,
     propostas_ids: list[str],
     vidas: dict[str, DetalheVidaComparativo],
+    por_id: dict[str, ResultadoPropostaComparativo] | None = None,
 ) -> PlanoAtualApresentacao:
     sg = next((s for s in rascunho.subgrupos_atuais if s.id == plano.subgrupo_id), None)
     faixas = [
-        _mapear_faixa(fx, propostas_ids, vidas, plano.subgrupo_id) for fx in plano.faixas
+        _mapear_faixa(fx, propostas_ids, vidas, plano.subgrupo_id, por_id)
+        for fx in plano.faixas
     ]
     return PlanoAtualApresentacao(
         subgrupo_id=plano.subgrupo_id,
@@ -236,8 +250,22 @@ def _montar_proposta_meta(
     if pct_secao is None and regime_tipo == "percentual":
         pct_secao = _percentual_tipico(rascunho, regime_tipo)
     numerico = prop.numerico
+    nomes = {o.id: (o.plano_nome or o.id) for o in rascunho.opcoes_proposta}
+    cenario = next((c for c in rascunho.cenarios if c.id == prop.cenario_id), None)
+    nomes_sg: dict[str, str] = {}
+    if cenario is not None:
+        for atr in cenario.atribuicoes:
+            if atr.opcao_plano_id and atr.alvo_tipo == "subgrupo":
+                nomes_sg[atr.alvo_id] = nomes.get(atr.opcao_plano_id, atr.opcao_plano_id)
+    unicos = {atr.opcao_plano_id for atr in (cenario.atribuicoes if cenario else []) if atr.opcao_plano_id}
     return PropostaApresentacao(
         opcao_id=prop.opcao_id,
+        coluna_id=chave_de_coluna(prop),
+        misto=len(unicos) > 1,
+        subtotais_por_subgrupo={
+            s.subgrupo_id: s.proposta_centavos for s in prop.subgrupos
+        },
+        nomes_atribuidos_por_subgrupo=nomes_sg,
         operadora=prop.operadora or (op.operadora if op else ""),
         plano_nome=prop.plano_nome,
         regime_rotulo=_rotulo_regime(regime_tipo, pct_secao),
@@ -246,7 +274,8 @@ def _montar_proposta_meta(
             prop.acomodacao or (op.acomodacao if op else None)
         ),
         modalidade=rotulo_modalidade_exibicao(op.modalidade if op else None),
-        copart_descricao=_copart_descricao(rascunho, op.regime_copart_id if op else None),
+        copart_descricao=prop.regime_coparticipacao
+        or _copart_descricao(rascunho, op.regime_copart_id if op else None),
         validade=prop.validade_oficial or (formatar_data_br(op.validade_oficial) if op else None),
         premio_centavos=op.premio_saude.centavos if op and op.premio_saude else None,
         iof_centavos=op.iof.centavos if op and op.iof else None,
@@ -295,7 +324,8 @@ def _colunas_proposta_vida(
                 break
         cols.append(
             BeneficiarioPropostaColuna(
-                opcao_id=op_id,
+                opcao_id=por_id[op_id].opcao_id,
+                coluna_id=op_id,
                 valor_centavos=vd.proposta_centavos if vd else None,
                 diff_centavos=vd.diff_mes_centavos if vd else None,
             )
@@ -370,14 +400,12 @@ def construir_view_model(
     comparativo = ler_comparativo_congelado(snap.payload)
     rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
     por_id = _propostas_por_id(comparativo)
-    # Sem `dict.fromkeys`, uma chave repetida montaria a mesma coluna duas vezes
-    # e os subtotais por faixa somariam em dobro — inventar um número é pior que
-    # perder a coluna. A repetição vem da colisão sinalizada por `APP-COL-001`,
-    # e desaparece na FASE 4 com `coluna_id` = cenário.
-    propostas_ids = [
-        op_id for op_id in dict.fromkeys(propostas_selecionadas) if op_id in por_id
-    ]
-    propostas_sel = [por_id[op_id] for op_id in propostas_ids]
+    propostas_ids = resolver_colunas_selecionadas(
+        list(dict.fromkeys(propostas_selecionadas)),
+        comparativo.propostas,
+    )
+    propostas_ids = [cid for cid in propostas_ids if cid in por_id]
+    propostas_sel = [por_id[cid] for cid in propostas_ids]
     vidas = _vidas_unicas(propostas_sel)
     seguro_novo = comparativo.formato == "novo" or rascunho.formato == "novo"
     data_revisao = formatar_data_br(aprovado_em) if aprovado_em is not None else ""
@@ -391,13 +419,13 @@ def construir_view_model(
     secoes_vm: list[SecaoRegimeApresentacao] = []
     for regime_tipo, rotulo in regimes_ordem:
         propostas_regime = [p for p in propostas_sel if p.regime_tipo == regime_tipo]
-        ids_regime = [p.opcao_id for p in propostas_regime]
+        ids_regime = [chave_de_coluna(p) for p in propostas_regime]
         if not ids_regime:
             continue
         planos_vm: list[PlanoAtualApresentacao] = []
         if seguro_novo:
             faixas = [
-                _mapear_faixa(fx, ids_regime, vidas, "vidas-incluidas")
+                _mapear_faixa(fx, ids_regime, vidas, "vidas-incluidas", por_id)
                 for fx in comparativo.faixas_estudo
             ]
             planos_vm.append(
@@ -410,7 +438,9 @@ def construir_view_model(
             )
         else:
             for plano in comparativo.planos_atuais:
-                planos_vm.append(_mapear_plano(plano, rascunho, ids_regime, vidas))
+                planos_vm.append(
+                    _mapear_plano(plano, rascunho, ids_regime, vidas, por_id)
+                )
 
         propostas_vm = [
             _montar_proposta_meta(rascunho, p, regime_tipo, seguro_novo=seguro_novo)
@@ -421,12 +451,21 @@ def construir_view_model(
         )
         for p in propostas_regime:
             numerico = p.numerico
-            totais_sec.propostas[p.opcao_id] = (
+            cid = chave_de_coluna(p)
+            totais_sec.propostas[cid] = (
                 numerico.proposta_mensal_centavos if numerico else None
             )
             if numerico:
-                totais_sec.diff_mensal[p.opcao_id] = numerico.diff_mes_centavos
-                totais_sec.diff_anual[p.opcao_id] = numerico.diff_ano_centavos
+                totais_sec.diff_mensal[cid] = numerico.diff_mes_centavos
+                totais_sec.diff_anual[cid] = numerico.diff_ano_centavos
+            if (
+                p.opcao_id != cid
+                and sum(1 for x in propostas_regime if x.opcao_id == p.opcao_id) == 1
+            ):
+                totais_sec.propostas[p.opcao_id] = totais_sec.propostas[cid]
+                if numerico:
+                    totais_sec.diff_mensal[p.opcao_id] = totais_sec.diff_mensal[cid]
+                    totais_sec.diff_anual[p.opcao_id] = totais_sec.diff_anual[cid]
 
         secoes_vm.append(
             SecaoRegimeApresentacao(
@@ -476,16 +515,17 @@ def construir_view_model(
                 subtotal_atual = _somar_centavos(
                     [m.atual_reajustado_centavos for m in membros_vm]
                 )
-                for op_id in propostas_ids:
+                for col_id in propostas_ids:
                     vals = []
                     diffs = []
                     for m in membros_vm:
-                        col = next((c for c in m.propostas if c.opcao_id == op_id), None)
+                        col = next((c for c in m.propostas if coluna_bate(c, col_id)), None)
                         vals.append(col.valor_centavos if col else None)
                         diffs.append(col.diff_centavos if col else None)
                     subtotal_props.append(
                         BeneficiarioPropostaColuna(
-                            opcao_id=op_id,
+                            opcao_id=por_id[col_id].opcao_id,
+                            coluna_id=col_id,
                             valor_centavos=_somar_centavos(vals),
                             diff_centavos=_somar_centavos(diffs),
                         )
@@ -518,16 +558,26 @@ def construir_view_model(
             )
         ),
     )
-    for op_id in propostas_ids:
-        numerico = por_id[op_id].numerico
-        totais_gerais.propostas[op_id] = (
+    for col_id in propostas_ids:
+        numerico = por_id[col_id].numerico
+        totais_gerais.propostas[col_id] = (
             numerico.proposta_mensal_centavos if numerico else None
         )
         if numerico:
-            totais_gerais.diff_mensal[op_id] = numerico.diff_mes_centavos
-            totais_gerais.diff_anual[op_id] = numerico.diff_ano_centavos
+            totais_gerais.diff_mensal[col_id] = numerico.diff_mes_centavos
+            totais_gerais.diff_anual[col_id] = numerico.diff_ano_centavos
+        ref = por_id[col_id].opcao_id
+        if ref != col_id and sum(1 for p in propostas_sel if p.opcao_id == ref) == 1:
+            totais_gerais.propostas[ref] = totais_gerais.propostas[col_id]
+            if numerico:
+                totais_gerais.diff_mensal[ref] = totais_gerais.diff_mensal[col_id]
+                totais_gerais.diff_anual[ref] = totais_gerais.diff_anual[col_id]
 
     todas_propostas = [p for secao in secoes_vm for p in secao.propostas]
+    por_coluna = {id_coluna_vm(p): p for p in todas_propostas}
+    for indice, cid in enumerate(propostas_ids, start=1):
+        if cid in por_coluna:
+            por_coluna[cid].indice_cenario = indice
     qualificar_rotulos_propostas(rascunho, todas_propostas)
 
     # Indicadores do resumo — após totais e rótulos; o renderer só itera.
@@ -544,7 +594,7 @@ def construir_view_model(
         secoes_regime=secoes_vm,
     )
     for secao in secoes_vm:
-        ids_secao = [p.opcao_id for p in secao.propostas]
+        ids_secao = [id_coluna_vm(p) for p in secao.propostas]
         secao.indicadores_resumo = montar_indicadores_resumo(
             vm_parcial, secao, ids_secao
         )

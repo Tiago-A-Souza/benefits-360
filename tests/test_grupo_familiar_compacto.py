@@ -8,6 +8,7 @@ from pathlib import Path
 from newport_app.models.snapshot import GerarApresentacaoRequest
 from newport_app.policy.registry import default_registry
 from newport_app.presentation.builder import construir_view_model
+from newport_app.presentation.colisao_coluna import coluna_bate
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.html_renderer import (
     RENDERER_VERSAO,
@@ -113,11 +114,11 @@ def test_04_soma_grupos_igual_faixas_por_proposta(tmp_path: Path):
     ids = _ids_seis()
     vm_g = construir_view_model(snap, modo="grupo_familiar", propostas_selecionadas=ids)
     vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
-    for op_id in ids:
+    for op_id in vm_g.propostas_selecionadas:
         soma = 0
         for g in vm_g.grupos_familiares:
             for m in g.membros:
-                col = next(c for c in m.propostas if c.opcao_id == op_id)
+                col = next(c for c in m.propostas if coluna_bate(c, op_id))
                 soma += col.valor_centavos or 0
         assert soma == vm_f.totais_gerais.propostas[op_id]
         assert soma == vm_g.totais_gerais.propostas[op_id]

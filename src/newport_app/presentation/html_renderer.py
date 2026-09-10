@@ -20,6 +20,7 @@ from newport_app.presentation.branding import (
     site_newport,
 )
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
+from newport_app.presentation.colisao_coluna import coluna_bate, id_coluna_vm
 from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 from newport_app.presentation.tabela_densa import (
     chunks_propostas,
@@ -27,6 +28,9 @@ from newport_app.presentation.tabela_densa import (
     render_tabela_faixas,
     render_tabela_resumo,
 )
+from newport_app.presentation import tabela_densa as _tabela_densa
+
+_tabela_densa.rotulo_coluna_hook = None  # preenchido abaixo, após _rotulo_proposta
 from newport_app.presentation.regras_comerciais import (
     MAX_OPERADORAS_POR_PAGINA,
     TabelaRegrasComerciais,
@@ -148,7 +152,7 @@ def _render_cabecalho_propostas_pagina(
 ) -> str:
     linhas = []
     for op_id in op_ids:
-        prop = next((p for p in propostas if p.opcao_id == op_id), None)
+        prop = next((p for p in propostas if id_coluna_vm(p) == op_id), None)
         if prop:
             linhas.append(f"<p class='proposta-meta'>{_meta_proposta(prop)}</p>")
     return "".join(linhas)
@@ -157,7 +161,7 @@ def _render_cabecalho_propostas_pagina(
 def _paginas_ou_sintese(secao: SecaoRegimeApresentacao) -> list:
     if secao.paginas_faixas:
         return secao.paginas_faixas
-    ids = [p.opcao_id for p in secao.propostas]
+    ids = [id_coluna_vm(p) for p in secao.propostas]
     if not ids:
         return []
     from newport_app.models.presentation import PaginaFaixasApresentacao
@@ -171,7 +175,7 @@ def _mapa_rotulos_propostas(model: PresentationViewModel) -> dict[str, str]:
     for indice, op_id in enumerate(model.propostas_selecionadas, start=1):
         nome: str | None = None
         for secao in model.secoes_regime:
-            prop = next((p for p in secao.propostas if p.opcao_id == op_id), None)
+            prop = next((p for p in secao.propostas if id_coluna_vm(p) == op_id), None)
             if prop and (prop.plano_nome or "").strip():
                 nome = prop.plano_nome.strip()
                 break
@@ -184,14 +188,17 @@ def _rotulo_proposta(
     propostas: list[PropostaApresentacao],
     rotulos: dict[str, str],
 ) -> str:
-    prop = next((p for p in propostas if p.opcao_id == op_id), None)
+    prop = next((p for p in propostas if id_coluna_vm(p) == op_id), None)
     if prop and (prop.plano_nome or "").strip():
         return prop.plano_nome.strip()
     return rotulos.get(op_id, "Proposta")
 
 
+_tabela_densa.rotulo_coluna_hook = _rotulo_proposta
+
+
 def _th_proposta(op_id: str, propostas: list[PropostaApresentacao], rotulos: dict[str, str], *, colspan: int | None = None) -> str:
-    prop = next((p for p in propostas if p.opcao_id == op_id), None)
+    prop = next((p for p in propostas if id_coluna_vm(p) == op_id), None)
     nome = _rotulo_proposta(op_id, propostas, rotulos)
     operadora = ((prop.operadora if prop else "") or "").strip()
     attrs = f" colspan='{colspan}'" if colspan and colspan > 1 else ""
@@ -302,7 +309,7 @@ def _linha_membro_grupo(
             f"<td class='atual'>{_cel_contrato_atual(b.atual_reajustado_centavos, pct)}</td>"
         )
     for op_id in op_ids:
-        col = next((c for c in b.propostas if c.opcao_id == op_id), None)
+        col = next((c for c in b.propostas if coluna_bate(c, op_id)), None)
         linha.append(_td_proposta(col))
     linha.append("</tr>")
     return "".join(linha)
@@ -324,7 +331,7 @@ def _linha_subtotal_grupo(
             f"<td class='atual'>{_cel(g.subtotal_atual_reajustado_centavos)}</td>"
         )
     for op_id in op_ids:
-        col = next((c for c in g.subtotal_propostas if c.opcao_id == op_id), None)
+        col = next((c for c in g.subtotal_propostas if coluna_bate(c, op_id)), None)
         partes.append(_td_proposta(col))
     partes.append("</tr>")
     return "".join(partes)
@@ -487,7 +494,7 @@ def _subtotal_proposta_plano(plano: PlanoAtualApresentacao, op_id: str) -> int |
         col.subtotal_centavos
         for fx in plano.faixas
         for col in fx.propostas
-        if col.opcao_id == op_id and col.subtotal_centavos is not None
+        if coluna_bate(col, op_id) and col.subtotal_centavos is not None
     ]
     return sum(vals) if vals else None
 
@@ -496,7 +503,7 @@ def _cel_subtotal_plano(plano: PlanoAtualApresentacao, op_id: str) -> str:
     valor = _subtotal_proposta_plano(plano, op_id)
     if valor is not None:
         return _cel(valor)
-    tem_coluna = any(col.opcao_id == op_id for fx in plano.faixas for col in fx.propostas)
+    tem_coluna = any(coluna_bate(col, op_id) for fx in plano.faixas for col in fx.propostas)
     if tem_coluna:
         return "Sem valor neste plano"
     return "Proposta de outro regime"
@@ -529,7 +536,7 @@ def _render_linha_faixa(
         partes.append(f"<td class='atual'>{cel_reaj}</td>")
 
     for op_id in op_ids:
-        col = next((c for c in fx.propostas if c.opcao_id == op_id), None)
+        col = next((c for c in fx.propostas if coluna_bate(c, op_id)), None)
         if col is None or col.quantidade == 0:
             partes.append("<td></td><td></td><td></td>")
             continue
@@ -606,7 +613,7 @@ def _render_tabela_faixas(
             col.subtotal_centavos or 0
             for fx in plano.faixas
             for col in fx.propostas
-            if col.opcao_id == op_id
+            if coluna_bate(col, op_id)
         )
         partes.append(f"<td colspan='3'>{_cel(subtotal if subtotal else None)}</td>")
     partes.append("<td></td></tr></tfoot></table></div>")
@@ -726,9 +733,14 @@ def _render_resumo(
 
         indicadores = montar_indicadores_resumo(model, secao, op_ids)
         secao.indicadores_resumo = indicadores
+    secoes = [
+        secao if s.regime_tipo == secao.regime_tipo else s
+        for s in model.secoes_regime
+    ]
+    model_uso = model.model_copy(update={"secoes_regime": secoes})
     return (
         "<section class='secao-regime'><h2>Resumo executivo</h2>"
-        + render_tabela_resumo(model, op_ids, rotulos, seguro_novo=seguro_novo)
+        + render_tabela_resumo(model_uso, op_ids, rotulos, seguro_novo=seguro_novo)
         + "</section>"
     )
 
@@ -758,7 +770,7 @@ def _render_recomendacao(model: PresentationViewModel, rotulos: dict[str, str]) 
                 for op_id, d in diffs
                 if d is not None
                 and not any(
-                    p.opcao_id == op_id and p.regime_tipo == "percentual"
+                    id_coluna_vm(p) == op_id and p.regime_tipo == "percentual"
                     for s in model.secoes_regime
                     for p in s.propostas
                 )
@@ -964,7 +976,11 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
             if not secao.indicadores_resumo:
                 from newport_app.presentation.indicadores_resumo import montar_indicadores_resumo
 
-                ids_secao = [p.opcao_id for p in secao.propostas if p.opcao_id in op_ids]
+                ids_secao = [
+                    id_coluna_vm(p)
+                    for p in secao.propostas
+                    if id_coluna_vm(p) in op_ids
+                ]
                 secao.indicadores_resumo = montar_indicadores_resumo(
                     model, secao, ids_secao or op_ids
                 )
@@ -1038,7 +1054,7 @@ def _paginas_corpo_visao(model: PresentationViewModel) -> list[list[str]]:
                     linha += f"<td class='atual'>{_cel_contrato_atual(b.atual_reajustado_centavos, pct)}</td>"
                 bloco.append(linha)
                 for op_id in chunk:
-                    col = next((c for c in b.propostas if c.opcao_id == op_id), None)
+                    col = next((c for c in b.propostas if coluna_bate(c, op_id)), None)
                     val = _cel(col.valor_centavos if col else None)
                     diff = _cel_diff(col.diff_centavos if col else None)
                     if diff:
@@ -1176,7 +1192,9 @@ tbody tr[data-row=consolidado] td.atual{background:#F1E7D6}
 .tabela-densa{font-size:11.5px;margin:8px 0 16px}
 .tabela-densa th,.tabela-densa td{padding:5px 8px;vertical-align:middle}
 .tabela-densa thead th{white-space:normal}
+.tabela-densa thead th .pl{display:block;font-size:12px;font-weight:600;letter-spacing:-.01em;text-transform:none}
 .tabela-densa thead th .op{white-space:normal;max-width:8.2rem;line-height:1.2}
+.tabela-densa .pl-cel{display:block;font-size:10px;font-weight:500;color:var(--grafite-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
 .tabela-densa thead tr.bloco-regime th{text-align:center;font-size:10px;letter-spacing:.08em;
   text-transform:uppercase}
 .tabela-densa thead tr.bloco-plano th{font-size:10.5px}

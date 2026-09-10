@@ -13,6 +13,7 @@ from typing import Any
 
 from newport_app.models.presentation import PresentationViewModel
 from newport_app.presentation.formatacao import formatar_reais
+from newport_app.presentation.colisao_coluna import coluna_bate
 from newport_app.presentation.tabela_densa import ROTULO_COLUNA_ATUAL
 
 _PLANO_SINTETICO = "vidas-incluidas"
@@ -393,7 +394,7 @@ def _valores_derivados_vm(vm: PresentationViewModel) -> set[int]:
                     col.subtotal_centavos or 0
                     for fx in pl.faixas
                     for col in fx.propostas
-                    if col.opcao_id == op_id
+                    if coluna_bate(col, op_id)
                 )
                 if sub:
                     acc.add(sub)
@@ -405,7 +406,7 @@ def _subtotal_plano_prop(plano, op_id: str) -> int | None:
         col.subtotal_centavos
         for fx in plano.faixas
         for col in fx.propostas
-        if col.opcao_id == op_id and col.subtotal_centavos is not None
+        if coluna_bate(col, op_id) and col.subtotal_centavos is not None
     ]
     if not vals:
         return None
@@ -423,7 +424,9 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                 # Layout por indicador (mesma grade da matriz): linha × coluna-proposta.
                 for lin in secao.indicadores_resumo:
                     for prop in props:
-                        cel = lin.propostas.get(prop.opcao_id)
+                        from newport_app.presentation.colisao_coluna import id_coluna_vm
+
+                        cel = lin.propostas.get(id_coluna_vm(prop))
                         if cel is None or cel.centavos is None:
                             continue
                         if cel.referencia and cel.centavos == 0:
@@ -438,13 +441,20 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                         pl.subtotal_reajustado_centavos
                     )
                 for prop in props:
-                    sub = _subtotal_plano_prop(pl, prop.opcao_id)
+                    from newport_app.presentation.colisao_coluna import id_coluna_vm
+
+                    cid = id_coluna_vm(prop)
+                    sub = prop.subtotais_por_subgrupo.get(pl.subgrupo_id)
+                    if sub is None:
+                        sub = _subtotal_plano_prop(pl, cid)
                     if sub is not None:
                         cells[(pl.plano_nome, prop.plano_nome)] = sub
             for lin in secao.indicadores_resumo:
                 if lin.rotulo == "Custo total mensal":
                     for prop in props:
-                        cel = lin.propostas.get(prop.opcao_id)
+                        from newport_app.presentation.colisao_coluna import id_coluna_vm
+
+                        cel = lin.propostas.get(id_coluna_vm(prop))
                         if cel and cel.centavos is not None:
                             cells[(lin.rotulo, prop.plano_nome)] = cel.centavos
         return cells
@@ -455,8 +465,10 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
             for pl in secao.planos_atuais:
                 for fx in pl.faixas:
                     for prop in props:
+                        from newport_app.presentation.colisao_coluna import id_coluna_vm
+
                         col = next(
-                            (c for c in fx.propostas if c.opcao_id == prop.opcao_id),
+                            (c for c in fx.propostas if coluna_bate(c, id_coluna_vm(prop))),
                             None,
                         )
                         if col is None or col.quantidade == 0:
@@ -469,11 +481,13 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
         return cells
 
     if vm.modo in ("beneficiario", "grupo_familiar"):
-        prop_por_id = {
-            p.opcao_id: p.plano_nome
-            for s in vm.secoes_regime
-            for p in s.propostas
-        }
+        from newport_app.presentation.colisao_coluna import id_coluna_vm
+
+        prop_por_id = {}
+        for s in vm.secoes_regime:
+            for p in s.propostas:
+                prop_por_id[id_coluna_vm(p)] = p.plano_nome
+                prop_por_id[p.opcao_id] = p.plano_nome
         membros = list(vm.beneficiarios)
         if vm.modo == "grupo_familiar":
             membros = [m for g in vm.grupos_familiares for m in g.membros]
@@ -483,7 +497,9 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
             for col in b.propostas:
                 if col.valor_centavos is None:
                     continue
-                nome = prop_por_id.get(col.opcao_id, col.opcao_id)
+                nome = prop_por_id.get(col.coluna_id or col.opcao_id, col.opcao_id)
+                if nome == col.opcao_id:
+                    nome = prop_por_id.get(col.opcao_id, col.opcao_id)
                 cells[(b.nome, nome)] = col.valor_centavos
         return cells
 

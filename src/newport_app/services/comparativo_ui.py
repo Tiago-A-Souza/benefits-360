@@ -17,7 +17,9 @@ def salvar_selecao_apresentacao(
     *,
     invalidar_confirmacao: bool = True,
 ) -> SalvarSelecaoApresentacaoResponse:
-    validos = {op.id for op in rascunho.opcoes_proposta}
+    validos = {op.id for op in rascunho.opcoes_proposta} | {
+        c.id for c in rascunho.cenarios
+    }
     ordem: list[str] = []
     vistos: set[str] = set()
     for op_id in opcao_ids:
@@ -41,7 +43,9 @@ def sanitizar_selecao_apresentacao(rascunho: RascunhoEstudo) -> None:
     sel = rascunho.selecao_apresentacao
     if sel is None:
         return
-    validos = {op.id for op in rascunho.opcoes_proposta}
+    validos = {op.id for op in rascunho.opcoes_proposta} | {
+        c.id for c in rascunho.cenarios
+    }
     ids = _ids_validos_unicos(sel.opcao_ids, validos)
     ordem = _ids_validos_unicos(sel.ordem, validos)
     if not ids and not ordem:

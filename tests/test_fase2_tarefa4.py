@@ -373,7 +373,7 @@ def test_09_cinco_propostas_nao_corta_coluna(tmp_path: Path):
                     for p in secao.paginas_faixas
                 )
                 cobertos = [i for p in secao.paginas_faixas for i in p.propostas_ids]
-                assert cobertos == ids
+                assert cobertos == vm.propostas_selecionadas
         if modo == "resumo":
             for n_th in _ths_por_tabela(html):
                 # Indicador + contrato atual + no máximo 3 propostas

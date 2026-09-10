@@ -912,28 +912,28 @@ valor único quando todas as atribuições concordam, «misto» quando divergem.
 Inverter a ordem das atribuições não muda acomodação, rótulo nem valor
 (`test_05c_acomodacao_do_cenario_e_invariante_a_ordem`).
 
-### Em aberto — colisão de chave de coluna (FASE 4)
+### Resolvido na FASE 4 — `coluna_id` = cenário
 
-A apresentação identifica coluna por `opcao_id` (`builder.py`,
-`_propostas_por_id`). Com coluna = cenário, o `opcao_id` da coluna é a opção
-de referência — a primeira atribuição. Dois cenários que começam pelo mesmo
-plano colidem nessa chave: o dict mantém uma coluna e perde a outra.
+`chave_de_coluna` passou a devolver `cenario_id`. A identidade da coluna no
+documento é o cenário, não a opção de referência. Os três estudos que
+colidiam (`est-6ec6d7945a`, `est-629bfca67e`, `est-e1862b46be`) voltam a
+mostrar as duas colunas. `APP-COL-001` permanece como rede: só dispara se a
+chave voltar a colapsar.
 
-**3 de 58 estudos** têm o caso:
+`coluna_id` **não entra** no payload do comparativo — `cenario_id` já estava
+lá. `SNAPSHOT_VERSAO` permanece `2.8.0`. Snapshot existente relê com o hash
+gravado. Snapshot novo do mesmo conteúdo (sem o alerta) tem o mesmo hash,
+exceto nos três estudos em que o `APP-COL-001` saiu das pendências.
 
-| estudo | cliente | título | chave repetida |
-|---|---|---|---|
-| `est-6ec6d7945a` | Anistia Internacional Brasil | Renovação 2026 - Opção 1 | DIAMANTE MAIS I Q (2 cenários) |
-| `est-629bfca67e` | Lunvox | lunvox | PRATA QC COPART (6 de 8 cenários) |
-| `est-e1862b46be` | Anistia Internacional Brasil | teste 20 | OURO RIO PRO Q (2 de 5 cenários) |
+`selecao_apresentacao` continua gravando `opcao_ids`. Os 49 estudos abrem
+por fallback: um `opcao_id` resolve para todas as colunas cuja opção de
+referência é aquela. Sem migração do JSON.
 
-A matriz não colapsa — as colunas são uma lista. Quem perde é o documento.
-Até a FASE 4 o caso é **detectado e sinalizado** (`APP-COL-001`, alerta na
-etapa 5, `presentation/colisao_coluna.py`): não escolhe uma das duas nem
-descarta a outra em silêncio. A correção é `coluna_id` = cenário, na FASE 4,
-que já reescreve esses pontos para o resumo executivo por cenário. A chave
-única está em `chave_de_coluna`: trocá-la some com o colapso e com o alerta
-no mesmo commit.
+O resumo executivo segue o mockup `docs/coluna-por-cenario.html`: cabeçalho
+misto «Cenário N» + composição, uniforme só com o nome do plano; cada célula
+de plano vigente traz o plano atribuído (`.pl-cel`); consolidado = soma dos
+grupos daquele cenário. Acomodação e coparticipação agregadas, «misto»
+quando divergem.
 
 ### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
 

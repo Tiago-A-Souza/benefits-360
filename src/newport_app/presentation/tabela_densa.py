@@ -13,12 +13,16 @@ from newport_app.models.presentation import (
     SecaoRegimeApresentacao,
 )
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
+from newport_app.presentation.colisao_coluna import coluna_bate, id_coluna_vm
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.reajuste import formatar_rotulo_reajuste_bps
 
 _AUSENCIA = "—"
 _PLANO_SINTETICO = "vidas-incluidas"
 ROTULO_COLUNA_ATUAL = "Contrato atual"
+
+# Preenchido pelo html_renderer para o harness (mutação de rótulo) enxergar o cabeçalho.
+rotulo_coluna_hook = None
 
 
 def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao]:
@@ -28,14 +32,14 @@ def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao
 def _prop(model: PresentationViewModel, op_id: str) -> PropostaApresentacao | None:
     for secao in model.secoes_regime:
         for p in secao.propostas:
-            if p.opcao_id == op_id:
+            if id_coluna_vm(p) == op_id:
                 return p
     return None
 
 
 def _secao_da_proposta(model: PresentationViewModel, op_id: str) -> SecaoRegimeApresentacao | None:
     for secao in model.secoes_regime:
-        if any(p.opcao_id == op_id for p in secao.propostas):
+        if any(id_coluna_vm(p) == op_id for p in secao.propostas):
             return secao
     return None
 
@@ -148,7 +152,11 @@ def montar_blocos(
                 )
             )
     for secao in model.secoes_regime:
-        ids = [oid for oid in op_ids if any(p.opcao_id == oid for p in secao.propostas)]
+        ids = [
+            oid
+            for oid in op_ids
+            if any(id_coluna_vm(p) == oid for p in secao.propostas)
+        ]
         if not ids:
             continue
         props = [_prop(model, oid) for oid in ids]
@@ -222,6 +230,14 @@ def _th_col_prop(prop: PropostaApresentacao | None, nome: str) -> str:
         if operadora
         else ""
     )
+    if prop is not None and prop.misto:
+        indice = prop.indice_cenario or 1
+        titulo = f"Cenário {indice}"
+        return (
+            f"<th title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
+            f"<span class='pl'>{html.escape(titulo)}</span>"
+            f"<span class='op'>{html.escape(nome)}</span>{od}</th>"
+        )
     return (
         f"<th title='{html.escape(nome, quote=True)}'>"
         f"<span class='op'>{html.escape(nome)}</span>{od}</th>"
@@ -253,7 +269,15 @@ def _cabecalho_blocos(
             partes.append(_th_col_atual(b.planos, percentual=percentual_atual))
         else:
             for oid in b.op_ids:
-                partes.append(_th_col_prop(_prop(model, oid), rotulos.get(oid, "Proposta")))
+                prop = _prop(model, oid)
+                nome = rotulos.get(oid, "Proposta")
+                if rotulo_coluna_hook is not None:
+                    nome = rotulo_coluna_hook(
+                        oid,
+                        [p for s in model.secoes_regime for p in s.propostas],
+                        rotulos,
+                    )
+                partes.append(_th_col_prop(prop, nome))
     partes.append("</tr></thead>")
     del n_extras
     return "".join(partes)
@@ -333,7 +357,7 @@ def _subtotal_proposta_plano(plano: PlanoAtualApresentacao, op_id: str) -> int |
         col.subtotal_centavos
         for fx in plano.faixas
         for col in fx.propostas
-        if col.opcao_id == op_id and col.subtotal_centavos is not None
+        if coluna_bate(col, op_id) and col.subtotal_centavos is not None
     ]
     return sum(vals) if vals else None
 
@@ -341,7 +365,10 @@ def _subtotal_proposta_plano(plano: PlanoAtualApresentacao, op_id: str) -> int |
 def _subtotal_proposta_todas_secoes(
     model: PresentationViewModel, subgrupo_id: str, op_id: str
 ) -> int | None:
-    """O mesmo plano vigente aparece em cada seção de regime, com colunas só daquele regime."""
+    """Subtotal do grupo na coluna — vem do recorte do cenário, não da faixa."""
+    prop = _prop(model, op_id)
+    if prop is not None and subgrupo_id in prop.subtotais_por_subgrupo:
+        return prop.subtotais_por_subgrupo[subgrupo_id]
     for secao in model.secoes_regime:
         for pl in secao.planos_atuais:
             if pl.subgrupo_id != subgrupo_id:
@@ -353,11 +380,14 @@ def _subtotal_proposta_todas_secoes(
 
 
 def _tem_coluna_proposta(model: PresentationViewModel, subgrupo_id: str, op_id: str) -> bool:
+    prop = _prop(model, op_id)
+    if prop is not None and subgrupo_id in prop.subtotais_por_subgrupo:
+        return True
     for secao in model.secoes_regime:
         for pl in secao.planos_atuais:
             if pl.subgrupo_id != subgrupo_id:
                 continue
-            if any(col.opcao_id == op_id for fx in pl.faixas for col in fx.propostas):
+            if any(coluna_bate(col, op_id) for fx in pl.faixas for col in fx.propostas):
                 return True
     return False
 
@@ -446,8 +476,19 @@ def render_tabela_resumo(
                         valor = _subtotal_proposta_todas_secoes(
                             model, plano.subgrupo_id, oid
                         )
+                        prop = _prop(model, oid)
+                        nome_atr = (
+                            (prop.nomes_atribuidos_por_subgrupo.get(plano.subgrupo_id) or "")
+                            if prop
+                            else ""
+                        )
                         if valor is not None:
-                            partes.append(f"<td>{_cel_money(valor)}</td>")
+                            rotulo = (
+                                f"<span class='pl-cel'>{html.escape(nome_atr)}</span>"
+                                if nome_atr
+                                else ""
+                            )
+                            partes.append(f"<td>{rotulo}{_cel_money(valor)}</td>")
                         else:
                             partes.append(
                                 "<td>Sem valor neste plano</td>"
@@ -509,7 +550,7 @@ def _valor_faixa_atual(fx) -> tuple[int | None, str | None]:
 def _valor_faixa_prop(fx, op_id: str) -> int | None:
     if fx is None:
         return None
-    col = next((c for c in fx.propostas if c.opcao_id == op_id), None)
+    col = next((c for c in fx.propostas if coluna_bate(c, op_id)), None)
     if col is None or col.quantidade == 0:
         return None
     return col.valor_unitario_centavos
