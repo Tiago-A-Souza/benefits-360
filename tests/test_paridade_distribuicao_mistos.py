@@ -79,8 +79,18 @@ def test_distribuicao_origem_e_invariantes(dist: CelulaDistribuicao, tmp_path: P
     rc = compile(rascunho, policy_registry=default_registry)
     assert rc.compilavel and rc.compilado is not None
     snap = _aprovar(tmp_path, rascunho)
+    # Coluna = cenário desde a FASE 3: o conjunto de colunas é o dos cenários com
+    # atribuição, não o dos planos usados. Em cenário misto os dois são diferentes.
+    cenarios_esperados = {
+        c.id for c in rascunho.cenarios if any(a.opcao_plano_id for a in c.atribuicoes)
+    }
+    assert {p.cenario_id for p in matriz.propostas if p.calculo_realizado} == (
+        cenarios_esperados
+    )
+    assert set(usadas) <= {
+        a.opcao_plano_id for c in rascunho.cenarios for a in c.atribuicoes
+    }
     ids = [p.opcao_id for p in matriz.propostas if p.calculo_realizado]
-    assert set(ids) == set(usadas)
 
     vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     vm_r = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)

@@ -28,6 +28,7 @@ from newport_app.models.responses import (
     TotaisComparativo,
     TotaisComparativoNumerico,
 )
+from newport_app.presentation.colisao_coluna import pendencias_colisao_de_coluna
 from newport_app.presentation.formatacao import formatar_data_br
 from newport_app.presentation.rotulos import qualificar_rotulos_propostas
 from newport_app.presentation.textos import (
@@ -37,9 +38,8 @@ from newport_app.presentation.textos import (
     plural_beneficiarios,
     rotulos_diferenca,
 )
-from newport_motor.calculation import cenario_coluna_da_grade
 from newport_motor.result import MotorResult, ScenarioResult
-from newport_motor.types import RegimeCopartTipo, SeveridadeValidacao
+from newport_motor.types import SeveridadeValidacao
 
 _TRADUCOES: dict[str, tuple[str, str, str, str | None]] = {
     "B-08": (
@@ -296,17 +296,47 @@ def _chave_contrato_subgrupo(slot: dict[str, int | bool] | None) -> tuple[int | 
     )
 
 
+def _colunas_do_subgrupo(
+    rascunho: RascunhoEstudo,
+    subgrupo_id: str,
+) -> list[tuple[str, str]]:
+    """(chave da coluna, opção que aquele cenário atribui a este subgrupo).
+
+    A chave é a opção de referência do cenário, que é como a apresentação
+    identifica coluna — ver `presentation/colisao_coluna.py`. Cenário sem
+    atribuição para este subgrupo não gera coluna aqui.
+    """
+    from newport_app.rascunho.cenarios_sync import opcao_referencia_cenario
+
+    colunas: list[tuple[str, str]] = []
+    vistas: set[str] = set()
+    for cenario in rascunho.cenarios:
+        chave = opcao_referencia_cenario(cenario)
+        if not chave or chave in vistas:
+            continue
+        vistas.add(chave)
+        for atr in cenario.atribuicoes:
+            if (
+                atr.alvo_tipo == "subgrupo"
+                and atr.alvo_id == subgrupo_id
+                and atr.opcao_plano_id
+            ):
+                colunas.append((chave, atr.opcao_plano_id))
+                break
+    return colunas
+
+
 def _montar_faixas_plano_comparativo(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
     subgrupo_id: str,
 ) -> list[FaixaPlanoComparativo]:
-    from newport_app.rascunho.cenarios_sync import opcoes_usadas_nos_cenarios
-
     vigentes: dict[int, list[int]] = defaultdict(list)
     reajustados: dict[int, list[int]] = defaultdict(list)
     propostas: dict[int, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
-    opcao_ids = opcoes_usadas_nos_cenarios(rascunho)
+    # Uma coluna por cenário, na mesma chave e na mesma ordem de `_montar_propostas`.
+    colunas = _colunas_do_subgrupo(rascunho, subgrupo_id)
+    opcao_ids = [chave for chave, _ in colunas]
 
     # Vigente/reajustado: qualquer célula da grade (ou cenário) daquele subgrupo.
     fonte_vidas = None
@@ -339,8 +369,17 @@ def _montar_faixas_plano_comparativo(
                 reajustados[fx].append(reaj)
 
     if resultado.grade_opcao_subgrupo:
-        for cel in resultado.grade_opcao_subgrupo:
-            if cel.subgrupo_id != subgrupo_id or not cel.opcao_plano_id:
+        # A célula da grade do plano que cada cenário dá a ESTE subgrupo. Antes a
+        # coluna era o plano e a célula vinha direto; agora a coluna é o cenário,
+        # e é a atribuição dele que escolhe a célula.
+        celulas = {
+            cel.opcao_plano_id: cel
+            for cel in resultado.grade_opcao_subgrupo
+            if cel.subgrupo_id == subgrupo_id and cel.opcao_plano_id
+        }
+        for chave, opcao_do_grupo in colunas:
+            cel = celulas.get(opcao_do_grupo)
+            if cel is None:
                 continue
             for rv in cel.vidas:
                 fx = rv.faixa
@@ -348,7 +387,7 @@ def _montar_faixas_plano_comparativo(
                     continue
                 prop = _centavos_valor(rv.proposta_centavos)
                 if prop is not None:
-                    propostas[fx][cel.opcao_plano_id].append(prop)
+                    propostas[fx][chave].append(prop)
     else:
         for cenario in resultado.cenarios:
             opcao_id, _, _ = _metadados_coluna_cenario(rascunho, cenario.cenario_id)
@@ -786,6 +825,30 @@ def _regime_tipo_cenario(rascunho: RascunhoEstudo, cenario_id: str) -> str:
     return "misto"
 
 
+def _acomodacao_cenario(rascunho: RascunhoEstudo, cenario_id: str) -> str | None:
+    """Acomodação da coluna quando a coluna é um cenário — molde de `_regime_tipo_cenario`.
+
+    Com coluna = plano, a acomodação vinha da própria opção. Com coluna =
+    cenário, tomar a da primeira atribuição faria o cabeçalho mentir sobre os
+    outros grupos e mudar se alguém reordenasse as atribuições. Agrega: valor
+    único quando todos concordam, «misto» quando divergem.
+    """
+    cenario = next((c for c in rascunho.cenarios if c.id == cenario_id), None)
+    if cenario is None:
+        return None
+    por_id = {o.id: o for o in rascunho.opcoes_proposta}
+    acomodacoes = {
+        (por_id[atr.opcao_plano_id].acomodacao or None)
+        for atr in cenario.atribuicoes
+        if atr.opcao_plano_id and atr.opcao_plano_id in por_id
+    }
+    if not acomodacoes:
+        return None
+    if len(acomodacoes) == 1:
+        return acomodacoes.pop()
+    return "misto"
+
+
 def _metadados_coluna_cenario(
     rascunho: RascunhoEstudo,
     cenario_id: str,
@@ -836,6 +899,7 @@ def _montar_proposta_de_cenario_motor(
     regime_tipo: str,
     cenario_motor: ScenarioResult | None,
     seguro_novo: bool,
+    acomodacao: str | None,
 ) -> ResultadoPropostaComparativo:
     op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
     calculo_realizado = cenario_motor is not None
@@ -845,7 +909,7 @@ def _montar_proposta_de_cenario_motor(
             cenario_id=cenario_id,
             plano_nome=plano_nome or "Proposta sem nome",
             operadora=op.operadora if op else "",
-            acomodacao=op.acomodacao if op else None,
+            acomodacao=acomodacao,
             validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
             regime_coparticipacao=(
                 _rotulo_regime(regime_tipo)
@@ -891,7 +955,7 @@ def _montar_proposta_de_cenario_motor(
         cenario_id=cenario_id,
         plano_nome=plano_nome or "Proposta sem nome",
         operadora=op.operadora if op else "",
-        acomodacao=op.acomodacao if op else None,
+        acomodacao=acomodacao,
         validade_oficial=formatar_data_br(op.validade_oficial) if op else None,
         regime_coparticipacao=(
             _rotulo_regime(regime_tipo)
@@ -921,44 +985,12 @@ def _montar_propostas(
     rascunho: RascunhoEstudo,
     resultado: MotorResult,
 ) -> list[ResultadoPropostaComparativo]:
-    from newport_app.rascunho.cenarios_sync import opcoes_usadas_nos_cenarios
-
     seguro_novo = rascunho.formato == "novo"
     propostas: list[ResultadoPropostaComparativo] = []
 
-    # Renovação com grade: uma coluna por plano usado (não por cenário).
-    if not seguro_novo and resultado.grade_opcao_subgrupo:
-        baseline = _baseline_escolhido(rascunho)
-        for opcao_id in opcoes_usadas_nos_cenarios(rascunho):
-            regime_tipo = _regime_tipo_opcao(rascunho, opcao_id)
-            try:
-                regime_enum = RegimeCopartTipo(regime_tipo)
-            except ValueError:
-                regime_enum = RegimeCopartTipo.SEM
-            cenario_motor = cenario_coluna_da_grade(
-                resultado.grade_opcao_subgrupo,
-                opcao_id,
-                regime_tipo=regime_enum,
-                baseline=baseline,
-            )
-            op = next((o for o in rascunho.opcoes_proposta if o.id == opcao_id), None)
-            plano_nome = (op.plano_nome if op and op.plano_nome else None) or opcao_id
-            propostas.append(
-                _montar_proposta_de_cenario_motor(
-                    rascunho,
-                    opcao_id=opcao_id,
-                    cenario_id=f"col-{opcao_id}",
-                    plano_nome=plano_nome,
-                    regime_tipo=regime_tipo,
-                    cenario_motor=cenario_motor,
-                    seguro_novo=False,
-                )
-            )
-        _calcular_destaques(propostas, seguro_novo=False)
-        qualificar_rotulos_propostas(rascunho, propostas)
-        return propostas
-
-    # Seguro novo (ou renovação sem grade): uma coluna por cenário.
+    # Uma coluna por cenário, sempre. A coluna por plano usado aplicava cada
+    # cotação a todos os grupos, inclusive aos que não a escolheram — era ela
+    # que produzia a coluna cara para o grupo errado.
     cenarios_motor = {c.cenario_id: c for c in resultado.cenarios}
     for cenario_rasc in rascunho.cenarios:
         opcao_id, plano_nome, regime_tipo = _metadados_coluna_cenario(
@@ -975,6 +1007,7 @@ def _montar_propostas(
                 regime_tipo=regime_tipo,
                 cenario_motor=cenarios_motor.get(cenario_rasc.id),
                 seguro_novo=seguro_novo,
+                acomodacao=_acomodacao_cenario(rascunho, cenario_rasc.id),
             )
         )
 
@@ -1216,20 +1249,15 @@ def _avaliar_consistencia(
 
     Após a etapa 4 manual, N propostas selecionadas e M cenários (M≠N) é válido.
     Exige: ao menos um cenário; cada cenário completo produz um resultado no motor.
-    Colunas apresentadas = planos usados (grade), não M cenários.
+    Colunas apresentadas = cenários, nos dois formatos.
     """
-    from newport_app.rascunho.cenarios_sync import opcoes_usadas_nos_cenarios
-
     erros_compilacao = erros_compilacao or []
     n_propostas = len(rascunho.opcoes_proposta)
     n_cenarios = len(rascunho.cenarios)
     n_resultados_motor = len(resultado.cenarios)
     n_resultados = len([p for p in propostas if p.calculo_realizado])
-    n_colunas_esperadas = (
-        len(opcoes_usadas_nos_cenarios(rascunho))
-        if rascunho.formato != "novo" and resultado.grade_opcao_subgrupo
-        else n_cenarios
-    )
+    # Coluna = cenário nos dois formatos desde a FASE 3.
+    n_colunas_esperadas = n_cenarios
 
     mensagem: str | None = None
     consistente = True
@@ -1444,6 +1472,7 @@ def montar_comparativo(
         from newport_app.services.pendencias import pendencias_propostas_fora_dos_cenarios
 
         pendencias.extend(pendencias_propostas_fora_dos_cenarios(rascunho))
+        pendencias.extend(pendencias_colisao_de_coluna(rascunho, propostas))
     pendencias.extend(pendencias_planos)
     if not consistencia.consistente and consistencia.mensagem:
         if not (

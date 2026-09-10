@@ -64,13 +64,15 @@ def rotulo_cenario(rascunho: RascunhoEstudo, cenario: CenarioRascunho) -> str:
     Não usa ``cenario.rotulo`` em cache: após misturar cotações o rótulo gravado
     fica stale (ex.: «PRATA» quando a coluna é «PRATA + OURO»).
     """
-    op_ids: list[str] = []
-    vistos: set[str] = set()
-    for atr in cenario.atribuicoes:
-        if not atr.opcao_plano_id or atr.opcao_plano_id in vistos:
-            continue
-        vistos.add(atr.opcao_plano_id)
-        op_ids.append(atr.opcao_plano_id)
+    escolhidos = {
+        atr.opcao_plano_id for atr in cenario.atribuicoes if atr.opcao_plano_id
+    }
+    # Ordem do catálogo, não das atribuições: reordenar o cenário não pode
+    # mudar o rótulo da coluna (FASE 3, teste 6).
+    op_ids = [op.id for op in rascunho.opcoes_proposta if op.id in escolhidos]
+    for oid in escolhidos:
+        if oid not in op_ids:
+            op_ids.append(oid)
 
     if not op_ids:
         return "Cenário sem proposta"

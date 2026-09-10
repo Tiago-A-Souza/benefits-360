@@ -904,12 +904,36 @@ explícita em cada arquivo (`_ressalva_deducacao_acomodacao`). Os testes em
 `tests/test_frente3_golden_parsers.py` protegem o comportamento atual — não são
 endosso; quebra deliberada ao remover a dedução exige atualizar o golden.
 
-### Resolvido nesta branch — acomodação do cabeçalho em cenário misto
+### Resolvido na FASE 3 — acomodação do cabeçalho em cenário misto
 
-Com coluna = cenário, o cabeçalho usava a acomodação da primeira atribuição.
-Com coluna = plano (grade `opção × subgrupo` no motor), acomodação e
-coparticipação vêm da própria opção da coluna; inverter a ordem das
-atribuições não altera o cabeçalho.
+Com coluna = cenário, o cabeçalho usava a acomodação da primeira atribuição
+(`opcao_referencia_cenario`). `_acomodacao_cenario` espelha `_regime_tipo_cenario`:
+valor único quando todas as atribuições concordam, «misto» quando divergem.
+Inverter a ordem das atribuições não muda acomodação, rótulo nem valor
+(`test_05c_acomodacao_do_cenario_e_invariante_a_ordem`).
+
+### Em aberto — colisão de chave de coluna (FASE 4)
+
+A apresentação identifica coluna por `opcao_id` (`builder.py`,
+`_propostas_por_id`). Com coluna = cenário, o `opcao_id` da coluna é a opção
+de referência — a primeira atribuição. Dois cenários que começam pelo mesmo
+plano colidem nessa chave: o dict mantém uma coluna e perde a outra.
+
+**3 de 58 estudos** têm o caso:
+
+| estudo | cliente | título | chave repetida |
+|---|---|---|---|
+| `est-6ec6d7945a` | Anistia Internacional Brasil | Renovação 2026 - Opção 1 | DIAMANTE MAIS I Q (2 cenários) |
+| `est-629bfca67e` | Lunvox | lunvox | PRATA QC COPART (6 de 8 cenários) |
+| `est-e1862b46be` | Anistia Internacional Brasil | teste 20 | OURO RIO PRO Q (2 de 5 cenários) |
+
+A matriz não colapsa — as colunas são uma lista. Quem perde é o documento.
+Até a FASE 4 o caso é **detectado e sinalizado** (`APP-COL-001`, alerta na
+etapa 5, `presentation/colisao_coluna.py`): não escolhe uma das duas nem
+descarta a outra em silêncio. A correção é `coluna_id` = cenário, na FASE 4,
+que já reescreve esses pontos para o resumo executivo por cenário. A chave
+única está em `chave_de_coluna`: trocá-la some com o colapso e com o alerta
+no mesmo commit.
 
 ### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
 

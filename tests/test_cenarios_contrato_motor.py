@@ -216,13 +216,11 @@ def test_combo_misto_rotulo_pacote(repo):
     repo.salvar_rascunho(rascunho)
     resp = CalculoService(repo).calcular(rascunho.id)
     assert resp.calculo_realizado is True
+    # Dois cenários (o sync cria um por opção; só o primeiro foi misturado).
     assert len(resp.propostas) == 2
-    assert {p.plano_nome for p in resp.propostas} == {"Proposta 1", "Proposta B"}
-    assert all(" + " not in p.plano_nome for p in resp.propostas)
-    # Colunas por plano: cada uma com o regime da própria opção (não «Pacote misto»).
-    por_nome = {p.plano_nome: p for p in resp.propostas}
-    assert por_nome["Proposta 1"].regime_tipo == "sem"
-    assert por_nome["Proposta B"].regime_tipo == "parcial"
+    misto = next(p for p in resp.propostas if p.cenario_id == rascunho.cenarios[0].id)
+    assert misto.plano_nome == "Proposta 1 + Proposta B"
+    assert misto.regime_tipo == "misto"
 
 
 def test_subgrupo_sem_vidas_nao_exige_atribuicao():

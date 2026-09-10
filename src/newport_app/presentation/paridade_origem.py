@@ -47,12 +47,77 @@ def mapa_grade_proposta(
     return out
 
 
+def opcao_atribuida_por_cenario(
+    rascunho: RascunhoEstudo,
+) -> dict[tuple[str, str], str]:
+    """(cenario_id, subgrupo_id) → opção que aquele cenário dá àquele grupo."""
+    return {
+        (c.id, a.alvo_id): a.opcao_plano_id
+        for c in rascunho.cenarios
+        for a in c.atribuicoes
+        if a.opcao_plano_id and a.alvo_tipo == "subgrupo"
+    }
+
+
+def cenario_por_chave_de_coluna(rascunho: RascunhoEstudo) -> dict[str, str]:
+    """Chave de coluna (opção de referência) → cenário.
+
+    Ambíguo exatamente nos casos que `APP-COL-001` sinaliza; aqui fica a
+    primeira, igual ao que `builder.py` faz, para que a paridade meça o que o
+    documento realmente mostra.
+    """
+    from newport_app.rascunho.cenarios_sync import opcao_referencia_cenario
+
+    out: dict[str, str] = {}
+    for cenario in rascunho.cenarios:
+        chave = opcao_referencia_cenario(cenario)
+        if chave and chave not in out:
+            out[chave] = cenario.id
+    return out
+
+
+def mapa_esperado_por_coluna(
+    motor: MotorResult,
+    rascunho: RascunhoEstudo,
+) -> dict[tuple[str, str], int]:
+    """(chave de coluna, subgrupo_id) → subtotal que a coluna deve exibir.
+
+    A ponte entre a grade, indexada por `(opção, subgrupo)`, e a coluna, que
+    desde a FASE 3 é um cenário: para cada grupo, a célula da grade do plano que
+    aquele cenário atribui àquele grupo.
+    """
+    grade = mapa_grade_proposta(motor)
+    atribuido = opcao_atribuida_por_cenario(rascunho)
+    por_chave = cenario_por_chave_de_coluna(rascunho)
+    out: dict[tuple[str, str], int] = {}
+    for chave, cenario_id in por_chave.items():
+        for sg_id in subgrupos_com_vidas(rascunho):
+            opcao = atribuido.get((cenario_id, sg_id))
+            if opcao is None:
+                continue
+            valor = grade.get((opcao, sg_id))
+            if valor is not None:
+                out[(chave, sg_id)] = valor
+    return out
+
+
 def divergencias_coluna_vs_grade(
     matriz: ComparativoResponse,
     motor: MotorResult,
     rascunho: RascunhoEstudo,
 ) -> list[str]:
-    """Cada célula exibida na coluna = célula da grade na mesma chave."""
+    """Cada célula exibida na coluna = célula da grade do plano que o cenário dá àquele grupo.
+
+    Mudou de critério na FASE 3, e ficou mais estrita. Antes, coluna = plano, e a
+    chave da célula era `(opcao_id da coluna, subgrupo)` — a mesma opção para
+    todos os grupos. Agora, coluna = cenário, e a chave é
+    `(opção que o cenário atribui a este subgrupo, subgrupo)`.
+
+    A asserção deixou de aceitar o que era o defeito: sob o critério antigo, uma
+    coluna que aplicasse o plano errado a um grupo passava, porque a grade tinha
+    aquela célula. Agora a atribuição do cenário é quem escolhe a célula, então
+    trocar o plano de um grupo dentro da coluna divergiu.
+    """
     if rascunho.formato == "novo":
         return []
     if not motor.grade_opcao_subgrupo:
@@ -60,15 +125,25 @@ def divergencias_coluna_vs_grade(
 
     grade = mapa_grade_proposta(motor)
     sgs = subgrupos_com_vidas(rascunho)
-    usadas = opcoes_usadas_nos_cenarios(rascunho)
     divs: list[str] = []
 
     colunas = [p for p in matriz.propostas if p.calculo_realizado]
-    ids_col = [p.opcao_id for p in colunas]
-    if set(ids_col) != set(usadas):
+    cenarios_esperados = [
+        c.id for c in rascunho.cenarios if any(a.opcao_plano_id for a in c.atribuicoes)
+    ]
+    ids_col = [p.cenario_id for p in colunas]
+    if set(ids_col) != set(cenarios_esperados):
         divs.append(
-            f"conjunto_colunas: matriz={sorted(ids_col)} usadas={usadas}"
+            f"conjunto_colunas: matriz={sorted(ids_col)} "
+            f"cenarios={sorted(cenarios_esperados)}"
         )
+
+    atribuido = {
+        (c.id, a.alvo_id): a.opcao_plano_id
+        for c in rascunho.cenarios
+        for a in c.atribuicoes
+        if a.opcao_plano_id and a.alvo_tipo == "subgrupo"
+    }
 
     for prop in colunas:
         por_sg = {
@@ -78,7 +153,11 @@ def divergencias_coluna_vs_grade(
         }
         soma = 0
         for sg_id in sgs:
-            chave = (prop.opcao_id, sg_id)
+            opcao_do_grupo = atribuido.get((prop.cenario_id, sg_id))
+            if opcao_do_grupo is None:
+                divs.append(f"atribuicao_ausente ({prop.cenario_id}, {sg_id})")
+                continue
+            chave = (opcao_do_grupo, sg_id)
             esperado = grade.get(chave)
             obtido = por_sg.get(sg_id)
             if esperado is None:
@@ -95,7 +174,7 @@ def divergencias_coluna_vs_grade(
         )
         if consolidado is not None and consolidado != soma:
             divs.append(
-                f"consolidado {prop.opcao_id}: coluna={consolidado} "
+                f"consolidado {prop.cenario_id}: coluna={consolidado} "
                 f"soma_grade={soma}"
             )
     return divs
@@ -105,15 +184,29 @@ def divergencias_metadado_vs_opcao(
     matriz: ComparativoResponse,
     rascunho: RascunhoEstudo,
 ) -> list[str]:
-    """Acomodação, operadora, regime, nome e validade vêm da própria opção."""
+    """Nome, acomodação e regime da coluna vêm do cenário; operadora e validade, da opção.
+
+    Adaptada na FASE 3. Com coluna = plano, tudo saía da própria opção. Com
+    coluna = cenário, o que descreve a coluna inteira passa a ser agregado sobre
+    as atribuições — nome é o rótulo composto, acomodação e regime devolvem
+    «misto» quando os grupos divergem. Operadora e validade continuam vindo da
+    opção de referência, porque é dela que a montagem as tira.
+
+    A asserção continua sendo contra a origem, não contra outra camada: os
+    valores esperados são recalculados aqui a partir do rascunho.
+    """
     from newport_app.adapters.motor_out import (
+        _acomodacao_cenario,
         _regime_label_rascunho,
+        _regime_tipo_cenario,
         _regime_tipo_opcao,
         _rotulo_regime,
     )
+    from newport_app.rascunho.cenarios_sync import rotulo_cenario
 
     divs: list[str] = []
     por_id = {op.id: op for op in rascunho.opcoes_proposta}
+    cenarios = {c.id: c for c in rascunho.cenarios}
     for prop in matriz.propostas:
         if not prop.calculo_realizado:
             continue
@@ -121,44 +214,52 @@ def divergencias_metadado_vs_opcao(
         if op is None:
             divs.append(f"metadado: opção ausente {prop.opcao_id}")
             continue
-        nome_esp = op.plano_nome or op.id
+        cenario = cenarios.get(prop.cenario_id)
+        if cenario is None:
+            divs.append(f"metadado: cenário ausente {prop.cenario_id}")
+            continue
+        chave = prop.cenario_id
+        nome_esp = rotulo_cenario(rascunho, cenario)
         if (prop.plano_nome or "").strip() != (nome_esp or "").strip():
             divs.append(
-                f"nome {prop.opcao_id}: coluna={prop.plano_nome!r} "
-                f"opcao={nome_esp!r}"
+                f"nome {chave}: coluna={prop.plano_nome!r} cenario={nome_esp!r}"
             )
         if (prop.operadora or "") != (op.operadora or ""):
             divs.append(
-                f"operadora {prop.opcao_id}: coluna={prop.operadora!r} "
+                f"operadora {chave}: coluna={prop.operadora!r} "
                 f"opcao={op.operadora!r}"
             )
-        if (prop.acomodacao or None) != (op.acomodacao or None):
+        acomodacao_esp = _acomodacao_cenario(rascunho, prop.cenario_id)
+        if (prop.acomodacao or None) != (acomodacao_esp or None):
             divs.append(
-                f"acomodacao {prop.opcao_id}: coluna={prop.acomodacao!r} "
-                f"opcao={op.acomodacao!r}"
+                f"acomodacao {chave}: coluna={prop.acomodacao!r} "
+                f"cenario={acomodacao_esp!r}"
             )
         validade_esp = (
             formatar_data_br(op.validade_oficial) if op.validade_oficial else None
         )
         if (prop.validade_oficial or None) != (validade_esp or None):
             divs.append(
-                f"validade {prop.opcao_id}: coluna={prop.validade_oficial!r} "
+                f"validade {chave}: coluna={prop.validade_oficial!r} "
                 f"opcao={validade_esp!r}"
             )
-        regime_tipo = _regime_tipo_opcao(rascunho, prop.opcao_id)
+        regime_tipo = _regime_tipo_cenario(rascunho, prop.cenario_id)
         if prop.regime_tipo != regime_tipo:
             divs.append(
-                f"regime_tipo {prop.opcao_id}: coluna={prop.regime_tipo!r} "
-                f"opcao={regime_tipo!r}"
+                f"regime_tipo {chave}: coluna={prop.regime_tipo!r} "
+                f"cenario={regime_tipo!r}"
             )
-        rotulo_esp = (
-            _regime_label_rascunho(rascunho, op.regime_copart_id)
-            or _rotulo_regime(regime_tipo)
-        )
+        if regime_tipo == "misto":
+            rotulo_esp = _rotulo_regime(regime_tipo)
+        else:
+            rotulo_esp = (
+                _regime_label_rascunho(rascunho, op.regime_copart_id)
+                or _rotulo_regime(_regime_tipo_opcao(rascunho, prop.opcao_id))
+            )
         if prop.regime_coparticipacao != rotulo_esp:
             divs.append(
-                f"regime_rotulo {prop.opcao_id}: "
-                f"coluna={prop.regime_coparticipacao!r} opcao={rotulo_esp!r}"
+                f"regime_rotulo {chave}: "
+                f"coluna={prop.regime_coparticipacao!r} esperado={rotulo_esp!r}"
             )
     return divs
 
@@ -229,7 +330,7 @@ def divergencias_vm_vs_grade(
 ) -> list[str]:
     if rascunho.formato == "novo" or not motor.grade_opcao_subgrupo:
         return []
-    grade = mapa_grade_proposta(motor)
+    esperado = mapa_esperado_por_coluna(motor, rascunho)
     vm_map = mapa_vm_proposta_por_subgrupo(vm)
     divs: list[str] = []
     if not vm_map:
@@ -239,7 +340,7 @@ def divergencias_vm_vs_grade(
                 if prop.opcao_id not in vm.propostas_selecionadas:
                     continue
                 sgs = subgrupos_com_vidas(rascunho)
-                soma = sum(grade.get((prop.opcao_id, sg), 0) for sg in sgs)
+                soma = sum(esperado.get((prop.opcao_id, sg), 0) for sg in sgs)
                 total = prop.total_mensal_centavos
                 if total is None:
                     total = secao.totais.propostas.get(prop.opcao_id)
@@ -250,7 +351,7 @@ def divergencias_vm_vs_grade(
                     )
         return divs
 
-    for chave, esp in grade.items():
+    for chave, esp in esperado.items():
         if chave[0] not in vm.propostas_selecionadas:
             continue
         obt = vm_map.get(chave)
@@ -265,12 +366,17 @@ def divergencias_html_vs_grade(
     rascunho: RascunhoEstudo,
     opcao_ids: list[str],
 ) -> list[str]:
-    """Confere que os valores da grade das opções selecionadas aparecem no HTML."""
+    """Confere que os valores que as colunas selecionadas exibem aparecem no HTML.
+
+    Passou a percorrer o esperado por coluna, não a grade crua: com a grade
+    restrita aos pares atribuídos, varrer a grade deixaria de fora o valor que a
+    coluna de um cenário misto mostra para o segundo grupo.
+    """
     if rascunho.formato == "novo" or not motor.grade_opcao_subgrupo:
         return []
-    grade = mapa_grade_proposta(motor)
+    esperado = mapa_esperado_por_coluna(motor, rascunho)
     divs: list[str] = []
-    for (oid, sg_id), centavos in grade.items():
+    for (oid, sg_id), centavos in esperado.items():
         if oid not in opcao_ids:
             continue
         texto = formatar_reais(centavos)

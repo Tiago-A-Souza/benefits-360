@@ -28,6 +28,7 @@ from newport_app.models.responses import (
     ResultadoPropostaComparativo,
 )
 from newport_app.models.snapshot import SnapshotCalculo
+from newport_app.presentation.colisao_coluna import chave_de_coluna
 from newport_app.presentation.formatacao import (
     formatar_data_br,
     normalizar_acomodacao_exibicao,
@@ -92,7 +93,13 @@ def _paginar_propostas(propostas_ids: list[str]) -> list[PaginaFaixasApresentaca
 def _propostas_por_id(
     comparativo: ComparativoResponse,
 ) -> dict[str, ResultadoPropostaComparativo]:
-    return {p.opcao_id: p for p in comparativo.propostas if p.calculo_realizado}
+    # Mesma chave que `colisao_coluna` observa. Hoje colapsa dois cenários que
+    # começam pelo mesmo plano; a FASE 4 troca a chave e o colapso some junto.
+    return {
+        chave_de_coluna(p): p
+        for p in comparativo.propostas
+        if p.calculo_realizado
+    }
 
 
 def _coletar_regimes(
@@ -363,7 +370,13 @@ def construir_view_model(
     comparativo = ler_comparativo_congelado(snap.payload)
     rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
     por_id = _propostas_por_id(comparativo)
-    propostas_ids = [op_id for op_id in propostas_selecionadas if op_id in por_id]
+    # Sem `dict.fromkeys`, uma chave repetida montaria a mesma coluna duas vezes
+    # e os subtotais por faixa somariam em dobro — inventar um número é pior que
+    # perder a coluna. A repetição vem da colisão sinalizada por `APP-COL-001`,
+    # e desaparece na FASE 4 com `coluna_id` = cenário.
+    propostas_ids = [
+        op_id for op_id in dict.fromkeys(propostas_selecionadas) if op_id in por_id
+    ]
     propostas_sel = [por_id[op_id] for op_id in propostas_ids]
     vidas = _vidas_unicas(propostas_sel)
     seguro_novo = comparativo.formato == "novo" or rascunho.formato == "novo"

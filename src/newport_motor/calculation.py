@@ -220,7 +220,11 @@ def calcular_grade_opcao_subgrupo(
     estudo: EstudoInput,
     policy: EffectivePolicy,
 ) -> list[ResultadoSubgrupo]:
-    """Subtotal de cada opção usada em algum cenário × cada subgrupo com vidas.
+    """Subtotal de cada par (subgrupo, opção atribuída a ele) nos cenários.
+
+    Só os pares atribuídos: cruzar toda opção com todo subgrupo produziria a
+    célula de um plano aplicado a um grupo que ninguém escolheu para ele — o
+    número que a comparação por grupo existe para eliminar.
 
     Calculada uma vez por chamada do motor. Reusa `_calcular_subgrupo_renovacao`
     (mesma fórmula das atribuições). Em seguro novo retorna [].
@@ -228,34 +232,32 @@ def calcular_grade_opcao_subgrupo(
     if estudo.formato != FormatoEstudo.RENOVACAO:
         return []
 
-    opcoes_usadas: list[str] = []
-    vistos: set[str] = set()
-    for cenario in estudo.cenarios:
-        for atr in cenario.atribuicoes:
-            oid = atr.opcao_plano_id
-            if oid and oid not in vistos:
-                vistos.add(oid)
-                opcoes_usadas.append(oid)
-
-    if not opcoes_usadas:
-        return []
-
     vidas_por_sg: dict[str, int] = {}
     for vida in estudo.vidas_incluidas():
         if vida.subgrupo_atual_id:
             vidas_por_sg[vida.subgrupo_atual_id] = vidas_por_sg.get(vida.subgrupo_atual_id, 0) + 1
 
-    subgrupos_com_vidas = [
-        sg for sg in estudo.subgrupos_atuais if vidas_por_sg.get(sg.id, 0) > 0
-    ]
+    pares: list[tuple[str, str]] = []
+    vistos: set[tuple[str, str]] = set()
+    for cenario in estudo.cenarios:
+        for atr in cenario.atribuicoes:
+            oid = atr.opcao_plano_id
+            sid = atr.alvo_id
+            # Atribuição por vida não entra: `vidas_por_sg` só conhece subgrupo.
+            if not oid or not sid or vidas_por_sg.get(sid, 0) <= 0:
+                continue
+            if (oid, sid) in vistos:
+                continue
+            vistos.add((oid, sid))
+            pares.append((oid, sid))
 
     grade: list[ResultadoSubgrupo] = []
-    for opcao_id in opcoes_usadas:
+    for opcao_id, subgrupo_id in pares:
         opcao = estudo.opcao_por_id(opcao_id)
-        if opcao is None:
+        subgrupo = estudo.subgrupo_por_id(subgrupo_id)
+        if opcao is None or subgrupo is None:
             continue
-        for subgrupo in subgrupos_com_vidas:
-            grade.append(_calcular_subgrupo_renovacao(estudo, subgrupo, opcao, policy))
+        grade.append(_calcular_subgrupo_renovacao(estudo, subgrupo, opcao, policy))
     return grade
 
 

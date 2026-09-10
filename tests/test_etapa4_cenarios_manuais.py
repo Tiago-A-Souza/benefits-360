@@ -99,29 +99,37 @@ def test_01_multi_sync_nao_cria_cenario_etapa_abre_vazia(repo):
     assert any(p.codigo == "APP-ET4-001" for p in pendencias_compilacao(salvo))
 
 
-def test_02_cenario_misto_vira_duas_colunas_por_plano():
-    """Cenário misto: matriz tem uma coluna por plano, com valor nos dois vigentes."""
+def test_02_cenario_misto_vira_uma_coluna_por_cenario():
+    """Cenário misto: uma coluna, e cada grupo com o plano que o cenário lhe deu.
+
+    Reescrito na FASE 3. A versão anterior afirmava o defeito: exigia que a
+    coluna do prata trouxesse 610.061 para o sg-b, que recebeu ouro. Era um
+    teste protegendo o comportamento errado.
+    """
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     rascunho.cenarios = [_cenario_misto_gabarito(rascunho)]
     assert cenarios_sincronizados(rascunho)
     matriz, _ = _calcular_matriz(rascunho)
-    assert len(matriz.propostas) == 2
-    por_id = {p.opcao_id: p for p in matriz.propostas}
-    assert set(por_id) == {"op-prata", "op-ouro"}
-    assert por_id["op-prata"].plano_nome == "Proposta prata"
-    assert por_id["op-ouro"].plano_nome == "Proposta ouro"
-    assert " + " not in por_id["op-prata"].plano_nome
-    prata_sg = {s.subgrupo_id: s.proposta_centavos for s in por_id["op-prata"].subgrupos}
-    ouro_sg = {s.subgrupo_id: s.proposta_centavos for s in por_id["op-ouro"].subgrupos}
-    assert prata_sg["sg-a"] == 2_360_717
-    assert prata_sg["sg-b"] == 610_061
-    assert ouro_sg["sg-a"] == 2_751_249
-    assert ouro_sg["sg-b"] == 710_988
-    assert por_id["op-prata"].numerico.proposta_mensal_centavos == 2_970_778
-    assert por_id["op-ouro"].numerico.proposta_mensal_centavos == 3_462_237
+    assert len(matriz.propostas) == 1
+    coluna = matriz.propostas[0]
+    assert coluna.cenario_id == "c-misto"
+    assert coluna.plano_nome == "Proposta prata + Proposta ouro"
+    por_sg = {s.subgrupo_id: s.proposta_centavos for s in coluna.subgrupos}
+    # Valores de gabarito intactos: prata no sg-a, ouro no sg-b.
+    assert por_sg["sg-a"] == 2_360_717
+    assert por_sg["sg-b"] == 710_988
+    # E o que o defeito produzia não aparece em nenhuma célula.
+    assert 610_061 not in por_sg.values()
+    assert 2_751_249 not in por_sg.values()
+    assert coluna.numerico.proposta_mensal_centavos == 2_360_717 + 710_988
 
 
-def test_03_dois_cenarios_mistos_dedupe_por_plano():
+def test_03_dois_cenarios_viram_duas_colunas():
+    """Dois cenários, duas colunas — sem dedupe por plano.
+
+    Antes, o ouro usado nos dois cenários rendia uma coluna só, e o cenário
+    misto desaparecia como cenário. Agora cada cenário é uma coluna.
+    """
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     c1 = _cenario_misto_gabarito(rascunho)
     c2 = CenarioRascunho(
@@ -138,11 +146,14 @@ def test_03_dois_cenarios_mistos_dedupe_por_plano():
     )
     rascunho.cenarios = [c1, c2]
     matriz, _ = _calcular_matriz(rascunho)
-    # prata + ouro (ouro não duplica)
     assert len(matriz.propostas) == 2
-    assert [p.opcao_id for p in matriz.propostas] == ["op-prata", "op-ouro"]
-    assert matriz.propostas[0].numerico.proposta_mensal_centavos == 2_970_778
-    assert matriz.propostas[1].numerico.proposta_mensal_centavos == 3_462_237
+    assert [p.cenario_id for p in matriz.propostas] == ["c-misto", "c-uniforme-ouro"]
+    misto, uniforme = matriz.propostas
+    assert misto.numerico.proposta_mensal_centavos == 2_360_717 + 710_988
+    # Cenário uniforme: consolidado igual ao que a coluna por plano dava antes.
+    assert uniforme.numerico.proposta_mensal_centavos == 3_462_237
+    assert uniforme.plano_nome == "Proposta ouro"
+    assert " + " not in uniforme.plano_nome
 
 
 def test_04_cenario_incompleto_nao_sincroniza_e_pendencia():
@@ -178,16 +189,16 @@ def test_05_matriz_e_documento_usam_nome_do_plano(tmp_path: Path):
     # Etapa 4 ainda deriva rótulo composto do cenário
     assert rotulo_cenario(rascunho, rascunho.cenarios[0]) == "Proposta prata + Proposta ouro"
     matriz, _ = _calcular_matriz(rascunho)
+    # Uma coluna por cenário: o rótulo da coluna é o do cenário, e o cenário
+    # misto se chama pelos dois planos que o compõem.
     nomes = [p.plano_nome for p in matriz.propostas]
-    assert nomes == ["Proposta prata", "Proposta ouro"]
+    assert nomes == ["Proposta prata + Proposta ouro"]
     snap = _aprovar(tmp_path, rascunho)
     ids = [p.opcao_id for p in matriz.propostas]
     for modo in ("faixas", "grupo_familiar", "resumo"):
         vm = construir_view_model(snap, modo=modo, propostas_selecionadas=ids)
         html = render_html(vm)
-        assert "Proposta prata" in html
-        assert "Proposta ouro" in html
-        assert "Proposta prata + Proposta ouro" not in html
+        assert "Proposta prata + Proposta ouro" in html
 
 
 def test_05b_linhas_matriz_completas_por_coluna():
@@ -209,14 +220,20 @@ def test_05b_linhas_matriz_completas_por_coluna():
         assert prop.diferenca_percentual is not None
 
 
-def test_05c_acomodacao_da_propria_opcao():
+def test_05c_acomodacao_do_cenario_e_invariante_a_ordem():
+    """Acomodação da coluna agrega as atribuições, e a ordem delas não muda nada.
+
+    Este é o teste do §12, adaptado e não substituído. Com coluna = plano a
+    acomodação vinha da própria opção; com coluna = cenário ela é agregada, como
+    já era a coparticipação. O que o §12 protege continua de pé: reordenar as
+    atribuições de um cenário misto não pode mexer no que se exibe.
+    """
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     for op in rascunho.opcoes_proposta:
         if op.id == "op-prata":
             op.acomodacao = "Apartamento"
         elif op.id == "op-ouro":
             op.acomodacao = "Enfermaria"
-    # Ordem invertida nas atribuições não muda cabeçalho
     rascunho.cenarios = [
         CenarioRascunho(
             id="c-misto",
@@ -231,15 +248,35 @@ def test_05c_acomodacao_da_propria_opcao():
         )
     ]
     matriz, _ = _calcular_matriz(rascunho)
-    por_id = {p.opcao_id: p for p in matriz.propostas}
-    assert por_id["op-prata"].acomodacao == "Apartamento"
-    assert por_id["op-ouro"].acomodacao == "Enfermaria"
-    # Inverte ordem das atribuições
+    assert len(matriz.propostas) == 1
+    # Acomodações divergem entre os grupos: a coluna não escolhe uma das duas.
+    assert matriz.propostas[0].acomodacao == "misto"
+
     rascunho.cenarios[0].atribuicoes.reverse()
     matriz2, _ = _calcular_matriz(rascunho)
-    por2 = {p.opcao_id: p for p in matriz2.propostas}
-    assert por2["op-prata"].acomodacao == "Apartamento"
-    assert por2["op-ouro"].acomodacao == "Enfermaria"
+    assert len(matriz2.propostas) == 1
+    depois = matriz2.propostas[0]
+    antes = matriz.propostas[0]
+    assert depois.acomodacao == antes.acomodacao
+    assert depois.plano_nome == antes.plano_nome
+    assert depois.regime_coparticipacao == antes.regime_coparticipacao
+    assert (
+        depois.numerico.proposta_mensal_centavos
+        == antes.numerico.proposta_mensal_centavos
+    )
+    assert {s.subgrupo_id: s.proposta_centavos for s in depois.subgrupos} == {
+        s.subgrupo_id: s.proposta_centavos for s in antes.subgrupos
+    }
+
+
+def test_05d_acomodacao_unica_nao_vira_misto():
+    """Cenário uniforme: acomodação única, sem «misto»."""
+    rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
+    for op in rascunho.opcoes_proposta:
+        op.acomodacao = "Apartamento"
+    rascunho.cenarios = [_cenario_misto_gabarito(rascunho)]
+    matriz, _ = _calcular_matriz(rascunho)
+    assert matriz.propostas[0].acomodacao == "Apartamento"
 
 
 def test_06_um_plano_vigente_sync_automatico_sem_etapa4(repo):
@@ -327,8 +364,8 @@ def test_11_gabarito_anistia_uniforme_prata():
     assert matriz.propostas[0].numerico.proposta_mensal_centavos == 2_970_778
 
 
-def test_11b_anistia_seis_dois_cenarios_quatro_colunas():
-    """Seis na etapa 3, quatro usados em dois cenários → quatro colunas; dois ficam fora."""
+def test_11b_anistia_seis_dois_cenarios_duas_colunas():
+    """Seis na etapa 3, quatro usados em dois cenários → duas colunas; dois ficam fora."""
     from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
 
     rascunho = _rascunho_anistia_seis()
@@ -360,9 +397,10 @@ def test_11b_anistia_seis_dois_cenarios_quatro_colunas():
         ),
     ]
     matriz, _ = _calcular_matriz(rascunho)
-    assert len(matriz.propostas) == 4
-    assert [p.opcao_id for p in matriz.propostas] == ops[:4]
-    assert all(" + " not in p.plano_nome for p in matriz.propostas)
+    assert len(matriz.propostas) == 2
+    assert [p.cenario_id for p in matriz.propostas] == ["c1", "c2"]
+    # Cada cenário é misto, então cada coluna se chama pelos dois planos dela.
+    assert all(" + " in p.plano_nome for p in matriz.propostas)
     fora = {ops[4], ops[5]}
     assert all(p.opcao_id not in fora for p in matriz.propostas)
     assert any(p.codigo == "APP-ET4-002" for p in matriz.pendencias)
@@ -530,9 +568,11 @@ def test_15_cinco_propostas_dois_cenarios_calcula():
     resp = motor_result_para_comparativo(rascunho, motor)
     assert resp.calculo_realizado is True
     assert resp.consistencia.consistente is True
-    # op-1, op-2, op-3 (dedupe) — três colunas, não dois cenários
-    assert len(resp.propostas) == 3
-    assert [p.opcao_id for p in resp.propostas] == ["op-1", "op-2", "op-3"]
+    # Dois cenários, duas colunas. Antes eram três: os planos usados, deduplicados.
+    assert len(resp.propostas) == 2
+    assert [p.cenario_id for p in resp.propostas] == ["c1", "c2"]
+    assert resp.propostas[0].plano_nome == "Cotação 1 + Cotação 2"
+    assert resp.propostas[1].plano_nome == "Cotação 3"
     assert resp.consistencia.cenarios_configurados == 2
     assert resp.consistencia.propostas_selecionadas == 5
     assert not any(p.codigo == "APP-CMP-001" for p in resp.pendencias)

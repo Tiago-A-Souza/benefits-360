@@ -1,4 +1,4 @@
-"""Parte 1 — grade completa (opção usada × subgrupo com vidas) no motor."""
+"""Grade de pares atribuídos (cenário.atribuicoes) no motor — FASE 3."""
 
 from __future__ import annotations
 
@@ -116,13 +116,28 @@ def _fingerprint_cenarios(motor: MotorResult) -> list[tuple]:
     return rows
 
 
-def test_01_grade_opcoes_usadas_vezes_subgrupos_com_vidas():
+def test_01_grade_so_os_pares_atribuidos():
+    """A grade não cruza opção × subgrupo: só o que algum cenário atribuiu.
+
+    Com cenário misto (prata no sg-a, ouro no sg-b) o cartesiano produziria
+    também (prata, sg-b) e (ouro, sg-a) — as células do defeito. Elas não
+    existem mais.
+    """
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
-    # Só duas opções usadas (cenários uniformes gerados pelo fixture).
-    usadas = {a.opcao_plano_id for c in rascunho.cenarios for a in c.atribuicoes}
-    # Remove uma opção do catálogo da etapa 3 sem usá-la: já não está nos cenários.
-    assert usadas == {"op-prata", "op-ouro"}
-    # Acrescenta opção fantasma na etapa 3 — não deve entrar na grade.
+    rascunho.cenarios = [
+        CenarioRascunho(
+            id="c-misto",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a1", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id="op-prata"
+                ),
+                AtribuicaoRascunho(
+                    id="a2", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id="op-ouro"
+                ),
+            ],
+        )
+    ]
+    # Opção fantasma na etapa 3 — não entra.
     fantasma = deepcopy(rascunho.opcoes_proposta[0])
     fantasma.id = "op-fantasma"
     fantasma.plano_nome = "Fantasma"
@@ -130,8 +145,9 @@ def test_01_grade_opcoes_usadas_vezes_subgrupos_com_vidas():
 
     motor = _motor(rascunho)
     pares = {(c.opcao_plano_id, c.subgrupo_id) for c in motor.grade_opcao_subgrupo}
-    esperados = {(op, sg) for op in usadas for sg in ("sg-a", "sg-b")}
-    assert pares == esperados
+    assert pares == {("op-prata", "sg-a"), ("op-ouro", "sg-b")}
+    assert ("op-prata", "sg-b") not in pares
+    assert ("op-ouro", "sg-a") not in pares
     assert all(c.opcao_plano_id != "op-fantasma" for c in motor.grade_opcao_subgrupo)
 
 
