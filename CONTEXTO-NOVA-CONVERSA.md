@@ -96,19 +96,25 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**571 testes passando, 13 pulados** (eram 326; linha de base antes da fase 1:
-483). Os 13 pulados são corpus de PDF privado indisponível: Lunvox, IVTEC,
-ATEF. **22 defeitos corrigidos** numa semana de validação com dados reais.
-**O motor não foi tocado** em nenhuma correção.
+**10/09/2026 — `master` em `845c1a2`, tag `comparacao-por-grupo`.** Comparação
+por grupo de beneficiários entregue (sete fases + jornada da etapa 3). A grade
+do motor só calcula pares atribuídos; IOF e arredondamento intactos.
 
-**Fase 2 concluída:** etapas 5 e 6 unificadas — a matriz da etapa 5 é a tela de
-comparativo, aprovação e exportação; o wizard tem cinco etapas. Objetivo da
-sinergia entre as etapas 5 e 6 entregue.
+pytest na master: **1265 passed, 15 skipped, 1 failed** (censo 51≠49 de
+`selecao_apresentacao` no banco demo, não gabarito). vitest: 126 passed.
+Snapshots: 78/78 hashes iguais. Rascunhos: 99 carregam, 72 compilam.
+Harness: 16/16 mutações detectadas.
 
-**Ata de 16/08 — ajustes prioritários:** 1 (eliminar etapa 6 / exportar da 5),
-2 (simplificar etapa 2) e 3 (segundo plano no comparativo) **concluídos**. O
-**ajuste 4 (seleção par a par)** aguarda definição do Leonardo: a estrutura já
-existe em `cenario.atribuicoes` e na etapa 4; a dúvida é de produto, não técnica.
+**Ainda aberto (§12):** validade da cotação em cenário misto (só a opção de
+referência; teste 333); confirmações Wesley das regras comerciais; demais
+itens do §12.
+
+**22 defeitos** da validação com dados reais permanecem o histórico; o motor
+financeiro (IOF, half-up, `por_vida_entao_soma`) não foi alterado.
+
+**Ata de 16/08:** ajustes 1–3 concluídos. O ajuste 4 (seleção par a par) foi
+implementado pelas sete fases: `cenario.atribuicoes` passa a ser a grade, a
+etapa 4 e o documento.
 
 ### Três estudos reproduzidos ao centavo contra o que a Newport entregou
 

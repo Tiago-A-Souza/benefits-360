@@ -968,6 +968,45 @@ o subtotal daquele grupo e o cabeçalho «também em outro grupo». A soma
 das seções é o total de vidas. Compactação, ordem alfabética e paginação
 por `MAX_PROPOSTAS_POR_PAGINA` permanecem dentro de cada seção.
 
+### Comparação por grupo — origem, sete fases, números na master
+
+**Defeito:** cada plano era aplicado a todos os grupos. A origem estava em
+`calcular_grade_opcao_subgrupo` (`newport_motor/calculation.py`): o cruzamento
+opção × subgrupo produzia a célula de um plano num grupo que ninguém escolheu
+para ele. A fórmula do subgrupo (`_calcular_subgrupo_renovacao`) não mudou;
+mudou o conjunto de pares. Na Anistia 12%, Prata no S750 é R$ 23.607,17 e no
+ONE S2500 é R$ 6.100,61 — o S750 não pode carregar o segundo número, nem o
+ONE o primeiro.
+
+**Correção:** as sete fases (aviso na re-aplicação; seleção por grupo; etapa 4
+restrita; matriz e grade só nos pares atribuídos; resumo por cenário /
+`coluna_id`; faixas por grupo; grupo familiar por grupo), mais a jornada da
+etapa 3 (marcar no PDF, um confirmar) e as regras/cabeçalho mistos.
+
+**Continua aberto neste percurso (não corrigido):** validade da cotação em
+cenário misto (acima); confirmações Wesley das regras comerciais; demais
+itens já listados neste §12.
+
+**Master após o merge `845c1a2` (10/09/2026):**
+
+| Checagem | Resultado |
+|---|---|
+| pytest | 1265 passed, 15 skipped, 1 failed, ~3 min 21 s |
+| Falha | `test_04_quarenta_e_nove_selecoes_continuam_abrindo` — censo do banco demo 51≠49 (estudos novos na sessão; não é gabarito) |
+| vitest | 126 passed (13 arquivos) |
+| `npm run build` | ok |
+| Snapshots | 78/78 hashes iguais |
+| Rascunhos | 99 carregam, 0 falha de carga, 72 compilam. Bloqueios: APP-ESC-001 27, APP-ESC-002 23, APP-IMP-001 87 |
+| Harness | 16/16 mutações detectadas |
+| Script no HTML | nenhum `<script>` no renderer |
+
+Gabaritos Anistia 12% e IVTEC intactos na suíte (R$ 48.479,31; S750
+R$ 29.386,76; ONE R$ 19.092,55; Prata R$ 23.607,17 / R$ 6.100,61; Bronze
+R$ 21.354,64 / R$ 5.518,50; Ouro Copar 30 R$ 27.512,49 / R$ 7.109,88;
+IVTEC R$ 3.741,89 e R$ 5.652,04). ATEF permanece o §11.
+
+Marca de retorno: tag `comparacao-por-grupo`.
+
 ### Beneficiário: cabeçalho sem `PropostaApresentacao` (8.2)
 
 `html_renderer.py:1217` chama `_th_proposta(op_id, [], rotulos)` no modo
