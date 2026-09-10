@@ -62,10 +62,12 @@ def montar_selecao_por_grupo(rascunho: RascunhoEstudo) -> SelecaoPlanosGrupoResp
     Todos os planos aparecem em todos os grupos, com valores recalculados para as
     vidas daquele grupo — o que muda de grupo para grupo é quais estão marcados.
     A estimativa vem de `montar_matriz_estimativa`, a mesma que alimenta o
-    dropdown da etapa 4; não há segundo cálculo.
+    dropdown da etapa 4; não há segundo cálculo. Aqui ela vai sem restrição:
+    é nesta tela que o operador decide, e para decidir precisa ver o valor de
+    cada plano em cada grupo, inclusive dos que ainda não escolheu.
     """
     resumo = montar_resumo_plano_atual(rascunho)
-    matriz = montar_matriz_estimativa(rascunho)
+    matriz = montar_matriz_estimativa(rascunho, restrita=False)
     celulas = {(c.opcao_id, c.subgrupo_id): c for c in matriz.celulas}
     com_vidas = set(subgrupos_com_vidas(rascunho))
 

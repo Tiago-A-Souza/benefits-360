@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from newport_app.draft_compiler.mapper import mapear_effective_policy, mapear_estudo_input
+from newport_app.draft_compiler.selecao_validation import validar_atribuicoes_na_selecao
 from newport_app.draft_compiler.structural import validar_estrutura
 from newport_app.models.compilation import (
     COMPILER_VERSAO,
@@ -44,6 +45,7 @@ def compile(
 ) -> ResultadoCompilacao:
     registry = policy_registry or default_registry
     erros: list[ErroCompilacao] = list(validar_estrutura(rascunho))
+    erros.extend(validar_atribuicoes_na_selecao(rascunho))
 
     policy_set = registry.resolve(rascunho.policy_set_versao)
     if policy_set is None:

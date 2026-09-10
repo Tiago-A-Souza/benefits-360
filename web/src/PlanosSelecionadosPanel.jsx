@@ -3,6 +3,7 @@ import { obterMatrizEstimativa, obterRascunho, salvarRascunho } from "./api";
 import { novoId } from "./constants";
 import { mensagemLacunasAtribuicao, rotuloOpcaoComDiff, rotuloOpcaoNome } from "./fluxo/avancoEtapa";
 import { classeDiffEstimativa, formatarDiffCentavos } from "./money";
+import { atribuicaoForaDaSelecao, opcoesParaDropdown } from "./opcoesPorGrupo";
 
 function subgruposComVidas(rascunho) {
   const comVidas = new Set();
@@ -497,6 +498,18 @@ export default function PlanosSelecionadosPanel({
                   const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
                   const opId = atr?.opcao_plano_id || "";
                   const opSel = opcoes.find((o) => o.id === opId);
+                  const opcoesSg = opcoesParaDropdown(
+                    opcoes,
+                    matrizEstimativa,
+                    sg.id,
+                    opId
+                  );
+                  const foraDaSelecao = atribuicaoForaDaSelecao(
+                    opcoes,
+                    matrizEstimativa,
+                    sg.id,
+                    opId
+                  );
                   const acSg = acomodacaoInformada(sg);
                   const acOp = acomodacaoInformada(opSel);
                   const diverge = acSg && acOp && acSg !== acOp;
@@ -519,12 +532,17 @@ export default function PlanosSelecionadosPanel({
                       </div>
                       <SelectOpcaoComDiff
                         value={opId}
-                        opcoes={opcoes}
+                        opcoes={opcoesSg}
                         matriz={matrizEstimativa}
                         subgrupoId={sg.id}
                         ariaLabel={`Cotação para ${sg.plano_nome} no cenário ${i + 1}`}
                         onChange={(id) => atualizarAtribuicao(i, sg.id, id)}
                       />
+                      {foraDaSelecao && (
+                        <p className="alerta alerta-inline">
+                          {`«${foraDaSelecao}» não está entre os planos escolhidos para «${sg.plano_nome}» na etapa 3. Escolha um dos planos do grupo ou inclua este na seleção dele.`}
+                        </p>
+                      )}
                       {incompletoAc && !diverge && (
                         <p className="alerta alerta-inline alerta-inline--info">
                           Acomodação incompleta — informe na etapa «Plano atual» e na conferência

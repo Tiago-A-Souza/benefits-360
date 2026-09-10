@@ -243,7 +243,7 @@ def bloqueios_comparativo_de_erros(
 def _etapa_erro(codigo: str, caminho: str) -> int:
     if codigo in ("APP-ET3-001",):
         return 3
-    if codigo in ("APP-ET4-001",):
+    if codigo in ("APP-ET4-001", "APP-GRP-001"):
         return 4
     if codigo.startswith("APP-ESC") or codigo.startswith("APP-IMP"):
         return 2
@@ -282,6 +282,25 @@ def _item_de_erro(codigo: str, erros: list[ErroCompilacao]) -> PendenciaItem:
     caminho = erros[0].caminho
     etapa = _etapa_erro(codigo, caminho)
     quantidade = len(erros)
+    if codigo == "APP-GRP-001":
+        # Sem entrada em _TRADUCOES de propósito: a descrição fixa apagaria qual
+        # cenário, qual grupo e qual plano, que é o que o operador precisa saber.
+        return PendenciaItem(
+            tipo="bloqueio",
+            titulo=(
+                "Cotação fora dos planos escolhidos para o grupo"
+                if quantidade == 1
+                else f"{quantidade} cotações fora dos planos escolhidos para o grupo"
+            ),
+            descricao=" · ".join(e.mensagem for e in erros),
+            acao_sugerida=(
+                "Na etapa Cotações, inclua o plano na seleção do grupo, ou troque "
+                "a cotação do cenário na etapa «Correspondência com os planos atuais»."
+            ),
+            codigo=codigo,
+            etapa=etapa,
+            quantidade=quantidade,
+        )
     if codigo in _TRADUCOES:
         tipo, titulo, descricao = _TRADUCOES[codigo]
         titulo, descricao = _titulo_descricao_agrupados(codigo, titulo, descricao, quantidade)
