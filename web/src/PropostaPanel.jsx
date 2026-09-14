@@ -293,7 +293,10 @@ export default function PropostaPanel({
         }}
         onPreencherManualmente={abrirManualDesdeExtracao}
         onRegistrarAvanco={onRegistrarAvanco}
-        exigeSelecaoPorGrupo={planosAtuais.length > 1}
+        exigeSelecaoPorGrupo={
+          rascunho.formato !== "novo" && planosAtuais.length > 1
+        }
+        formatoEstudo={rascunho.formato}
         cestaGlobal={cestaGlobal}
         setCestaGlobal={setCestaGlobal}
         opcoesComparativo={opcoesComparativo}

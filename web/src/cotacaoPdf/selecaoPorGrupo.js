@@ -8,8 +8,10 @@ export function exibeSelecaoPorGrupo(selecao) {
 /**
  * Abas e atribuição por grupo: a prop do pai OU o resumo SISCOR (o mesmo
  * que já alimentava o dropdown «para simular»).
+ * Seguro novo não usa atribuição por subgrupo — permanece desligado.
  */
-export function modoSelecaoPorGrupo(exigeProp, nPlanosSiscor) {
+export function modoSelecaoPorGrupo(exigeProp, nPlanosSiscor, formatoEstudo) {
+  if (formatoEstudo === "novo") return false;
   return Boolean(exigeProp) || (nPlanosSiscor || 0) > 1;
 }
 

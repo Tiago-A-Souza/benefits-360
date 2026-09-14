@@ -69,6 +69,16 @@ describe("modo seleção por grupo", () => {
     expect(modoSelecaoPorGrupo(true, 0)).toBe(true);
     expect(modoSelecaoPorGrupo(false, 1)).toBe(false);
   });
+
+  it("seguro novo permanece desligado mesmo com dois subgrupos na base", () => {
+    expect(modoSelecaoPorGrupo(true, 2, "novo")).toBe(false);
+    expect(modoSelecaoPorGrupo(false, 2, "novo")).toBe(false);
+  });
+
+  it("renovação com dois planos continua ligando", () => {
+    expect(modoSelecaoPorGrupo(false, 2, "renovacao")).toBe(true);
+    expect(modoSelecaoPorGrupo(true, 1, "renovacao")).toBe(true);
+  });
 });
 
 describe("avanço revela a seleção por grupo", () => {

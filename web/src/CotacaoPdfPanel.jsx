@@ -902,6 +902,7 @@ export default function CotacaoPdfPanel({
   onPreencherManualmente,
   onRegistrarAvanco,
   exigeSelecaoPorGrupo = false,
+  formatoEstudo = "renovacao",
   cestaGlobal = [],
   setCestaGlobal,
   opcoesComparativo = [],
@@ -989,7 +990,8 @@ export default function CotacaoPdfPanel({
   );
   const selecaoPorGrupoAtiva = modoSelecaoPorGrupo(
     exigeSelecaoPorGrupo,
-    resumoSiscor?.planos?.length || 0
+    resumoSiscor?.planos?.length || 0,
+    formatoEstudo
   );
 
   useEffect(() => {
