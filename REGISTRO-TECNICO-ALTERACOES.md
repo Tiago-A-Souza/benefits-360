@@ -808,7 +808,7 @@ avançar da etapa 2. O consentimento passou a ser derivado do avanço.
 ### Regras comerciais — confirmações pendentes com o Wesley
 
 A aba «Regras contratuais» do documento lê `docs/regras_comerciais_base.csv`.
-Duas pontas ficam abertas, sem efeito no casamento atual:
+Três pontas ficam abertas, sem efeito no casamento atual:
 
 1. **«Unimed os Bandeirantes»** — a pesquisa não localizou operadora com esse
    nome exato. Pode ser imprecisão da planilha. A chave e os aliases
@@ -825,6 +825,16 @@ Duas pontas ficam abertas, sem efeito no casamento atual:
 O casamento é igualdade após `normalizar_cabecalho`
 (`siscor_importer/normalize.py:29`). Nunca «contém», em especial nunca
 «contém Unimed». Operadora não reconhecida simplesmente não vira coluna.
+
+3. **Operadora do plano vigente não vira coluna.** Só entram as operadoras
+   das cotações. É decisão em aberto: o cliente pode querer ver as regras
+   do contrato atual — multa e cancelamento do que ele está deixando — ao
+   lado das propostas. Não implementado. A pergunta já foi levantada pelo
+   Tiago ao ver o documento exportado — «as regras contratuais mostram
+   Porto e SulAmérica, mas não deveria ser Amil, que é a operadora atual?».
+   O argumento a favor de incluir é que multa de cancelamento e vigência
+   do contrato que a empresa está deixando pesam na decisão, e as outras
+   três abas todas mostram a coluna do atual.
 
 ### Seleção por grupo desligada em seguro novo
 
