@@ -626,25 +626,6 @@ export default function ConfigEstudo({
         </div>
       </div>
 
-      {pendencias.filter((p) => p.etapa === 2).length > 0 && (
-        <ul className="pendencias">
-          {pendencias
-            .filter((p) => p.etapa === 2)
-            .map((p, i) => (
-              <li key={p.codigo || i} className={`pendencia pendencia--${p.tipo}`}>
-                <strong>{p.titulo}</strong>
-                {p.descricao && <p>{p.descricao}</p>}
-                {p.codigo === "APP-IMP-001" && (
-                  <p className="acao">
-                    Em cada plano acima, preencha o campo <strong>Tipo fiscal</strong> (Seguradora
-                    ou Operadora).
-                  </p>
-                )}
-              </li>
-            ))}
-        </ul>
-      )}
-
       <div className="action-bar">
         <div className="action-left">
           {msg && <span className="action-note ok-inline">{msg}</span>}

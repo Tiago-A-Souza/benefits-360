@@ -4,7 +4,6 @@ import {
   gerarApresentacaoHtml,
   obterSnapshot,
   obterSnapshotAprovado,
-  previewApresentacao,
 } from "../api";
 
 export function formatarDataAprovacao(iso) {
@@ -180,6 +179,29 @@ export function AprovacaoLocalForm({
   );
 }
 
+const VISOES_DOCUMENTO = [
+  {
+    id: "completo",
+    titulo: "Documento completo",
+    detalhe: "Três visões, sem nomes de beneficiários.",
+  },
+  {
+    id: "resumo",
+    titulo: "Só resumo executivo",
+    detalhe: "Indicadores e totais da cotação.",
+  },
+  {
+    id: "faixas",
+    titulo: "Só faixas etárias",
+    detalhe: "Tabela densa por faixa e por grupo.",
+  },
+  {
+    id: "grupo_familiar",
+    titulo: "Por grupo familiar",
+    detalhe: "Com nomes — uso interno.",
+  },
+];
+
 export function ExportarHtmlApresentacao({
   estudoId,
   snapshotId,
@@ -189,30 +211,8 @@ export function ExportarHtmlApresentacao({
   onErro,
 }) {
   const [modo, setModo] = useState("completo");
-  const [preview, setPreview] = useState(null);
   const [entregavel, setEntregavel] = useState(null);
   const [ocupado, setOcupado] = useState(false);
-
-  async function handlePreview() {
-    if (!snapshotId) {
-      onErro?.("Aprove o snapshot antes de pré-visualizar a apresentação.");
-      return;
-    }
-    setOcupado(true);
-    onErro?.(null);
-    try {
-      const vm = await previewApresentacao(estudoId, snapshotId, {
-        modo,
-        propostas_selecionadas: [],
-        ressalvas: [],
-      });
-      setPreview(vm);
-    } catch (e) {
-      onErro?.(e.message);
-    } finally {
-      setOcupado(false);
-    }
-  }
 
   async function handleGerarHtml() {
     if (!snapshotId) {
@@ -244,109 +244,87 @@ export function ExportarHtmlApresentacao({
   const busy = carregando || ocupado;
 
   return (
-    <section className="secao-inline gov-secao">
-      <h3>Exportar HTML</h3>
-      <fieldset>
-        <legend>Visão do documento</legend>
-        <label className="radio">
-          <input
-            type="radio"
-            name={`modo-html-${snapshotId || "gov"}`}
-            value="completo"
-            checked={modo === "completo"}
-            onChange={() => setModo("completo")}
-          />
-          Documento completo (três visões, sem nomes)
-        </label>
-        <label className="radio">
-          <input
-            type="radio"
-            name={`modo-html-${snapshotId || "gov"}`}
-            value="resumo"
-            checked={modo === "resumo"}
-            onChange={() => setModo("resumo")}
-          />
-          Só resumo executivo
-        </label>
-        <label className="radio">
-          <input
-            type="radio"
-            name={`modo-html-${snapshotId || "gov"}`}
-            value="faixas"
-            checked={modo === "faixas"}
-            onChange={() => setModo("faixas")}
-          />
-          Só faixas etárias
-        </label>
-        <label className="radio">
-          <input
-            type="radio"
-            name={`modo-html-${snapshotId || "gov"}`}
-            value="grupo_familiar"
-            checked={modo === "grupo_familiar"}
-            onChange={() => setModo("grupo_familiar")}
-          />
-          Por grupo familiar com nomes (uso interno)
-        </label>
-      </fieldset>
+    <section className="panel gov-secao gov-exportar">
+      <div className="panel-head">
+        <div>
+          <h2>Exportar HTML</h2>
+          <p>Documento do cliente a partir do comparativo confirmado.</p>
+        </div>
+      </div>
+      <div className="panel-body gov-exportar-corpo">
+        <h3 className="grupo-escolhas-titulo">Visão do documento</h3>
+        <div className="cartoes-escolha">
+          {VISOES_DOCUMENTO.map((visao) => (
+            <label
+              key={visao.id}
+              className={`cartao-escolha${modo === visao.id ? " cartao-escolha--ativo" : ""}`}
+            >
+              <input
+                type="radio"
+                name={`modo-html-${snapshotId || "gov"}`}
+                value={visao.id}
+                checked={modo === visao.id}
+                onChange={() => setModo(visao.id)}
+              />
+              <strong>{visao.titulo}</strong>
+              <span className="muted">{visao.detalhe}</span>
+            </label>
+          ))}
+        </div>
 
-      <fieldset>
-        <legend>Propostas no material</legend>
-        <p className="muted cmp-previa-lead">
+        <h3 className="grupo-escolhas-titulo">Propostas no material</h3>
+        <p className="muted gov-exportar-lead">
           Seleção definida na confirmação do comparativo. Para alterar planos ou
           ordem, volte à matriz e confirme de novo.
         </p>
         {propostasSel.length ? (
-          <ol className="cmp-lista-apresentacao">
-            {propostasSel.map((id) => {
+          <ol className="gov-exportar-planos">
+            {propostasSel.map((id, i) => {
               const op = propostas.find((o) => o.id === id);
               return (
-                <li key={id}>{op ? `${op.operadora} — ${op.plano_nome}` : id}</li>
+                <li key={id}>
+                  <span className="gov-exportar-n">{i + 1}</span>
+                  <span className="gov-exportar-plano">
+                    <strong>{op?.plano_nome || id}</strong>
+                    {op?.operadora ? <span className="muted">{op.operadora}</span> : null}
+                  </span>
+                </li>
               );
             })}
           </ol>
         ) : (
           <p className="erro">Nenhuma proposta selecionada no Comparativo.</p>
         )}
-      </fieldset>
 
-      <div className="acoes-linha">
-        <button type="button" className="secundario" onClick={handlePreview} disabled={busy}>
-          Pré-visualizar modelo
-        </button>
-        <button type="button" onClick={handleGerarHtml} disabled={busy || !propostasSel.length}>
-          Gerar HTML
-        </button>
-      </div>
-
-      {preview && (
-        <div className="preview-apresentacao">
-          <h4>Pré-visualização ({preview.modo}{modo === "completo" ? " · documento completo" : ""})</h4>
-          <p>Seções: {preview.secoes_regime?.length ?? 0}</p>
-          {preview.modo === "grupo_familiar" && (
-            <p>Grupos familiares: {preview.grupos_familiares?.length ?? 0}</p>
-          )}
-          {preview.modo === "beneficiario" && (
-            <p>Beneficiários: {preview.beneficiarios?.length ?? 0}</p>
-          )}
-        </div>
-      )}
-
-      {entregavel && (
-        <div className="ok">
-          <p>HTML gerado — hash: {entregavel.hash_conteudo.slice(0, 16)}…</p>
-          {entregavel.aviso_dados_pessoais && (
-            <p className="aviso">{entregavel.aviso_dados_pessoais}</p>
-          )}
-          <a
-            href={`/api/estudos/${estudoId}/entregaveis/${entregavel.entregavel_id}/html`}
-            target="_blank"
-            rel="noreferrer"
+        <div className="gov-exportar-acoes">
+          <button
+            type="button"
+            className="cmp-btn-principal"
+            onClick={handleGerarHtml}
+            disabled={busy || !propostasSel.length}
           >
-            Abrir / baixar HTML
-          </a>
+            {ocupado ? "Gerando…" : "Gerar HTML"}
+          </button>
         </div>
-      )}
+
+        {entregavel && (
+          <div className="gov-banner gov-banner--aprovado gov-exportar-ok">
+            <h3 className="gov-banner-titulo">HTML gerado</h3>
+            <p>O arquivo está pronto para abrir ou baixar.</p>
+            {entregavel.aviso_dados_pessoais && (
+              <p className="aviso">{entregavel.aviso_dados_pessoais}</p>
+            )}
+            <a
+              className="gov-exportar-abrir"
+              href={`/api/estudos/${estudoId}/entregaveis/${entregavel.entregavel_id}/html`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Abrir / baixar HTML
+            </a>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
