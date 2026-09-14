@@ -42,6 +42,8 @@ from newport_app.services.extracao_cotacao import (
     ExtracaoCotacaoService,
     RemocaoExigeConfirmacaoError,
 )
+from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
+from newport_app.rascunho.impacto_remocao import montar_impacto_remocao
 from newport_app.siscor_mapper.apply import rascunho_vazio
 
 _SG_A = "AMIL S750 - Apto."
@@ -465,3 +467,146 @@ def test_08_nao_recria_atribuicao_com_substituto(
     ids_novos = {op.id for op in depois.opcoes_proposta}
     atribuicoes = [a for c in depois.cenarios for a in c.atribuicoes]
     assert not [a for a in atribuicoes if a.opcao_plano_id in ids_novos]
+
+
+# ---------------------------------------------------------------------------
+# Seguro novo — FASE 0 com atribuições por vida
+# ---------------------------------------------------------------------------
+
+
+def _rascunho_seguro_novo_base(estudo_id: str, *, com_dois_planos_siscor: bool = False):
+    r = rascunho_vazio(estudo_id, "Seguro novo", formato="novo")
+    r.regimes_copart.append(RegimeCopartRascunho(id="regime-sem", tipo="sem"))
+    if com_dois_planos_siscor:
+        r.subgrupos_atuais.extend(
+            [
+                SubgrupoAtualRascunho(id="sg-bas", operadora="Amil", plano_nome="BASICO"),
+                SubgrupoAtualRascunho(id="sg-ger", operadora="Amil", plano_nome="GERENCIAL"),
+            ]
+        )
+        r.vidas.extend(
+            [
+                VidaRascunho(
+                    id="v-1",
+                    nome="A1",
+                    nascimento=date(1990, 1, 1),
+                    subgrupo_atual_id="sg-bas",
+                ),
+                VidaRascunho(
+                    id="v-2",
+                    nome="A2",
+                    nascimento=date(1985, 5, 5),
+                    subgrupo_atual_id="sg-bas",
+                ),
+                VidaRascunho(
+                    id="v-3",
+                    nome="B1",
+                    nascimento=date(1978, 3, 3),
+                    subgrupo_atual_id="sg-ger",
+                ),
+                VidaRascunho(
+                    id="v-4",
+                    nome="B2",
+                    nascimento=date(1992, 11, 11),
+                    subgrupo_atual_id="sg-ger",
+                ),
+            ]
+        )
+    else:
+        r.vidas.extend(
+            [
+                VidaRascunho(id="v-1", nome="Vida 1", nascimento=date(1990, 1, 1)),
+                VidaRascunho(id="v-2", nome="Vida 2", nascimento=date(1985, 1, 1)),
+            ]
+        )
+    return r
+
+
+def _cenario_seguro_novo_com_dois_planos(
+    estudo_id: str = "est-sn-fase0",
+    *,
+    com_dois_planos_siscor: bool = False,
+):
+    ops = [
+        _opcao("op-a", "Plano A", selecionada=True),
+        _opcao("op-b", "Plano B", selecionada=True),
+        _opcao("op-c", "Plano C", selecionada=False),
+    ]
+    extracao = _extracao(estudo_id, ops)
+    rascunho = _rascunho_seguro_novo_base(
+        estudo_id, com_dois_planos_siscor=com_dois_planos_siscor
+    )
+    rascunho, bloqueios = aplicar_extracao_confirmada(rascunho, extracao)
+    assert not bloqueios
+    sincronizar_cenarios(rascunho)
+    assert all(
+        a.alvo_tipo == "vida"
+        for c in rascunho.cenarios
+        for a in c.atribuicoes
+    )
+    return rascunho, extracao, ops
+
+
+def test_sn_01_remover_plano_um_plano_sem_cenario_incompleto():
+    """Seguro novo, um PLANO: avisa remoção, sem falso incompleto."""
+    rascunho, extracao, ops = _cenario_seguro_novo_com_dois_planos()
+    _trocar_selecao(ops, {"op-c"})
+
+    impacto = impacto_remocao_reaplicacao(rascunho, extracao)
+
+    assert impacto.planos_removidos == ["Plano A", "Plano B"]
+    assert impacto.exige_confirmacao is True
+    assert impacto.cenarios_incompletos == []
+
+
+def test_sn_02_dois_planos_siscor_nao_acusa_incompleto_indevido():
+    """Dois PLANO na base: remover uma cotação não gera incompleto falso."""
+    rascunho, _, ops = _cenario_seguro_novo_com_dois_planos(
+        "est-sn-2plano", com_dois_planos_siscor=True
+    )
+    id_a = rascunho.opcoes_proposta[0].id
+    impacto = montar_impacto_remocao(rascunho, {id_a})
+
+    assert len(impacto.atribuicoes_desfeitas) == 4
+    assert impacto.cenarios_incompletos == []
+
+
+def test_sn_03_cenario_parcialmente_descoberto_e_sinalizado():
+    """Vidas sem atribuição num cenário que sobrevive: incompleto real."""
+    rascunho, _, _ = _cenario_seguro_novo_com_dois_planos("est-sn-parcial")
+    cenario = rascunho.cenarios[0]
+    id_b = rascunho.opcoes_proposta[1].id
+    cenario.atribuicoes = [
+        AtribuicaoRascunho(
+            id="atr-1", alvo_tipo="vida", alvo_id="v-1", opcao_plano_id=cenario.atribuicoes[0].opcao_plano_id
+        ),
+        AtribuicaoRascunho(
+            id="atr-2", alvo_tipo="vida", alvo_id="v-2", opcao_plano_id=id_b
+        ),
+    ]
+
+    impacto = montar_impacto_remocao(rascunho, {id_b})
+
+    assert len(impacto.cenarios_incompletos) == 1
+    incompleto = impacto.cenarios_incompletos[0]
+    assert incompleto.ficou_vazio is False
+    assert incompleto.alvos_sem_atribuicao == ["Vida 2"]
+
+
+@pytest.mark.parametrize(
+    "fabrica",
+    [
+        _cenario_com_dois_planos,
+        lambda: _cenario_seguro_novo_com_dois_planos("est-sn-param"),
+    ],
+    ids=["renovacao", "seguro_novo"],
+)
+def test_param_reaplicacao_avisa_planos_e_atribuicoes(fabrica):
+    rascunho, extracao, ops = fabrica()
+    _trocar_selecao(ops, {"op-c", "op-d"} if len(ops) > 3 else {"op-c"})
+
+    impacto = impacto_remocao_reaplicacao(rascunho, extracao)
+
+    assert "Plano A" in impacto.planos_removidos
+    assert impacto.exige_confirmacao is True
+    assert impacto.atribuicoes_desfeitas
