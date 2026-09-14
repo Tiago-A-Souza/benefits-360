@@ -1,8 +1,8 @@
 """Agrupamento de vidas em grupos familiares para apresentação.
 
 Precedência da chave: a mesma da frente base (`vinculo_grupo_chave` no rascunho).
-Vidas sem vínculo resolvido formam cada uma um grupo próprio, listadas ao final
-(ordenadas pelo nome) — não desaparecem; a soma dos grupos = vidas incluídas.
+Vidas sem vínculo resolvido são consolidadas para exibição: lista plana se nenhuma
+tem vínculo; bloco único ao final se houver mix. A soma dos membros = vidas incluídas.
 """
 
 from __future__ import annotations
@@ -12,6 +12,14 @@ from dataclasses import dataclass, field
 from newport_app.models.draft import RascunhoEstudo, VidaRascunho
 from newport_app.models.responses import DetalheVidaComparativo
 
+AVISO_LISTA_SEM_VINCULO = (
+    "A base importada não traz vínculo familiar. "
+    "Beneficiários listados individualmente."
+)
+ROTULO_BLOCO_ORFAOS = "Sem vínculo familiar na base"
+_ID_LISTA_PLANA = "lista_plana_sem_vinculo"
+_ID_ORFAOS_AGREGADOS = "orfaos_agregados"
+
 
 @dataclass
 class GrupoFamiliarMontado:
@@ -19,6 +27,7 @@ class GrupoFamiliarMontado:
     titular: DetalheVidaComparativo | None
     membros: list[DetalheVidaComparativo] = field(default_factory=list)
     sem_vinculo_resolvido: bool = False
+    lista_plana_sem_vinculo: bool = False
 
     @property
     def exibir_subtotal(self) -> bool:
@@ -101,10 +110,47 @@ def _chave_ordenacao(grupo: GrupoFamiliarMontado) -> tuple[int, str]:
     return (0, grupo.grupo_id.casefold())
 
 
+def _ordenar_membros_nome(membros: list[DetalheVidaComparativo]) -> list[DetalheVidaComparativo]:
+    return sorted(membros, key=lambda v: (v.nome or v.vida_id).casefold())
+
+
+def _consolidar_grupos_apresentacao(
+    grupos: list[GrupoFamiliarMontado],
+) -> tuple[list[GrupoFamiliarMontado], str | None]:
+    if not grupos:
+        return [], None
+
+    resolvidos = [g for g in grupos if not g.sem_vinculo_resolvido]
+    orfaos = [g for g in grupos if g.sem_vinculo_resolvido]
+
+    if not resolvidos and orfaos:
+        membros = _ordenar_membros_nome([m for g in orfaos for m in g.membros])
+        return [
+            GrupoFamiliarMontado(
+                grupo_id=_ID_LISTA_PLANA,
+                titular=None,
+                membros=membros,
+                lista_plana_sem_vinculo=True,
+            )
+        ], AVISO_LISTA_SEM_VINCULO
+
+    if resolvidos and orfaos:
+        membros = _ordenar_membros_nome([m for g in orfaos for m in g.membros])
+        bloco = GrupoFamiliarMontado(
+            grupo_id=_ID_ORFAOS_AGREGADOS,
+            titular=None,
+            membros=membros,
+            sem_vinculo_resolvido=True,
+        )
+        return resolvidos + [bloco], None
+
+    return grupos, None
+
+
 def montar_grupos_familiares(
     vidas: dict[str, DetalheVidaComparativo],
     rascunho: RascunhoEstudo,
-) -> list[GrupoFamiliarMontado]:
+) -> tuple[list[GrupoFamiliarMontado], str | None]:
     por_id = {v.id: v for v in rascunho.vidas}
     buckets: dict[str, GrupoFamiliarMontado] = {}
 
@@ -133,4 +179,5 @@ def montar_grupos_familiares(
                     slot.titular = m
                     break
 
-    return sorted(buckets.values(), key=_chave_ordenacao)
+    grupos = sorted(buckets.values(), key=_chave_ordenacao)
+    return _consolidar_grupos_apresentacao(grupos)

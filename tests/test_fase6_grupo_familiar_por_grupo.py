@@ -273,8 +273,11 @@ def test_13_sem_vinculo_resolvido(tmp_path: Path):
     rascunho = _anistia_com_vinculos()
     rascunho.vidas[0].vinculo_grupo_chave = None
     vm, html, _ = _vm_html(tmp_path, rascunho)
-    assert any(g.sem_vinculo_resolvido for g in vm.grupos_familiares)
-    assert "sem vínculo resolvido" in html
+    orfaos = [g for g in vm.grupos_familiares if g.sem_vinculo_resolvido]
+    assert len(orfaos) == 1
+    assert len(orfaos[0].membros) == 1
+    assert "sem vínculo resolvido" not in html
+    assert html.count("tr class='grupo-cab'") == 0
 
 
 def test_14_zero_script(tmp_path: Path):

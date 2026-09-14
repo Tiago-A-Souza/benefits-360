@@ -17,6 +17,7 @@ from newport_app.presentation.html_renderer import (
     render_html_completo,
 )
 from newport_app.presentation.paridade_estrutural import assert_paridade_estrutural
+from newport_app.presentation.paridade_html import divergencias_html_vm
 from newport_app.services.comparativo_confirmacao import montar_payload_nucleo_congelamento
 from newport_app.snapshot.hashing import hash_snapshot_canonico
 from tests.test_apresentacao_seguro_novo import _rascunho_ivtec_novo
@@ -177,6 +178,7 @@ def test_06_versao_sem_nomes_identificavel(tmp_path: Path):
 
 
 def test_07_ivtec_doze_grupos_sem_subtotal(tmp_path: Path):
+    """IVTEC com carimbo parcial: titulares agrupados; órfãos iniciais em bloco único."""
     rascunho = _rascunho_ivtec_novo()
     _carimbar_vinculos_por_ordem(rascunho)
     snap = _aprovar_tmp(tmp_path, rascunho)
@@ -185,15 +187,70 @@ def test_07_ivtec_doze_grupos_sem_subtotal(tmp_path: Path):
         modo="grupo_familiar",
         propostas_selecionadas=["op-bronze", "op-prata"],
     )
-    assert len(vm.grupos_familiares) == 12
-    assert all(len(g.membros) == 1 for g in vm.grupos_familiares)
-    assert all(not g.exibir_subtotal for g in vm.grupos_familiares)
+    assert len(vm.grupos_familiares) == 9
+    assert sum(len(g.membros) for g in vm.grupos_familiares) == 12
+    orfaos = [g for g in vm.grupos_familiares if g.sem_vinculo_resolvido]
+    assert len(orfaos) == 1
+    assert len(orfaos[0].membros) == 4
+    assert orfaos[0].exibir_subtotal
     html = render_html(vm)
-    assert "Sub Total " not in html
+    assert html.count("tr class='grupo-cab'") == 1
+    assert "sem vínculo resolvido" not in html
+    assert "Sub Total Sem vínculo familiar na base" in html
     assert "3.741,89" in html
     assert "5.652,04" in html
     assert vm.totais_gerais.propostas["op-bronze"] == 374_189
     assert vm.totais_gerais.propostas["op-prata"] == 565_204
+
+
+def test_07c_mix_dois_orfaos_cabecalho_bloco_unico(tmp_path: Path):
+    rascunho = _anistia_com_vinculos()
+    for v in rascunho.vidas[:2]:
+        v.vinculo_grupo_chave = None
+    snap = _aprovar_tmp(tmp_path, rascunho)
+    vm = construir_view_model(
+        snap,
+        modo="grupo_familiar",
+        propostas_selecionadas=_ids_seis()[:1],
+    )
+    orfaos = [g for g in vm.grupos_familiares if g.sem_vinculo_resolvido]
+    assert len(orfaos) == 1
+    assert len(orfaos[0].membros) == 2
+    html = render_html(vm)
+    assert html.count("Sem vínculo familiar na base") >= 1
+    assert "sem vínculo resolvido" not in html
+    assert sum(len(g.membros) for g in vm.grupos_familiares) == 41
+
+
+def test_07b_ivtec_sem_vinculo_lista_plana(tmp_path: Path):
+    """IVTEC real sem CPF titular: uma tabela, aviso único, sem cabeçalhos Grupo N."""
+    rascunho = _rascunho_ivtec_novo()
+    snap = _aprovar_tmp(tmp_path, rascunho)
+    vm = construir_view_model(
+        snap,
+        modo="grupo_familiar",
+        propostas_selecionadas=["op-bronze", "op-prata"],
+        beneficiarios_agregados=True,
+    )
+    assert len(vm.grupos_familiares) == 1
+    assert vm.grupos_familiares[0].lista_plana_sem_vinculo
+    assert len(vm.grupos_familiares[0].membros) == 12
+    assert vm.aviso_vinculo_familiar == (
+        "A base importada não traz vínculo familiar. "
+        "Beneficiários listados individualmente."
+    )
+    html = render_html(vm)
+    tela = _html_tela(html)
+    assert tela.count("<table class='tabela-grupo-familiar") == 1
+    assert tela.count("<tbody class='grupo-familiar'>") == 1
+    assert tela.count("tr class='grupo-cab'") == 0
+    assert "Grupo 1" not in html
+    assert "Grupo 12" not in html
+    assert vm.aviso_vinculo_familiar in html
+    assert "Total 12 Vidas" in tela
+    assert vm.totais_gerais.propostas["op-bronze"] == 374_189
+    assert vm.totais_gerais.propostas["op-prata"] == 565_204
+    assert not divergencias_html_vm(vm, html)
 
 
 def test_08_colunas_iguais_as_de_hoje(tmp_path: Path):
@@ -298,7 +355,7 @@ def test_15_paridade_estrutural_verde(tmp_path: Path):
 
 
 def test_renderer_versao_patch():
-    assert RENDERER_VERSAO == "html@2.13.7"
+    assert RENDERER_VERSAO == "html@2.13.8"
 
 
 def test_rotulo_reajuste_cabecalho():

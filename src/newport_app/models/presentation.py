@@ -112,6 +112,7 @@ class GrupoFamiliarApresentacao(BaseModel):
     rotulo: str
     exibir_subtotal: bool = False
     sem_vinculo_resolvido: bool = False
+    lista_plana_sem_vinculo: bool = False
     membros: list[BeneficiarioApresentacao] = Field(default_factory=list)
     subtotal_atual_reajustado_centavos: int | None = None
     subtotal_propostas: list[BeneficiarioPropostaColuna] = Field(default_factory=list)
@@ -170,4 +171,5 @@ class PresentationViewModel(BaseModel):
     secoes_regime: list[SecaoRegimeApresentacao] = Field(default_factory=list)
     beneficiarios: list[BeneficiarioApresentacao] = Field(default_factory=list)
     grupos_familiares: list[GrupoFamiliarApresentacao] = Field(default_factory=list)
+    aviso_vinculo_familiar: str | None = None
     reajuste_consolidado_percentual_exibicao: str | None = None

@@ -40,6 +40,7 @@ from newport_app.presentation.formatacao import (
     rotulo_modalidade_exibicao,
 )
 from newport_app.presentation.grupos_familiares import (
+    ROTULO_BLOCO_ORFAOS,
     montar_grupos_familiares,
     rotulo_grupo,
     rotulo_vida_agregada,
@@ -483,6 +484,7 @@ def construir_view_model(
 
     beneficiarios: list[BeneficiarioApresentacao] = []
     grupos_familiares: list[GrupoFamiliarApresentacao] = []
+    aviso_vinculo_familiar: str | None = None
     if modo == "beneficiario":
         # Legado — entregáveis antigos e regressão; novos usam grupo_familiar.
         ordenadas = sorted(
@@ -500,7 +502,7 @@ def construir_view_model(
                 )
             )
     elif modo == "grupo_familiar":
-        grupos_montados = montar_grupos_familiares(vidas, rascunho)
+        grupos_montados, aviso_vinculo_familiar = montar_grupos_familiares(vidas, rascunho)
         for i, g in enumerate(grupos_montados, start=1):
             membros_vm = [
                 _beneficiario_de_detalhe(
@@ -533,16 +535,23 @@ def construir_view_model(
                             diff_centavos=_somar_centavos(diffs),
                         )
                     )
+            if g.lista_plana_sem_vinculo:
+                rotulo = rotulo_grupo(
+                    g, nomes_ocultos=beneficiarios_agregados, numero=None
+                )
+            elif g.sem_vinculo_resolvido:
+                rotulo = ROTULO_BLOCO_ORFAOS
+            else:
+                rotulo = rotulo_grupo(
+                    g, nomes_ocultos=beneficiarios_agregados, numero=i
+                )
             grupos_familiares.append(
                 GrupoFamiliarApresentacao(
                     grupo_id=g.grupo_id,
-                    rotulo=rotulo_grupo(
-                        g,
-                        nomes_ocultos=beneficiarios_agregados,
-                        numero=i,
-                    ),
+                    rotulo=rotulo,
                     exibir_subtotal=g.exibir_subtotal,
                     sem_vinculo_resolvido=g.sem_vinculo_resolvido,
+                    lista_plana_sem_vinculo=g.lista_plana_sem_vinculo,
                     membros=membros_vm,
                     subtotal_atual_reajustado_centavos=subtotal_atual,
                     subtotal_propostas=subtotal_props,
@@ -628,6 +637,7 @@ def construir_view_model(
         secoes_regime=secoes_vm,
         beneficiarios=beneficiarios,
         grupos_familiares=grupos_familiares,
+        aviso_vinculo_familiar=aviso_vinculo_familiar,
         reajuste_consolidado_percentual_exibicao=(
             None
             if seguro_novo

@@ -43,7 +43,7 @@ from newport_app.presentation.regras_comerciais import (
     nomes_operadora_do_view_model,
 )
 
-RENDERER_VERSAO = "html@2.13.7"
+RENDERER_VERSAO = "html@2.13.8"
 
 _RE_GRUPO_AGREGADO = re.compile(r"^Grupo \d+$")
 
@@ -480,7 +480,14 @@ def _render_tabela_grupo_familiar(
     if para_impressao:
         classe_tabela += " tabela-grupo-bloco"
     propostas = [p for s in model.secoes_regime for p in s.propostas]
-    partes = [
+    partes: list[str] = []
+    if model.aviso_vinculo_familiar:
+        aviso = html.escape(model.aviso_vinculo_familiar)
+        partes.append(
+            f"<div class='aviso-vinculo-familiar aviso-acomodacao aviso-acomodacao--info'>{aviso}</div>"
+        )
+    partes.extend(
+        [
         f"<div class='{classe_rolo}'><table class='{classe_tabela}'>",
         _cabecalho_tabela_grupo(
             op_ids,
@@ -490,13 +497,12 @@ def _render_tabela_grupo_familiar(
             percentual=pct_cabecalho,
             propostas=propostas,
         ),
-    ]
+        ]
+    )
     for g, dividida in recortes:
         partes.append("<tbody class='grupo-familiar'>")
-        if g.sem_vinculo_resolvido or dividida:
+        if dividida or (g.sem_vinculo_resolvido and len(g.membros) > 1):
             titulo = html.escape(g.rotulo)
-            if g.sem_vinculo_resolvido:
-                titulo += " · sem vínculo resolvido"
             if dividida:
                 titulo += " · também em outro grupo"
             cls = "grupo-cab"

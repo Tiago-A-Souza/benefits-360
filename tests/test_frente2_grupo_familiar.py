@@ -203,12 +203,13 @@ def test_08_vida_sem_vinculo_aparece_grupo_proprio(tmp_path: Path):
     )
     assert sum(len(g.membros) for g in vm.grupos_familiares) == 41
     orfaos = [g for g in vm.grupos_familiares if g.sem_vinculo_resolvido]
-    assert orfaos
-    assert orfaos[-1].membros[0].nome == "Vida Orfa Sem Vinculo"
-    # Não resolvidos ao final.
+    assert len(orfaos) == 1
+    assert orfaos[0].membros[0].nome == "Vida Orfa Sem Vinculo"
     assert vm.grupos_familiares[-1].sem_vinculo_resolvido
     html = render_html(vm)
-    assert "sem vínculo resolvido" in html
+    assert "sem vínculo resolvido" not in html
+    assert "Sem vínculo familiar na base" not in html
+    assert "Vida Orfa Sem Vinculo" in html
 
 
 def test_09_beneficiario_sai_da_matriz_e_documento(tmp_path: Path):
@@ -379,6 +380,7 @@ def test_montar_grupos_cobertura_sem_perda():
         )
         for v in rascunho.vidas
     }
-    grupos = montar_grupos_familiares(detalhes, rascunho)
+    grupos, aviso = montar_grupos_familiares(detalhes, rascunho)
+    assert aviso is None
     ids = {m.vida_id for g in grupos for m in g.membros}
     assert ids == {v.id for v in rascunho.vidas}
