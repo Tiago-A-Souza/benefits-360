@@ -71,6 +71,7 @@ import {
   marcasAposTrocarGrupo,
   marcasDoPdfPorGrupo,
   modoSelecaoPorGrupo,
+  pulaRevisaoDirecta,
   pulaRevisaoPorGrupo,
   uniaoMarcas,
   ordemGruposParaConfirmar,
@@ -343,6 +344,7 @@ export function TabelaSelecaoCompacta({
   siscorCtx,
   estimativasMotor,
   referenciaCentavos,
+  ocultarDeltaReferencia = false,
   selecionados,
   opcoesComparativo,
   idsUniao = null,
@@ -406,7 +408,13 @@ export function TabelaSelecaoCompacta({
 
       {grupos.map(({ titulo, opcoes: opsGrupo }) => {
         const semCopart = ocultaColunaCopart(titulo);
-        const gradeCls = `linha-plano-selecao${semCopart ? "" : " linha-plano-selecao--com-copart"}`;
+        const gradeCls = [
+          "linha-plano-selecao",
+          semCopart ? "" : "linha-plano-selecao--com-copart",
+          ocultarDeltaReferencia ? "linha-plano-selecao--sem-referencia" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
         return (
         <div key={titulo || "geral"} className="grupo-planos">
           {titulo && <h4 className="grupo-planos-titulo">{titulo}</h4>}
@@ -420,7 +428,9 @@ export function TabelaSelecaoCompacta({
               <span>Acom.</span>
               {!semCopart && <span>Copart.</span>}
               <span className="linha-plano-meta linha-plano-meta--valor">Mensal est.</span>
-              <span className="linha-plano-meta linha-plano-meta--valor">Δ R$</span>
+              {!ocultarDeltaReferencia && (
+                <span className="linha-plano-meta linha-plano-meta--valor">Δ R$</span>
+              )}
               <span className="linha-plano-status">Status</span>
             </div>
             {opsGrupo.map((op) => {
@@ -477,26 +487,28 @@ export function TabelaSelecaoCompacta({
                   >
                     {estimativaTexto}
                   </span>
-                  <span
-                    className={`linha-plano-meta linha-plano-meta--valor${
-                      diff.indisponivel ? "" : ` ${classeDiffEstimativa(diff.diffCentavos) || ""}`
-                    }`}
-                    title={diff.indisponivel ? undefined : diff.rotuloSemantica}
-                  >
-                    {diff.indisponivel ? (
-                      "—"
-                    ) : (
-                      <>
-                        {diff.textoDiff}
-                        {diff.rotuloSemantica && (
-                          <span className="linha-plano-diff-hint" title={diff.rotuloSemantica}>
-                            {" "}
-                            {diff.semantica === "economia" ? "↓" : diff.semantica === "acrescimo" ? "↑" : "•"}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </span>
+                  {!ocultarDeltaReferencia && (
+                    <span
+                      className={`linha-plano-meta linha-plano-meta--valor${
+                        diff.indisponivel ? "" : ` ${classeDiffEstimativa(diff.diffCentavos) || ""}`
+                      }`}
+                      title={diff.indisponivel ? undefined : diff.rotuloSemantica}
+                    >
+                      {diff.indisponivel ? (
+                        "—"
+                      ) : (
+                        <>
+                          {diff.textoDiff}
+                          {diff.rotuloSemantica && (
+                            <span className="linha-plano-diff-hint" title={diff.rotuloSemantica}>
+                              {" "}
+                              {diff.semantica === "economia" ? "↓" : diff.semantica === "acrescimo" ? "↑" : "•"}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  )}
                   <span className="linha-plano-status">
                     <BadgeSituacao situacao={estado} />
                   </span>
@@ -993,6 +1005,8 @@ export default function CotacaoPdfPanel({
     resumoSiscor?.planos?.length || 0,
     formatoEstudo
   );
+  const pulaRevisao = pulaRevisaoDirecta(selecaoPorGrupoAtiva, formatoEstudo);
+  const seguroNovo = formatoEstudo === "novo";
 
   useEffect(() => {
     if (!extracaoId || siscorCtx?.exigeEscolha) {
@@ -1096,7 +1110,7 @@ export default function CotacaoPdfPanel({
   }
 
   async function handleEditarSelecao(ex) {
-    if (pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)) {
+    if (pulaRevisao) {
       abrirDocumento(ex.id);
       return;
     }
@@ -1432,6 +1446,13 @@ export default function CotacaoPdfPanel({
     }
   }
 
+  async function handleConfirmarSelecao() {
+    if (selecaoPorGrupoAtiva) {
+      return handleConfirmarPorGrupos();
+    }
+    return handleAdicionarComparativo();
+  }
+
   async function handleConfirmarPorGrupos() {
     setErro(null);
     setBloqueios([]);
@@ -1588,6 +1609,15 @@ export default function CotacaoPdfPanel({
       setExtracoes(listaAtualizada);
       await recarregarDetalhe();
       onAplicado?.();
+      if (seguroNovo) {
+        if (prox) {
+          setMsg("Seleção confirmada. Abrindo a próxima cotação.");
+          abrirDocumento(prox.id);
+        } else {
+          setMsg("Seleção confirmada.");
+          voltarLista();
+        }
+      }
     } catch (err) {
       if (err.bloqueios) setBloqueios(err.bloqueios);
       setErro(err.message);
@@ -1955,7 +1985,7 @@ export default function CotacaoPdfPanel({
               variante="documento"
             />
           ) : (
-            planoSiscor && (
+            planoSiscor && !seguroNovo && (
             <div className="cartao cartao--interno referencia-plano-atual">
               <div className="referencia-plano-cabecalho">
                 <div>
@@ -2025,11 +2055,11 @@ export default function CotacaoPdfPanel({
             <>
               <div className="selecao-resumo-bar">
                 <strong>
-                  {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)
-                    ? `Nesta aba: ${selecionadas.length} de ${opcoesAtivas.length}`
+                  {pulaRevisao
+                    ? `${selecionadas.length} de ${opcoesAtivas.length} selecionado(s)`
                     : `Selecionados: ${selecionadas.length} de ${opcoesAtivas.length}`}
                 </strong>
-                {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) && (
+                {selecaoPorGrupoAtiva && (
                   <span className="muted">
                     {uniaoMarcasAtuais.length} plano(s) no total das abas — um confirmar grava os dois grupos
                   </span>
@@ -2066,15 +2096,93 @@ export default function CotacaoPdfPanel({
                 siscorCtx={siscorCtx}
                 estimativasMotor={estimativasMotor}
                 referenciaCentavos={planoSiscor?.referencia_comparativo_centavos}
+                ocultarDeltaReferencia={seguroNovo}
                 selecionados={{ filtros, setFiltro }}
                 opcoesComparativo={opcoesComparativo}
                 idsUniao={
-                  pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) ? uniaoMarcasAtuais : null
+                  selecaoPorGrupoAtiva ? uniaoMarcasAtuais : null
                 }
                 onToggle={handleToggle}
               />
 
-              {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) &&
+              {seguroNovo && (
+                <div className="campos-documento-comuns cartao cartao--interno">
+                  <span className="doc-confirmacoes-rotulo">Dados do documento</span>
+                  <dl className="doc-confirmacoes-metricas">
+                    <div>
+                      <dt>Operadora</dt>
+                      <dd>{docAberto?.operadora_detectada || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt>Validade</dt>
+                      <dd>
+                        {detalhe.validade_oficial?.data ||
+                          selecionadas.find((o) => o.validade_oficial?.data)?.validade_oficial
+                            ?.data ||
+                          "—"}
+                      </dd>
+                    </div>
+                    {tipoFiscalPrecisaDeclararNaCotacao(selecionadas) && (
+                      <div>
+                        <dt>Tipo fiscal</dt>
+                        <dd>{rotuloTipoFiscalCotacao(selecionadas) || "A declarar"}</dd>
+                      </div>
+                    )}
+                  </dl>
+                  {tipoFiscalPrecisaDeclararNaCotacao(selecionadas) && (
+                    <label className="campo-revisao">
+                      <span>Tipo fiscal</span>
+                      <select
+                        defaultValue=""
+                        onChange={(e) => aplicarTipoFiscalDocumento(e.target.value)}
+                      >
+                        <option value="">Selecione…</option>
+                        {TIPOS_FISCAIS.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="muted revisao-plano-dica">
+                        O IOF de 2,38% só se aplica a seguradora. Vale para os{" "}
+                        {selecionadas.length} plano(s) selecionado(s) desta cotação.
+                      </span>
+                    </label>
+                  )}
+                  {(() => {
+                    const validadeAtual =
+                      detalhe.validade_oficial?.data ||
+                      selecionadas.find((o) => o.validade_oficial?.data)?.validade_oficial?.data;
+                    const campoValidadeId =
+                      detalhe.validade_oficial?.id ||
+                      selecionadas.find((o) => o.validade_oficial?.id)?.validade_oficial?.id;
+                    if (validadeAtual || !campoValidadeId) return null;
+                    return (
+                      <label className="campo-revisao campo-revisao--validade">
+                        <span>Validade da cotação</span>
+                        <input
+                          type="date"
+                          defaultValue=""
+                          onBlur={(e) => {
+                            if (e.target.value) {
+                              salvarCampo(campoValidadeId, {
+                                data: e.target.value,
+                                confirmado: true,
+                              });
+                            }
+                          }}
+                        />
+                        <span className="muted revisao-plano-dica">
+                          Não encontrada no PDF — informe uma vez; aplica a todos os{" "}
+                          {selecionadas.length} plano(s) selecionado(s) desta cotação.
+                        </span>
+                      </label>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {selecaoPorGrupoAtiva &&
                 tipoFiscalPrecisaDeclararNaCotacao(
                   opcoesAtivas.filter((o) => uniaoMarcasAtuais.includes(o.id))
                 ) && (
@@ -2101,15 +2209,15 @@ export default function CotacaoPdfPanel({
                 <button
                   type="button"
                   disabled={
-                    uniaoMarcasAtuais.length === 0 && noComparativoDestaExtracao.length === 0
+                    selecaoPorGrupoAtiva
+                      ? uniaoMarcasAtuais.length === 0 && noComparativoDestaExtracao.length === 0
+                      : selecionadas.length === 0 && noComparativoDestaExtracao.length === 0
                   }
                   onClick={
-                    pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)
-                      ? handleConfirmarPorGrupos
-                      : () => setFase("revisao")
+                    pulaRevisao ? handleConfirmarSelecao : () => setFase("revisao")
                   }
                 >
-                  {pulaRevisaoPorGrupo(selecaoPorGrupoAtiva)
+                  {pulaRevisao
                     ? "Confirmar seleção"
                     : noComparativoDestaExtracao.length > 0
                       ? `Revisar alterações (${selecionadas.length} selecionado(s))`
@@ -2119,7 +2227,7 @@ export default function CotacaoPdfPanel({
             </>
           )}
 
-          {fase === "revisao" && !pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) && (
+          {fase === "revisao" && !pulaRevisao && (
             <>
               <div className="campos-documento-comuns cartao cartao--interno">
                 <span className="doc-confirmacoes-rotulo">Dados do documento</span>

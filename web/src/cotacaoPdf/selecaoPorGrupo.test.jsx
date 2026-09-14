@@ -24,6 +24,7 @@ import {
   uniaoMarcas,
   ordemGruposParaConfirmar,
   marcasDoPdfPorGrupo,
+  pulaRevisaoDirecta,
   pulaRevisaoPorGrupo,
   fraseEscolhaGrupo,
   estadoExibicaoOpcao,
@@ -204,6 +205,20 @@ describe("próximo grupo da mesma cotação", () => {
 
   it("um plano vigente não troca de grupo", () => {
     expect(proximoGrupoParaAtribuir(["sg-a"], "sg-a", [])).toBe(null);
+  });
+});
+
+describe("pula revisão direta", () => {
+  it("seguro novo confirma na seleção", () => {
+    expect(pulaRevisaoDirecta(false, "novo")).toBe(true);
+  });
+
+  it("renovação de um plano mantém revisão", () => {
+    expect(pulaRevisaoDirecta(false, "renovacao")).toBe(false);
+  });
+
+  it("renovação multi-plano confirma na seleção", () => {
+    expect(pulaRevisaoDirecta(true, "renovacao")).toBe(true);
   });
 });
 

@@ -1154,6 +1154,25 @@ button.ativo,
     7.25rem;
 }
 
+.linha-plano-selecao--sem-referencia {
+  grid-template-columns:
+    1.75rem
+    minmax(0, 1fr)
+    3.25rem
+    15ch
+    7.25rem;
+}
+
+.linha-plano-selecao--com-copart.linha-plano-selecao--sem-referencia {
+  grid-template-columns:
+    1.75rem
+    minmax(0, 1fr)
+    3.25rem
+    minmax(6.5rem, 0.7fr)
+    15ch
+    7.25rem;
+}
+
 .linha-plano-selecao--cabecalho {
   font-size: 0.68rem;
   font-weight: 600;

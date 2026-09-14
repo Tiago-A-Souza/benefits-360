@@ -110,6 +110,12 @@ export function pulaRevisaoPorGrupo(selecaoPorGrupoAtiva) {
   return Boolean(selecaoPorGrupoAtiva);
 }
 
+/** Renovação multi-plano ou seguro novo: confirmar na seleção, sem revisão plano a plano. */
+export function pulaRevisaoDirecta(selecaoPorGrupoAtiva, formatoEstudo) {
+  if (formatoEstudo === "novo") return true;
+  return Boolean(selecaoPorGrupoAtiva);
+}
+
 export function marcasAposTrocarGrupo(marcas, grupoDe, idsAtuais) {
   return { ...(marcas || {}), [grupoDe]: [...(idsAtuais || [])] };
 }

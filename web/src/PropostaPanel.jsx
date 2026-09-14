@@ -277,7 +277,7 @@ export default function PropostaPanel({
         </div>
       )}
 
-      {unicoPlanoAtual && nPropostas > 0 && (
+      {unicoPlanoAtual && nPropostas > 0 && rascunho.formato !== "novo" && (
         <p className="ok comparativo-resumo-aviso">
           {nPropostas === 1
             ? `1 proposta será comparada com ${nomePlanoAtual}.`
