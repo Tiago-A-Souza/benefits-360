@@ -477,7 +477,7 @@ Referência: entregável PPTX Newport com 12 partes. Piloto cobre núcleo financ
 | **Versões motor** | Uma versão semântica | Snapshot `"0.1.0"` vs proveniência `"motor@0.1.2"` | `models/snapshot.py:10`; `reconciliation.py:354` |
 | **`confirmado` default** | Draft/PDF inicia `false` | Motor default `True` | `draft.py:52`; `provenance.py:27` |
 | **PriceBasis draft** | Inclui `nao_aplica` | Motor só três valores | `draft.py:14-18` vs `types.py:12-15` |
-| **Seleção por grupo (FASE 1)** | Disponível com vários planos vigentes | **Desligada em `formato=novo`** — cenários usam atribuição por vida, não por subgrupo; a UI não oferece escolha sem efeito. Se segmentos IVTEC (básico/gerencial/diretoria) forem confirmados como grupos comparáveis, volta à mesa como funcionalidade nova | `PropostaPanel.jsx`; `selecaoPorGrupo.js` |
+| **Seleção por grupo (FASE 1)** | Disponível com vários planos vigentes | **Desligada em `formato=novo`** — cenários usam atribuição por vida, não por subgrupo; a UI não oferece escolha sem efeito. Se segmentos IVTEC (básico/gerencial/diretoria) forem confirmados como grupos comparáveis, volta à mesa como funcionalidade nova | `PropostaPanel.jsx`; `selecaoPorGrupo.js` — registro operacional: `REGISTRO-TECNICO-ALTERACOES.md` §12 |
 
 ---
 

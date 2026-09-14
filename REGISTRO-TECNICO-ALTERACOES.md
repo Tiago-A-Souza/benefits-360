@@ -826,6 +826,21 @@ O casamento é igualdade após `normalizar_cabecalho`
 (`siscor_importer/normalize.py:29`). Nunca «contém», em especial nunca
 «contém Unimed». Operadora não reconhecida simplesmente não vira coluna.
 
+### Seleção por grupo desligada em seguro novo
+
+Desde o alinhamento seguro novo (`38776b3`, branch `alinhar-seguro-novo`):
+
+- Etapa 3 não exibe abas por subgrupo quando `formato=novo`.
+- `modoSelecaoPorGrupo()` e `exigeSelecaoPorGrupo` retornam `false` para seguro
+  novo — cenários usam atribuição por vida, não por subgrupo; a UI não oferece
+  escolha sem efeito.
+- Se segmentos IVTEC (básico/gerencial/diretoria) forem confirmados como grupos
+  comparáveis, volta à mesa como funcionalidade nova.
+
+Tabela de divergências (handoff IA): `docs/handoff-ia/CONSOLIDADO.md` §12
+(«Divergências documentação × código»). Arquivos: `PropostaPanel.jsx`,
+`selecaoPorGrupo.js`, `CotacaoPdfPanel.jsx`.
+
 ### Correções mapeadas
 
 | Item | Efeito |
@@ -992,7 +1007,7 @@ itens já listados neste §12.
 | Checagem | Resultado |
 |---|---|
 | pytest | 1265 passed, 15 skipped, 1 failed, ~3 min 21 s |
-| Falha | `test_04_quarenta_e_nove_selecoes_continuam_abrindo` — censo do banco demo 51≠49 (estudos novos na sessão; não é gabarito) |
+| Falha (corrigida) | `test_04_selecoes_gravadas_continuam_abrindo` — antes fixava 49; agora conta em tempo de execução (`assert n > 0`) |
 | vitest | 126 passed (13 arquivos) |
 | `npm run build` | ok |
 | Snapshots | 78/78 hashes iguais |
