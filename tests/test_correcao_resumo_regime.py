@@ -30,6 +30,7 @@ from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA, construir
 from newport_app.presentation.colisao_coluna import id_coluna_vm
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.html_renderer import _subtotal_proposta_plano, render_html
+from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
 from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.repository.historico import HistoricoRepository
 from newport_app.repository.snapshot import SnapshotRepository
@@ -304,7 +305,7 @@ def test_04_gabarito_anistia_seis_propostas(tmp_path: Path):
     one = spec["planos"][1]["plano_nome"]
     rotulos = {p["id"]: p["plano_nome"] for p in spec["propostas"]}
     for gab in spec["gabarito"]:
-        nome = rotulos[gab["opcao_id"]]
+        nome = nome_plano_documento(rotulos[gab["opcao_id"]])
         assert _celula_resumo(tabelas, s750, nome) == formatar_reais(gab["s750"])
         assert _celula_resumo(tabelas, one, nome) == formatar_reais(gab["one"])
         assert _celula_resumo(tabelas, "Consolidado", nome) == formatar_reais(

@@ -27,8 +27,10 @@ from newport_app.presentation.formatacao import formatar_data_br, formatar_reais
 from newport_app.presentation.tabela_densa import (
     _cabecalho_grupo,
     chunks_propostas,
+    coletar_notas_cobertura,
     envelopar_tela_impressao,
     html_linhas_nome_plano,
+    html_linhas_nome_plano_documento,
     ids_do_grupo,
     planos_das_faixas,
     render_tabela_resumo,
@@ -237,12 +239,12 @@ def _th_proposta(
             f"<th{attrs} title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
             f"<span class='cab-stack'>"
             f"<span class='pl'>{html.escape(titulo)}</span>"
-            f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+            f"<span class='op'>{html_linhas_nome_plano_documento(nome)}</span>{od}"
             f"</span></th>"
         )
     return (
         f"<th{attrs} title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
-        f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+        f"<span class='op'>{html_linhas_nome_plano_documento(nome)}</span>{od}"
         f"</span></th>"
     )
 
@@ -1120,6 +1122,40 @@ def _avisos_topo(model: PresentationViewModel, *, aviso_pii: bool) -> str:
     return "".join(partes)
 
 
+def _nomes_planos_view_model(model: PresentationViewModel) -> list[str]:
+    nomes: list[str] = []
+    for secao in model.secoes_regime:
+        for pl in secao.planos_atuais:
+            if pl.subgrupo_id != "vidas-incluidas":
+                nomes.append(pl.plano_nome)
+        for prop in secao.propostas:
+            nomes.append(prop.plano_nome)
+            nomes.extend(prop.nomes_atribuidos_por_subgrupo.values())
+    return nomes
+
+
+def _bloco_notas_cobertura(*models: PresentationViewModel) -> str:
+    """Nota de abrangência para nomes encurtados — montada do que foi retirado."""
+    nomes: list[str] = []
+    for model in models:
+        nomes.extend(_nomes_planos_view_model(model))
+    notas = coletar_notas_cobertura(*nomes)
+    if not notas:
+        return ""
+    partes = [
+        "<div class='nota-cobertura'>",
+        "<strong>Abrangência de cobertura</strong>",
+        "<ul>",
+    ]
+    for curto, abr in notas:
+        partes.append(
+            f"<li><span class='pl'>{html.escape(curto)}</span> — "
+            f"{html.escape(abr)}</li>"
+        )
+    partes.append("</ul></div>")
+    return "".join(partes)
+
+
 def _tit_secao(numero: str, linha1: str, linha2: str, lead: str) -> str:
     return (
         f"<div class='tit'><span class='n1'>{html.escape(numero)}</span>"
@@ -1347,6 +1383,9 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .rascunho{background:var(--ouro-cl);border-bottom:1px solid rgba(191,153,91,.4);
   padding:11px 56px;font-size:12px;font-weight:500;color:var(--ouro-esc);letter-spacing:.03em}
 .aviso-pii{background:#FBEDEE;border-bottom:1px solid #E8B4B8;padding:11px 56px;color:#A8323C;font-size:12.5px}
+.nota-cobertura{background:#F5F5F5;border-bottom:1px solid var(--borda);padding:12px 56px;font-size:12.5px;color:var(--grafite-2)}
+.nota-cobertura ul{margin:6px 0 0;padding-left:1.2rem}
+.nota-cobertura .pl{font-weight:600}
 .aviso-acomodacao{background:#FFF8E1;border-bottom:1px solid #FFE082;padding:11px 56px;color:#6d4c00;font-size:12.5px}
 .aviso-acomodacao--info{background:#E3F2FD;border-bottom-color:#90CAF9;color:#0d47a1}
 .aviso-acomodacao ul{margin:6px 0 0;padding-left:1.2rem}
@@ -1586,15 +1625,17 @@ def render_html(model: PresentationViewModel) -> str:
             _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
+    notas = _bloco_notas_cobertura(model)
     if model.modo == "faixas":
         corpo = (
-            "<div class='corpo'>"
+            notas
+            + "<div class='corpo'>"
             + _controle_titdep()
             + "".join(blocos)
             + "</div>"
         )
     else:
-        corpo = "<div class='corpo'>" + "".join(blocos) + "</div>"
+        corpo = notas + "<div class='corpo'>" + "".join(blocos) + "</div>"
     return _documento(model, aviso_pii=aviso_pii, corpo=corpo, com_abas=False)
 
 
@@ -1707,9 +1748,11 @@ def render_html_completo(
         '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
         'aria-label="Ver todas as visões">'
     )
+    notas = _bloco_notas_cobertura(vm_resumo, vm_faixas, vm_grupos)
     corpo = "".join(
         [
             *radios,
+            notas,
             '<nav class="doc-controles no-print" aria-label="Visões do documento">',
             '<div class="doc-abas" role="tablist" aria-label="Visões">',
             *abas,

@@ -12,6 +12,7 @@ from newport_app.models.snapshot import GerarApresentacaoRequest
 from newport_app.policy.registry import default_registry
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA, construir_view_model
 from newport_app.presentation.formatacao import formatar_reais
+from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
 from newport_app.presentation.html_renderer import (
     RENDERER_VERSAO,
     render_html,
@@ -160,7 +161,7 @@ def test_04_valores_identicos_gabarito(tmp_path: Path):
     s750 = spec["planos"][0]["plano_nome"]
     one = spec["planos"][1]["plano_nome"]
     for gab in spec["gabarito"]:
-        nome = rotulos[gab["opcao_id"]]
+        nome = nome_plano_documento(rotulos[gab["opcao_id"]])
         assert _celula_resumo(tabelas, s750, nome) == formatar_reais(gab["s750"])
         assert _celula_resumo(tabelas, one, nome) == formatar_reais(gab["one"])
         assert _celula_resumo(tabelas, "Consolidado", nome) == formatar_reais(

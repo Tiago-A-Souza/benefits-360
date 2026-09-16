@@ -9,6 +9,7 @@ from newport_app.models.snapshot import GerarApresentacaoRequest
 from newport_app.policy.registry import default_registry
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA, construir_view_model
 from newport_app.presentation.colisao_coluna import id_coluna_vm
+from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.html_renderer import render_html
 from newport_app.presentation.paridade_estrutural import assert_paridade_estrutural
@@ -108,7 +109,7 @@ def test_01_anistia_seis_propostas_aparecem_na_impressao(tmp_path: Path):
         for secao in vm.secoes_regime:
             prop = next((p for p in secao.propostas if id_coluna_vm(p) == op_id), None)
             if prop and prop.plano_nome:
-                rotulos.append(prop.plano_nome.strip())
+                rotulos.append(nome_plano_documento(prop.plano_nome.strip()))
                 break
     assert len(rotulos) == 6
     assert set(nomes) == set(rotulos)

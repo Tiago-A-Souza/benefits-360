@@ -14,6 +14,7 @@ from typing import Any
 from newport_app.models.presentation import PresentationViewModel
 from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.colisao_coluna import coluna_bate
+from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
 from newport_app.presentation.tabela_densa import ROTULO_COLUNA_ATUAL
 
 _PLANO_SINTETICO = "vidas-incluidas"
@@ -488,7 +489,9 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                             continue
                         if cel.referencia and cel.centavos == 0:
                             continue
-                        cells[(lin.rotulo, prop.plano_nome)] = cel.centavos
+                        cells[(lin.rotulo, nome_plano_documento(prop.plano_nome))] = (
+                            cel.centavos
+                        )
                 continue
             for pl in secao.planos_atuais:
                 if pl.subgrupo_id == _PLANO_SINTETICO:
@@ -505,7 +508,12 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                     if sub is None:
                         sub = _subtotal_plano_prop(pl, cid)
                     if sub is not None:
-                        cells[(pl.plano_nome, prop.plano_nome)] = sub
+                        cells[
+                            (
+                                pl.plano_nome,
+                                nome_plano_documento(prop.plano_nome),
+                            )
+                        ] = sub
             for lin in secao.indicadores_resumo:
                 if lin.rotulo == "Custo total mensal":
                     for prop in props:
@@ -513,7 +521,12 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
 
                         cel = lin.propostas.get(id_coluna_vm(prop))
                         if cel and cel.centavos is not None:
-                            cells[(lin.rotulo, prop.plano_nome)] = cel.centavos
+                            cells[
+                                (
+                                    lin.rotulo,
+                                    nome_plano_documento(prop.plano_nome),
+                                )
+                            ] = cel.centavos
         return cells
 
     if vm.modo == "faixas":
@@ -532,10 +545,11 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
                         )
                         if col is None or col.quantidade == 0:
                             continue
-                        nome = (
+                        bruto = (
                             prop.nomes_atribuidos_por_subgrupo.get(pl.subgrupo_id)
                             or prop.plano_nome
                         )
+                        nome = nome_plano_documento(bruto)
                         unit = col.valor_unitario_centavos
                         if unit is not None:
                             cells[(fx.rotulo, nome)] = unit
@@ -549,8 +563,9 @@ def celulas_posicionais_vm(vm: PresentationViewModel) -> dict[tuple[str, str], i
         prop_por_id = {}
         for s in vm.secoes_regime:
             for p in s.propostas:
-                prop_por_id[id_coluna_vm(p)] = p.plano_nome
-                prop_por_id[p.opcao_id] = p.plano_nome
+                doc = nome_plano_documento(p.plano_nome)
+                prop_por_id[id_coluna_vm(p)] = doc
+                prop_por_id[p.opcao_id] = doc
         membros = list(vm.beneficiarios)
         if vm.modo == "grupo_familiar":
             membros = [m for g in vm.grupos_familiares for m in g.membros]
@@ -584,7 +599,7 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
             secoes.add(secao.regime_rotulo)
             secoes.add(f"Resumo executivo — {secao.regime_rotulo}")
         for prop in secao.propostas:
-            propostas.add(prop.plano_nome)
+            propostas.add(nome_plano_documento(prop.plano_nome))
         for pl in secao.planos_atuais:
             if pl.subgrupo_id != _PLANO_SINTETICO:
                 planos.add(pl.plano_nome)

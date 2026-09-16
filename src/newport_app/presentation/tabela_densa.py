@@ -15,6 +15,10 @@ from newport_app.models.presentation import (
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.colisao_coluna import coluna_bate, id_coluna_vm
 from newport_app.presentation.formatacao import formatar_reais
+from newport_app.presentation.nome_plano_exibicao import (
+    encurtar_nome_plano_exibicao,
+    nome_plano_cabecalho,
+)
 from newport_app.presentation.reajuste import formatar_rotulo_reajuste_bps
 
 _AUSENCIA = "—"
@@ -36,6 +40,49 @@ def html_linhas_nome_plano(nome: str) -> str:
             f"<span class='op-linha'><span class='op-mais'>+</span> {html.escape(parte)}</span>"
         )
     return " ".join(linhas)
+
+
+def html_linhas_nome_plano_documento(
+    nome: str,
+    *,
+    modalidade: str | None = None,
+) -> str:
+    """Cabeçalho do documento: encurta e opcionalmente acrescenta modalidade."""
+    partes = [p.strip() for p in (nome or "").split(" + ") if p.strip()]
+    if not partes:
+        return ""
+    mod_unica = modalidade if len(partes) == 1 else None
+    curtos: list[str] = []
+    for parte in partes:
+        curto, _, _ = nome_plano_cabecalho(parte, modalidade=mod_unica)
+        curtos.append(curto)
+    if len(curtos) < 2:
+        return html.escape(curtos[0])
+    linhas = [f"<span class='op-linha'>{html.escape(curtos[0])}</span>"]
+    for curto in curtos[1:]:
+        linhas.append(
+            f"<span class='op-linha'><span class='op-mais'>+</span> {html.escape(curto)}</span>"
+        )
+    return " ".join(linhas)
+
+
+def coletar_notas_cobertura(*nomes: str | None) -> list[tuple[str, str]]:
+    """Pares (nome curto, abrangência) extraídos dos nomes completos."""
+    vistos: set[tuple[str, str]] = set()
+    notas: list[tuple[str, str]] = []
+    for nome in nomes:
+        if not (nome or "").strip():
+            continue
+        for parte in (p.strip() for p in nome.split(" + ") if p.strip()):
+            curto, abr = encurtar_nome_plano_exibicao(parte)
+            if not abr:
+                continue
+            chave = (curto.casefold(), abr.casefold())
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            notas.append((curto, abr))
+    return notas
 
 
 def _planos_reais(secao: SecaoRegimeApresentacao) -> list[PlanoAtualApresentacao]:
@@ -333,6 +380,8 @@ def _th_col_prop(
         atribuido = (prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or "").strip()
         if atribuido:
             nome = atribuido
+    exib = html_linhas_nome_plano_documento(nome)
+    if prop is not None and subgrupo_id:
         if prop.misto:
             indice = prop.indice_cenario or 1
             titulo = f"Cenário {indice}"
@@ -340,12 +389,12 @@ def _th_col_prop(
                 f"<th title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
                 f"<span class='cab-stack'>"
                 f"<span class='pl'>{html.escape(titulo)}</span>"
-                f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+                f"<span class='op'>{exib}</span>{od}"
                 f"</span></th>"
             )
         return (
             f"<th title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
-            f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+            f"<span class='op'>{exib}</span>{od}"
             f"</span></th>"
         )
     if prop is not None and prop.misto:
@@ -355,12 +404,12 @@ def _th_col_prop(
             f"<th title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
             f"<span class='cab-stack'>"
             f"<span class='pl'>{html.escape(titulo)}</span>"
-            f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+            f"<span class='op'>{exib}</span>{od}"
             f"</span></th>"
         )
     return (
         f"<th title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
-        f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+        f"<span class='op'>{exib}</span>{od}"
         f"</span></th>"
     )
 
