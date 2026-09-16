@@ -62,7 +62,7 @@ def _html_completo_anistia(tmp_path: Path) -> tuple[str, object]:
         snap,
         modo="grupo_familiar",
         propostas_selecionadas=ids,
-        beneficiarios_agregados=True,
+        beneficiarios_agregados=False,
     )
     return render_html_completo(vm_r, vm_f, vm_g), snap
 

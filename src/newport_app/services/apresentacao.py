@@ -93,7 +93,7 @@ class ApresentacaoService:
                 propostas_selecionadas=propostas,
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
-                beneficiarios_agregados=True,
+                beneficiarios_agregados=False,
                 aprovado_em=aprov.aprovado_em,
             )
             html_content = render_html_completo(vm_resumo, vm_faixas, vm_grupos)
@@ -106,7 +106,10 @@ class ApresentacaoService:
                     "vm_grupo_familiar": vm_grupos.model_dump(mode="json"),
                 }
             )
-            aviso = None
+            aviso = (
+                "O arquivo contém nomes de beneficiários. "
+                "Armazene apenas em local privado."
+            )
         else:
             vm = construir_view_model(
                 snap,
@@ -115,12 +118,13 @@ class ApresentacaoService:
                 ressalvas=req.ressalvas,
                 titulo=req.titulo,
                 exibir_todas_faixas=req.exibir_todas_faixas,
+                beneficiarios_agregados=(req.modo == "grupo_familiar"),
                 aprovado_em=aprov.aprovado_em,
             )
             html_content = render_html(vm)
             digest = hash_sha256_objeto({"html": html_content, "vm": vm.model_dump(mode="json")})
             aviso = None
-            if req.modo in ("beneficiario", "grupo_familiar"):
+            if req.modo == "beneficiario":
                 aviso = (
                     "O arquivo contém nomes de beneficiários. "
                     "Armazene apenas em local privado."

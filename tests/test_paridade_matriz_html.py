@@ -864,7 +864,7 @@ def test_observacao_heterogeneo_seguro_novo():
     depois = montar_comparativo(rascunho, motor_result=motor)
     fx = next(f for f in depois.faixas_estudo if f.faixa == alvo.faixa)
     assert fx.observacao_valor
-    assert "diferentes" in fx.observacao_valor.lower()
+    assert "distintos" in fx.observacao_valor.lower()
     col = next(c for c in fx.propostas if c.quantidade >= 2)
     assert col.unitario_centavos is None
 

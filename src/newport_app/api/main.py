@@ -1151,7 +1151,7 @@ def create_app(
                 ressalvas=body.ressalvas,
                 titulo=body.titulo,
                 exibir_todas_faixas=body.exibir_todas_faixas,
-                beneficiarios_agregados=body.modo == "completo",
+                beneficiarios_agregados=body.modo == "grupo_familiar",
                 aprovado_em=aprov.aprovado_em,
             )
         except SnapshotNaoEncontradoError:

@@ -228,7 +228,7 @@ def test_09_beneficiario_sai_da_matriz_e_documento(tmp_path: Path):
             snap,
             modo="grupo_familiar",
             propostas_selecionadas=ids,
-            beneficiarios_agregados=True,
+            beneficiarios_agregados=False,
         ),
     )
     assert "Por grupo familiar" in html

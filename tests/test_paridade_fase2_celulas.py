@@ -126,7 +126,7 @@ def _vm(snap: SnapshotCalculo, modo: str, ids: tuple[str, ...]):
         snap,
         modo=modo,
         propostas_selecionadas=list(ids),
-        beneficiarios_agregados=(modo != "grupo_familiar"),
+        beneficiarios_agregados=False,
         aprovado_em=_APROV,
     )
 
@@ -213,7 +213,13 @@ def _rodar_modo(prep: CelulaPreparada, modo: str) -> list[str]:
     if modo == "completo":
         vm_r = _vm(prep.snap, "resumo", prep.ids)
         vm_f = _vm(prep.snap, "faixas", prep.ids)
-        vm_g = _vm(prep.snap, "grupo_familiar", prep.ids)
+        vm_g = construir_view_model(
+            prep.snap,
+            modo="grupo_familiar",
+            propostas_selecionadas=list(prep.ids),
+            beneficiarios_agregados=False,
+            aprovado_em=_APROV,
+        )
         for rotulo, vm in (("resumo", vm_r), ("faixas", vm_f), ("grupo_familiar", vm_g)):
             d = divergencias_estruturais(prep.matriz, vm, rascunho=prep.rascunho)
             divs.extend(f"camada1/{rotulo}: {x}" for x in d)

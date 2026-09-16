@@ -134,7 +134,7 @@ def test_sem_script_e_poppins_embutida(tmp_path: Path):
     vm_r = construir_view_model(snap, modo="resumo", propostas_selecionadas=ids)
     vm_f = construir_view_model(snap, modo="faixas", propostas_selecionadas=ids)
     vm_b = construir_view_model(
-        snap, modo="grupo_familiar", propostas_selecionadas=ids, beneficiarios_agregados=True
+        snap, modo="grupo_familiar", propostas_selecionadas=ids, beneficiarios_agregados=False
     )
     html = render_html_completo(vm_r, vm_f, vm_b)
     assert _SCRIPT_TAG.search(html) is None

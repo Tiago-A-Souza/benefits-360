@@ -44,7 +44,7 @@ def _html_completo_anistia(tmp_path: Path) -> tuple[str, object]:
         snap,
         modo="grupo_familiar",
         propostas_selecionadas=ids,
-        beneficiarios_agregados=True,
+        beneficiarios_agregados=False,
     )
     return render_html_completo(vm_r, vm_f, vm_g), snap
 
@@ -83,7 +83,7 @@ def test_03_botao_ver_tres_e_voltar_ao_resumo(tmp_path: Path):
     assert 'id="tab-resumo"' in html and "checked" in html.split('id="tab-resumo"')[1][:80]
 
 
-def test_04_beneficiario_sem_nomes_reais(tmp_path: Path):
+def test_04_completo_com_nomes_isolado_grupo_sem_nomes(tmp_path: Path):
     repo, _, snap_svc, apres = _stack(tmp_path, "pii-completo")
     rascunho = rascunho_demo_12_vidas()
     snap = _aprovar(repo, snap_svc, rascunho)
@@ -94,21 +94,21 @@ def test_04_beneficiario_sem_nomes_reais(tmp_path: Path):
         snap.id,
         GerarApresentacaoRequest(modo="completo", propostas_selecionadas=["op-1"]),
     )
-    assert res.aviso_dados_pessoais is None
+    assert res.aviso_dados_pessoais
     assert res.modo == "completo"
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
-    for nome in nomes:
-        assert nome not in html, f"nome vazou no completo: {nome}"
-    assert "Beneficiário ·" in html
-    # Caminho interno com nomes permanece separado (grupo familiar).
-    res_pii = apres.gerar_html(
+    assert "aviso-pii" in html
+    assert any(n in html for n in nomes)
+    res_iso = apres.gerar_html(
         rascunho.id,
         snap.id,
         GerarApresentacaoRequest(modo="grupo_familiar", propostas_selecionadas=["op-1"]),
     )
-    assert res_pii.aviso_dados_pessoais
-    html_pii = (apres._entregaveis_dir / res_pii.caminho_relativo).read_text(encoding="utf-8")
-    assert any(n in html_pii for n in nomes)
+    assert res_iso.aviso_dados_pessoais is None
+    html_iso = (apres._entregaveis_dir / res_iso.caminho_relativo).read_text(encoding="utf-8")
+    for nome in nomes:
+        assert nome not in html_iso, f"nome vazou no isolado agregado: {nome}"
+    assert "Grupo 1" in html_iso or "Membro" in html_iso
 
 
 def test_05_css_impressao_respeita_visibilidade(tmp_path: Path):
@@ -198,7 +198,7 @@ def test_tamanho_completo_maior_que_resumo(tmp_path: Path):
         snap,
         modo="grupo_familiar",
         propostas_selecionadas=ids,
-        beneficiarios_agregados=True,
+        beneficiarios_agregados=False,
     )
     html_resumo = render_html(vm_r)
     html_completo = render_html_completo(vm_r, vm_f, vm_g)

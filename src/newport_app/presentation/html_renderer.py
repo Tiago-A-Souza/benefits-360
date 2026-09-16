@@ -1630,15 +1630,14 @@ def render_html_completo(
     if vm_grupos.modo == "beneficiario":
         titulo_detalhe = "Por beneficiário"
         lead_detalhe = (
-            "Uma linha por vida, identificada pela faixa etária e pelo plano vigente. "
-            "Nomes não são exibidos neste material."
+            "Uma linha por vida, identificada pela faixa etária e pelo plano vigente."
         )
         aria_detalhe = "Por beneficiário"
     else:
         titulo_detalhe = "Por grupo familiar"
         lead_detalhe = (
             "Cada titular forma um grupo; dependentes ficam sob o titular. "
-            "Subtotal só quando o grupo tem mais de uma pessoa. Nomes não são exibidos neste material."
+            "Subtotal só quando o grupo tem mais de uma pessoa."
         )
         aria_detalhe = "Por grupo familiar"
     corpo_grupos = (
@@ -1723,4 +1722,4 @@ def render_html_completo(
             "</div>",
         ]
     )
-    return _documento(vm_resumo, aviso_pii=False, corpo=corpo, com_abas=True)
+    return _documento(vm_resumo, aviso_pii=True, corpo=corpo, com_abas=True)

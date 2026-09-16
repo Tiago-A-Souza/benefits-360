@@ -290,20 +290,27 @@ def test_gabarito_prata_e_ouro_preservado(tmp_path: Path):
     assert "7.109,88" in html_r
 
 
-def test_modo_grupo_familiar_mantem_aviso_de_dados_pessoais(tmp_path: Path):
+def test_modo_completo_mantem_aviso_de_dados_pessoais(tmp_path: Path):
     repo, _, snap_svc, apres = _stack(tmp_path, "pii")
     rascunho = rascunho_demo_12_vidas()
     snap = _aprovar(repo, snap_svc, rascunho)
     res = apres.gerar_html(
         rascunho.id,
         snap.id,
-        GerarApresentacaoRequest(modo="grupo_familiar", propostas_selecionadas=["op-1"]),
+        GerarApresentacaoRequest(modo="completo", propostas_selecionadas=["op-1"]),
     )
     assert res.aviso_dados_pessoais
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
     assert "nomes de beneficiários" in html.lower()
-    vm = construir_view_model(snap, modo="grupo_familiar", propostas_selecionadas=["op-1"])
-    assert "nomes de beneficiários" in render_html(vm).lower()
+    assert "aviso-pii" in html
+    res_iso = apres.gerar_html(
+        rascunho.id,
+        snap.id,
+        GerarApresentacaoRequest(modo="grupo_familiar", propostas_selecionadas=["op-1"]),
+    )
+    assert res_iso.aviso_dados_pessoais is None
+    html_iso = (apres._entregaveis_dir / res_iso.caminho_relativo).read_text(encoding="utf-8")
+    assert "Este material contém nomes de beneficiários" not in html_iso
     # Legado beneficiario continua legível.
     res_leg = apres.gerar_html(
         rascunho.id,

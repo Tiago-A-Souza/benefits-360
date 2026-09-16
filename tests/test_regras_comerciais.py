@@ -78,7 +78,7 @@ def _html_de(tmp_path: Path, rascunho, ids: list[str] | None = None) -> tuple[st
         snap,
         modo="grupo_familiar",
         propostas_selecionadas=ids,
-        beneficiarios_agregados=True,
+        beneficiarios_agregados=False,
     )
     return render_html_completo(vm_r, vm_f, vm_g), snap
 

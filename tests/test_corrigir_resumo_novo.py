@@ -41,7 +41,7 @@ def _vm_html(tmp_path: Path, rascunho, *, modo: str, ids: list[str] | None = Non
         snap,
         modo=modo,
         propostas_selecionadas=ids,
-        beneficiarios_agregados=(modo != "grupo_familiar"),
+        beneficiarios_agregados=False,
         aprovado_em=aprov,
     )
     return vm, render_html(vm), matriz, snap, ids

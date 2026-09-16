@@ -325,7 +325,7 @@ def test_17_paridade_estrutural_verde(tmp_path: Path):
             snap,
             modo=modo,
             propostas_selecionadas=ids,
-            beneficiarios_agregados=(modo != "grupo_familiar"),
+            beneficiarios_agregados=False,
         )
         assert not divergencias_estruturais(matriz, vm, rascunho=rascunho)
         html = render_html(vm)

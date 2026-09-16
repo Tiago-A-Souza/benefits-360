@@ -601,6 +601,12 @@ def inventariar_vm(vm: PresentationViewModel) -> InventarioRender:
                         else pl.plano_nome
                     )
                     faixas_por_grupo.add(_chave_faixa_grupo(grupo, fx.rotulo))
+            for sub in pl.subtotais_titular_propostas.values():
+                if isinstance(sub, int):
+                    valores.add(sub)
+            for sub in pl.subtotais_dependente_propostas.values():
+                if isinstance(sub, int):
+                    valores.add(sub)
 
     for b in vm.beneficiarios:
         vidas.add(b.nome)
@@ -632,6 +638,10 @@ def valores_principais_vm(vm: PresentationViewModel) -> frozenset[int]:
             for pl in secao.planos_atuais:
                 if isinstance(pl.subtotal_reajustado_centavos, int):
                     vals.add(pl.subtotal_reajustado_centavos)
+                if isinstance(pl.subtotal_titular_reajustado_centavos, int):
+                    vals.add(pl.subtotal_titular_reajustado_centavos)
+                if isinstance(pl.subtotal_dependente_reajustado_centavos, int):
+                    vals.add(pl.subtotal_dependente_reajustado_centavos)
                 for prop in secao.propostas:
                     sub = prop.subtotais_por_subgrupo.get(pl.subgrupo_id)
                     if isinstance(sub, int):

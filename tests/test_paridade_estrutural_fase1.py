@@ -86,7 +86,7 @@ def test_paridade_estrutural_11_casos(tmp_path: Path, rotulo: str, factory, modo
         snap,
         modo=modo,
         propostas_selecionadas=ids,
-        beneficiarios_agregados=(modo != "grupo_familiar"),
+        beneficiarios_agregados=False,
     )
     assert_paridade_estrutural(matriz, vm, rascunho=rascunho)
 
@@ -103,7 +103,7 @@ def test_paridade_html_vm_11_casos(tmp_path: Path, rotulo: str, factory, modo: s
         snap,
         modo=modo,
         propostas_selecionadas=ids,
-        beneficiarios_agregados=(modo != "grupo_familiar"),
+        beneficiarios_agregados=False,
     )
     html_doc = render_html(vm)
     assert_paridade_html_vm(vm, html_doc)
@@ -125,7 +125,7 @@ def test_coleta_divergencias_fase1(tmp_path: Path):
                 snap,
                 modo=modo,
                 propostas_selecionadas=ids,
-                beneficiarios_agregados=(modo != "grupo_familiar"),
+                beneficiarios_agregados=False,
             )
             divs1 = divergencias_estruturais(matriz, vm, rascunho=rascunho)
             if divs1:

@@ -198,7 +198,12 @@ def test_05_matriz_e_documento_usam_nome_do_plano(tmp_path: Path):
     for modo in ("faixas", "grupo_familiar", "resumo"):
         vm = construir_view_model(snap, modo=modo, propostas_selecionadas=ids)
         html = render_html(vm)
-        assert "Proposta prata + Proposta ouro" in html
+        if modo == "resumo":
+            assert "Proposta prata + Proposta ouro" in html
+        else:
+            assert "Proposta prata" in html
+            assert "Proposta ouro" in html
+            assert "Proposta prata + Proposta ouro" not in html
 
 
 def test_05b_linhas_matriz_completas_por_coluna():
