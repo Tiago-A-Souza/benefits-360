@@ -304,6 +304,16 @@ def _th_col_prop(
         atribuido = (prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or "").strip()
         if atribuido:
             nome = atribuido
+        if prop.misto:
+            indice = prop.indice_cenario or 1
+            titulo = f"Cenário {indice}"
+            return (
+                f"<th title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
+                f"<span class='cab-stack'>"
+                f"<span class='pl'>{html.escape(titulo)}</span>"
+                f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+                f"</span></th>"
+            )
         return (
             f"<th title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
             f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
@@ -354,19 +364,24 @@ def _cabecalho_blocos(
             for oid in b.op_ids:
                 prop = _prop(model, oid)
                 nome = rotulos.get(oid, "Proposta")
+                atribuido = ""
                 if subgrupo_id and prop is not None:
                     atribuido = (
                         prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or ""
                     ).strip()
                     if atribuido:
                         nome = atribuido
-                if rotulo_coluna_hook is not None:
+                    elif not prop.misto:
+                        nome = (prop.plano_nome or nome).strip()
+                if rotulo_coluna_hook is not None and not subgrupo_id:
                     nome = rotulo_coluna_hook(
                         oid,
                         [p for s in model.secoes_regime for p in s.propostas],
                         rotulos,
                     )
-                partes.append(_th_col_prop(prop, nome))
+                partes.append(
+                    _th_col_prop(prop, nome, subgrupo_id=subgrupo_id or None)
+                )
     partes.append("</tr></thead>")
     del n_extras
     return "".join(partes)

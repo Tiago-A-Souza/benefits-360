@@ -202,9 +202,25 @@ def _rotulo_proposta(
 _tabela_densa.rotulo_coluna_hook = _rotulo_proposta
 
 
-def _th_proposta(op_id: str, propostas: list[PropostaApresentacao], rotulos: dict[str, str], *, colspan: int | None = None) -> str:
+def _th_proposta(
+    op_id: str,
+    propostas: list[PropostaApresentacao],
+    rotulos: dict[str, str],
+    *,
+    colspan: int | None = None,
+    subgrupo_id: str | None = None,
+) -> str:
     prop = next((p for p in propostas if id_coluna_vm(p) == op_id), None)
-    nome = _rotulo_proposta(op_id, propostas, rotulos)
+    if subgrupo_id and prop is not None:
+        atribuido = (prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or "").strip()
+        if atribuido:
+            nome = atribuido
+        elif not prop.misto:
+            nome = (prop.plano_nome or rotulos.get(op_id, "Proposta")).strip()
+        else:
+            nome = _rotulo_proposta(op_id, propostas, rotulos)
+    else:
+        nome = _rotulo_proposta(op_id, propostas, rotulos)
     operadora = ((prop.operadora if prop else "") or "").strip()
     attrs = f" colspan='{colspan}'" if colspan and colspan > 1 else ""
     # Operadora via data-l + CSS ::before para o texto da célula permanecer só o nome
@@ -214,6 +230,16 @@ def _th_proposta(op_id: str, propostas: list[PropostaApresentacao], rotulos: dic
         if operadora
         else ""
     )
+    if prop is not None and subgrupo_id and prop.misto:
+        indice = prop.indice_cenario or 1
+        titulo = f"Cenário {indice}"
+        return (
+            f"<th{attrs} title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
+            f"<span class='cab-stack'>"
+            f"<span class='pl'>{html.escape(titulo)}</span>"
+            f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
+            f"</span></th>"
+        )
     return (
         f"<th{attrs} title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
         f"<span class='op'>{html_linhas_nome_plano(nome)}</span>{od}"
@@ -350,6 +376,7 @@ def _cabecalho_tabela_grupo(
     seguro_novo: bool,
     percentual: str | None = None,
     propostas: list[PropostaApresentacao] | None = None,
+    subgrupo_id: str | None = None,
 ) -> str:
     col_rotulo = "Membro" if agregados else "Nome"
     cab = f"<th>{col_rotulo}</th>"
@@ -365,7 +392,9 @@ def _cabecalho_tabela_grupo(
     props = propostas or []
     partes = ["<thead><tr>", cab]
     for op_id in op_ids:
-        partes.append(_th_proposta(op_id, props, rotulos))
+        partes.append(
+            _th_proposta(op_id, props, rotulos, subgrupo_id=subgrupo_id)
+        )
     partes.append("</tr></thead>")
     return "".join(partes)
 
@@ -496,6 +525,7 @@ def _render_tabela_grupo_familiar(
             seguro_novo=seguro_novo,
             percentual=pct_cabecalho,
             propostas=propostas,
+            subgrupo_id=sg,
         ),
         ]
     )
