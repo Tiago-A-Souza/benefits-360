@@ -183,7 +183,7 @@ const VISOES_DOCUMENTO = [
   {
     id: "completo",
     titulo: "Documento completo",
-    detalhe: "Três visões, sem nomes de beneficiários.",
+    detalhe: "Três visões, com nomes na aba de grupo familiar.",
   },
   {
     id: "resumo",
@@ -198,7 +198,7 @@ const VISOES_DOCUMENTO = [
   {
     id: "grupo_familiar",
     titulo: "Por grupo familiar",
-    detalhe: "Com nomes — uso interno.",
+    detalhe: "Sem nomes — Grupo 1, Grupo 2…",
   },
 ];
 
@@ -219,7 +219,7 @@ export function ExportarHtmlApresentacao({
       onErro?.("Snapshot aprovado necessário.");
       return;
     }
-    if (modo === "grupo_familiar" || modo === "beneficiario") {
+    if (modo === "completo" || modo === "beneficiario") {
       const ok = window.confirm(
         "O arquivo HTML conterá nomes de beneficiários. Confirma a geração para armazenamento privado local?"
       );
