@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 _ALERTA_HETEROGENEO = (
-    "Valores individuais diferentes — total observado exibido."
+    "Vidas com valores distintos — exibida a soma real, não unitário×qtd."
 )
 
 
