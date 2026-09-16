@@ -11,9 +11,11 @@ from newport_app.presentation.colisao_coluna import chave_de_coluna, id_coluna_v
 from newport_app.presentation.html_renderer import render_html
 from newport_app.presentation.paridade_estrutural import divergencias_estruturais
 from newport_app.presentation.paridade_html import divergencias_html_vm
+from newport_app.models.draft import AtribuicaoRascunho, CenarioRascunho
 from newport_app.presentation.tabela_densa import (
     chunks_propostas,
     ids_do_grupo,
+    montar_blocos,
     planos_das_faixas,
 )
 from tests.test_apresentacao_seguro_novo import _rascunho_ivtec_novo
@@ -108,6 +110,58 @@ def test_04_acomodacao_e_modalidade_no_topo(tmp_path: Path):
     for tab in _tabelas_faixas(html):
         assert "Acomodação" in tab
         assert "Modalidade" in tab
+
+
+def test_04b_acomodacao_por_grupo_nao_agrega_cenario(tmp_path: Path):
+    """Cenário misto: resumo agrega «misto»; seção do grupo usa o plano daquele grupo."""
+    from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
+
+    rascunho = _rascunho_anistia_seis()
+    for op in rascunho.opcoes_proposta:
+        if op.id == "op-executivo":
+            op.acomodacao = None
+    rascunho.cenarios = [
+        CenarioRascunho(
+            id="c-misto",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a-sga",
+                    alvo_tipo="subgrupo",
+                    alvo_id="sg-a",
+                    opcao_plano_id="op-prata",
+                ),
+                AtribuicaoRascunho(
+                    id="a-sgb",
+                    alvo_tipo="subgrupo",
+                    alvo_id="sg-b",
+                    opcao_plano_id="op-executivo",
+                ),
+            ],
+        )
+    ]
+    matriz, _ = _calcular_matriz(rascunho)
+    assert matriz.propostas[0].acomodacao == "misto"
+    vm, html, ids = _vm_html(tmp_path, rascunho)
+    planos = planos_das_faixas(vm, seguro_novo=False)
+    s750 = next(p for p in planos if p.subgrupo_id == "sg-a")
+    one = next(p for p in planos if p.subgrupo_id == "sg-b")
+    blocos_s750 = montar_blocos(
+        vm, ids_do_grupo(vm, ids, s750), seguro_novo=False, plano=s750
+    )
+    blocos_one = montar_blocos(
+        vm, ids_do_grupo(vm, ids, one), seguro_novo=False, plano=one
+    )
+    prop_bloco = next(b for b in blocos_s750 if not b.atual)
+    assert prop_bloco.acomodacao == "Apartamento"
+    prop_one = next(b for b in blocos_one if not b.atual)
+    assert prop_one.acomodacao == "—"
+    for tab, pl in zip(_tabelas_faixas(html), planos):
+        if pl.subgrupo_id != "sg-a":
+            continue
+        idx = tab.index("Acomodação")
+        trecho = tab[idx : idx + 400]
+        assert "Apartamento" in trecho
+        assert "misto" not in trecho.lower()
 
 
 def test_05_total_com_vidas_do_grupo(tmp_path: Path):

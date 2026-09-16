@@ -299,10 +299,23 @@ def _montar_proposta_meta(
     nomes = {o.id: (o.plano_nome or o.id) for o in rascunho.opcoes_proposta}
     cenario = next((c for c in rascunho.cenarios if c.id == prop.cenario_id), None)
     nomes_sg: dict[str, str] = {}
+    acomodacoes_sg: dict[str, str | None] = {}
+    modalidades_sg: dict[str, str | None] = {}
     if cenario is not None:
         for atr in cenario.atribuicoes:
             if atr.opcao_plano_id and atr.alvo_tipo == "subgrupo":
                 nomes_sg[atr.alvo_id] = nomes.get(atr.opcao_plano_id, atr.opcao_plano_id)
+                op_atr = next(
+                    (o for o in rascunho.opcoes_proposta if o.id == atr.opcao_plano_id),
+                    None,
+                )
+                if op_atr is not None:
+                    acomodacoes_sg[atr.alvo_id] = normalizar_acomodacao_exibicao(
+                        op_atr.acomodacao
+                    )
+                    modalidades_sg[atr.alvo_id] = rotulo_modalidade_exibicao(
+                        op_atr.modalidade
+                    )
     unicos = {atr.opcao_plano_id for atr in (cenario.atribuicoes if cenario else []) if atr.opcao_plano_id}
     operadora_coluna = prop.operadora or (op.operadora if op else "")
     return PropostaApresentacao(
@@ -313,6 +326,8 @@ def _montar_proposta_meta(
             s.subgrupo_id: s.proposta_centavos for s in prop.subgrupos
         },
         nomes_atribuidos_por_subgrupo=nomes_sg,
+        acomodacoes_por_subgrupo=acomodacoes_sg,
+        modalidades_por_subgrupo=modalidades_sg,
         operadoras_participantes=operadoras_do_cenario(rascunho, cenario, operadora_coluna),
         operadora=operadora_coluna,
         plano_nome=prop.plano_nome,

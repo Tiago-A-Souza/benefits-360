@@ -167,6 +167,26 @@ def ids_do_grupo(
     return out
 
 
+def _meta_proposta_subgrupo(
+    prop: PropostaApresentacao | None,
+    subgrupo_id: str,
+    *,
+    campo: str,
+) -> str | None:
+    if prop is None:
+        return None
+    mapa = (
+        prop.acomodacoes_por_subgrupo
+        if campo == "acomodacao"
+        else prop.modalidades_por_subgrupo
+    )
+    if subgrupo_id in mapa:
+        return mapa[subgrupo_id]
+    if not prop.misto:
+        return prop.acomodacao if campo == "acomodacao" else prop.modalidade
+    return prop.acomodacao if campo == "acomodacao" else prop.modalidade
+
+
 def montar_blocos(
     model: PresentationViewModel,
     op_ids: list[str],
@@ -224,8 +244,17 @@ def montar_blocos(
         if not ids:
             continue
         props = [_prop(model, oid) for oid in ids]
-        acs = [p.acomodacao if p else None for p in props]
-        mds = [p.modalidade if p else None for p in props]
+        if plano is not None:
+            sg = plano.subgrupo_id
+            acs = [
+                _meta_proposta_subgrupo(p, sg, campo="acomodacao") for p in props
+            ]
+            mds = [
+                _meta_proposta_subgrupo(p, sg, campo="modalidade") for p in props
+            ]
+        else:
+            acs = [p.acomodacao if p else None for p in props]
+            mds = [p.modalidade if p else None for p in props]
         ac, ac_span = _texto_unico(acs)
         md, md_span = _texto_unico(mds)
         blocos.append(
@@ -735,7 +764,11 @@ def _linha_total_parentesco_faixas(
     valor_atual = tit_total if campo == "titular" else dep_total
     props = tit_props if campo == "titular" else dep_props
     partes = [f"<tr><td>{html.escape(rotulo)}</td>"]
-    partes.append("<td></td><td></td><td></td>")
+    partes.append(
+        "<td class='col-titdep'></td>"
+        "<td class='col-titdep'></td>"
+        "<td class='col-vidas'></td>"
+    )
     for b in blocos:
         if b.atual:
             if seguro_novo:

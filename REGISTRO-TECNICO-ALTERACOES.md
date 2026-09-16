@@ -929,6 +929,27 @@ explícita em cada arquivo (`_ressalva_deducacao_acomodacao`). Os testes em
 `tests/test_frente3_golden_parsers.py` protegem o comportamento atual — não são
 endosso; quebra deliberada ao remover a dedução exige atualizar o golden.
 
+**«Misto» no resumo por acomodação ausente — aberto (não relaxar agregação):**
+`_acomodacao_cenario` trata `{None, "Apartamento"}` como divergência e devolve
+«misto». Isso pode refletir **ausência de dado** (ex.: SulAmérica Executivo R1
+com «Apartamento» no nome do plano e `acomodacao` vazio no rascunho), não
+divergência real entre apartamento e enfermaria. «Misto» é ruim de ler, mas
+**não mente** — o sistema não sabe a acomodação de um dos planos; afirmar
+«Apartamento» seria transformar ausência em certeza (a família de defeito que
+o projeto combate). **Ignorar o vazio na agregação não está autorizado.**
+Correção certa: preencher a acomodação na extração/conferência SulAmérica
+(ver `APP-ACO-002` e pendência acima), não relaxar `_acomodacao_cenario`.
+
+**Fixture de teste — `_rascunho_anistia_seis()` oculta campo vazio — aberto:**
+`tests/test_correcao_resumo_regime.py` preenche `acomodacao="Apartamento"` em
+**todas** as opções ao montar o fixture, embora o JSON em
+`tests/fixtures/paridade_matriz/anistia_seis_propostas.json` não traga o campo
+e rascunhos reais (ex.: `est-e1862b46be`) deixem Executivo R1 com
+`acomodacao: null`. Os testes que usam só `_rascunho_anistia_seis()` não
+reproduzem o «misto» por ausência. **Vale um fixture** (ou variante do helper)
+que reflita o rascunho real — não implementado nesta entrega; registrar para
+não perder o caso.
+
 ### Resolvido na FASE 3 — acomodação do cabeçalho em cenário misto
 
 Com coluna = cenário, o cabeçalho usava a acomodação da primeira atribuição
@@ -983,6 +1004,14 @@ vigentes) e passou a uma seção por grupo, como a tela e o mockup
 `docs/faixas-por-grupo.html`. `montar_blocos` do resumo continua agregado.
 `col-titdep` permanece um controle só: o seletor `#col-titdep:checked ~ *`
 já liga todas as `.tabela-faixas`. Faixas sem vidas não aparecem.
+
+**Bloco 1 (pós-item 1) — linhas Acomodação/Modalidade por grupo:** o cabeçalho
+de coluna nas seções por grupo já usava o plano atribuído àquele subgrupo; as
+linhas «Acomodação» e «Modalidade» ainda agregavam o cenário inteiro (ex.: S750
+mostrava «misto» por causa do Executivo R1 do outro grupo). `PropostaApresentacao`
+passou a carregar `acomodacoes_por_subgrupo` / `modalidades_por_subgrupo`;
+`montar_blocos(..., plano=...)` resolve pelo mapa. Resumo executivo inalterado
+(sem `plano`, agregação composta). Teste: `test_04b_acomodacao_por_grupo_nao_agrega_cenario`.
 
 ### Resolvido na FASE 6 — grupo familiar por grupo
 

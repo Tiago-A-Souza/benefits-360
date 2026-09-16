@@ -55,6 +55,8 @@ class PropostaApresentacao(BaseModel):
     indice_cenario: int | None = None
     subtotais_por_subgrupo: dict[str, int | None] = Field(default_factory=dict)
     nomes_atribuidos_por_subgrupo: dict[str, str] = Field(default_factory=dict)
+    acomodacoes_por_subgrupo: dict[str, str | None] = Field(default_factory=dict)
+    modalidades_por_subgrupo: dict[str, str | None] = Field(default_factory=dict)
     operadoras_participantes: list[str] = Field(default_factory=list)
     operadora: str
     plano_nome: str
