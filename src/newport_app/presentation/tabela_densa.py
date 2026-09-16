@@ -686,6 +686,68 @@ def _html_unitarios_atual(planos: list[PlanoAtualApresentacao], rotulo_fx: str) 
     return "".join(partes)
 
 
+def _parentesco_totais_plano(
+    model: PresentationViewModel,
+    plano: PlanoAtualApresentacao | None,
+    op_ids: list[str],
+) -> tuple[int, int, dict[str, int], dict[str, int]]:
+    if plano is not None:
+        tit_props = {
+            oid: (plano.subtotais_titular_propostas.get(oid) or 0) for oid in op_ids
+        }
+        dep_props = {
+            oid: (plano.subtotais_dependente_propostas.get(oid) or 0) for oid in op_ids
+        }
+        return (
+            plano.subtotal_titular_reajustado_centavos or 0,
+            plano.subtotal_dependente_reajustado_centavos or 0,
+            tit_props,
+            dep_props,
+        )
+    tit = dep = 0
+    tit_props: dict[str, int] = {oid: 0 for oid in op_ids}
+    dep_props: dict[str, int] = {oid: 0 for oid in op_ids}
+    for secao in model.secoes_regime:
+        for pl in secao.planos_atuais:
+            if pl.subgrupo_id == "vidas-incluidas":
+                continue
+            tit += pl.subtotal_titular_reajustado_centavos or 0
+            dep += pl.subtotal_dependente_reajustado_centavos or 0
+            for oid in op_ids:
+                tit_props[oid] += pl.subtotais_titular_propostas.get(oid) or 0
+                dep_props[oid] += pl.subtotais_dependente_propostas.get(oid) or 0
+    return tit, dep, tit_props, dep_props
+
+
+def _linha_total_parentesco_faixas(
+    rotulo: str,
+    blocos: list[BlocoColuna],
+    model: PresentationViewModel,
+    plano: PlanoAtualApresentacao | None,
+    op_ids: list[str],
+    *,
+    campo: str,
+    seguro_novo: bool,
+) -> str:
+    tit_total, dep_total, tit_props, dep_props = _parentesco_totais_plano(
+        model, plano, op_ids
+    )
+    valor_atual = tit_total if campo == "titular" else dep_total
+    props = tit_props if campo == "titular" else dep_props
+    partes = [f"<tr><td>{html.escape(rotulo)}</td>"]
+    partes.append("<td></td><td></td><td></td>")
+    for b in blocos:
+        if b.atual:
+            if seguro_novo:
+                continue
+            partes.append(f"<td class='atual'>{_cel_money(valor_atual)}</td>")
+        else:
+            for oid in b.op_ids:
+                partes.append(f"<td>{_cel_money(props.get(oid, 0))}</td>")
+    partes.append("</tr>")
+    return "".join(partes)
+
+
 def _cabecalho_grupo(plano: PlanoAtualApresentacao) -> str:
     vidas = sum(fx.qtd_total for fx in plano.faixas)
     meta: list[str] = []
@@ -848,6 +910,28 @@ def render_secao_faixas_grupo(
                 )
                 partes.append(f"<td>{_cel_money(total)}</td>")
     partes.append("</tr>")
+    partes.append(
+        _linha_total_parentesco_faixas(
+            "Total titular",
+            blocos,
+            model,
+            plano,
+            op_ids,
+            campo="titular",
+            seguro_novo=seguro_novo,
+        )
+    )
+    partes.append(
+        _linha_total_parentesco_faixas(
+            "Total dependente",
+            blocos,
+            model,
+            plano,
+            op_ids,
+            campo="dependente",
+            seguro_novo=seguro_novo,
+        )
+    )
     if not seguro_novo and atual_c is not None:
         partes.append("<tr><td>Diferença mensal</td>")
         partes.append(

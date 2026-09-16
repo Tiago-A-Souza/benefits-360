@@ -159,6 +159,39 @@ def _contar_parentesco(vidas_faixa: list[DetalheVidaComparativo]) -> tuple[int, 
     return tit, dep
 
 
+def _totais_parentesco_plano(
+    subgrupo_id: str,
+    vidas: dict[str, DetalheVidaComparativo],
+    propostas_ids: list[str],
+    por_id: dict[str, ResultadoPropostaComparativo] | None,
+) -> tuple[int, int, dict[str, int], dict[str, int]]:
+    tit_atual = 0
+    dep_atual = 0
+    tit_prop: dict[str, int] = {op_id: 0 for op_id in propostas_ids}
+    dep_prop: dict[str, int] = {op_id: 0 for op_id in propostas_ids}
+    for vida in vidas.values():
+        if vida.subgrupo_id != subgrupo_id:
+            continue
+        reaj = vida.reajustado_centavos
+        if reaj is not None:
+            if _parentesco_eh_titular(vida.parentesco):
+                tit_atual += reaj
+            else:
+                dep_atual += reaj
+        if por_id is None:
+            continue
+        for op_id in propostas_ids:
+            cols = _colunas_proposta_vida(por_id, [op_id], vida.vida_id)
+            val = cols[0].valor_centavos if cols else None
+            if val is None:
+                continue
+            if _parentesco_eh_titular(vida.parentesco):
+                tit_prop[op_id] += val
+            else:
+                dep_prop[op_id] += val
+    return tit_atual, dep_atual, tit_prop, dep_prop
+
+
 def _mapear_faixa(
     fx: FaixaPlanoComparativo,
     propostas_ids: list[str],
@@ -216,6 +249,9 @@ def _mapear_plano(
         _mapear_faixa(fx, propostas_ids, vidas, plano.subgrupo_id, por_id)
         for fx in plano.faixas
     ]
+    tit_atual, dep_atual, tit_prop, dep_prop = _totais_parentesco_plano(
+        plano.subgrupo_id, vidas, propostas_ids, por_id
+    )
     return PlanoAtualApresentacao(
         subgrupo_id=plano.subgrupo_id,
         operadora=plano.operadora,
@@ -228,6 +264,14 @@ def _mapear_plano(
         faixas=faixas,
         subtotal_vigente_centavos=plano.vigente_centavos,
         subtotal_reajustado_centavos=plano.reajustado_centavos,
+        subtotal_titular_reajustado_centavos=tit_atual,
+        subtotal_dependente_reajustado_centavos=dep_atual,
+        subtotais_titular_propostas={
+            op_id: tit_prop.get(op_id) for op_id in propostas_ids
+        },
+        subtotais_dependente_propostas={
+            op_id: dep_prop.get(op_id) for op_id in propostas_ids
+        },
         reajuste_percentual_exibicao=rotulo_reajuste_exibicao(
             vigente_centavos=plano.vigente_centavos,
             reajustado_centavos=plano.reajustado_centavos,

@@ -83,6 +83,10 @@ class PlanoAtualApresentacao(BaseModel):
     faixas: list[FaixaApresentacao] = Field(default_factory=list)
     subtotal_vigente_centavos: int | None = None
     subtotal_reajustado_centavos: int | None = None
+    subtotal_titular_reajustado_centavos: int | None = None
+    subtotal_dependente_reajustado_centavos: int | None = None
+    subtotais_titular_propostas: dict[str, int | None] = Field(default_factory=dict)
+    subtotais_dependente_propostas: dict[str, int | None] = Field(default_factory=dict)
     reajuste_percentual_exibicao: str | None = None
 
 
