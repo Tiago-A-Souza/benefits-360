@@ -13,6 +13,7 @@ from newport_app.models.presentation import (
     PresentationViewModel,
     PropostaApresentacao,
     SecaoRegimeApresentacao,
+    TabelaPlanosConsultados,
 )
 from newport_app.presentation.branding import (
     lema_newport,
@@ -1134,6 +1135,51 @@ def _nomes_planos_view_model(model: PresentationViewModel) -> list[str]:
     return nomes
 
 
+def _render_tabela_planos_consultados(tabela: TabelaPlanosConsultados) -> str:
+    if not tabela.linhas:
+        return ""
+    partes = [
+        "<section class='secao-planos-consultados'>",
+        _tit_secao(
+            "00",
+            "Planos",
+            "Consultados",
+            "Estimativa mensal por grupo — catálogo completo da cotação.",
+        ),
+        "<div class='rolo'><table class='tabela-consulta tabela-densa'>",
+        "<thead><tr><th>Plano</th><th>Operadora</th>",
+    ]
+    for col in tabela.colunas:
+        partes.append(f"<th>{html.escape(col.rotulo)}</th>")
+    partes.append("<th>Total</th></tr></thead><tbody>")
+    for lin in tabela.linhas:
+        cls = " class='linha-atual'" if lin.eh_contrato_atual else ""
+        partes.append(f"<tr{cls}>")
+        partes.append(f"<td>{html.escape(lin.plano)}</td>")
+        op = html.escape(lin.operadora) if lin.operadora else ""
+        partes.append(f"<td>{op}</td>")
+        for col in tabela.colunas:
+            val = lin.celulas.get(col.subgrupo_id)
+            if val is None:
+                partes.append("<td></td>")
+            else:
+                partes.append(f"<td>{_cel(val)}</td>")
+        if lin.total_centavos is None:
+            partes.append("<td></td>")
+        else:
+            partes.append(f"<td>{_cel(lin.total_centavos)}</td>")
+        partes.append("</tr>")
+    partes.append("</tbody></table></div></section>")
+    return "".join(partes)
+
+
+def _bloco_tabela_consulta(*models: PresentationViewModel) -> str:
+    for model in models:
+        if model.tabela_planos_consultados is not None:
+            return _render_tabela_planos_consultados(model.tabela_planos_consultados)
+    return ""
+
+
 def _bloco_notas_cobertura(*models: PresentationViewModel) -> str:
     """Nota de abrangência para nomes encurtados — montada do que foi retirado."""
     nomes: list[str] = []
@@ -1383,6 +1429,9 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .rascunho{background:var(--ouro-cl);border-bottom:1px solid rgba(191,153,91,.4);
   padding:11px 56px;font-size:12px;font-weight:500;color:var(--ouro-esc);letter-spacing:.03em}
 .aviso-pii{background:#FBEDEE;border-bottom:1px solid #E8B4B8;padding:11px 56px;color:#A8323C;font-size:12.5px}
+.secao-planos-consultados{padding:0 56px 8px}
+.tabela-consulta{margin:8px 0 16px;font-size:12.5px}
+.tabela-consulta tbody tr.linha-atual td{font-weight:600;background:#F5F0E8}
 .nota-cobertura{background:#F5F5F5;border-bottom:1px solid var(--borda);padding:12px 56px;font-size:12.5px;color:var(--grafite-2)}
 .nota-cobertura ul{margin:6px 0 0;padding-left:1.2rem}
 .nota-cobertura .pl{font-weight:600}
@@ -1625,17 +1674,17 @@ def render_html(model: PresentationViewModel) -> str:
             _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
-    notas = _bloco_notas_cobertura(model)
+    prefixo = _bloco_tabela_consulta(model) + _bloco_notas_cobertura(model)
     if model.modo == "faixas":
         corpo = (
-            notas
+            prefixo
             + "<div class='corpo'>"
             + _controle_titdep()
             + "".join(blocos)
             + "</div>"
         )
     else:
-        corpo = notas + "<div class='corpo'>" + "".join(blocos) + "</div>"
+        corpo = prefixo + "<div class='corpo'>" + "".join(blocos) + "</div>"
     return _documento(model, aviso_pii=aviso_pii, corpo=corpo, com_abas=False)
 
 
@@ -1748,11 +1797,13 @@ def render_html_completo(
         '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
         'aria-label="Ver todas as visões">'
     )
-    notas = _bloco_notas_cobertura(vm_resumo, vm_faixas, vm_grupos)
+    prefixo = _bloco_tabela_consulta(vm_resumo) + _bloco_notas_cobertura(
+        vm_resumo, vm_faixas, vm_grupos
+    )
     corpo = "".join(
         [
             *radios,
-            notas,
+            prefixo,
             '<nav class="doc-controles no-print" aria-label="Visões do documento">',
             '<div class="doc-abas" role="tablist" aria-label="Visões">',
             *abas,

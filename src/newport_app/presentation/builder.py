@@ -679,6 +679,10 @@ def construir_view_model(
     if rascunho.empresa_cliente and (rascunho.empresa_cliente.nome or "").strip():
         nome_cliente = rascunho.empresa_cliente.nome.strip()
 
+    from newport_app.presentation.tabela_planos_consultados import (
+        montar_tabela_planos_consultados,
+    )
+
     return PresentationViewModel(
         titulo=titulo or rascunho.titulo,
         subtitulo=nome_cliente,
@@ -702,4 +706,5 @@ def construir_view_model(
             if seguro_novo
             else rotulo_reajuste_consolidado_dos_planos(comparativo.planos_atuais, rascunho)
         ),
+        tabela_planos_consultados=montar_tabela_planos_consultados(rascunho),
     )

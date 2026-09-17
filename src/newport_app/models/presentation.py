@@ -148,6 +148,24 @@ class SecaoRegimeApresentacao(BaseModel):
     indicadores_resumo: list[LinhaIndicadorResumo] = Field(default_factory=list)
 
 
+class ColunaGrupoConsulta(BaseModel):
+    subgrupo_id: str
+    rotulo: str
+
+
+class LinhaPlanoConsulta(BaseModel):
+    plano: str
+    operadora: str = ""
+    eh_contrato_atual: bool = False
+    celulas: dict[str, int | None] = Field(default_factory=dict)
+    total_centavos: int | None = None
+
+
+class TabelaPlanosConsultados(BaseModel):
+    colunas: list[ColunaGrupoConsulta] = Field(default_factory=list)
+    linhas: list[LinhaPlanoConsulta] = Field(default_factory=list)
+
+
 class TotaisGeraisApresentacao(BaseModel):
     atual_centavos: int | None = None
     propostas: dict[str, int | None] = Field(default_factory=dict)
@@ -179,3 +197,4 @@ class PresentationViewModel(BaseModel):
     grupos_familiares: list[GrupoFamiliarApresentacao] = Field(default_factory=list)
     aviso_vinculo_familiar: str | None = None
     reajuste_consolidado_percentual_exibicao: str | None = None
+    tabela_planos_consultados: TabelaPlanosConsultados | None = None
