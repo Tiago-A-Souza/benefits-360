@@ -141,12 +141,14 @@ def test_02_resumo_mantem_linhas(tmp_path: Path):
     assert "21.354,64" in resumo
 
 
-def test_03_acomodacao_e_modalidade_no_topo(tmp_path: Path):
+def test_03_acomodacao_no_topo_sem_linha_modalidade(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
     tela = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
     assert "linha-topo" in tela
     assert re.search(r"<tr class='linha-topo'><td>Acomodação</td>", tela)
-    assert re.search(r"<td>Modalidade</td>", tela)
+    assert not re.search(r"<td>Modalidade</td>", tela)
+    cols = _cols_bloco_plano(tela)
+    assert any("Contrato atual (Compulsório)" in _visivel(c) for c in cols)
 
 
 def test_04_valores_identicos_gabarito(tmp_path: Path):
@@ -433,18 +435,14 @@ def test_21_diferenca_anual_travesao_resumo_e_faixas(tmp_path: Path):
 def test_22_modalidade_compulsorio_nao_copia_proposta(tmp_path: Path):
     html, _ = _html_completo_anistia(tmp_path)
     tela = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
-    m = re.search(
-        r"<tr class='linha-topo linha-topo-extra'><td>Modalidade</td>(.*?)</tr>",
-        tela,
-        flags=re.S,
-    )
-    assert m
-    cells = re.findall(r"<td[^>]*>(.*?)</td>", m.group(1), flags=re.S)
-    assert cells
-    assert _visivel(cells[0]) == "Compulsório"
-    for inner in cells[1:]:
-        assert "Compulsório" not in _visivel(inner)
-        assert _visivel(inner) == "—"
+    cols = _cols_bloco_plano(tela)
+    atual = next(c for c in cols if "class='atual'" in c)
+    assert "Contrato atual (Compulsório)" in _visivel(atual)
+    for col in cols:
+        if "class='atual'" in col:
+            continue
+        assert "(Compulsório)" not in _visivel(col)
+        assert "(Adesão)" not in _visivel(col)
 
     rascunho = _rascunho_anistia_seis()
     assert all(op.modalidade is None for op in rascunho.opcoes_proposta)
@@ -533,9 +531,9 @@ def test_percentual_ao_lado_do_valor_resumo_e_faixas(tmp_path: Path):
     assert ".tabela-resumo .ajuste,.tabela-faixas .ajuste{display:inline}" in html
     assert "table.tabela-grupo-familiar .ajuste{display:block" in html
     resumo = _tabela_tela(_secao(html, "visao-resumo"), "tabela-resumo")
-    assert "Contrato atual 12%" in resumo
+    assert "Contrato atual (Compulsório) 12%" in resumo
     thead = re.search(r"<thead>(.*?)</thead>", resumo, re.S)
-    assert thead and "Contrato atual 12%" in thead.group(1)
+    assert thead and "Contrato atual (Compulsório) 12%" in thead.group(1)
     # Reajuste do contrato sai das células; «ajuste» nas linhas de variação permanece.
     assert re.search(r"class='ajuste'>\+12%", resumo) is None
     faixas = _tabela_tela(_secao(html, "visao-faixas"), "tabela-faixas")

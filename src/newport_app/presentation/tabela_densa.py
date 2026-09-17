@@ -339,6 +339,28 @@ def _percentual_unico_planos(planos: list[PlanoAtualApresentacao]) -> str | None
     return None
 
 
+def modalidade_cabecalho_proposta(
+    prop: PropostaApresentacao | None,
+    subgrupo_id: str | None,
+) -> str | None:
+    if prop is None:
+        return None
+    if subgrupo_id:
+        md = prop.modalidades_por_subgrupo.get(subgrupo_id)
+        if md:
+            return md
+    if prop.misto:
+        return None
+    return prop.modalidade
+
+
+def _modalidade_unica_planos(planos: list[PlanoAtualApresentacao]) -> str | None:
+    mods = {(p.modalidade or "").strip() for p in planos if (p.modalidade or "").strip()}
+    if len(mods) == 1:
+        return mods.pop()
+    return None
+
+
 def _th_col_atual(
     planos: list[PlanoAtualApresentacao],
     *,
@@ -354,9 +376,12 @@ def _th_col_atual(
         else ""
     )
     rotulo = ROTULO_COLUNA_ATUAL
+    mod = _modalidade_unica_planos(planos)
+    if mod:
+        rotulo = f"{rotulo} ({mod})"
     pct = _pct_exibicao_cabecalho(percentual)
     if pct:
-        rotulo = f"{ROTULO_COLUNA_ATUAL} {pct}"
+        rotulo = f"{rotulo} {pct}"
     return (
         f"<th class='atual'><span class='cab-stack'>"
         f"<span class='op'>{html.escape(rotulo)}</span>{od}"
@@ -380,7 +405,8 @@ def _th_col_prop(
         atribuido = (prop.nomes_atribuidos_por_subgrupo.get(subgrupo_id) or "").strip()
         if atribuido:
             nome = atribuido
-    exib = html_linhas_nome_plano_documento(nome)
+    mod = modalidade_cabecalho_proposta(prop, subgrupo_id)
+    exib = html_linhas_nome_plano_documento(nome, modalidade=mod)
     if prop is not None and subgrupo_id:
         if prop.misto:
             indice = prop.indice_cenario or 1
@@ -634,7 +660,6 @@ def render_tabela_resumo(
     )
     partes.append("<tbody>")
     partes.append(_linha_topo(blocos, "Acomodação", "acomodacao"))
-    partes.append(_linha_topo(blocos, "Modalidade", "modalidade"))
 
     if not seguro_novo:
         planos = planos_atual
@@ -902,7 +927,6 @@ def render_secao_faixas_grupo(
     )
     partes.append("<tbody>")
     partes.append(_linha_topo_faixas(blocos, "Acomodação", "acomodacao"))
-    partes.append(_linha_topo_faixas(blocos, "Modalidade", "modalidade"))
     partes.append(_linha_validade_faixas(model, blocos))
 
     rotulos_linhas = list(ROTULOS_FAIXA)

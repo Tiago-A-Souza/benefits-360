@@ -104,12 +104,12 @@ def test_03_faixas_sem_vidas_nao_aparecem(tmp_path: Path):
             assert f"data-fx='{rot}'" not in tab
 
 
-def test_04_acomodacao_e_modalidade_no_topo(tmp_path: Path):
+def test_04_acomodacao_no_topo_sem_linha_modalidade(tmp_path: Path):
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
     _, html, _ = _vm_html(tmp_path, rascunho)
     for tab in _tabelas_faixas(html):
         assert "Acomodação" in tab
-        assert "Modalidade" in tab
+        assert "<td>Modalidade</td>" not in tab
 
 
 def test_04b_acomodacao_por_grupo_nao_agrega_cenario(tmp_path: Path):
@@ -209,7 +209,8 @@ def test_07_mockup_mesma_estrutura(tmp_path: Path):
     )
     bloco = tela.group(1) if tela else html
     assert bloco.count("class='grupo-cab'") == 2
-    assert "Acomodação" in bloco and "Modalidade" in bloco
+    assert "Acomodação" in bloco
+    assert "<td>Modalidade</td>" not in bloco
     assert "28.862,01" in bloco
     assert "18.751,61" in bloco
     for tab in _tabelas_faixas(html):

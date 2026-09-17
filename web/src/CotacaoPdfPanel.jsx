@@ -42,6 +42,7 @@ import {
   formatarEstimativaSiscor,
   abreviarAcomodacao,
   acomodacaoPrecisaDeclarar,
+  rotuloModalidadeRevisao,
   camposAcomodacaoInferidaParaGravar,
   inferirAcomodacao,
   inferirRegiao,
@@ -81,7 +82,7 @@ import {
   formatarResumoUploads,
   primeiroUploadComSucesso,
 } from "./cotacaoPdf/uploadLote";
-import { ACOMODACOES, REGIMES_COPART, TIPOS_FISCAIS } from "./constants";
+import { ACOMODACOES, MODALIDADES, REGIMES_COPART, TIPOS_FISCAIS } from "./constants";
 
 function BadgeSituacao({ situacao }) {
   const cls =
@@ -567,6 +568,10 @@ export function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, vali
           <dd>{regimePendente ? "A declarar" : rotuloRegime(op)}</dd>
         </div>
         <div>
+          <dt>Modalidade</dt>
+          <dd>{rotuloModalidadeRevisao(op) || "Não informado"}</dd>
+        </div>
+        <div>
           <dt>Validade</dt>
           <dd>{validadeAtual || "—"}</dd>
         </div>
@@ -598,6 +603,32 @@ export function RevisaoPlano({ op, quantidades, siscorCtx, estimativaMotor, vali
           </span>
         </label>
       )}
+
+      <label className="campo-revisao">
+        <span>Modalidade (opcional)</span>
+        <select
+          defaultValue={op.modalidade?.texto || ""}
+          onChange={(e) => {
+            if (op.modalidade?.id) {
+              const valor = e.target.value;
+              onSalvarCampo(op.modalidade.id, {
+                texto: valor || null,
+                confirmado: Boolean(valor),
+              });
+            }
+          }}
+        >
+          <option value="">Não informado</option>
+          {MODALIDADES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <span className="muted revisao-plano-dica">
+          Opcional — deixe em branco se a cotação não informar compulsório ou adesão.
+        </span>
+      </label>
 
       {regimePendente && (
         <label className="campo-revisao">

@@ -33,6 +33,7 @@ from newport_app.presentation.tabela_densa import (
     html_linhas_nome_plano,
     html_linhas_nome_plano_documento,
     ids_do_grupo,
+    modalidade_cabecalho_proposta,
     planos_das_faixas,
     render_tabela_resumo,
 )
@@ -224,6 +225,8 @@ def _th_proposta(
             nome = _rotulo_proposta(op_id, propostas, rotulos)
     else:
         nome = _rotulo_proposta(op_id, propostas, rotulos)
+    mod = modalidade_cabecalho_proposta(prop, subgrupo_id)
+    exib = html_linhas_nome_plano_documento(nome, modalidade=mod)
     operadora = ((prop.operadora if prop else "") or "").strip()
     attrs = f" colspan='{colspan}'" if colspan and colspan > 1 else ""
     # Operadora via data-l + CSS ::before para o texto da célula permanecer só o nome
@@ -240,12 +243,12 @@ def _th_proposta(
             f"<th{attrs} title='{html.escape(titulo + ' · ' + nome, quote=True)}'>"
             f"<span class='cab-stack'>"
             f"<span class='pl'>{html.escape(titulo)}</span>"
-            f"<span class='op'>{html_linhas_nome_plano_documento(nome)}</span>{od}"
+            f"<span class='op'>{exib}</span>{od}"
             f"</span></th>"
         )
     return (
         f"<th{attrs} title='{html.escape(nome, quote=True)}'><span class='cab-stack'>"
-        f"<span class='op'>{html_linhas_nome_plano_documento(nome)}</span>{od}"
+        f"<span class='op'>{exib}</span>{od}"
         f"</span></th>"
     )
 

@@ -85,6 +85,13 @@ export function acomodacaoPrecisaDeclarar(op) {
   return valorAcomodacaoCanonica(op) == null;
 }
 
+export function rotuloModalidadeRevisao(op) {
+  const texto = String(op?.modalidade?.texto || "").trim().toLowerCase();
+  if (texto === "compulsorio") return "Compulsório";
+  if (texto === "adesao") return "Adesão";
+  return null;
+}
+
 /** Campos vazios que o nome já resolve — para gravar na aplicação, sem dropdown. */
 export function camposAcomodacaoInferidaParaGravar(opcoes) {
   return (opcoes || [])
