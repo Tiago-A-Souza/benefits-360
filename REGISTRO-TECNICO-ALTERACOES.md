@@ -851,6 +851,13 @@ Tabela de divergências (handoff IA): `docs/handoff-ia/CONSOLIDADO.md` §12
 («Divergências documentação × código»). Arquivos: `PropostaPanel.jsx`,
 `selecaoPorGrupo.js`, `CotacaoPdfPanel.jsx`.
 
+### Código morto em `html_renderer.py` (Bloco 2 — anotação)
+
+`_meta_proposta` e `_render_tabela_faixas` não entram no HTML gerado hoje: o
+primeiro só seria usado por `_render_cabecalho_propostas_pagina` (também morta);
+faixas passam por `tabela_densa`. Confirmado na varredura do Bloco 2. Remover
+num commit de limpeza posterior — não neste sprint.
+
 ### Correções mapeadas
 
 | Item | Efeito |

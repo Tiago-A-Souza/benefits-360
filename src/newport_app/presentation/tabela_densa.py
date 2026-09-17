@@ -18,6 +18,7 @@ from newport_app.presentation.formatacao import formatar_reais
 from newport_app.presentation.nome_plano_exibicao import (
     encurtar_nome_plano_exibicao,
     nome_plano_cabecalho,
+    nome_plano_documento,
 )
 from newport_app.presentation.reajuste import formatar_rotulo_reajuste_bps
 
@@ -691,7 +692,7 @@ def render_tabela_resumo(
                         )
                         if valor is not None:
                             rotulo = (
-                                f"<span class='pl-cel'>{html.escape(nome_atr)}</span>"
+                                f"<span class='pl-cel'>{html.escape(nome_plano_documento(nome_atr))}</span>"
                                 if nome_atr
                                 else ""
                             )

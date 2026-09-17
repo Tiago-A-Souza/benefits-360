@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from newport_app.models.draft import AtribuicaoRascunho, CenarioRascunho
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.colisao_coluna import chave_de_coluna
 from newport_app.presentation.html_renderer import render_html, render_html_completo
 from newport_app.presentation.nome_plano_exibicao import encurtar_nome_plano_exibicao
 from newport_app.presentation.tabela_densa import html_linhas_nome_plano_documento
-from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
-from tests.test_paridade_matriz_html import _aprovar, _calcular_matriz
+from tests.test_correcao_resumo_regime import _aprovar, _rascunho_anistia_seis
+from tests.test_paridade_matriz_html import _calcular_matriz
 
 
 def test_encurtar_executivo_r1_apartamento_nacional():
@@ -45,6 +46,33 @@ def test_nome_completo_permanece_no_rascunho():
     op = next(o for o in rascunho.opcoes_proposta if o.id == "op-executivo")
     assert "Apartamento" in op.plano_nome
     assert encurtar_nome_plano_exibicao(op.plano_nome)[0] == "Executivo R1"
+
+
+def test_pl_cel_resumo_encurta_nome_atribuido(tmp_path: Path):
+    rascunho = _rascunho_anistia_seis()
+    rascunho.cenarios = [
+        CenarioRascunho(
+            id="c1",
+            atribuicoes=[
+                AtribuicaoRascunho(
+                    id="a1a", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id="op-bronze"
+                ),
+                AtribuicaoRascunho(
+                    id="a1b",
+                    alvo_tipo="subgrupo",
+                    alvo_id="sg-b",
+                    opcao_plano_id="op-especial",
+                ),
+            ],
+        ),
+    ]
+    matriz, _ = _calcular_matriz(rascunho)
+    snap = _aprovar(tmp_path, rascunho)
+    ids = [chave_de_coluna(p) for p in matriz.propostas if p.calculo_realizado]
+    html = render_html(construir_view_model(snap, modo="resumo", propostas_selecionadas=ids))
+    assert "<span class='pl-cel'>Especial 100 R1</span>" in html
+    assert "pl-cel'>Especial 100 R1 —" not in html
+    assert "pl-cel'>Especial 100 R1 (" not in html
 
 
 def test_completo_tres_abas_cabecalhos_encurtados(tmp_path: Path):
