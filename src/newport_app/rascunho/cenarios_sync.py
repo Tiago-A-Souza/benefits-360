@@ -64,15 +64,33 @@ def rotulo_cenario(rascunho: RascunhoEstudo, cenario: CenarioRascunho) -> str:
     Não usa ``cenario.rotulo`` em cache: após misturar cotações o rótulo gravado
     fica stale (ex.: «PRATA» quando a coluna é «PRATA + OURO»).
     """
-    escolhidos = {
-        atr.opcao_plano_id for atr in cenario.atribuicoes if atr.opcao_plano_id
-    }
-    # Ordem do catálogo, não das atribuições: reordenar o cenário não pode
-    # mudar o rótulo da coluna (FASE 3, teste 6).
-    op_ids = [op.id for op in rascunho.opcoes_proposta if op.id in escolhidos]
-    for oid in escolhidos:
-        if oid not in op_ids:
+    por_subgrupo: dict[str, str] = {}
+    extras: list[str] = []
+    for atr in cenario.atribuicoes:
+        if not atr.opcao_plano_id:
+            continue
+        if atr.alvo_tipo == "subgrupo" and atr.alvo_id:
+            por_subgrupo[atr.alvo_id] = atr.opcao_plano_id
+        else:
+            extras.append(atr.opcao_plano_id)
+
+    # Ordem fixa dos grupos do estudo — alinha o rótulo às colunas da tabela.
+    # Reordenar atribuições no cenário não muda o exibido (FASE 3, teste 6).
+    op_ids: list[str] = []
+    vistos: set[str] = set()
+    for sg in rascunho.subgrupos_atuais:
+        oid = por_subgrupo.get(sg.id)
+        if oid and oid not in vistos:
             op_ids.append(oid)
+            vistos.add(oid)
+    for oid in extras:
+        if oid not in vistos:
+            op_ids.append(oid)
+            vistos.add(oid)
+    for oid in por_subgrupo.values():
+        if oid not in vistos:
+            op_ids.append(oid)
+            vistos.add(oid)
 
     if not op_ids:
         return "Cenário sem proposta"

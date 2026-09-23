@@ -274,6 +274,38 @@ def test_05c_acomodacao_do_cenario_e_invariante_a_ordem():
     }
 
 
+def test_05c2_rotulo_misto_ordem_pelos_grupos_nao_catalogo():
+    """Rótulo misto segue sg-a → sg-b, não a ordem do catálogo da etapa 3."""
+    from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
+
+    rascunho = _rascunho_anistia_seis()
+    por_id = {op.id: op for op in rascunho.opcoes_proposta}
+    # Catálogo invertido: Especial antes de Ouro no JSON da etapa 3.
+    rascunho.opcoes_proposta = [
+        por_id["op-especial"],
+        por_id["op-ouro"],
+        por_id["op-bronze"],
+        por_id["op-prata"],
+        por_id["op-direto"],
+        por_id["op-executivo"],
+    ]
+    cenario = CenarioRascunho(
+        id="c-misto",
+        atribuicoes=[
+            AtribuicaoRascunho(
+                id="a1", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id="op-especial"
+            ),
+            AtribuicaoRascunho(
+                id="a2", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id="op-ouro"
+            ),
+        ],
+    )
+    rotulo = rotulo_cenario(rascunho, cenario)
+    assert rotulo == "OURO MAIS I Q + Especial 100 R1 — Apartamento (Nacional / RJ Capital)"
+    cenario.atribuicoes.reverse()
+    assert rotulo_cenario(rascunho, cenario) == rotulo
+
+
 def test_05d_acomodacao_unica_nao_vira_misto():
     """Cenário uniforme: acomodação única, sem «misto»."""
     rascunho = _rascunho_dois_planos_gabarito(reajuste_bps=1200)
