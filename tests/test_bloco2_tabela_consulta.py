@@ -64,6 +64,52 @@ def test_ordenacao_por_total_crescente():
     assert totais == sorted(totais)
 
 
+def test_total_vazio_plano_um_grupo_completo_dois_grupos():
+    """Bronze só no S750: sem total; Ouro nos dois: com total; contrato fecha."""
+    rascunho = _rascunho_anistia_seis()
+    definir_selecao_do_subgrupo(rascunho, "sg-a", ["op-bronze", "op-ouro"])
+    definir_selecao_do_subgrupo(rascunho, "sg-b", ["op-ouro"])
+
+    tab = montar_tabela_planos_consultados(rascunho)
+    assert tab is not None
+
+    lin_bronze = next(lin for lin in tab.linhas if "BRONZE" in lin.plano.upper())
+    lin_ouro = next(lin for lin in tab.linhas if "OURO" in lin.plano.upper())
+    lin_atual = tab.linhas[0]
+
+    assert lin_bronze.total_centavos is None
+    assert lin_bronze.celulas["sg-a"] is not None
+    assert lin_bronze.celulas["sg-b"] is None
+
+    assert lin_ouro.total_centavos is not None
+    assert lin_ouro.celulas["sg-a"] is not None
+    assert lin_ouro.celulas["sg-b"] is not None
+    assert lin_ouro.total_centavos == lin_ouro.celulas["sg-a"] + lin_ouro.celulas["sg-b"]
+
+    assert lin_atual.total_centavos == _GABARITO["consolidado_proposta"]
+    assert lin_atual.total_centavos == lin_atual.celulas["sg-a"] + lin_atual.celulas["sg-b"]
+
+
+def test_ordenacao_usa_soma_parcial_quando_total_nao_exibido():
+    rascunho = _rascunho_anistia_seis()
+    definir_selecao_do_subgrupo(rascunho, "sg-a", ["op-bronze", "op-ouro"])
+    definir_selecao_do_subgrupo(rascunho, "sg-b", ["op-ouro"])
+
+    tab = montar_tabela_planos_consultados(rascunho)
+    assert tab is not None
+
+    lin_bronze = next(lin for lin in tab.linhas if "BRONZE" in lin.plano.upper())
+    lin_ouro = next(lin for lin in tab.linhas if "OURO" in lin.plano.upper())
+    soma_bronze = lin_bronze.celulas["sg-a"]
+    assert lin_bronze.total_centavos is None
+    assert soma_bronze is not None
+
+    idx_bronze = tab.linhas.index(lin_bronze)
+    idx_ouro = tab.linhas.index(lin_ouro)
+    assert idx_bronze < idx_ouro
+    assert soma_bronze < lin_ouro.total_centavos
+
+
 def _secao(html: str, secao_id: str) -> str:
     start = html.find(f'id="{secao_id}"')
     assert start >= 0

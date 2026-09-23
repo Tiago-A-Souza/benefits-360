@@ -9,6 +9,7 @@ from newport_app.models.presentation import (
     TabelaPlanosConsultados,
 )
 from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
+from newport_app.rascunho.cenarios_sync import subgrupos_com_vidas
 from newport_app.rascunho.selecao_grupo import opcoes_do_subgrupo
 from newport_app.services.matriz_estimativa import montar_matriz_estimativa
 from newport_app.services.resumo_plano_atual import montar_resumo_plano_atual
@@ -47,28 +48,36 @@ def montar_tabela_planos_consultados(
         total_centavos=resumo.total_reajustado_centavos,
     )
 
+    grupos_com_vidas = set(subgrupos_com_vidas(rascunho))
     linhas_opcoes: list[LinhaPlanoConsulta] = []
+    ordenacao: list[tuple[LinhaPlanoConsulta, int | None]] = []
     for op in rascunho.opcoes_proposta:
         celulas: dict[str, int | None] = {}
-        partes_total: list[int] = []
+        soma_parcial = 0
+        cobre_todos = bool(grupos_com_vidas)
         for col in colunas:
             if op.id not in opcoes_do_subgrupo(rascunho, col.subgrupo_id):
                 celulas[col.subgrupo_id] = None
+                if col.subgrupo_id in grupos_com_vidas:
+                    cobre_todos = False
                 continue
             val = estimado_por_par.get((op.id, col.subgrupo_id))
             celulas[col.subgrupo_id] = val
             if val is not None:
-                partes_total.append(val)
-        linhas_opcoes.append(
-            LinhaPlanoConsulta(
-                plano=nome_plano_documento(op.plano_nome or op.id),
-                operadora=(op.operadora or "").strip(),
-                celulas=celulas,
-                total_centavos=sum(partes_total) if partes_total else None,
-            )
+                soma_parcial += val
+            elif col.subgrupo_id in grupos_com_vidas:
+                cobre_todos = False
+        linha = LinhaPlanoConsulta(
+            plano=nome_plano_documento(op.plano_nome or op.id),
+            operadora=(op.operadora or "").strip(),
+            celulas=celulas,
+            total_centavos=soma_parcial if cobre_todos else None,
         )
+        linhas_opcoes.append(linha)
+        ordenacao.append((linha, soma_parcial if soma_parcial else None))
 
-    linhas_opcoes.sort(key=lambda lin: (lin.total_centavos is None, lin.total_centavos or 0))
+    ordenacao.sort(key=lambda par: (par[1] is None, par[1] or 0))
+    linhas_opcoes = [lin for lin, _ in ordenacao]
 
     return TabelaPlanosConsultados(
         colunas=colunas,
