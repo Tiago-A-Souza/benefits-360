@@ -152,7 +152,7 @@ def test_alterar_rascunho_nao_altera_exportacao_do_snapshot(tmp_path: Path):
         )
         assert vm.totais_gerais.propostas["op-1"] == valor_snap
         html = render_html(vm)
-        assert "RASCUNHO INTERNO" in html
+        assert "RASCUNHO INTERNO" not in html
 
     res = apres.gerar_html(
         rascunho.id,
@@ -160,7 +160,7 @@ def test_alterar_rascunho_nao_altera_exportacao_do_snapshot(tmp_path: Path):
         GerarApresentacaoRequest(modo="faixas", propostas_selecionadas=["op-1"]),
     )
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
-    assert "RASCUNHO INTERNO" in html
+    assert "RASCUNHO INTERNO" not in html
 
 
 def test_formato_anterior_recusa_html_com_a_mesma_mensagem(tmp_path: Path):
@@ -237,7 +237,7 @@ def test_anistia_dois_planos_exporta_nos_tres_modos(tmp_path: Path):
         html = render_html(vm)
         for nome in nomes:
             assert nome in html
-        assert "RASCUNHO INTERNO" in html
+        assert "RASCUNHO INTERNO" not in html
 
 
 def test_ivtec_seguro_novo_exporta_faixas_estudo_sem_contrato_atual(tmp_path: Path):
@@ -290,7 +290,7 @@ def test_gabarito_prata_e_ouro_preservado(tmp_path: Path):
     assert "7.109,88" in html_r
 
 
-def test_modo_completo_mantem_aviso_de_dados_pessoais(tmp_path: Path):
+def test_modo_completo_sinaliza_pii_na_api_sem_banner_no_html(tmp_path: Path):
     repo, _, snap_svc, apres = _stack(tmp_path, "pii")
     rascunho = rascunho_demo_12_vidas()
     snap = _aprovar(repo, snap_svc, rascunho)
@@ -301,8 +301,8 @@ def test_modo_completo_mantem_aviso_de_dados_pessoais(tmp_path: Path):
     )
     assert res.aviso_dados_pessoais
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
-    assert "nomes de beneficiários" in html.lower()
-    assert "aviso-pii" in html
+    assert "<div class='aviso-pii'>" not in html
+    assert "Este material contém nomes de beneficiários" not in html
     res_iso = apres.gerar_html(
         rascunho.id,
         snap.id,
@@ -320,7 +320,7 @@ def test_modo_completo_mantem_aviso_de_dados_pessoais(tmp_path: Path):
     assert res_leg.aviso_dados_pessoais
 
 
-def test_banner_rascunho_interno_nos_tres_modos(tmp_path: Path):
+def test_sem_banner_rascunho_interno_nos_tres_modos(tmp_path: Path):
     repo, _, snap_svc, _ = _stack(tmp_path, "banner")
     rascunho = rascunho_demo_12_vidas()
     snap = _aprovar(repo, snap_svc, rascunho)
@@ -328,5 +328,5 @@ def test_banner_rascunho_interno_nos_tres_modos(tmp_path: Path):
         html = render_html(
             construir_view_model(snap, modo=modo, propostas_selecionadas=["op-1"])
         )
-        assert "RASCUNHO INTERNO" in html
-        assert "políticas provisórias" in html.lower()
+        assert "RASCUNHO INTERNO" not in html
+        assert "class='rascunho'" not in html

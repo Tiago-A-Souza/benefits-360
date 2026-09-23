@@ -1101,10 +1101,8 @@ def _montar_rodape(model: PresentationViewModel) -> str:
     )
 
 
-def _avisos_topo(model: PresentationViewModel, *, aviso_pii: bool) -> str:
-    partes = [
-        f"<div class='rascunho'>{html.escape(model.aviso_rascunho_interno)}</div>",
-    ]
+def _avisos_topo(model: PresentationViewModel) -> str:
+    partes: list[str] = []
     if model.avisos_acomodacao:
         partes.append("<div class='aviso-acomodacao'><strong>Atenção — acomodação divergente</strong><ul>")
         for aviso in model.avisos_acomodacao:
@@ -1118,11 +1116,6 @@ def _avisos_topo(model: PresentationViewModel, *, aviso_pii: bool) -> str:
         for aviso in model.avisos_acomodacao_incompleto:
             partes.append(f"<li>{html.escape(aviso)}</li>")
         partes.append("</ul></div>")
-    if aviso_pii:
-        partes.append(
-            "<div class='aviso-pii'>Este material contém nomes de beneficiários. "
-            "Mantenha em armazenamento privado.</div>"
-        )
     return "".join(partes)
 
 
@@ -1657,7 +1650,6 @@ tfoot tr td.atual{background:#F1E7D6}
 def _documento(
     model: PresentationViewModel,
     *,
-    aviso_pii: bool,
     corpo: str,
     com_abas: bool,
 ) -> str:
@@ -1668,21 +1660,12 @@ def _documento(
         f"<title>{html.escape(titulo_doc)}</title>",
         f"<style>{poppins_font_face_css()}{_CSS}</style></head><body><div class='folha'>",
         _montar_capa(model),
-        _avisos_topo(model, aviso_pii=aviso_pii),
+        _avisos_topo(model),
     ]
     return "".join(head) + corpo + _montar_rodape(model) + "</div></body></html>"
 
 
 def render_html(model: PresentationViewModel) -> str:
-    aviso_pii = False
-    if model.modo == "beneficiario":
-        aviso_pii = not all(
-            (b.nome or "").startswith("Beneficiário ·") for b in model.beneficiarios
-        )
-    elif model.modo == "grupo_familiar":
-        aviso_pii = not all(
-            _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
-        )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
     if model.modo == "resumo":
         prefixo = _bloco_tabela_consulta(model) + _bloco_notas_cobertura(model)
@@ -1700,7 +1683,7 @@ def render_html(model: PresentationViewModel) -> str:
         )
     else:
         corpo = prefixo + "<div class='corpo'>" + "".join(blocos) + "</div>"
-    return _documento(model, aviso_pii=aviso_pii, corpo=corpo, com_abas=False)
+    return _documento(model, corpo=corpo, com_abas=False)
 
 
 def render_html_completo(
@@ -1830,4 +1813,4 @@ def render_html_completo(
             "</div>",
         ]
     )
-    return _documento(vm_resumo, aviso_pii=True, corpo=corpo, com_abas=True)
+    return _documento(vm_resumo, corpo=corpo, com_abas=True)

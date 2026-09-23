@@ -97,7 +97,8 @@ def test_04_completo_com_nomes_isolado_grupo_sem_nomes(tmp_path: Path):
     assert res.aviso_dados_pessoais
     assert res.modo == "completo"
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
-    assert "aviso-pii" in html
+    assert "<div class='aviso-pii'>" not in html
+    assert "Este material contém nomes de beneficiários" not in html
     assert any(n in html for n in nomes)
     res_iso = apres.gerar_html(
         rascunho.id,
