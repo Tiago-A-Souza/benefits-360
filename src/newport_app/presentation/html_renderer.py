@@ -1144,7 +1144,7 @@ def _render_tabela_planos_consultados(tabela: TabelaPlanosConsultados) -> str:
     partes = [
         "<section class='secao-planos-consultados'>",
         _tit_secao(
-            "00",
+            None,
             "Planos",
             "Consultados",
             "Estimativa mensal por grupo — catálogo completo da cotação.",
@@ -1205,9 +1205,16 @@ def _bloco_notas_cobertura(*models: PresentationViewModel) -> str:
     return "".join(partes)
 
 
-def _tit_secao(numero: str, linha1: str, linha2: str, lead: str) -> str:
+def _tit_secao(
+    numero: str | None, linha1: str, linha2: str, lead: str
+) -> str:
+    num = (
+        f"<span class='n1'>{html.escape(numero)}</span>"
+        if numero
+        else ""
+    )
     return (
-        f"<div class='tit'><span class='n1'>{html.escape(numero)}</span>"
+        f"<div class='tit'>{num}"
         f"<h2>{html.escape(linha1)}<span>{html.escape(linha2)}</span></h2>"
         f"<p>{html.escape(lead)}</p></div>"
     )
@@ -1677,7 +1684,12 @@ def render_html(model: PresentationViewModel) -> str:
             _rotulo_grupo_agregado(g.rotulo) for g in model.grupos_familiares
         )
     blocos = ["".join(p) for p in _paginas_corpo_visao(model)]
-    prefixo = _bloco_tabela_consulta(model) + _bloco_notas_cobertura(model)
+    if model.modo == "resumo":
+        prefixo = _bloco_tabela_consulta(model) + _bloco_notas_cobertura(model)
+    elif model.modo in ("faixas", "grupo_familiar"):
+        prefixo = _bloco_notas_cobertura(model)
+    else:
+        prefixo = ""
     if model.modo == "faixas":
         corpo = (
             prefixo
@@ -1706,7 +1718,8 @@ def render_html_completo(
         else "O contrato atual está apresentado com o reajuste já aplicado. As propostas são comparadas contra esse valor."
     )
     corpo_resumo = (
-        _tit_secao("01", "Comparativo", "Financeiro", lead_resumo)
+        _bloco_tabela_consulta(vm_resumo)
+        + _tit_secao("01", "Comparativo", "Financeiro", lead_resumo)
         + "".join("".join(p) for p in _paginas_corpo_visao(vm_resumo))
     )
     corpo_faixas = (
@@ -1800,9 +1813,7 @@ def render_html_completo(
         '<input type="radio" name="doc-visao" id="tab-todas" class="doc-tab-input" '
         'aria-label="Ver todas as visões">'
     )
-    prefixo = _bloco_tabela_consulta(vm_resumo) + _bloco_notas_cobertura(
-        vm_resumo, vm_faixas, vm_grupos
-    )
+    prefixo = _bloco_notas_cobertura(vm_resumo, vm_faixas, vm_grupos)
     corpo = "".join(
         [
             *radios,

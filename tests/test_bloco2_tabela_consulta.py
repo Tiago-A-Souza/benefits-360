@@ -64,7 +64,20 @@ def test_ordenacao_por_total_crescente():
     assert totais == sorted(totais)
 
 
-def test_aparece_no_completo_antes_das_abas(tmp_path: Path):
+def _secao(html: str, secao_id: str) -> str:
+    start = html.find(f'id="{secao_id}"')
+    assert start >= 0
+    nxt = len(html)
+    for other in ("visao-resumo", "visao-faixas", "visao-benef", "visao-regras"):
+        if other == secao_id:
+            continue
+        pos = html.find(f'id="{other}"', start + 1)
+        if pos != -1:
+            nxt = min(nxt, pos)
+    return html[start:nxt]
+
+
+def test_tabela_somente_na_aba_resumo(tmp_path: Path):
     rascunho = _rascunho_anistia_seis()
     matriz, _ = _calcular_matriz(rascunho)
     snap = _aprovar(tmp_path, rascunho)
@@ -74,8 +87,14 @@ def test_aparece_no_completo_antes_das_abas(tmp_path: Path):
     vm_f = construir_view_model(snap, modo="faixas", **kwargs)
     vm_g = construir_view_model(snap, modo="grupo_familiar", **kwargs)
     html = render_html_completo(vm_r, vm_f, vm_g)
-    idx_tab = html.index("Planos")
-    idx_abas = html.index('class="doc-abas"')
-    assert idx_tab < idx_abas
-    assert "Contrato atual" in html
-    assert formatar_reais(_GABARITO["consolidado_proposta"]).replace("R$ ", "") in html
+
+    resumo = _secao(html, "visao-resumo")
+    faixas = _secao(html, "visao-faixas")
+    grupos = _secao(html, "visao-benef")
+
+    assert "secao-planos-consultados" in resumo
+    assert "Contrato atual" in resumo
+    assert formatar_reais(_GABARITO["consolidado_proposta"]).replace("R$ ", "") in resumo
+    assert "secao-planos-consultados" not in faixas
+    assert "secao-planos-consultados" not in grupos
+    assert "<span class='n1'>00</span>" not in html
