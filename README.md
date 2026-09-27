@@ -1,6 +1,6 @@
 # Sistema de Estudos Newport
 
-Plataforma da **Newport Consultoria de Benefícios** para montar **estudos comparativos financeiros** de planos de saúde corporativos. O produto substitui, com trilha auditável, o trabalho que hoje depende de especialistas: importar a base de beneficiários, ler cotações em PDF, calcular cenários e entregar um documento HTML que o cliente usa na decisão de renovação ou troca de operadora.
+Plataforma para **corretoras e consultorias de benefícios** do mercado de saúde montarem **estudos comparativos financeiros** de planos corporativos. Não é software interno de uma única consultoria: é ferramenta que o corretor (ou a equipe que assessora a empresa) usa com trilha auditável — importar a base de beneficiários, ler cotações em PDF, calcular cenários e entregar um documento HTML que o cliente final usa na decisão de renovação ou troca de operadora. O piloto foi homologado com a **Newport Consultoria de Benefícios** como parceira de design.
 
 Faixa operacional homologada no piloto: **1 a 29 vidas** por estudo (configurável; o motor não impõe teto técnico). Estágio atual do repositório: **ETAPA 2.8.1** — persistência histórica, snapshot com hash, aprovação local e apresentação HTML autocontida. API **2.8.2**, renderer **html@2.13.8**.
 
@@ -10,7 +10,7 @@ Documentação normativa para implementação continua em `docs/01`–`docs/04`,
 
 ## O que é um estudo de saúde
 
-Quando uma empresa vai **renovar** o contrato de plano de saúde ou **contratar cobertura nova**, a consultoria compara o que ela paga hoje (ou pagaria) com propostas de outras operadoras ou produtos. Esse comparativo — valores por faixa etária, totais mensais e anuais, reajuste do contrato vigente, IOF quando couber — é o **estudo de saúde** que este sistema produz.
+Quando uma empresa vai **renovar** o contrato de plano de saúde ou **contratar cobertura nova**, a **corretora ou consultoria** que a assessora compara o que ela paga hoje (ou pagaria) com propostas de outras operadoras ou produtos. Esse comparativo — valores por faixa etária, totais mensais e anuais, reajuste do contrato vigente, IOF quando couber — é o **estudo de saúde** que esta plataforma produz.
 
 **Atores:**
 
@@ -18,7 +18,7 @@ Quando uma empresa vai **renovar** o contrato de plano de saúde ou **contratar 
 - **Beneficiários** — titulares e dependentes; cada um tem idade, parentesco e, na renovação, um plano vigente.
 - **Operadoras e seguradoras** — Amil, Porto Seguro, SulAmérica, Bradesco, Hapvida/NotreDame, entre outras no escopo do piloto.
 - **Corretor** — intermedia cotações; os PDFs costumam vir por esse canal.
-- **Consultoria (Newport)** — importa a posição cadastral, valida dados, monta cenários, revisa números e entrega o documento.
+- **Corretora / consultoria de benefícios** — operador que usa a plataforma: importa a posição cadastral, valida dados, monta cenários, revisa números e entrega o documento à empresa.
 
 **Renovação** parte de uma **base atual** (planilha SISCOR ou equivalente): quem está no plano, quanto paga, qual operadora. O sistema aplica o **reajuste** acordado ou estimado e compara com propostas novas.
 
@@ -106,7 +106,7 @@ Valores são `MoneyCents` (inteiro). Taxas em basis points (IOF seguradora = 238
 
 ### Estratégia `por_vida_entao_soma`
 
-Reajuste e IOF aplicam **por vida**, arredondam **por vida**, depois somam. Aplicar taxa sobre o total do subgrupo muda o resultado. Violado: estudo «certo» na planilha Excel e errado no documento Newport.
+Reajuste e IOF aplicam **por vida**, arredondam **por vida**, depois somam. Aplicar taxa sobre o total do subgrupo muda o resultado. Violado: estudo «certo» na planilha Excel e errado no documento entregue ao cliente.
 
 ### Total = soma de todas as vidas conhecidas
 
@@ -182,7 +182,7 @@ Camadas cobertas:
 
 ## Bases de dados externas (versionadas)
 
-Arquivos mantidos pela Newport, editados no Git — **não** embutidos em `.py` ou `.jsx`.
+Arquivos de referência editados no Git (conteúdo homologado no piloto) — **não** embutidos em `.py` ou `.jsx`.
 
 ### Regras comerciais
 
@@ -193,7 +193,7 @@ Arquivos mantidos pela Newport, editados no Git — **não** embutidos em `.py` 
 
 **Manutenção:** altere o CSV; `tests/test_regras_comerciais.py` falha se faltar célula, houver duplicata ou operadora fora da lista. Detalhes em `docs/regras_comerciais_README.md`.
 
-**Quem atualiza:** conteúdo comercial validado com Wesley/Newport; aliases quando aparecer grafia nova em cotação.
+**Quem atualiza:** quem opera a plataforma no mercado (no piloto, validação com especialistas de produto); aliases quando aparecer grafia nova em cotação.
 
 ### Histórico de reajustes PME
 
@@ -209,7 +209,7 @@ Arquivos mantidos pela Newport, editados no Git — **não** embutidos em `.py` 
 
 **Não versionada no Git** — arquivo Excel externo (ex.: `SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx` em ambiente local). Contém matriz **prestador × plano** (hospitalar/laboratorial), com cabeçalho em quatro linhas (nível, operadora, linha comercial, nome do plano).
 
-**Quem atualiza:** Newport/SiscorNet, conforme contrato comercial; frequência típica alinhada à operação comercial (não há pipeline automático de download no repositório).
+**Quem atualiza:** fornecedor da base (ex.: SiscorNet), conforme contrato comercial de quem usa a ferramenta; frequência típica alinhada à operação comercial (não há pipeline automático de download no repositório).
 
 **Uso previsto:** comparar redes entre planos cotados (aba futura ou planilha de equivalência). O núcleo financeiro **não** depende dela para calcular prêmio.
 
@@ -225,9 +225,9 @@ Foi verificado se dados abertos da ANS (`pda-008` características de produtos, 
 
 ## Em desenvolvimento: rede credenciada
 
-**O que é:** mostrar, por plano cotado, quais prestadores (hospitais, etc.) entram na rede, usando a base SiscorNet alinhada ao que a Newport já usa comercialmente.
+**O que é:** mostrar, por plano cotado, quais prestadores (hospitais, etc.) entram na rede, usando a base SiscorNet (ou equivalente) que a corretora já utiliza no dia a dia.
 
-**Por que a Newport quer:** o comparativo financeiro sozinho não responde «onde meu colaborador atende»; rede entra na decisão junto com preço.
+**Por que o mercado pede:** o comparativo financeiro sozinho não responde «onde meu colaborador atende»; rede entra na decisão junto com preço.
 
 **Estado:** geografia e colunas da matriz nacional estão mapeadas; casamento automático por nome **parcial** — evolução de 9/55 acertos com regras estritas iniciais para **38/55** após regras Wesley e correções de normalização (caixa do núcleo via `normalizar_cabecalho`; remoção de percentuais 20/30/40/50 da coparticipação). **17** planos ainda exigem mapeamento manual (Amil ONE/S750, linhas PRO Porto sem sufixo regional, SulAmérica Direto/Vital/RC, etc.).
 
