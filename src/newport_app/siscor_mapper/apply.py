@@ -122,6 +122,8 @@ def aplicar_candidata_ao_rascunho(
                 titular_nome=linha.titular_nome,
                 matricula=linha.matricula,
                 tipo_de_vida=linha.tipo_de_vida,
+                uf=linha.uf,
+                cidade=linha.cidade,
                 vinculo_grupo_chave=linha.vinculo_grupo_chave,
                 incluida=linha.incluida_sugerida,
                 motivo_exclusao=linha.motivo_exclusao,

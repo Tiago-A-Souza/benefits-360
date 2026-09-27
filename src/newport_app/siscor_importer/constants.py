@@ -19,6 +19,8 @@ COLUNAS_OPCIONAIS = (
     "TITULAR",
     "MATRICULA",
     "TIPO DE VIDA",
+    "UF",
+    "CIDADE",
 )
 
 # Variações de rótulo → nome canônico (após normalizar_cabecalho).
@@ -30,6 +32,10 @@ ALIAS_COLUNAS_OPCIONAIS: dict[str, str] = {
     "TITULAR": "TITULAR",
     "MATRICULA": "MATRICULA",
     "TIPO DE VIDA": "TIPO DE VIDA",
+    "UF": "UF",
+    "ESTADO": "UF",
+    "CIDADE": "CIDADE",
+    "MUNICIPIO": "CIDADE",
 }
 
 MAPEAMENTO_COLUNAS = {nome: nome for nome in COLUNAS_OBRIGATORIAS}

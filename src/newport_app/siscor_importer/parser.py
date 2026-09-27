@@ -37,12 +37,14 @@ from newport_app.siscor_importer.duplicidades import recalcular_duplicidades
 from newport_app.siscor_importer.money import valor_para_centavos
 from newport_app.siscor_importer.normalize import (
     normalizar_cabecalho,
+    normalizar_cidade,
     normalizar_cpf,
     normalizar_matricula,
     normalizar_parentesco,
     normalizar_sexo,
     normalizar_status,
     normalizar_tipo_vida,
+    normalizar_uf,
     parse_data_nascimento,
 )
 from newport_app.siscor_importer.subgrupos import montar_subgrupos
@@ -103,6 +105,8 @@ def _resolver_colunas_opcionais(
             titular="TITULAR" in idx_opcionais,
             matricula="MATRICULA" in idx_opcionais,
             tipo_de_vida="TIPO DE VIDA" in idx_opcionais,
+            uf="UF" in idx_opcionais,
+            cidade="CIDADE" in idx_opcionais,
         ),
         idx_opcionais,
     )
@@ -124,6 +128,10 @@ def _estatisticas(
     sexo_vazio = 0
     if disponibilidade.sexo:
         sexo_vazio = sum(1 for l in ativas_nao_excl if not l.sexo)
+    loc_preenchida = sum(1 for l in ativas_nao_excl if l.uf and l.cidade)
+    loc_vazio = 0
+    if disponibilidade.uf and disponibilidade.cidade:
+        loc_vazio = sum(1 for l in ativas_nao_excl if not (l.uf and l.cidade))
     vinculos = sum(1 for l in ativas_nao_excl if l.vinculo_resolvido)
     return EstatisticasImportacaoSiscor(
         total_linhas_lidas=len(ativas),
@@ -138,6 +146,8 @@ def _estatisticas(
         qtd_excluidas=excluidas,
         sexo_preenchido=sexo_preenchido,
         sexo_celula_vazia=sexo_vazio,
+        localizacao_preenchida=loc_preenchida,
+        localizacao_celula_vazia=loc_vazio,
         vinculos_resolvidos=vinculos,
     )
 
@@ -422,6 +432,14 @@ def parse_planilha_siscor(
             if disponibilidade.tipo_de_vida:
                 tipo_de_vida = normalizar_tipo_vida(valores.get("TIPO DE VIDA"))
 
+            uf = None
+            if disponibilidade.uf:
+                uf = normalizar_uf(valores.get("UF"))
+
+            cidade = None
+            if disponibilidade.cidade:
+                cidade = normalizar_cidade(valores.get("CIDADE"))
+
             valor_fatura = None
             if valor_centavos is not None and valor_centavos > 0:
                 valor_fatura = ComponenteFinanceiroRascunho(
@@ -461,6 +479,8 @@ def parse_planilha_siscor(
                     titular_nome=titular_nome,
                     matricula=matricula,
                     tipo_de_vida=tipo_de_vida,
+                    uf=uf,
+                    cidade=cidade,
                 )
             )
 

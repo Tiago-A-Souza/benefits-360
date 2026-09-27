@@ -99,6 +99,24 @@ def normalizar_tipo_vida(valor: object) -> str | None:
     return str(valor).strip().upper()
 
 
+def normalizar_uf(valor: object) -> str | None:
+    """UF da planilha — só o que está na célula, sem inferência."""
+    if valor is None or str(valor).strip() == "":
+        return None
+    texto = normalizar_cabecalho(str(valor).strip())
+    if len(texto) == 2 and texto.isalpha():
+        return texto
+    return None
+
+
+def normalizar_cidade(valor: object) -> str | None:
+    """Município — normalização de cabeçalho/casing, sem dedução geográfica."""
+    if valor is None or str(valor).strip() == "":
+        return None
+    texto = normalizar_cabecalho(str(valor).strip())
+    return texto or None
+
+
 def parse_data_nascimento(valor: object) -> tuple[str | None, date | None, bool]:
     if valor is None or str(valor).strip() == "":
         return None, None, False

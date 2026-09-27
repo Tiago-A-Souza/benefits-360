@@ -162,6 +162,8 @@ class VidaRascunho(BaseModel):
     titular_nome: str | None = None
     matricula: str | None = None
     tipo_de_vida: str | None = None
+    uf: str | None = None
+    cidade: str | None = None
     vinculo_grupo_chave: str | None = None
     incluida: bool = True
     motivo_inclusao: str | None = None

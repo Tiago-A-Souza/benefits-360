@@ -219,6 +219,32 @@ def _linhas_anistia_41() -> list[dict[str, object]]:
         idx += 1
 
     assert len(linhas) == 41
+
+    ufs_distrib = (
+        ["RJ"] * 22
+        + ["SP"] * 13
+        + ["PA"] * 2
+        + ["RS"] * 1
+        + ["BA"] * 1
+    )
+    cidade_por_uf = {
+        "RJ": "RIO DE JANEIRO",
+        "SP": "SAO PAULO",
+        "PA": "BELEM",
+        "RS": "PORTO ALEGRE",
+        "BA": "SALVADOR",
+    }
+    loc_idx = 0
+    for i, linha in enumerate(linhas):
+        if i in (3, 17):
+            linha["UF"] = None
+            linha["CIDADE"] = None
+            continue
+        uf = ufs_distrib[loc_idx]
+        loc_idx += 1
+        linha["UF"] = uf
+        linha["CIDADE"] = cidade_por_uf[uf]
+
     return linhas
 
 

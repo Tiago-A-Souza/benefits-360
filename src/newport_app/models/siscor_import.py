@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from newport_app.models.draft import ComponenteFinanceiroRascunho, ParentescoRascunho
 
-IMPORTADOR_SISCOR_VERSAO = "siscor@2.4.0"
+IMPORTADOR_SISCOR_VERSAO = "siscor@2.5.0"
 
 
 class DisponibilidadeColunasSiscor(BaseModel):
@@ -20,6 +20,8 @@ class DisponibilidadeColunasSiscor(BaseModel):
     titular: bool = False
     matricula: bool = False
     tipo_de_vida: bool = False
+    uf: bool = False
+    cidade: bool = False
 
 
 class ErroArquivoSiscor(BaseModel):
@@ -81,6 +83,8 @@ class LinhaSiscorCandidata(BaseModel):
     titular_nome: str | None = None
     matricula: str | None = None
     tipo_de_vida: str | None = None
+    uf: str | None = None
+    cidade: str | None = None
     vinculo_grupo_chave: str | None = None
     vinculo_resolvido: bool = False
     editado_manualmente: bool = False
@@ -117,6 +121,8 @@ class EstatisticasImportacaoSiscor(BaseModel):
     qtd_excluidas: int = 0
     sexo_preenchido: int = 0
     sexo_celula_vazia: int = 0
+    localizacao_preenchida: int = 0
+    localizacao_celula_vazia: int = 0
     vinculos_resolvidos: int = 0
 
 

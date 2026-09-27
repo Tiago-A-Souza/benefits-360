@@ -251,7 +251,7 @@ def test_08_hash_snapshot_inalterado(tmp_path: Path):
 def test_09_suite_regressao_importador_versao():
     from newport_app.models.siscor_import import IMPORTADOR_SISCOR_VERSAO
 
-    assert IMPORTADOR_SISCOR_VERSAO == "siscor@2.4.0"
+    assert IMPORTADOR_SISCOR_VERSAO == "siscor@2.5.0"
 
 
 def test_10_sexo_coluna_presente_celulas_vazias():
