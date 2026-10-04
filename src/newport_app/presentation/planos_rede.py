@@ -182,6 +182,9 @@ def caminho_base_rede_padrao() -> Path | None:
     if env:
         p = Path(env)
         return p if p.is_file() else None
+    docs = _DOCS / "SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx"
+    if docs.is_file():
+        return docs
     padrao = Path(
         r"C:\Users\tiago\Downloads\SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx"
     )

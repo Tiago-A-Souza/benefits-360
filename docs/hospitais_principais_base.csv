@@ -1,0 +1,1072 @@
+uf;municipio;zona;prestador;principal;confianca;rede_verticalizada;especialidades;observacao
+AC;RIO BRANCO;;HOSP DO RIM;sim;alta;;Hospital Geral;Praça pequena (7 prestadores na base): todos entram
+AC;RIO BRANCO;;HOSP SANTA JULIANA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+AC;RIO BRANCO;;HOSP SAO PEDRO;sim;alta;;Hospital Geral;Praça pequena (7 prestadores na base): todos entram
+AC;RIO BRANCO;;PRONTO CLINICA - AMICO;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+AC;RIO BRANCO;;STA CASA DE MISER DO ACRE;sim;alta;;Hospital Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+AC;RIO BRANCO;;UNIMED RIO BRANCO;sim;alta;;Hospital Geral, PS Geral;Praça pequena (7 prestadores na base): todos entram
+AC;RIO BRANCO;;HOSP DA CRIANCA URGIL;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+AL;MACEIÓ;;HOSPITAL DO CORACAO;sim;media;;PS Geral;"Hospital do Coração de Alagoas; cardiologia"
+AL;MACEIÓ;;HOSPITAL MEMORIAL ARTHUR RAMOS;sim;alta;Rede D’Or;Hospital Geral, PS Geral, Maternidade;"Única unidade Rede D’Or em Alagoas  [Rede D’Or desde janeiro/2022; mais de 100 leitos]"
+AL;MACEIÓ;;HOSPITAL UNIMED;sim;media;Unimed;Hospital Geral, PS Geral;"Rede própria; esteve no Newsweek 2024"
+AL;MACEIÓ;;HOSPITAL VEREDAS;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral  [ATENÇÃO: ativo, mas sob intervenção e reestruturação em 2026]
+AL;MACEIÓ;;HOSPITAL VIDA;sim;media;;Hospital Geral, PS Geral;Hospital geral
+AL;MACEIÓ;;SANTA CASA DE MACEIO UNIDADE FAROL;sim;alta;;Hospital Geral;"48º no Brasil (Newsweek 2026); ONA 3 e Qmentum"
+AL;MACEIÓ;;SANTA CASA DE MISERICORDIA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"48º no Brasil (Newsweek 2026); ONA 3 e Qmentum"
+AL;MACEIÓ;;CASA DE SAUDE E CLIN DE REPOUSO ULYSSES;nao;;;—;
+AL;MACEIÓ;;H OLHOS ALAGOAS;nao;;;—;
+AL;MACEIÓ;;HOFTALMO - HOSPITAL OFTALMOLOGICO;nao;;;—;
+AL;MACEIÓ;;HOSPITAL CLIOM;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+AL;MACEIÓ;;HOSPITAL DE OLHOS SANTA LUZIA;nao;;;—;
+AL;MACEIÓ;;HOSPITAL ORTOPEDICO DE MACEIO;nao;;;Hospital Geral, PS Geral, Maternidade;
+AL;MACEIÓ;;INSTITUTO DA VISAO;nao;;;—;
+AL;MACEIÓ;;INSTITUTO DE OLHOS DE MACEIO;nao;;;—;
+AL;MACEIÓ;;MEDRADIUS - CLIN DE MED NUCLEAR;nao;;;Hospital Geral, PS Geral;
+AL;MACEIÓ;;OCULAR UNID CIRURGICA;nao;;;Hospital Dia;
+AL;MACEIÓ;;ORTOCLINICA;nao;;;—;
+AL;MACEIÓ;;PEDIATRIA 24 HORAS;nao;;;—;
+AL;MACEIÓ;;SANTACOOP;nao;;;—;
+AM;MANAUS;;CHECKUP HOSPITAL;sim;alta;;Hospital Geral, PS Geral;Associado Anahp
+AM;MANAUS;;HMU HOSP MATE UNIMED;sim;media;Unimed;Hospital Geral, Maternidade;Rede própria
+AM;MANAUS;;HOSPITAL ADVENTISTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"28º no Brasil (Newsweek 2026); ONA 3 e Qmentum Diamante"
+AM;MANAUS;;HOSPITAL NILTON LINS;sim;alta;Hapvida;Hospital Geral, PS Geral;"Hospital novo de alta complexidade; mais de 100 leitos e grande UTI"
+AM;MANAUS;;HOSPITAL PORTUGUES;sim;media;;Hospital Geral, PS Geral, Maternidade;Tradicional
+AM;MANAUS;;HOSPITAL RIO AMAZONAS - HAPVIDA;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;"Hospital e maternidade próprio, 24h; melhor âncora Hapvida que o São Lucas"
+AM;MANAUS;;HOSPITAL RIO NEGRO;sim;media;Hapvida;Hospital Geral, PS Geral;"Rede própria Hapvida; cardiologia e neurologia"
+AM;MANAUS;;HOSPITAL SAMEL;sim;alta;Samel;Hospital Geral, PS Geral, Maternidade;"Cirurgia robótica; ONA 3; Anahp  [ONA 3]"
+AM;MANAUS;;HOSPITAL SANTA JULIA;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral com maternidade
+AM;MANAUS;;HOSPITAL SANTO ALBERTO;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral
+AM;MANAUS;;HAPVIDA ASSISTENCIA MEDICA - TEA ADRIANOPOLIS;nao;;;PS Geral;
+AM;MANAUS;;HOSPITAL PEDIATRICO RIO SOLIMOES;nao;;Hapvida;Hospital Geral, PS Geral;
+AM;MANAUS;;HOSPITAL SAO LUCAS;nao;;;PS Geral;Hospital próprio Hapvida, essencialmente eletivo e sem PS 24h
+AM;MANAUS;;INCOR - INSTITUTO DO CORACAO;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+AM;MANAUS;;JULIA HERRERA HOSPITAL DOS OLHOS;nao;;;—;
+AM;MANAUS;;PRONTO ATENDIMENTO CIDADE NOVA;nao;;;—;
+AM;MANAUS;;PRONTO ATENDIMENTO DISTRITO;nao;;;—;
+AP;MACAPÁ;;HOSP SAO CAMILO E SAO LUIS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (2 prestadores na base): todos entram
+AP;MACAPÁ;;HOSPITAL MARCO ZERO;sim;alta;;Hospital Geral, PS Geral;Praça pequena (2 prestadores na base): todos entram
+BA;SALVADOR;;HOSP CARDIO PULMONAR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Cardiologia; Rede D’Or; Anahp"
+BA;SALVADOR;;HOSPITAL ALIANCA - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"27º no Brasil (Newsweek 2026); Rede D’Or; Anahp"
+BA;SALVADOR;;HOSPITAL DA BAHIA;sim;alta;;Hospital Geral, PS Geral;"Alta complexidade; Anahp"
+BA;SALVADOR;;HOSPITAL JORGE VALENTE;sim;media;;Hospital Geral, PS Geral, Maternidade;44º no Brasil (Newsweek 2026)
+BA;SALVADOR;;HOSPITAL MATER DEI;sim;media;;Hospital Geral, PS Geral, Maternidade;"Rede Mater Dei; hospital novo de grande porte"
+BA;SALVADOR;;HOSPITAL PORTUGUES;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Tradicional; Real Sociedade Portuguesa; Anahp"
+BA;SALVADOR;;HOSPITAL SANTA IZABEL;sim;alta;;Hospital Geral, PS Geral;"38º no Brasil (Newsweek 2026); Santa Casa da Bahia"
+BA;SALVADOR;;HOSPITAL SANTO AMARO;sim;media;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;"Maternidade relevante; Fundação José Silveira; Anahp"
+BA;SALVADOR;;HOSPITAL SAO RAFAEL - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; grande porte; Anahp"
+BA;SALVADOR;;CATO VITORIA;nao;;;—;
+BA;SALVADOR;;CEPARH - CTO DE PESQ E ASSIST EM REPR HUMANA;nao;;;Hospital Dia;
+BA;SALVADOR;;CICLOS - SAUDE DA MENTE;nao;;;—;
+BA;SALVADOR;;CLIN DE OLHOS LEITAO GUERRA;nao;;;—;
+BA;SALVADOR;;CLIN MODESTO JACOBINO - LITHOCENTER HOSP DIA;nao;;;Hospital Dia;
+BA;SALVADOR;;CLIN OFTALMOLOGICA JEFFERSON TORRES;nao;;;Hospital Dia;
+BA;SALVADOR;;CLINICA APICE;nao;;;—;
+BA;SALVADOR;;CLINICA BOM VIVER;nao;;;—;
+BA;SALVADOR;;CLINICA FLORENCE;nao;;;Hospital Geral;
+BA;SALVADOR;;CLINICA ORTOFORT;nao;;;—;
+BA;SALVADOR;;CLINICA SANTA HELENA;nao;;;Hospital Geral, PS Geral, Maternidade;
+BA;SALVADOR;;CLISUR;nao;;;Hospital Geral, PS Geral;
+BA;SALVADOR;;CLIVALE CALCADA;nao;;;Hospital Dia;
+BA;SALVADOR;;CLIVAN - INST DE OFTALMOLOGIA;nao;;;—;
+BA;SALVADOR;;COLP HOSPITAL DAY - HOSP DE OLHOS;nao;;;—;
+BA;SALVADOR;;COT - HOSP ORTOPEDICO E TRAUMA;nao;;;Hospital Geral;
+BA;SALVADOR;;DAY HORC - HOSP DE OLHOS RUY CUNHA;nao;;;Hospital Dia;
+BA;SALVADOR;;DAY HOSPITAL LOUIS PASTEUR - OTORRINO CENTER;nao;;;Hospital Dia;
+BA;SALVADOR;;DAY HOSPITAL PROMEDICA;nao;;;Hospital Dia;
+BA;SALVADOR;;FBC - FUND BAHIANA DE CARDIOLOGIA;nao;;;—;
+BA;SALVADOR;;HAPVIDA URUGUAI - PA;nao;;;—;
+BA;SALVADOR;;HOSP DE ENDOSCOPIA RAMIRO MASCARENHAS;nao;;;Hospital Dia;
+BA;SALVADOR;;HOSP SOBABY;nao;;;—;
+BA;SALVADOR;;HOSPITAL DA CIDADE;nao;;;Hospital Geral, PS Geral;"~60 leitos; pequeno frente à primeira linha hospitalar de Salvador  [fontes divergiram]"
+BA;SALVADOR;;HOSPITAL DA SAGRADA FAMILIA;nao;;;Hospital Geral, PS Geral, Maternidade;
+BA;SALVADOR;;HOSPITAL HUMBERTO CASTRO LIMA;nao;;;—;
+BA;SALVADOR;;HOSPITAL PROHOPE;nao;;;Hospital Geral, PS Geral;
+BA;SALVADOR;;HOSPITAL SANTA CLARA;nao;;;Hospital Dia;
+BA;SALVADOR;;HOSPITAL SANTA LUZIA;nao;;;—;
+BA;SALVADOR;;HOSPITAL TERESA DE LISIEUX;nao;;;Hospital Geral, PS Geral, Maternidade;
+BA;SALVADOR;;INOOA - INST DE OTORRIN OTOR ASSOCIADOS;nao;;;Hospital Dia;
+BA;SALVADOR;;INSBOT - INST BAHIANO DE ORTO E TRAUMATOLOGIA;nao;;;Hospital Geral;
+BA;SALVADOR;;INSTITUTO DE OLHOS FREITAS;nao;;;Hospital Dia;
+BA;SALVADOR;;IRTE - INSTITUTO DE REAB TERAPEUTICA;nao;;;—;
+BA;SALVADOR;;ITAIGARA MEMORIAL HOSP DIA;nao;;;Hospital Dia;
+BA;SALVADOR;;MEDTOWER;nao;;;—;
+BA;SALVADOR;;NUPSI;nao;;;—;
+BA;SALVADOR;;OFTALMOCLIN CLIN OFTALMOLOGICA;nao;;;—;
+BA;SALVADOR;;OFTALMODIAGNOSE HOSPITAL DE OLHOS;nao;;;—;
+BA;SALVADOR;;ORTOPED - CLINICA DE FRATURAS;nao;;;—;
+BA;SALVADOR;;PROALIVIO;nao;;;—;
+BA;SALVADOR;;PROBABY CLIN INFANTIL E URGENCIAS;nao;;;—;
+BA;SALVADOR;;PRONTO ATENDIMENTO CAJAZEIRAS;nao;;;—;
+BA;SALVADOR;;RITA LAVINIA DAY HOSPITAL;nao;;;Hospital Dia;
+BA;SALVADOR;;SAMES SERV DE ASSIST MEDICA;nao;;;Hospital Geral, PS Geral;
+BA;SALVADOR;;SANATORIO SAO PAULO;nao;;;—;
+BA;SALVADOR;;SELF ONDINA;nao;;;Hospital Dia;
+BA;SALVADOR;;SEMEC - HOSP AGENOR PAIVA;nao;;;Hospital Geral, PS Geral;
+BA;SALVADOR;;SERMECA;nao;;;PS Geral;
+BA;SALVADOR;;SIM CLINICAS;nao;;;Hospital Geral;
+BA;SALVADOR;;SOMED DAY HOSPITAL;nao;;;Hospital Geral;
+CE;FORTALEZA;;HOSP E MATER GASTROCLINICA;sim;media;Kora;Hospital Geral, PS Geral, Maternidade;"Hoje Hospital Oto Meireles; mantém assistência hospitalar e obstétrica"
+CE;FORTALEZA;;HOSPITAL ALDEOTA;sim;media;Hapvida;Hospital Geral, PS Geral;"Hospital geral  [unidade própria Hapvida; não confundir com Oto Aldeota]"
+CE;FORTALEZA;;HOSPITAL ANTONIO PRUDENTE;sim;media;Hapvida;Hospital Geral, PS Geral;Rede própria Hapvida
+CE;FORTALEZA;;HOSPITAL CURA DARS;sim;media;;Hospital Geral, PS Geral, Maternidade;Associado Anahp
+CE;FORTALEZA;;HOSPITAL HAROLDO JUACABA;sim;media;;Hospital Geral;"Instituto do Câncer do Ceará; oncologia"
+CE;FORTALEZA;;HOSPITAL MONTE KLINIKUM;sim;alta;;Hospital Geral, PS Geral;Alta complexidade  [dono atual indefinido: excluído da JV Amil-Dasa e houve processo de venda]
+CE;FORTALEZA;;HOSPITAL OTOCLINICA;sim;media;Kora;Hospital Geral, PS Geral;Kora Saúde  [nome atual: Hospital Oto Aldeota]
+CE;FORTALEZA;;HOSPITAL SAO CARLOS;sim;alta;;Hospital Geral, PS Geral;Única unidade Rede D’Or no Ceará
+CE;FORTALEZA;;HOSPITAL SAO MATEUS;sim;media;Kora;Hospital Geral, PS Geral;Kora Saúde  [nome atual: Hospital Oto Santos Dumont]
+CE;FORTALEZA;;HOSPITAL UNICLINIC;sim;media;;Hospital Geral, PS Geral;Hospital geral de grande porte
+CE;FORTALEZA;;HOSPITAL UNIMED SUL;sim;alta;Unimed Fortaleza;Hospital Geral, PS Geral;"39º no Brasil (Newsweek 2026); rede própria Unimed Fortaleza  [141 leitos e grande estrutura materno-infantil]"
+CE;FORTALEZA;;HOSP DE OLHOS LEIRIA DE ANDRADE;nao;;;—;
+CE;FORTALEZA;;HOSP E MATER EUGENIA PINHEIRO;nao;;Hapvida;PS Geral, Maternidade;
+CE;FORTALEZA;;HOSPITAL ANA LIMA;nao;;;Hospital Geral, PS Geral, Maternidade;
+CE;FORTALEZA;;HOSPITAL DA CRIANCA;nao;;;—;
+CE;FORTALEZA;;HOSPITAL E MATERNIDADE DUNAS;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+CE;FORTALEZA;;HOSPITAL GENESIS;nao;;;Hospital Geral, PS Geral, Maternidade;
+CE;FORTALEZA;;HOSPITAL IOF;nao;;;Hospital Geral;
+CE;FORTALEZA;;HOSPITAL LUIS FRANCA;nao;;Hapvida;Hospital Geral, PS Geral, Maternidade;
+CE;FORTALEZA;;HOSPITAL MENINO JESUS;nao;;;Hospital Geral;
+CE;FORTALEZA;;HOSPITAL OFTALMOCLINICA;nao;;;—;
+CE;FORTALEZA;;HOSPITAL SAO RAIMUNDO;nao;;;Hospital Geral, PS Geral;"Abaixo do Oto Meireles no ranking da praça; sai para abrir vaga"
+CE;FORTALEZA;;INSTITUICAO ESPIRITA NOSSO LAR;nao;;;—;
+CE;FORTALEZA;;INSTITUTO DE CEGOS;nao;;;—;
+CE;FORTALEZA;;INSTITUTO VOLTA VIDA;nao;;;—;
+CE;FORTALEZA;;PRONTO ATENDIMENTO BEZERRA DE MENEZES;nao;;;—;
+CE;FORTALEZA;;PRONTO ATENDIMENTO MARIO BARRETO;nao;;;—;
+CE;FORTALEZA;;PRONTO ATENDIMENTO PARANGABA;nao;;;Hospital Geral, PS Geral, Maternidade;
+CE;FORTALEZA;;PRONTOCARDIO;nao;;;Hospital Geral, PS Geral;
+CE;FORTALEZA;;PRONTOCLINICA DE FORTALEZA;nao;;;—;
+CE;FORTALEZA;;SOPAI HOSPITAL INFANTIL;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+CE;FORTALEZA;;SOS SOCORROS MEDICOS;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;DF STAR;sim;alta;;Hospital Geral, PS Geral;Unidade premium da Rede D’Or
+DF;BRASÍLIA;;HOSP BRASILIA - AGUAS CLARAS;sim;media;;Hospital Geral, PS Geral;Rede Américas
+DF;BRASÍLIA;;HOSP BRASILIA - LAGO SUL;sim;alta;;Hospital Geral, PS Geral;"Alta complexidade; Rede Américas; Anahp"
+DF;BRASÍLIA;;HOSP DO CORACAO DO BRASIL - REDE DOR;sim;alta;;Hospital Geral, Hospital Dia;"Cardiologia; Rede D’Or"
+DF;BRASÍLIA;;HOSP SIRIO LIBANES - UNID IV;sim;alta;;Hospital Geral, PS Geral;Marca nacional em Brasília
+DF;BRASÍLIA;;HOSPITAL ALVORADA BRASILIA;sim;media;;Hospital Geral, PS Geral;Rede Américas
+DF;BRASÍLIA;;HOSPITAL ANCHIETA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Maior referência de Taguatinga; Kora Saúde; Anahp"
+DF;BRASÍLIA;;HOSPITAL DAHER LAGO SUL;sim;media;;Hospital Geral, PS Geral, Maternidade;"Alta complexidade; PS com mais de 60 mil atendimentos/ano; UTI extensa; Anahp  [fontes divergiram]"
+DF;BRASÍLIA;;HOSPITAL PRONTONORTE;sim;alta;;Hospital Geral, PS Geral, Maternidade;Hoje Hospital Santa Lúcia Norte: 208 leitos, Qmentum Diamond, PS — Grupo Santa
+DF;BRASÍLIA;;HOSPITAL SANTA HELENA - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede D’Or; grande porte"
+DF;BRASÍLIA;;HOSPITAL SANTA LUCIA;sim;alta;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;"29º no Brasil (Newsweek 2026); Grupo Santa; Anahp  [conferir qual unidade: a rede atual não lista Santa Lúcia Águas Claras]"
+DF;BRASÍLIA;;HOSPITAL SANTA LUCIA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"29º no Brasil (Newsweek 2026); Grupo Santa; Anahp"
+DF;BRASÍLIA;;HOSPITAL SANTA LUCIA;sim;alta;;Hospital Geral, Maternidade;"29º no Brasil (Newsweek 2026); Grupo Santa; Anahp"
+DF;BRASÍLIA;;HOSPITAL SANTA LUZIA - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"40º no Brasil (Newsweek 2026); Rede D’Or"
+DF;BRASÍLIA;;HOSPITAL SANTA MARTA - ASA NORTE;sim;media;;Hospital Geral, PS Geral;"Hospital geral; Anahp  [CNES atual registra como Hospital Mantevida Asa Norte — conferir antes de usar]"
+DF;BRASÍLIA;;HOSPITAL SANTA MARTA - TAGUATINGA;sim;media;;Hospital Geral, PS Geral, Maternidade;"Hospital geral; Anahp"
+DF;BRASÍLIA;;MATERNIDADE BRASILIA - DASA;sim;media;;Hospital Geral, PS Geral, Maternidade;"Maternidade; Rede Américas; Anahp"
+DF;BRASÍLIA;;CAU - HOSP UROLOGICO DE BRASILIA;nao;;;—;
+DF;BRASÍLIA;;CBV - CENTRO BRASILEIRO DA VISAO;nao;;;—;
+DF;BRASÍLIA;;CENTRO UROLOGICO TAGUATINGA CEUTA;nao;;;Hospital Dia;
+DF;BRASÍLIA;;CLIN GINEC SANTA MARTA;nao;;;—;
+DF;BRASÍLIA;;CLINICA AMMA;nao;;;Hospital Geral, Maternidade;
+DF;BRASÍLIA;;CLINICA DO RENASCER;nao;;;—;
+DF;BRASÍLIA;;CLINICA MANSAO VIDA;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;CLINICA PACINI DE OFTALMOLOGIA;nao;;;Hospital Geral;
+DF;BRASÍLIA;;CLINICA RECANTO;nao;;;Hospital Dia;
+DF;BRASÍLIA;;ESTANCIA RESILIENCIA;nao;;;—;
+DF;BRASÍLIA;;HOB BRASILIA;nao;;;—;
+DF;BRASÍLIA;;HOB BRASILIA;nao;;;Hospital Dia;
+DF;BRASÍLIA;;HODF HOSPITAL DE OLHOS DO DISTRITO FEDERAL;nao;;;Hospital Dia;
+DF;BRASÍLIA;;HOSP DAS CLINICAS - PS DE FRATURAS DA CEILANDIA;nao;;;Hospital Geral, PS Geral, Maternidade;
+DF;BRASÍLIA;;HOSPITAL BRASILIENSE;nao;;;Hospital Geral, PS Geral, Maternidade;
+DF;BRASÍLIA;;HOSPITAL CRESCER;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;HOSPITAL DA PLASTICA DF;nao;;;—;
+DF;BRASÍLIA;;HOSPITAL DE OLHOS DO GAMA;nao;;;Hospital Dia;
+DF;BRASÍLIA;;HOSPITAL HOME;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;HOSPITAL MANTEVIDA;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;HOSPITAL MARIA AUXILIADORA;nao;;;Hospital Geral, PS Geral, Maternidade;
+DF;BRASÍLIA;;HOSPITAL SAO FRANCISCO;nao;;;Hospital Geral, PS Geral, Maternidade;
+DF;BRASÍLIA;;HOSPITAL SAO MATEUS;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;INSTITUTO DE CARDIOLOGIA E TRANSPLANTES;nao;;;Hospital Geral, PS Geral;
+DF;BRASÍLIA;;IOT INSTITUTO ORTOPEDICO E TRAUMATOLOGICO;nao;;;—;
+DF;BRASÍLIA;;ISOB - INST DE SAUDE DE OLHOS BRASILIA;nao;;;—;
+DF;BRASÍLIA;;OFTALMED;nao;;;—;
+DF;BRASÍLIA;;PA TAGUATINGA - HAPVIDA;nao;;;PS Geral;
+DF;BRASÍLIA;;PAI - PRONTO ATENDIMENTO INFANTIL;nao;;;Hospital Dia;
+DF;BRASÍLIA;;PLACI BRASILIA;nao;;;—;
+DF;BRASÍLIA;;RM CLINICA DE REABILITAÇÃO;nao;;;—;
+DF;BRASÍLIA;;SYNERGIA HUMANA;nao;;;—;
+DF;BRASÍLIA;;UNIMED NACIONAL - COOPERATIVA CENTRAL;nao;;;Hospital Dia, PS Geral;
+DF;BRASÍLIA;;VISAO INST OFTALMOLOGICOS - INBOL;nao;;;—;
+ES;VITÓRIA;;HOSPITAL SANTA RITA DE CASSIA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Oncologia; Anahp"
+ES;VITÓRIA;;HOSPITAL UNIMED VITORIA;sim;media;Unimed;Hospital Geral, PS Geral;Rede própria da Unimed Vitória  [184 leitos, 46 de UTI, ONA 3]
+ES;VITÓRIA;;MATERNIDADE SANTA PAULA;sim;media;;Hospital Geral, PS Geral, Maternidade;Maternidade
+ES;VITÓRIA;;MATERNIDADE SANTA URSULA;sim;media;Kora;Hospital Geral, Hospital Dia, PS Geral, Maternidade;"Kora Saúde; maternidade  [nome atual: Meridional Vitória — hospital geral 24h]"
+ES;VITÓRIA;;MATERNIDADE UNIMED VITORIA;sim;media;Unimed;Maternidade;Rede própria da Unimed Vitória
+ES;VITÓRIA;;SANTA CASA DE MISERICORDIA;sim;media;;Hospital Geral, PS Geral, Maternidade;Referência histórica
+ES;VITÓRIA;;AFPES - ASSOC DOS FUNC PUBLICOS;nao;;;Hospital Geral;
+ES;VITÓRIA;;CLINICA DE ACIDENTADOS;nao;;;Hospital Geral, PS Geral;
+ES;VITÓRIA;;GREEN HOUSE;nao;;;Hospital Dia;
+ES;VITÓRIA;;HOES - HOSPITAL DE OLHOS;nao;;;—;
+ES;VITÓRIA;;HOSPITAL BENTO FERREIRA;nao;;;Hospital Geral;CNES o enquadra como clínica/centro de especialidade com 9 leitos
+ES;VITÓRIA;;HOSPITAL DE OLHOS CAPIXABA;nao;;;—;
+ES;VITÓRIA;;INSTITUTO DE UROLOGIA DO ESPIRITO SANTO;nao;;;—;
+ES;VITÓRIA;;PRONTO ATENDIMENTO UNIMED;nao;;;PS Geral;"É pronto atendimento separado; hospital e maternidade próprios já representados"
+GO;GOIÂNIA;;HOSPITAL ALBERT EINSTEIN;sim;alta;;Hospital Geral, PS Geral;"Einstein Goiânia; marca nacional; Anahp"
+GO;GOIÂNIA;;HOSPITAL DO CORACAO;sim;alta;;Hospital Geral, PS Geral;"Cardiologia; Anahp titular"
+GO;GOIÂNIA;;HOSPITAL DO CORACAO ANIS RASSI;sim;alta;;Hospital Geral, PS Geral;"Cardiologia de referência; Anahp titular"
+GO;GOIÂNIA;;HOSPITAL NEUROLOGICO;sim;alta;;Hospital Geral, PS Geral;Hoje Instituto de Neurologia de Goiânia: hospital geral, PS 24h, UTI, ONA
+GO;GOIÂNIA;;HOSPITAL PREMIUM;sim;alta;;Hospital Geral, PS Geral, Maternidade;Hoje Mater Dei Goiânia (comprado por R$ 250 mi em 2022)  [nome atual: Mater Dei Goiânia, adquirido em 2022]
+GO;GOIÂNIA;;HOSPITAL SAMARITANO;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral
+GO;GOIÂNIA;;HOSPITAL SANTA HELENA;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral tradicional
+GO;GOIÂNIA;;HOSPITAL SAO FRANCISCO;sim;alta;;Hospital Geral, PS Geral, Maternidade;~80 leitos e 16 de UTI, PS 24h, hospital geral com ampla rede de convênios
+GO;GOIÂNIA;;HOSPITAL SAO LUCAS;sim;media;;Hospital Geral, PS Geral, Maternidade;"~125 leitos + 20 de UTI III e emergência 24h; escala para top 10 em Goiânia  [fontes divergiram]"
+GO;GOIÂNIA;;MATERNIDADE ELA;sim;alta;;Hospital Dia, PS Geral, Maternidade;"Maternidade de referência; Anahp titular"
+GO;GOIÂNIA;;C.I.V - CENTRO INTEGRADO DA VISAO;nao;;;Hospital Dia;
+GO;GOIÂNIA;;CASA DE EURIPEDES;nao;;;PS Geral;
+GO;GOIÂNIA;;CEBRAMEN;nao;;;—;
+GO;GOIÂNIA;;CENTRO INTEGRADO DE OFTALMOLOGIA SAN CHARBEL;nao;;;—;
+GO;GOIÂNIA;;CLINICA BOM JESUS;nao;;;—;
+GO;GOIÂNIA;;CLINICA DO CALCULO DO HOSPITAL UROLOGICO;nao;;;—;
+GO;GOIÂNIA;;FUNDACAO BANCO DE OLHOS;nao;;;PS Geral;
+GO;GOIÂNIA;;HEMOLABOR UNID ONCO HEMATOLOGICA;nao;;;—;
+GO;GOIÂNIA;;HONCORD;nao;;;PS Geral;
+GO;GOIÂNIA;;HOSPITAL AMERICA;nao;;;PS Geral;
+GO;GOIÂNIA;;HOSPITAL AMPARO;nao;;;Hospital Geral, PS Geral, Maternidade;
+GO;GOIÂNIA;;HOSPITAL ASMIGO;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL CEMEP;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL CLINICA DO ESPORTE;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL CORACAO DE JESUS;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL DA CRIANCA;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL DA MULHER;nao;;;PS Geral, Maternidade;
+GO;GOIÂNIA;;HOSPITAL DA VISAO;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL DE ACIDENTADOS;nao;;;PS Geral;
+GO;GOIÂNIA;;HOSPITAL DE CANCER;nao;;;PS Geral;
+GO;GOIÂNIA;;HOSPITAL DE OLHOS DE GOIANIA;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL DE OLHOS LIMONGI;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL DE OLHOS OFTALMOLSUL;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL DE OLHOS VILA NOVA;nao;;;Hospital Dia;
+GO;GOIÂNIA;;HOSPITAL DE UROLOGIA;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL DO RIM;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL E MATE VILA NOVA;nao;;;Hospital Geral, PS Geral, Maternidade;
+GO;GOIÂNIA;;HOSPITAL E MATER SANTA BARBARA;nao;;;Hospital Geral, PS Geral, Maternidade;
+GO;GOIÂNIA;;HOSPITAL E MATER SAO JUDAS TADEU;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL E MATERNIDADE AMPARO;nao;;;Maternidade;
+GO;GOIÂNIA;;HOSPITAL GOIANIA LESTE;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL INFANTIL DE CAMPINAS;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL ISMAEL QUEIROZ;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL JACOB FACURI;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL JARDIM AMERICA;nao;;;Hospital Geral, PS Geral, Maternidade;
+GO;GOIÂNIA;;HOSPITAL MAYA;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL ORTOPEDICO GERALDO PEDRA;nao;;;Hospital Geral, PS Geral;[11º candidato: 81 leitos e 12 de UTI, CNES como hospital geral, mas perfil ainda ortopédico]
+GO;GOIÂNIA;;HOSPITAL OTORRINO;nao;;;PS Geral;
+GO;GOIÂNIA;;HOSPITAL PROMED;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL RUY AZEREDO;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL SANTA CATARINA;nao;;;Hospital Geral, PS Geral;"~36 leitos; porte menor que os principais da praça"
+GO;GOIÂNIA;;HOSPITAL SANTA GENOVEVA;nao;;;Hospital Geral, PS Geral, Maternidade;"FECHADO: deixou de atender por volta de 2016-2017; imóvel em massa falida"
+GO;GOIÂNIA;;HOSPITAL SANTA LUCIA;nao;;;Hospital Geral;
+GO;GOIÂNIA;;HOSPITAL SANTA MARIA;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL SANTA TEREZINHA;nao;;;—;
+GO;GOIÂNIA;;HOSPITAL SAO DOMINGOS;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL UNIQUE;nao;;;Hospital Geral;
+GO;GOIÂNIA;;HOSPITAL UROLOGICO PUIGEVERTE;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;HOSPITAL VER EXCELENCIA EM OFTALMOLOGIA;nao;;;—;
+GO;GOIÂNIA;;IGOPE - INSTITUTO GOIANO DE PEDIATRIA;nao;;;—;
+GO;GOIÂNIA;;IMO - INST DE MASTOL E ONCOLOGIA;nao;;;—;
+GO;GOIÂNIA;;INST DE ENDOVIDEO DO APARELHO DIGESTIVO;nao;;;—;
+GO;GOIÂNIA;;INSTITUTO DE OLHOS;nao;;;PS Geral;
+GO;GOIÂNIA;;INSTITUTO DE PLASTICA E LASER;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;INSTITUTO MASTER DE CIRURGIA PLASTICA;nao;;;—;
+GO;GOIÂNIA;;INSTITUTO PANAMERICANO DA VISAO;nao;;;PS Geral;
+GO;GOIÂNIA;;IOG - INSTITUTO ORTOPEDICO;nao;;;Hospital Geral, PS Geral;
+GO;GOIÂNIA;;IVGO INSTITUTO DA VISAO DE GOIANIA;nao;;;—;
+GO;GOIÂNIA;;LIO - HOSPITAL DE OLHOS;nao;;;Hospital Dia;
+GO;GOIÂNIA;;MATERNIDADE FEMINA;nao;;;PS Geral;
+GO;GOIÂNIA;;MATERNIDADE MODELO;nao;;;PS Geral, Maternidade;
+GO;GOIÂNIA;;NUCLEO DE MEDICINA OCULAR;nao;;;—;
+GO;GOIÂNIA;;OFTALMO CENTER;nao;;;Hospital Geral;
+GO;GOIÂNIA;;PAI PRONTO ATENDIMENTO INFANTIL;nao;;;—;
+GO;GOIÂNIA;;PRONTO SOCORRO INFANTIL;nao;;;—;
+GO;GOIÂNIA;;PRONTO SOCORRO PARA QUEIMADURAS;nao;;;Hospital Dia;
+GO;GOIÂNIA;;SAU - SERVICO ATEND UNIMED;nao;;;Hospital Dia, PS Geral;
+GO;GOIÂNIA;;SAU PEDIATRICO;nao;;;Hospital Dia;
+GO;GOIÂNIA;;UROCENTER;nao;;;PS Geral;
+GO;GOIÂNIA;;VISUS CENTRO OFTALMOLOGICO;nao;;;—;
+MA;SÃO LUÍS;;HOSPITAL E MATERNIDADE IBIRAPUERA;sim;media;;Hospital Geral, PS Geral, Maternidade;Maternidade
+MA;SÃO LUÍS;;HOSPITAL GUARAS;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;Hospital geral  [hoje Hospital e Maternidade Guarás da rede Hapvida]
+MA;SÃO LUÍS;;HOSPITAL MARANHENSE;sim;alta;Athena;Hospital Geral, PS Geral, Maternidade;"Hospital geral e maternidade 24h, ~81 leitos, terapia intensiva; Anahp"
+MA;SÃO LUÍS;;HOSPITAL PORTUGUES;sim;alta;;Hospital Geral, PS Geral;Tradicional de São Luís
+MA;SÃO LUÍS;;HOSPITAL SAO DOMINGOS;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Grande porte; vendido pela Dasa à Mederi em dez/2025  [saiu da Dasa e passou à Mederi Participações no fim de 2025]"
+MA;SÃO LUÍS;;HOSPITAL SAO JOSE;sim;media;;Hospital Geral, Maternidade;Hospital geral
+MA;SÃO LUÍS;;NATUS LUMINE MATERNIDADE;sim;media;;Hospital Geral, PS Geral, Maternidade;Maternidade
+MA;SÃO LUÍS;;PROCARDIO;sim;media;;Hospital Geral;Cardiologia
+MA;SÃO LUÍS;;UDI HOSPITAL - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Referência do Maranhão; Rede D’Or; 170 leitos; Anahp"
+MA;SÃO LUÍS;;UPC HOSPITAL DA CRIANCA;sim;media;;Hospital Geral;Hospital pediátrico ativo, 24h, muito disseminado nas redes da base
+MA;SÃO LUÍS;;CENTRO DE OLHOS DE SAO LUIS;nao;;;—;
+MA;SÃO LUÍS;;CLINICA SAO MARCOS;nao;;;Maternidade;
+MA;SÃO LUÍS;;DOM HOSPITAL DIA;nao;;;Hospital Dia;
+MA;SÃO LUÍS;;FUNDACAO ANTONIO JORGE DINO;nao;;;Hospital Geral, PS Geral;[Hospital Aldenora Bello: referência em câncer, mas especializado]
+MA;SÃO LUÍS;;HCI - HOSPITAL DE CLINICAS INTEGRADAS;nao;;;Hospital Geral;"Nome cadastral conflitante, perfil intensivo e SUS; baixa utilidade comprovada"
+MA;SÃO LUÍS;;HRO - HOSPITAL REF OFTALMOLOGICA;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL FELICIO ROCHO;sim;alta;;Hospital Geral, PS Geral;"20º no Brasil (Newsweek 2026); Anahp"
+MG;BELO HORIZONTE;;HOSPITAL LIFECENTER;sim;media;Hapvida;Hospital Geral, PS Geral;Hospital geral de referência
+MG;BELO HORIZONTE;;HOSPITAL MADRE TERESA;sim;alta;;Hospital Geral, PS Geral;"21º no Brasil (Newsweek 2026); ONA 3 e Qmentum Diamond"
+MG;BELO HORIZONTE;;HOSPITAL MATER DEI;sim;alta;;Hospital Geral, PS Geral, Maternidade;"17º no Brasil (Newsweek 2026); Rede Mater Dei; Anahp"
+MG;BELO HORIZONTE;;HOSPITAL MATER DEI;sim;alta;;Hospital Geral, PS Geral, Maternidade;"17º no Brasil (Newsweek 2026); Rede Mater Dei; Anahp"
+MG;BELO HORIZONTE;;HOSPITAL UNIMED;sim;media;Unimed-BH;Hospital Geral, PS Geral;Rede própria da Unimed-BH
+MG;BELO HORIZONTE;;HOSPITAL VERA CRUZ - HAPVIDA;sim;media;Hapvida;Hospital Geral, PS Geral;Tradicional no Barro Preto
+MG;BELO HORIZONTE;;INSTITUTO BIOCOR;sim;alta;;Hospital Geral, PS Geral;"18º no Brasil (Newsweek 2026); cardiologia; Atlântica D’Or  [fica em NOVA LIMA, não em Belo Horizonte — erro de município na base]"
+MG;BELO HORIZONTE;;INSTITUTO ORIZONTI;sim;media;;Hospital Geral, PS Geral;"Hospital de alto padrão; Anahp"
+MG;BELO HORIZONTE;;MATERNIDADE UNIMED;sim;media;Unimed-BH;Hospital Dia, PS Geral, Maternidade;Rede própria da Unimed-BH
+MG;BELO HORIZONTE;;CASA DE SAUDE STA MARIA - VIV SAUDE MENTAL;nao;;;—;
+MG;BELO HORIZONTE;;CC NOTREDAME INTERMEDICA;nao;;;PS Geral;
+MG;BELO HORIZONTE;;CENTRO OFTALMOLOGICO DE MINAS GERAIS;nao;;;—;
+MG;BELO HORIZONTE;;CEPSI - CENTRAL PSIQUICA;nao;;;—;
+MG;BELO HORIZONTE;;CLINICA DE OLHOS DR.R.GUIMARAES;nao;;;—;
+MG;BELO HORIZONTE;;CMHI - CTO MED HOSPITALAR INTEGRADO;nao;;;—;
+MG;BELO HORIZONTE;;HCE - INSTITUTO DE OLHOS DE BELO HORIZONTE;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL BELO HORIZONTE;nao;;;Hospital Geral, PS Geral, Maternidade;
+MG;BELO HORIZONTE;;HOSPITAL BELVEDERE;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL DA BALEIA;nao;;;Hospital Geral;
+MG;BELO HORIZONTE;;HOSPITAL DA MULHER E MATER SANTA FE;nao;;;Hospital Geral, Maternidade;
+MG;BELO HORIZONTE;;HOSPITAL DE OLHOS RUI MARINHO;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL DE ORTOPEDIA ORTOCENTER;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL ESPIRITA ANDRE LUIZ;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL EVANGELICO;nao;;;Hospital Geral, PS Geral;
+MG;BELO HORIZONTE;;HOSPITAL INFANTIL PADRE ANCHIETA;nao;;;—;
+MG;BELO HORIZONTE;;HOSPITAL INFANTIL SAO CAMILO UNIMED;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+MG;BELO HORIZONTE;;HOSPITAL PAULO DE TARSO;nao;;;Hospital Geral;
+MG;BELO HORIZONTE;;HOSPITAL SEMPER;nao;;;Hospital Geral, PS Geral;"~116 leitos + 16 UCI; sem acreditação ou ranking da camada superior de BH  [fontes divergiram]"
+MG;BELO HORIZONTE;;HOSPITAL SOCOR;nao;;;Hospital Geral, PS Geral;
+MG;BELO HORIZONTE;;IMOL - INST MINEIRO DE OLHOS;nao;;;Hospital Dia;
+MG;BELO HORIZONTE;;INST DE OTORRINOLARINGOLOGIA;nao;;;—;
+MG;BELO HORIZONTE;;INSTITUTO MARIO PENNA;nao;;;Hospital Geral, PS Geral;
+MG;BELO HORIZONTE;;LEVIVA;nao;;;—;
+MG;BELO HORIZONTE;;MATERNIDADE OCTAVIANO NEVES;nao;;;Hospital Geral, PS Geral, Maternidade;
+MG;BELO HORIZONTE;;NEOCENTER MATERNIDADE;nao;;;Maternidade;
+MG;BELO HORIZONTE;;NEOCENTER UTIP;nao;;;—;
+MG;BELO HORIZONTE;;NOT;nao;;;—;
+MG;BELO HORIZONTE;;NUCLEO DE OFTALMOLOGIA ESPECIALIZADA;nao;;;—;
+MG;BELO HORIZONTE;;NUCLEO DE OTORRINO BH;nao;;;Hospital Geral;
+MG;BELO HORIZONTE;;OCULARE CENTRO DE OFTALMOLOGIA;nao;;;Hospital Geral;
+MG;BELO HORIZONTE;;PHD PACE HOSPITAL;nao;;;Hospital Geral;
+MG;BELO HORIZONTE;;SANTA CASA DE MISERICORDIA;nao;;;Hospital Geral, PS Geral;
+MG;BELO HORIZONTE;;UROLOGICA - NUCLEO DE DIAG E TRAT EM UROLOGIA;nao;;;—;
+MS;CAMPO GRANDE;;HOSP DO CORACAO - CLIN DE CAMPO GRANDE;sim;alta;;Hospital Geral, PS Geral;"Hospital do Coração de MS; cardiologia; Anahp  [antiga Clínica de Campo Grande; adquirida pela Rede Santa em 2021]"
+MS;CAMPO GRANDE;;HOSPITAL ADVENTISTA;sim;alta;;Hospital Geral, PS Geral;Hospital geral, urgência, internação privada e 20 leitos de UTI
+MS;CAMPO GRANDE;;HOSPITAL CASSEMS;sim;media;Cassems;Hospital Geral, PS Geral, Maternidade;Rede própria da autogestão Cassems
+MS;CAMPO GRANDE;;HOSPITAL DO CORACAO;sim;alta;;Hospital Geral, PS Geral;"Hospital do Coração de MS; cardiologia; Anahp  [conferir: pode ser resíduo cadastral da mesma unidade acima]"
+MS;CAMPO GRANDE;;HOSPITAL GERAL EL KADRI;sim;media;;Hospital Geral, PS Geral, Maternidade;Privado sem vínculo com operadora
+MS;CAMPO GRANDE;;HOSPITAL PRONCOR;sim;alta;Rede D’Or;Hospital Geral, PS Geral;"Principal privado; Rede D’Or (51%); 136 leitos"
+MS;CAMPO GRANDE;;HOSPITAL SANTA MARINA;sim;media;;Hospital Geral, Maternidade;"Pediatria; Grupo Proncor"
+MS;CAMPO GRANDE;;HOSPITAL UNIMED CAMPO GRANDE;sim;alta;Unimed;Hospital Geral;"Rede própria; 180 leitos, 20 de CTI"
+MS;CAMPO GRANDE;;MATER CANDIDO MARIANO - ASSOC AMPARO;sim;media;;Maternidade;Maternidade
+MS;CAMPO GRANDE;;CLINICA CARANDA;nao;;;Hospital Geral;
+MS;CAMPO GRANDE;;HOSPITAL DO CANCER DR ALFREDO ABRAO;nao;;;—;
+MS;CAMPO GRANDE;;HOSPITAL INFANTIL SAO LUCAS;nao;;;—;
+MS;CAMPO GRANDE;;HOSPITAL NOSSO LAR;nao;;;—;
+MS;CAMPO GRANDE;;HOSPITAL SAO JULIAO;nao;;;Hospital Geral;
+MS;CAMPO GRANDE;;HPLAS HOSPITAL DA PLASTICA;nao;;;—;
+MS;CAMPO GRANDE;;ORTOTRAUMA - CLINICA DE ORTOPEDIA;nao;;;—;
+MT;CUIABÁ;;HOSPITAL AMECOR;sim;media;;Hospital Geral, PS Geral;Atende SUS, particular e convênios
+MT;CUIABÁ;;HOSPITAL DE CANCER;sim;media;;Hospital Geral;Oncologia de referência estadual
+MT;CUIABÁ;;HOSPITAL E MATER SAO MATEUS;sim;alta;Kora;Hospital Geral, PS Geral, Maternidade;"Alta complexidade; Kora Saúde; ONA 3 e ACSA  [Kora desde 2019; ONA 3 e ACSA]"
+MT;CUIABÁ;;HOSPITAL INFANTIL E MATER FEMINA;sim;media;;Hospital Geral, PS Geral, Maternidade;Maternidade e infantil
+MT;CUIABÁ;;HOSPITAL JARDIM CUIABA;sim;media;;Hospital Geral, PS Geral, Maternidade;"Complexo Hospitalar de Cuiabá; cerca de 140 leitos"
+MT;CUIABÁ;;HOSPITAL SANTA HELENA;sim;media;;Hospital Geral, Maternidade;Hospital geral
+MT;CUIABÁ;;HOSPITAL SANTA ROSA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Maior hospital privado de MT; ONA 3; Anahp"
+MT;CUIABÁ;;HOSPITAL SAO JUDAS TADEU;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral
+MT;CUIABÁ;;PA UNIMED CUIABA;sim;alta;Unimed;Hospital Geral, PS Geral;"Rede própria; 85 leitos + 20 de UTI  [nome atual: Hospital Unimed Cuiabá — 85 leitos, 20 de UTI, emergência 24h]"
+MT;CUIABÁ;;HBENTO;nao;;;—;
+MT;CUIABÁ;;HOSPITAL DE OLHOS;nao;;;—;
+MT;CUIABÁ;;HOSPITAL GERAL UNIVERSITARIO;nao;;;Hospital Geral, Maternidade;[nome atual: Hospital Geral e Maternidade de Cuiabá]
+MT;CUIABÁ;;HOSPITAL ORTOPEDICO;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+MT;CUIABÁ;;HOSPITAL OTORRINO;nao;;;Hospital Geral, PS Geral;
+MT;CUIABÁ;;VISAO OFTALMOLOGIA;nao;;;—;
+PA;BELÉM;;HOSP RIO MAR;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;Hospital geral
+PA;BELÉM;;HOSPITAL ADVENTISTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede Adventista; Anahp titular"
+PA;BELÉM;;HOSPITAL AMAZONIA;sim;alta;;Hospital Geral, PS Geral;"~99 leitos e 20 de UTI; Beneficência Nipo-Brasileira da Amazônia"
+PA;BELÉM;;HOSPITAL D LUIZ I - BP;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Beneficente Portuguesa; tradicional"
+PA;BELÉM;;HOSPITAL DO CORACAO;sim;alta;;PS Geral;"Hospital do Coração do Pará; cardiologia; Anahp"
+PA;BELÉM;;HOSPITAL GUADALUPE;sim;media;;Hospital Geral, PS Geral;Hospital geral
+PA;BELÉM;;HOSPITAL HSM;sim;alta;;Hospital Geral, PS Geral;"Hospital Saúde da Mulher: 177 leitos, 50 de UTI, oncologia completa; Anahp  [fontes divergiram]"
+PA;BELÉM;;HOSPITAL MARADEI;sim;media;;Hospital Geral, PS Geral;Hospital geral
+PA;BELÉM;;HOSPITAL ORDEM TERCEIRA;sim;media;;Hospital Geral, PS Geral;Tradicional
+PA;BELÉM;;HOSPITAL PORTO DIAS;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Maior grupo privado do Norte; Anahp"
+PA;BELÉM;;HOSPITAL UNIMED PRIME;sim;media;Unimed;Hospital Geral, PS Geral;"Rede própria; a Unimed Belém é a principal pagadora local"
+PA;BELÉM;;MATERNIDADE SAUDE DA CRIANCA;sim;alta;;Hospital Geral, Maternidade;Hospital e maternidade ativo, urgência e referência neonatal
+PA;BELÉM;;CLINICA PSIQUIATRICA NEW LIFE;nao;;;—;
+PA;BELÉM;;HOSPITAL PRO INFANTIL;nao;;;Maternidade;[pediátrico relevante, mas especializado]
+PA;BELÉM;;HOSPITAL VIDA MAMARAY;nao;;;Maternidade;
+PA;BELÉM;;MATERNIDADE DO POVO;nao;;;Hospital Geral, PS Geral, Maternidade;
+PA;BELÉM;;OFTALMO E CLINICA;nao;;;Hospital Dia;
+PA;BELÉM;;UROCENTER;nao;;;—;
+PA;BELÉM;;VISUAL LASER;nao;;;—;
+PB;JOÃO PESSOA;;CLINEPA - CENTRO HOSPITALAR;sim;media;;Hospital Geral, PS Geral, Maternidade;Centro hospitalar
+PB;JOÃO PESSOA;;HOSP DAS NEVES - HNSN - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Principal privado da Paraíba; Rede D’Or; Anahp"
+PB;JOÃO PESSOA;;HOSP MEMORIAL SAO FRANCISCO;sim;media;;Hospital Geral, PS Geral;Hospital geral
+PB;JOÃO PESSOA;;HOSP SAO VICENTE DE PAULO;sim;media;;Hospital Geral, PS Geral;Tradicional  [sem fonte atual inequívoca — conferir antes de usar]
+PB;JOÃO PESSOA;;HOSPITAL ALBERTO URQUIZA WANDERLEY;sim;alta;Unimed João Pessoa;Hospital Geral, PS Geral;Rede própria da Unimed João Pessoa  [hospital próprio e de alta complexidade]
+PB;JOÃO PESSOA;;HOSPITAL GERAL DA PARAIBA;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;Hoje Hospital e Maternidade da Paraíba
+PB;JOÃO PESSOA;;HOSPITAL JOAO PAULO II;sim;media;;PS Geral, Maternidade;Maternidade 24h, ~39 leitos e 9 de UTI
+PB;JOÃO PESSOA;;HOSPITAL SAMARITANO - JOAO PESSOA;sim;media;;Hospital Geral, PS Geral;Hospital geral
+PB;JOÃO PESSOA;;HOSPITAL SAO LUIZ;sim;media;;Hospital Geral, PS Geral;Hospital geral
+PB;JOÃO PESSOA;;AMIP ASSIST MED INFANTIL;nao;;;Hospital Geral, PS Geral;
+PB;JOÃO PESSOA;;CENTRO MED VANDERLAN DE S CARVALHO;nao;;;Hospital Geral;
+PB;JOÃO PESSOA;;CENTRO MEDICO HOSPITALAR LEONARDO F SILVA;nao;;;Hospital Geral, PS Geral;
+PB;JOÃO PESSOA;;CENTRO TRATAMENTO DA VISAO;nao;;;Hospital Geral;
+PB;JOÃO PESSOA;;CLIN MEDICA REAVIVARE;nao;;;Hospital Dia;
+PB;JOÃO PESSOA;;CLINICA DOM RODRIGO;nao;;;Hospital Geral, PS Geral;
+PB;JOÃO PESSOA;;CLINICA DR ANTONIO DE PADUA;nao;;;Hospital Geral;
+PB;JOÃO PESSOA;;CLINICA ESDRAS FURTADO;nao;;;Hospital Dia;
+PB;JOÃO PESSOA;;FUNDACAO PEDRO AMERICO - HBOL;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+PB;JOÃO PESSOA;;HNSN - CLIM;nao;;;PS Geral, Maternidade;
+PB;JOÃO PESSOA;;HOSPITAL DE OLHOS DA PARAIBA;nao;;;Hospital Dia;
+PB;JOÃO PESSOA;;HOSPITAL NAPOLEAO LAUREANO;nao;;;Hospital Geral, Maternidade;CNES: hospital especializado em oncologia, majoritariamente SUS
+PB;JOÃO PESSOA;;HOSPITAL PED MOACIR DANTAS;nao;;;Hospital Geral, PS Geral;
+PB;JOÃO PESSOA;;INNPAR - MEDICAL HOSPITAL DIA;nao;;;Hospital Geral, PS Geral;
+PB;JOÃO PESSOA;;OCULISTAS ASSOCIADOS DA PARAIBA;nao;;;Hospital Dia;
+PB;JOÃO PESSOA;;ORTOTRAUMA TAMBAU;nao;;;PS Geral;
+PB;JOÃO PESSOA;;P S CENTRAL DE FRATURAS;nao;;;—;
+PB;JOÃO PESSOA;;PROVISAO;nao;;;Hospital Dia;
+PB;JOÃO PESSOA;;SOS OTORRINO;nao;;;Hospital Geral, PS Geral;
+PE;RECIFE;;HOSPITAL ALBERT SABIN;sim;media;;Hospital Geral, PS Geral, Maternidade;Tradicional
+PE;RECIFE;;HOSPITAL ESPERANCA - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede D’Or; alta complexidade; Anahp"
+PE;RECIFE;;HOSPITAL JAYME DA FONTE;sim;media;;Hospital Geral, PS Geral;Tradicional
+PE;RECIFE;;HOSPITAL MEMORIAL SAO JOSE - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede D’Or; tradicional; Anahp"
+PE;RECIFE;;HOSPITAL SANTA JOANA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Maternidade e hospital geral; Rede Américas; Anahp"
+PE;RECIFE;;HOSPITAL SAO MARCOS - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Cardiologia; Rede D’Or; Anahp"
+PE;RECIFE;;HOSPITAL UNIMED RECIFE;sim;media;Unimed;Hospital Geral, PS Geral;"Complexo Hospitalar Unimed Recife; 42º (Newsweek 2026)"
+PE;RECIFE;;REAL HOSPITAL PORTUGUES;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Maior hospital privado de Pernambuco; Anahp"
+PE;RECIFE;;CLINICA TERAPEUTICA VIRTUDE SAUDE MENTAL;nao;;;—;
+PE;RECIFE;;CLINICA VILLA SANT ANA;nao;;;—;
+PE;RECIFE;;COPE - CENTRO OFTALMOLOGICO;nao;;;—;
+PE;RECIFE;;HGMI - HOSPITAL GERAL MATERNO INFANTIL;nao;;;Hospital Geral;
+PE;RECIFE;;HOPE - HOSPITAL DE OLHOS;nao;;;—;
+PE;RECIFE;;HOSPITAL CAPIBARIBE;nao;;;—;
+PE;RECIFE;;HOSPITAL DE AVILA;nao;;;Hospital Geral, PS Geral, Maternidade;
+PE;RECIFE;;HOSPITAL DE BOA VIAGEM;nao;;;Hospital Geral, Hospital Dia, PS Geral;
+PE;RECIFE;;HOSPITAL DE FRATURAS;nao;;;PS Geral;
+PE;RECIFE;;HOSPITAL DE ORTOPEDIA E FRATURAS;nao;;;PS Geral;
+PE;RECIFE;;HOSPITAL DIA MAVIE;nao;;;Hospital Dia;
+PE;RECIFE;;HOSPITAL ESPINHEIRO;nao;;;Hospital Geral, PS Geral;
+PE;RECIFE;;HOSPITAL ILHA DO LEITE;nao;;;—;
+PE;RECIFE;;HOSPITAL INFANTIL MANDACARU;nao;;;Hospital Geral, PS Geral, Maternidade;
+PE;RECIFE;;HOSPITAL JORGE DE MEDEIROS;nao;;;—;
+PE;RECIFE;;HOSPITAL MARIA LUCINDA;nao;;;Hospital Geral;
+PE;RECIFE;;HOSPITAL OLHOS SANTA LUZIA;nao;;;—;
+PE;RECIFE;;HOSPITAL SANTA TERESINHA;nao;;;Hospital Geral;
+PE;RECIFE;;HOSPITAL VASCO LUCENA;nao;;;Hospital Geral, PS Geral, Maternidade;
+PE;RECIFE;;HVISAO - HOSPITAL DA VISAO;nao;;;—;
+PE;RECIFE;;INSTITUTO DE OLHOS CLOVIS PAIVA;nao;;;—;
+PE;RECIFE;;IOFV - INST DE OLHOS FERNANDO VENTURA;nao;;;—;
+PE;RECIFE;;IOR - INSTITUTO DE OLHOS;nao;;;—;
+PE;RECIFE;;OFTALMAX HOSPITAL DE OLHOS;nao;;;—;
+PE;RECIFE;;ORTHO - UNIDADE DE FRATURAS;nao;;;—;
+PE;RECIFE;;OTORRINOS RECIFE;nao;;;—;
+PE;RECIFE;;PRONTO ATENDIMENTO CAXANGA;nao;;;PS Geral;
+PE;RECIFE;;PRONTO ATENDIMENTO DERBY;nao;;;PS Geral;
+PE;RECIFE;;PRONTO ATENDIMENTO UNIMED;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+PE;RECIFE;;SEOPE;nao;;;—;
+PE;RECIFE;;SOS MAOS;nao;;;Hospital Dia, PS Geral;
+PE;RECIFE;;VISAO CENTER - CLINICA OFTALMOLOGICA;nao;;;—;
+PI;TERESINA;;CASAMATER - CASA DE SAUDE E MATERNIDADE;sim;media;;Hospital Geral, PS Geral, Maternidade;"Casa de Saúde e Maternidade; terapia intensiva"
+PI;TERESINA;;CLINICA SANTA FE;sim;alta;;Hospital Geral, PS Geral, Maternidade;Hoje Centro Hospitalar e Maternidade Santa Fé: ~80 leitos e 10 de UTI
+PI;TERESINA;;HOSP RIO POTY - HAPVIDA;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;"Rede própria Hapvida; maternidade"
+PI;TERESINA;;HOSP SANTA MARIA;sim;alta;;Hospital Geral, PS Geral;"Hospital geral; Grupo Med Imagem"
+PI;TERESINA;;HOSP SAO MARCOS;sim;media;;Hospital Geral, PS Geral;"Filantrópico; oncologia"
+PI;TERESINA;;HOSP SAO PAULO;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral
+PI;TERESINA;;HOSP SAO PEDRO;sim;media;;Hospital Geral, Maternidade;Hoje Maternidade Med Imagem: ~57 leitos e 10 de UTI neonatal
+PI;TERESINA;;ITACOR;sim;media;;Hospital Geral, PS Geral;Cardiologia
+PI;TERESINA;;PRONTOMED ADULTO;sim;media;;Hospital Geral, PS Geral;Pronto atendimento de referência
+PI;TERESINA;;UNIMED TERESINA;sim;alta;Unimed;Hospital Geral, PS Geral;"Hospital de Alta Complexidade Unimed Primavera; ONA"
+PI;TERESINA;;COE - CENTRO OFTALMO ESPECIALIZADO;nao;;;—;
+PI;TERESINA;;COT - CENTRO ORTOPEDICO TERESINA;nao;;;—;
+PI;TERESINA;;GASTROVITA;nao;;;Hospital Geral;
+PI;TERESINA;;HOPI E CLIN DE OLHOS FRANCISCO VILAR;nao;;;—;
+PI;TERESINA;;HOSP DO OLHO DE TERESINA;nao;;;—;
+PI;TERESINA;;HOSP FLAVIO SANTOS;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+PI;TERESINA;;HOSP MED IMAGEM;nao;;;Hospital Geral, PS Geral;O CNES o classifica como clínica/centro de especialidade, não hospital de internação  [fontes divergiram]  [reconciliar com a Maternidade Med Imagem — a marca não sustenta dois hospitais independentes]
+PI;TERESINA;;HOSP OTORRINOS;nao;;;—;
+PI;TERESINA;;IVV - INST VOLTA VIDA;nao;;;—;
+PI;TERESINA;;PROCARDIACO - CLIN DE DOENCAS CARDIOVASCULARES;nao;;;—;
+PI;TERESINA;;PRONTOMED INFANTIL;nao;;;Hospital Dia;
+PI;TERESINA;;UNIMED TERESINA COOPERATIVA DE TRABALHO MEDICO;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+PR;CURITIBA;;HOSPITAL INC;sim;media;;Hospital Geral, PS Geral;"Instituto de Neurologia de Curitiba; Anahp"
+PR;CURITIBA;;HOSPITAL INFANTIL PEQUENO PRINCIPE;sim;alta;;Hospital Geral, Maternidade;Único pediátrico da América Latina no Newsweek Specialized
+PR;CURITIBA;;HOSPITAL MARCELINO CHAMPAGNAT;sim;alta;;Hospital Geral, PS Geral;"Alta complexidade; Grupo Marista; Anahp"
+PR;CURITIBA;;HOSPITAL NOSSA SENHORA DAS GRACAS;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Referência geral de Curitiba; Anahp"
+PR;CURITIBA;;HOSPITAL NOSSA SENHORA DE FATIMA;sim;media;Unimed Curitiba;Hospital Dia, Maternidade;"Rede própria da Unimed Curitiba; Anahp"
+PR;CURITIBA;;HOSPITAL SANTA CRUZ;sim;alta;;Hospital Geral, PS Geral, Maternidade;Única unidade Rede D’Or no Paraná
+PR;CURITIBA;;HOSPITAL SAO VICENTE;sim;media;;Hospital Geral, PS Geral;"Tradicional no centro; Anahp"
+PR;CURITIBA;;HOSPITAL UNIV EVANGELICO MACKENZIE;sim;alta;;Hospital Geral, PS Geral, Maternidade;493 leitos, grande estrutura de UTI e alta complexidade
+PR;CURITIBA;;HOSPITAL VITA BATEL;sim;alta;;Hospital Geral, PS Geral;"Premium; Rede Vita; Anahp"
+PR;CURITIBA;;HOSPITAL VITA CURITIBA;sim;alta;;Hospital Geral, PS Geral;"Grande porte; Rede Vita; Anahp"
+PR;CURITIBA;;ARTRO CLINICA ORTOPEDICA;nao;;;—;
+PR;CURITIBA;;CIM - CTO INTEGRADO DE MEDICINA;nao;;;Hospital Dia;
+PR;CURITIBA;;CLIN PORTO SEGURO;nao;;;—;
+PR;CURITIBA;;CLIN SAINT PAUL;nao;;;—;
+PR;CURITIBA;;CLINICA LOS ANGELES;nao;;;Hospital Geral;
+PR;CURITIBA;;CLINIPAM;nao;;;Maternidade;
+PR;CURITIBA;;CPO - CENTRO PARANAENSE DE OFTALMOLOGIA;nao;;;Hospital Dia;
+PR;CURITIBA;;FELICCITA - INST DE FERTILIDADE;nao;;;Hospital Dia;
+PR;CURITIBA;;HOSPITAL BARIGUI DE OFTALMOLOGIA;nao;;;Hospital Dia;
+PR;CURITIBA;;HOSPITAL CARDIOLOGICO COSTANTINI;nao;;;Hospital Geral, Hospital Dia;
+PR;CURITIBA;;HOSPITAL CRUZ VERMELHA BRASILEIRA;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;HOSPITAL CURITIBANO;nao;;;—;
+PR;CURITIBA;;HOSPITAL DA VISAO;nao;;;—;
+PR;CURITIBA;;HOSPITAL DA VISAO;nao;;;—;
+PR;CURITIBA;;HOSPITAL DAS NACOES;nao;;;Hospital Geral, PS Geral, Maternidade;
+PR;CURITIBA;;HOSPITAL DE CARIDADE - SANTA CASA;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;HOSPITAL DE OLHOS DO PARANA;nao;;;Hospital Dia;
+PR;CURITIBA;;HOSPITAL DR MURICY;nao;;;Hospital Dia;
+PR;CURITIBA;;HOSPITAL E MATERNIDADE SANTA BRIGIDA;nao;;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;
+PR;CURITIBA;;HOSPITAL E MATERNIDADE SANTA MADALENA SOFIA;nao;;;Hospital Geral;
+PR;CURITIBA;;HOSPITAL ERASTO GAERTNER;nao;;;PS Geral;
+PR;CURITIBA;;HOSPITAL HEIDELBERG;nao;;;PS Geral;
+PR;CURITIBA;;HOSPITAL IPO;nao;;;—;
+PR;CURITIBA;;HOSPITAL MENINO DEUS;nao;;;—;
+PR;CURITIBA;;HOSPITAL NOSSA SENHORA DO PILAR;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;HOSPITAL NOVO MUNDO;nao;;;Hospital Dia;
+PR;CURITIBA;;HOSPITAL ONIX;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;HOSPITAL SAO LUCAS;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;HOSPITAL SUGISAWA;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;HOSPITAL UNION;nao;;;Hospital Geral;
+PR;CURITIBA;;HOSPITAL XV;nao;;;Hospital Geral, PS Geral;
+PR;CURITIBA;;INSTITUTO DA CRIANCA;nao;;;Hospital Dia, PS Geral;
+PR;CURITIBA;;INSTITUTO DA VISAO;nao;;;Hospital Dia;
+PR;CURITIBA;;IOC - INST DE OFTALMOLOGIA DE CURITIBA;nao;;;—;
+PR;CURITIBA;;LIPOPLASTIC;nao;;;—;
+PR;CURITIBA;;MATERNIDADE CURITIBA;nao;;;Hospital Dia, Maternidade;
+PR;CURITIBA;;MEDICOS DE OLHOS;nao;;;—;
+PR;CURITIBA;;OTORRINOS CURITIBA;nao;;;Hospital Geral;
+PR;CURITIBA;;UNIICA - IRM DA STA CASA;nao;;;PS Geral;
+PR;CURITIBA;;UNIICA - IRM DA STA CASA;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;HOSP RIO BARRA - DOR;sim;alta;;Hospital Geral, PS Geral;"Complexo Américas; alta complexidade e cirurgia robótica  [antigo Hospital Rio Mar; Rede D’Or desde 2019; ONA 3]"
+RJ;RIO DE JANEIRO;BARRA;HOSP RIOS DOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"45º no Brasil (Newsweek 2026); Rede D’Or"
+RJ;RIO DE JANEIRO;BARRA;HOSPITAL BARRA DOR II;sim;alta;;Hospital Geral, PS Geral;"9º no Brasil (Newsweek 2026); Rede D’Or"
+RJ;RIO DE JANEIRO;BARRA;HOSPITAL VITORIA - ALVORADA TAGUATINGA;sim;alta;;Hospital Geral, PS Geral;Hospital Vitória Barra: alta complexidade, PS 24h, Anahp — nome na base está contaminado
+RJ;RIO DE JANEIRO;BARRA;AMIU - ASSIST MED PED DE URGENCIA;nao;;;Maternidade;
+RJ;RIO DE JANEIRO;BARRA;CLIN PEDIATRICA DA BARRA;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;CLINICA JORGE JABER;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;CLINICA REVITALIS;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;CLINICA TOTAL KIDS;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;CTO CLINICO - NDI HAPVIDA;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;DH DAY HOSPITAL;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;EYE CENTER;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;BARRA;HOBA - HOSP OFTALMOLOGICO DA BARRA;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;HOSP CASA SAO BERNARDO;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;BARRA;HOSP DA MULHER - NDI - CLINIPAM;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;HOSP DE CLINICAS DE JACAREPAGUA;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;BARRA;HOSP INTERMEDICA JACAREPAGUA - AMIU;nao;;;Hospital Geral, Maternidade;
+RJ;RIO DE JANEIRO;BARRA;HOSP SAMARITANO;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;BARRA;HOSP UNIMED RIO;nao;;Unimed;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;BARRA;HOSPITAL BARRA DAY;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+RJ;RIO DE JANEIRO;BARRA;HOSPITAL BARRA DOR - PEDIÁTRICO;nao;;;Hospital Geral, PS Geral;"Campus pediátrico da mesma marca após a abertura do novo Barra D’Or; não é hospital independente"
+RJ;RIO DE JANEIRO;BARRA;HOSPITAL DO CALCULO RENAL CALREN;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;NIG - CLIN BARRA DA TIJUCA;nao;;;Hospital Geral;
+RJ;RIO DE JANEIRO;BARRA;OFTALMOCASA;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;ORTO BARRA;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;BARRA;PERINATAL - REDE DOR;nao;;;Hospital Geral, Maternidade;
+RJ;RIO DE JANEIRO;BARRA;PRONTO ATENDIMENTO UNIMED;nao;;;PS Geral;
+RJ;RIO DE JANEIRO;BARRA;UNIDADE NEONATAL LAGOA-UNIDADE BARRA;nao;;;—;
+RJ;RIO DE JANEIRO;BARRA;URMED URGENCIAS MEDICAS;nao;;;Maternidade;
+RJ;RIO DE JANEIRO;CENTRO;CASA DE SAUDE SAINT ROMAN;nao;;;—;"[Centro do Rio tem poucos hospitais privados; na prática a região é atendida por Glória D’Or e Copa D’Or]"
+RJ;RIO DE JANEIRO;CENTRO;HOSP ORDEM DO CARMO;nao;;;—;"[Centro do Rio tem poucos hospitais privados; na prática a região é atendida por Glória D’Or e Copa D’Or]"
+RJ;RIO DE JANEIRO;CENTRO;HOSPITAL ESPANHOL;nao;;;PS Geral;"[Centro do Rio tem poucos hospitais privados; na prática a região é atendida por Glória D’Or e Copa D’Or]"
+RJ;RIO DE JANEIRO;OUTRAS;CC NDI - HAPVIDA;nao;;;PS Geral;
+RJ;RIO DE JANEIRO;OUTRAS;HOSP CEMERU - AMESC;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP DR BADIM - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; hospital geral da Tijuca"
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP ISRAELITA ALBERT SABIN;sim;media;;Hospital Geral, PS Geral;Tradicional na Tijuca
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP NORTE DOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; referência no subúrbio"
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP PASTEUR - ESHO;sim;alta;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;"Hospital geral do Méier; Anahp"
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP QUINTA DOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"8º no Brasil (Newsweek 2026), o melhor do RJ; Rede D’Or"
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP SAO VICENTE DE PAULO;sim;alta;;Hospital Geral, PS Geral;"Tradicional na Tijuca; Anahp"
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL EVANGELICO;sim;media;;Hospital Geral, PS Geral, Maternidade;Tradicional na Tijuca
+RJ;RIO DE JANEIRO;ZONA NORTE;AMERICAS OFTALMOCENTER;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA NORTE;CASA DE SAUDE GRANDE RIO;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;CASA DE SAUDE SANTA THEREZINHA;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;CASA DE SAUDE SAO BENTO;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;CIOM - CLIN WAJNBERG;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA NORTE;CLINICA CRISTO REI;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;CLINICA DA GAVEA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;CLINICA TOTAL KIDS;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;COSC CIRURGIA OCULAR SAO CRISTOVAO;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;CRIANCA 24 HORAS;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;CTO - CLINICA TRAUMATO ORTOPEDICA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;CTO TRAUMA ORTOPEDIA E TRAUMATOLOGIA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;DAY CLINIC MADUREIRA;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOME - HOSP DE OLHOS DO MEIER;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP CASA HOSPITAL DO CANCER;nao;;;Hospital Dia, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP CASA ITALIANO - MENSSANA;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP DE CLIN DR ALOAN;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP DE CLIN DR BALBINO;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP DE CLIN GRAJAU;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP DO AMPARO;nao;;;Hospital Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP ILHA DO GOVERNADOR;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSP SAO FRANCISCO NA PROVIDENCIA DE DEUS;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL AMERICAN COR;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL CASA DE PORTUGAL;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL CASA PRONTOCOR;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL DE IRAJA;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL GERAL SEMIU;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL MARCOS MORAES;nao;;;Hospital Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL MARIO KROEFF;nao;;;Hospital Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL NOTRECARE RIO - SAMCI;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL SAO VICTOR;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;HOSPITAL TIJUTRAUMA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;INSTITUTO MINNESOTA;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA NORTE;OFTALCLIN DR ANTONIO LOBO;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA NORTE;PROCOR;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;PRONTOBABY - HOSP DA CRIANÇA;nao;;;Hospital Geral;
+RJ;RIO DE JANEIRO;ZONA NORTE;PROSIL CLIN MED INFANTIL DA LEOPOLDINA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;RIO DAY HOSPITAL;nao;;;Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA NORTE;SANATORIO SANTA ALICE;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA NORTE;SEPTO OTORRINO;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA OESTE;CASA DE SAUDE NSA SRA DO CARMO;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Hoje Hospital Nossa Senhora do Carmo; Rede Américas; Anahp; referência de Campo Grande"
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSP CEMERU - AMESC;sim;alta;;Hospital Geral, PS Geral, Maternidade;"PS 24h adulto, pediátrico e ortopédico, maternidade, UTI neonatal; relevância na zona oeste"
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSP OESTE DOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"31º no Brasil (Newsweek 2026); Rede D’Or"
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSPITAL BANGU - REDE DOR;sim;alta;;Hospital Geral, PS Geral;Rede D’Or na zona oeste
+RJ;RIO DE JANEIRO;ZONA OESTE;AMIL ESPACO SAUDE;nao;;;PS Geral;
+RJ;RIO DE JANEIRO;ZONA OESTE;CC ZONA OESTE;nao;;;PS Geral;
+RJ;RIO DE JANEIRO;ZONA OESTE;CLINICA TOTAL KIDS;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA OESTE;CTO CLINICO - NDI HAPVIDA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSP CEMERU - AMESC;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSP DE CLIN SANTA CRUZ - MEMORIAL;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSP SAO LOURENCO;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSPITAL AREIA BRANCA;nao;;;PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSPITAL CASA SANTA CRUZ;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSPITAL DI CAMP;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA OESTE;HOSPITAL SAO MATHEUS - AMA;nao;;;Hospital Geral, PS Geral, Maternidade;[2º suplente: estrutura completa e emergência 24h em Bangu]
+RJ;RIO DE JANEIRO;ZONA OESTE;INSTITUTO HERMES PARDINI;nao;;;PS Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;CASA DE SAUDE SAO JOSE;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Tradicional com maternidade; Rede Santa Catarina; Anahp"
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA SAO VICENTE - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; perfil premium na Gávea"
+RJ;RIO DE JANEIRO;ZONA SUL;GLORIA DOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Atlântica D’Or; 256 leitos; absorveu o Perinatal Laranjeiras"
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP COPA DOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"11º no Brasil (Newsweek 2026); Rede D’Or"
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP COPA STAR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Unidade premium da Rede D’Or; Anahp"
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP SAMARITANO;sim;alta;;Hospital Geral, PS Geral;"Hospital geral de referência; Rede Américas; Anahp"
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP SAO LUCAS - IMPAR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Alta complexidade; Rede Américas; Anahp"
+RJ;RIO DE JANEIRO;ZONA SUL;PRO CARDIACO - ESHO;sim;alta;;Hospital Geral, PS Geral;"Cardiologia de referência; Rede Américas; Anahp"
+RJ;RIO DE JANEIRO;ZONA SUL;AMERICAS OFTALMOCENTER;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;AMIU - ASSIST MED PED DE URGENCIA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;CASA DE SAUDE PINHEIRO MACHADO;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;CENTRO PEDIATRICO DA LAGOA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA DA GAVEA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA ENIO SERRA;nao;;;Hospital Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA ESPACO CLIF;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA IPANEMA - PREVCOR;nao;;;Hospital Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA REVITALIS;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA SANTA BARBARA;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA SUL;CLINICA SAO CARLOS;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;CTO SAMARITANO IPANEMA;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP ADVENTISTA SILVESTRE;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP CASA RIO BOTAFOGO;nao;;;Hospital Geral, PS Geral;"78 leitos e 28 intensivos; abaixo do primeiro escalão carioca  [fontes divergiram]"
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP E MATER SANTA LUCIA - ESHO;nao;;;Hospital Geral, PS Geral, Maternidade;
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP PRO CRIANCA JUTTA BATISTA - REDE DOR;nao;;;Hospital Geral, Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA SUL;HOSP QUALI IPANEMA;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;HOSPITAL RIO LARANJEIRAS;nao;;;Hospital Geral, PS Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;IBOL - INST BRASILEIRO DE OFTALMOLOGIA;nao;;;Hospital Geral, Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA SUL;JARDIM DE ALAH CENTRO CIRURGICO;nao;;;Hospital Geral, Hospital Dia;
+RJ;RIO DE JANEIRO;ZONA SUL;OCULISTAS ASSOCIADOS DO RJ;nao;;;Hospital Dia, PS Geral;
+RJ;RIO DE JANEIRO;ZONA SUL;OFTALMO RIO;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;PLACI BOTAFOGO;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;POLICLINICA DE BOTAFOGO;nao;;;Hospital Geral, PS Geral;"Pronto atendimento em horário limitado, não 24h; zona sul já tem opções mais completas"
+RJ;RIO DE JANEIRO;ZONA SUL;PRO OFTALMO;nao;;;—;
+RJ;RIO DE JANEIRO;ZONA SUL;PRONTO ATENDIMENTO UNIMED;nao;;;PS Geral;
+RN;NATAL;;CASA DE SAUDE SAO LUCAS;sim;media;;Hospital Geral, PS Geral;Tradicional
+RN;NATAL;;HOSP ANTONIO PRUDENTE - HAPVIDA;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;Rede própria Hapvida
+RN;NATAL;;HOSP RIO GRANDE - NATAL HOSPITAL CENTER;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral
+RN;NATAL;;HOSPITAL DO CORACAO;sim;alta;;Hospital Geral, PS Geral;"Hospital do Coração de Natal; o mais lembrado da praça; Anahp"
+RN;NATAL;;HOSPITAL MEMORIAL SAO FRANCISCO;sim;media;;Hospital Geral;Tradicional
+RN;NATAL;;HOSPITAL PROMATER - AMICO;sim;alta;Amil/Total Care;Hospital Geral, PS Geral, Maternidade;Hospital geral com maternidade
+RN;NATAL;;HOSPITAL UNIMED;sim;media;Unimed;Hospital Geral, Maternidade;Rede própria da Unimed Natal
+RN;NATAL;;INCOR - INSTITUTO DO CORACAO;sim;alta;;Hospital Geral, PS Geral;"Hospital do Coração de Natal; o mais lembrado da praça; Anahp  [compartilha endereço e estrutura com o complexo Hospital Rio Grande]"
+RN;NATAL;;PRONTOCLINICA DA CRAINCA - PAULO GURGEL;sim;media;;Hospital Geral, PS Geral;Hoje Hospital Dr. Paulo Gurgel: 24h adulto e pediátrico, UTI e cirurgia
+RN;NATAL;;CLINICA DE FRATURAS;nao;;;—;
+RN;NATAL;;CLINICA PEDRO CAVALCANTI;nao;;;Hospital Dia;
+RN;NATAL;;CLINICA SANTA MARIA;nao;;;—;
+RN;NATAL;;CLINORT;nao;;;—;
+RN;NATAL;;HOSP DIA SAO RAFAEL;nao;;;Hospital Dia;
+RN;NATAL;;HOSPITAL ANGIO VASCULAR;nao;;;Hospital Dia;
+RN;NATAL;;HOSPITAL DA VISAO;nao;;;—;
+RN;NATAL;;HOSPITAL DE OLHOS DO RN;nao;;;—;
+RN;NATAL;;HOSPITAL DR LUIZ ANTONIO;nao;;;Hospital Geral, PS Geral;[oncológico de grande porte, mas especializado e fortemente SUS]
+RN;NATAL;;HOSPITAL PSIQ PROF SEVERINO LOPES;nao;;;—;
+RN;NATAL;;IMESONO;nao;;;Hospital Dia;
+RN;NATAL;;PRONTOCLINICA DE OLHOS;nao;;;Hospital Dia;
+RO;PORTO VELHO;;CTO TRATAM DO INFARTO - ANGIOCENTER;sim;alta;;Hospital Geral;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;HOSP 9 DE JULHO;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;HOSP DAS CLINICAS;sim;alta;;Hospital Geral, PS Geral;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;HOSP PRONTOCORDIS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;HOSP UNIMED;sim;alta;;Hospital Dia, PS Geral;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;HOSPITAL CENTRAL;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;HOSPITAL SAMAR;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+RO;PORTO VELHO;;OFTALMO CENTER;nao;alta;;Hospital Dia;Prestador especializado — não é hospital geral
+RR;BOA VISTA;;CLINICA MAE DE DEUS;sim;alta;;Hospital Dia;Praça pequena (4 prestadores na base): todos entram
+RR;BOA VISTA;;HOSP DA MULHER;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (4 prestadores na base): todos entram
+RR;BOA VISTA;;HOSPITAL LOTTY IRIS;sim;alta;;Hospital Geral, PS Geral;Praça pequena (4 prestadores na base): todos entram
+RR;BOA VISTA;;HOSPITAL VILLE ROY;sim;alta;;Hospital Geral, PS Geral;Praça pequena (4 prestadores na base): todos entram
+RS;PORTO ALEGRE;;BLANC HOSPITAL;sim;media;;Hospital Geral, Hospital Dia;Associado Anahp
+RS;PORTO ALEGRE;;HOSP DE CLINICAS DE PORTO ALEGRE;sim;alta;;Hospital Geral, Maternidade;"Hospital de Clínicas; referência regional; Anahp titular  [hospital público; acesso por convênio é específico — confirmar regra de negócio]"
+RS;PORTO ALEGRE;;HOSP MAE DE DEUS - AESC;sim;alta;;Hospital Geral, PS Geral, Maternidade;"10º no Brasil (Newsweek 2026); Anahp"
+RS;PORTO ALEGRE;;HOSP MOINHOS DE VENTO;sim;alta;;Hospital Geral, PS Geral, Maternidade;"4º no Brasil e 111º no mundo (Newsweek 2026); JCI"
+RS;PORTO ALEGRE;;HOSP SAO LUCAS DA PUCRS;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Hospital-escola da PUCRS; Anahp"
+RS;PORTO ALEGRE;;HOSPITAL DIVINA PROVIDENCIA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"30º no Brasil (Newsweek 2026); Anahp"
+RS;PORTO ALEGRE;;IRMANDADE DA SANTA CASA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"50º no Brasil (Newsweek 2026); Anahp"
+RS;PORTO ALEGRE;;ASSOC HOSPITALAR VILA NOVA;nao;;;Hospital Geral;
+RS;PORTO ALEGRE;;CCG GRUPO DE MEDICINA INTENSIVA;nao;;;PS Geral;
+RS;PORTO ALEGRE;;CLINICA LAVINSKY;nao;;;Hospital Dia;
+RS;PORTO ALEGRE;;CLINICA PINEL;nao;;;—;
+RS;PORTO ALEGRE;;DAY HOSPITAL SAO PIETRO;nao;;;Hospital Dia;
+RS;PORTO ALEGRE;;HOSP BANCO DE OLHOS DE PORTO ALEGRE;nao;;;Hospital Geral;
+RS;PORTO ALEGRE;;HOSP ERNESTO DORNELES;nao;;;Hospital Geral, PS Geral;
+RS;PORTO ALEGRE;;HOSP ESPIRITA DE PORTO ALEGRE;nao;;;—;
+RS;PORTO ALEGRE;;HOSP MAE DE DEUS - CARLOS GOMES;nao;;;Hospital Dia, PS Geral;"Hospital-dia e unidade cirúrgica de menor complexidade; PA em horário limitado"
+RS;PORTO ALEGRE;;HOSPITAL HUMANIZA - HAPVIDA;nao;;;Hospital Geral, PS Geral, Maternidade;
+RS;PORTO ALEGRE;;INST DE CARDIOLOGIA;nao;;;PS Geral;
+RS;PORTO ALEGRE;;INSTITUTO DE ASSISTENCIA A SAUDE - IAS;nao;;;—;
+RS;PORTO ALEGRE;;ORTOPEDIA ZONA SUL;nao;;;—;
+RS;PORTO ALEGRE;;P S CRUZ AZUL - TRAUMAZUL;nao;;;PS Geral;
+RS;PORTO ALEGRE;;PRONTO KIDS;nao;;;—;
+RS;PORTO ALEGRE;;PRONTO OLHOS E OTORRINO;nao;;;—;
+RS;PORTO ALEGRE;;PRONTO PSIQUIATRIA CISAME;nao;;;—;
+RS;PORTO ALEGRE;;PS TRAUMATO E ORTOPEDIA CARLOS BARBOSA;nao;;;—;
+RS;PORTO ALEGRE;;SANATORIO SAO JOSE;nao;;;—;
+RS;PORTO ALEGRE;;TRAUMATO - CLIN TRAMAT MOINHOS DE VENTO;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+RS;PORTO ALEGRE;;URGETRAUMA PS TRAUMATOLOGICO;nao;;;—;
+SC;FLORIANÓPOLIS;;BAIA SUL MULHER;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Principal privado da ilha; Anahp  [sucessor da operação materno-infantil da Santa Helena; estrutura ampliada]"
+SC;FLORIANÓPOLIS;;HOSP SOS CARDIO;sim;media;;Hospital Geral, PS Geral;Cardiologia
+SC;FLORIANÓPOLIS;;HOSPITAL BAIA SUL;sim;alta;;Hospital Geral, PS Geral;"Principal privado da ilha; Anahp"
+SC;FLORIANÓPOLIS;;HOSPITAL E MATER DR CARLOS CORREA;sim;media;;Hospital Geral, Maternidade;Maternidade tradicional
+SC;FLORIANÓPOLIS;;ILHA HOSP E MATERNIDADE;sim;media;;Hospital Geral, PS Geral, Maternidade;Maternidade  [adquirido por Tempo Med/Plan Saúde — integração operadora-hospital]
+SC;FLORIANÓPOLIS;;IMPERIAL HOSP DE CARIDADE;sim;alta;;Hospital Geral, PS Geral;"Imperial Hospital de Caridade; mais antigo de SC; Anahp"
+SC;FLORIANÓPOLIS;;CAMINHO DO SOL;nao;;;PS Geral;
+SC;FLORIANÓPOLIS;;CASA DE SAUDE SAO SEBASTIAO;nao;;;Hospital Geral, Maternidade;"~38 leitos e sem UTI no extrato CNES; abaixo dos grandes de Florianópolis"
+SC;FLORIANÓPOLIS;;CLIN INCOT;nao;;;—;
+SC;FLORIANÓPOLIS;;CLINICA REVITALLE;nao;;;Hospital Dia;
+SC;FLORIANÓPOLIS;;HOF - HOSP DE OLHOS DE FLORIANOPOLIS;nao;;;—;
+SC;FLORIANÓPOLIS;;HOSP DA VISAO STA CATARINA - OPHTHALMOTRAUMA;nao;;;Hospital Dia;
+SC;FLORIANÓPOLIS;;HOSP NEURON DOR;nao;;;Hospital Dia;
+SC;FLORIANÓPOLIS;;HOSPITAL BEIRA MAR;nao;;;Hospital Geral;Pequeno e essencialmente eletivo, de baixa e média complexidade
+SC;FLORIANÓPOLIS;;HOSPITAL DA PLASTICA DE SANTA CATARINA;nao;;;Hospital Geral;
+SC;FLORIANÓPOLIS;;HOSPITAL SANTA HELENA;nao;;;Hospital Geral, PS Geral, Maternidade;"FECHADO em 17/01/2026; operação migrou para o Baía Sul Mulher"
+SC;FLORIANÓPOLIS;;HOSPITAL VISTA MEDICINA DOS OLHOS;nao;;;Hospital Dia;
+SC;FLORIANÓPOLIS;;IOT - INST DE ORTO E TRAUMATOLOGIA;nao;;;—;
+SC;FLORIANÓPOLIS;;MULTIMED;nao;;;PS Geral;
+SC;FLORIANÓPOLIS;;ORTOCLINI - CLIN DE ORTOP E TRAUMATOLOGIA;nao;;;—;
+SC;FLORIANÓPOLIS;;SAFE CIRURGICO;nao;;;Hospital Dia;
+SC;FLORIANÓPOLIS;;SOMA - SERV DE ONCO MED E TRAT DA DOR;nao;;;Hospital Dia;
+SC;FLORIANÓPOLIS;;ULTRALITHO CTO MEDICO;nao;;;Hospital Geral;
+SC;FLORIANÓPOLIS;;YOUNG SOUL CIRURGIA PLASTICA;nao;;;—;
+SE;ARACAJU;;CLINICA SANTA HELENA;sim;media;;Hospital Geral, PS Geral, Maternidade;"Hospital e Maternidade Santa Helena, de 1975; maternidade 24h; ONA 2  [fontes divergiram]"
+SE;ARACAJU;;HOSP DO CORACAO;sim;alta;;PS Geral;Cardiologia de referência
+SE;ARACAJU;;HOSP E MATER PRIMAVERA;sim;alta;;Hospital Geral, PS Geral;"Alta complexidade; Anahp"
+SE;ARACAJU;;HOSP E MATER RENASCENCA;sim;media;;Hospital Geral, PS Geral;Tradicional
+SE;ARACAJU;;HOSP GABRIEL SOARES;sim;media;Hapvida;Hospital Geral, PS Geral, Maternidade;Tradicional
+SE;ARACAJU;;HOSP SAO JOSE - COMUSE;sim;media;;Hospital Geral, PS Geral;Tradicional
+SE;ARACAJU;;HOSPITAL SAO LUCAS - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Maior PS privado de Sergipe; Rede D’Or; Anahp"
+SE;ARACAJU;;HOSPITAL UNIMED SERGIPE;sim;alta;Unimed;Hospital Geral, PS Geral;Rede própria da Unimed  [mais de 70 leitos, UTI e ONA 2]
+SE;ARACAJU;;CLIN DE REPOUSO SAO MARCELLO;nao;;;—;
+SE;ARACAJU;;CLIN ORTOPEDICA - PRONTO CLINICA ORTOPEDICA;nao;;;—;
+SE;ARACAJU;;CLINICA INFANTIL PIMPOLHO;nao;;;—;
+SE;ARACAJU;;CLINICA ORTOPEDICA;nao;;;—;
+SE;ARACAJU;;DECOS DAY HOSP - CERPE;nao;;;Hospital Dia;
+SE;ARACAJU;;DECOS DAY HOSPITAL - SOC DE EDUC TIRADENTES;nao;;;Hospital Geral, Hospital Dia;
+SE;ARACAJU;;FERTILITA MEDICINA REPRODUTIVA;nao;;;Hospital Dia;
+SE;ARACAJU;;HORG - HOSP DE OLHOS ROLLEMBERG GOIS;nao;;;Hospital Dia;
+SE;ARACAJU;;HOSP DE OLHOS DE SERGIPE;nao;;;—;
+SE;ARACAJU;;HOSP DO RIM - CLIN DAS VIAS URINARIAS;nao;;;Hospital Geral;
+SE;ARACAJU;;OCULAR DAY HOSP - INST DE OLHOS DE SERGIPE;nao;;;Hospital Dia;
+SE;ARACAJU;;ORTHO - ORTOPEDIA E SERVIÇOS;nao;;;Hospital Dia;
+SE;ARACAJU;;RECOMECAR CENTRO TERAPEUTICO;nao;;;—;
+SE;ARACAJU;;REINTEGRAR SAUDE MENTAL;nao;;;—;
+SE;ARACAJU;;SEMPRE-VIVA;nao;;;Hospital Geral;
+SP;ARUJÁ;;CTO CLIN ARUJA - NOTREDAME INTERMEDICA;sim;alta;;PS Geral;Praça pequena (2 prestadores na base): todos entram
+SP;ARUJÁ;;HOSP E MATER IPIRANGA - AMA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (2 prestadores na base): todos entram
+SP;ATIBAIA;;HOSP E MATER ALBERT SABIN;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (3 prestadores na base): todos entram
+SP;ATIBAIA;;HOSPITAL LEONARDO DA VINCI;sim;alta;;Hospital Geral;Praça pequena (3 prestadores na base): todos entram
+SP;ATIBAIA;;HOSPITAL NOVO ATIBAIA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (3 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;AMIL RESGATE SAUDE;sim;alta;;PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;HOSP NOVE 9 DE JULHO - DASA;sim;alta;;Hospital Geral, Hospital Dia, PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;HOSP SAO LUIZ ALPHAVILLE - REDE DOR;sim;alta;;Hospital Geral, PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;HOSPITAL ALBERT EINSTEIN;sim;alta;;Hospital Geral, PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;HOSPITALIS NUCLEO HOSPITALAR DE BARUERI;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;MEDICAL CARE;sim;alta;;PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;PRONTO SOCORRO BARUERI;sim;alta;;PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;SANTA CASA SALTO DE PIRAPORA;sim;alta;;Hospital Geral, PS Geral;Praça pequena (10 prestadores na base): todos entram
+SP;BARUERI;GRANDE SAO PAULO;CEMA HOSPITAL;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;BARUERI;GRANDE SAO PAULO;HOSPITAL UNIC;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;BRAGANÇA PAULISTA;;HOSP BRAGANTINO;sim;alta;;Hospital Geral, PS Geral;Praça pequena (4 prestadores na base): todos entram
+SP;BRAGANÇA PAULISTA;;HOSP UNIV SAO FRANCISCO NA PROV DE DEUS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (4 prestadores na base): todos entram
+SP;BRAGANÇA PAULISTA;;SANTA CASA DE BRAGANCA PAULISTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (4 prestadores na base): todos entram
+SP;BRAGANÇA PAULISTA;;UNIMED OS BANDEIRANTES;sim;alta;;PS Geral;Praça pequena (4 prestadores na base): todos entram
+SP;CAMPINAS;;CASA DE SAUDE CAMPINAS;sim;media;;Hospital Geral, PS Geral, Maternidade;"Casa de Saúde de Campinas; tradicional  [nome atual: Vera Cruz Casa de Saúde; não é duplicata do Vera Cruz Hospital]"
+SP;CAMPINAS;;CENTRO MEDICO DE CAMPINAS;sim;alta;;Hospital Geral, PS Geral, Maternidade;14º no Brasil (Newsweek 2026)
+SP;CAMPINAS;;HOSPITAL BENEFICENCIA PORTUGUESA;sim;media;;Hospital Geral, PS Geral;Tradicional
+SP;CAMPINAS;;HOSPITAL E MATER CELSO PIERRO - PUC;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Hospital-escola da PUC-Campinas; Anahp  [nome atual: Hospital PUC-Campinas]"
+SP;CAMPINAS;;HOSPITAL E MATER MADRE THEODORA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede Américas; maternidade  [ativo, PS 24h e maternidade; grupo atual Rede Américas]"
+SP;CAMPINAS;;HOSPITAL RENASCENCA CAMPINAS;sim;media;NotreDame/Hapvida;Hospital Geral, PS Geral, Maternidade;79 leitos, UTI adulto, pediátrica e neonatal, maternidade, 24h e ONA 3
+SP;CAMPINAS;;HOSPITAL SAMARITANO;sim;media;;Hospital Geral, PS Geral, Maternidade;Tradicional
+SP;CAMPINAS;;HOSPITAL SANTA TEREZA;sim;media;;Hospital Geral, PS Geral, Maternidade;Alta complexidade, PS 24h, maternidade, 19 leitos de UTI adulto e Qmentum
+SP;CAMPINAS;;HOSPITAL SAO LUIZ - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;Atlântica D’Or desde mar/2025
+SP;CAMPINAS;;HOSPITAL UNIMED CAMPINAS - HUC;sim;media;Unimed Campinas;Hospital Geral, Maternidade;Rede própria da Unimed Campinas
+SP;CAMPINAS;;HOSPITAL VERA CRUZ;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Hospital geral; Anahp"
+SP;CAMPINAS;;MATERNIDADE DE CAMPINAS;sim;alta;;Hospital Geral, PS Geral, Maternidade;256 leitos, 138 de convênio e particular, UTI adulto e expansão clínica
+SP;CAMPINAS;;BOLDRINI CAMPINAS;nao;;;Hospital Geral, PS Geral;[fora por desenho: especializado em oncologia e hematologia pediátrica]
+SP;CAMPINAS;;CAMPINAS DAY HOSP;nao;;;Hospital Geral;
+SP;CAMPINAS;;CAMPINAS DAY HOSPITAL;nao;;;Hospital Dia;
+SP;CAMPINAS;;CENTRO CLINICO CAMPINAS;nao;;;—;
+SP;CAMPINAS;;CTO CLIN ANDRADE NEVES - INTERMEDICA;nao;;;—;
+SP;CAMPINAS;;HOSPITAL IRMAOS PENTEADO - STA CASA;nao;;;Hospital Geral, PS Geral, Maternidade;[segundo escalão forte: hospital geral ativo com urgência e UTI expressiva]
+SP;CAMPINAS;;HOSPITAL SANTA SOFIA;nao;;;—;
+SP;CAMPINAS;;INST PENIDO BURNIER;nao;;;PS Geral;
+SP;CAMPINAS;;INSTITUTO DO RADIUM;nao;;;Hospital Dia;
+SP;CAMPINAS;;INSTITUTO NOVA CAMPINAS;nao;;;Hospital Dia;
+SP;CAMPINAS;;IOO - INST OFTALMO OTORRINOLARINGOLOGICO;nao;;;Hospital Dia;
+SP;CAMPINAS;;R - INST DO CORACAO DE CAMPINAS;nao;;;—;
+SP;CAMPINAS;;SAN FRANCISCO DAY HOSPITAL;nao;;;Hospital Dia;
+SP;CAMPINAS;;SAUDE INTEGRADA VIDA;nao;;;Hospital Dia;
+SP;CAMPINAS;;VIVENCIA PSIQUIATRIA DINAMICA;nao;;;Hospital Dia;
+SP;CARAPICUÍBA;GRANDE SAO PAULO;CENTRO CLINICO CARAPICUIBA - INTERMEDICA;sim;alta;;PS Geral;Praça pequena (2 prestadores na base): todos entram
+SP;CARAPICUÍBA;GRANDE SAO PAULO;HOSP ALPHA MED;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (2 prestadores na base): todos entram
+SP;COTIA;GRANDE SAO PAULO;CC COTIA - INTERMEDICA;sim;alta;;PS Geral;Praça pequena (3 prestadores na base): todos entram
+SP;COTIA;GRANDE SAO PAULO;HOSP SAO FRANCISCO;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (3 prestadores na base): todos entram
+SP;COTIA;GRANDE SAO PAULO;CENTRO CLINICO COTIA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;CUBATÃO;BAIXADA SANTISTA;HOSP ANA COSTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (1 prestadores na base): todos entram
+SP;DIADEMA;ABCD;HOSP CHRISTOVAO DA GAMA - INNOVA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (3 prestadores na base): todos entram
+SP;DIADEMA;ABCD;CENTRO CLINICO DIADEMA - INTERMEDICA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;DIADEMA;ABCD;HOSPITAL ABC - UNID AVANCADA DIADEMA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;FERRAZ DE VASCONCELOS;GRANDE SAO PAULO;HOSP PRO MATER - CLIN SANTO ANTONIO;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (1 prestadores na base): todos entram
+SP;FRANCO DA ROCHA;GRANDE SAO PAULO;HOSPITAL PREVINA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (1 prestadores na base): todos entram
+SP;GUARUJÁ;BAIXADA SANTISTA;CASA DE SAUDE GUARUJA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (6 prestadores na base): todos entram
+SP;GUARUJÁ;BAIXADA SANTISTA;HOSP ANA COSTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (6 prestadores na base): todos entram
+SP;GUARUJÁ;BAIXADA SANTISTA;HOSP E MATER GUARUJA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (6 prestadores na base): todos entram
+SP;GUARUJÁ;BAIXADA SANTISTA;HOSP SANTO AMARO;sim;alta;;Maternidade;Praça pequena (6 prestadores na base): todos entram
+SP;GUARUJÁ;BAIXADA SANTISTA;HOSPITAL GUARUJA;sim;alta;;PS Geral;Praça pequena (6 prestadores na base): todos entram
+SP;GUARUJÁ;BAIXADA SANTISTA;IGESP GUARUJA;sim;alta;;PS Geral;Praça pequena (6 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSP E MATER GUARULHOS - NDI;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSPITAL BOM CLIMA;sim;alta;;Maternidade;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSPITAL CARLOS CHAGAS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSPITAL SAO LUIZ - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSPITAL STELLA MARIS;sim;alta;;Hospital Geral, PS Geral;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSPITAL UNIMED GUARULHOS I;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;UNID AVANÇADA - CARLOS CHAGAS;sim;alta;;PS Geral;Praça pequena (8 prestadores na base): todos entram
+SP;GUARULHOS;GRANDE SAO PAULO;HOSPITAL DE OLHOS CRO;nao;alta;;Hospital Dia;Prestador especializado — não é hospital geral
+SP;ITAPEVI;GRANDE SAO PAULO;CENTRO CLINICO ITAPEVI - INTERMEDICA;sim;alta;;Hospital Geral, PS Geral;Praça pequena (7 prestadores na base): todos entram
+SP;ITAPEVI;GRANDE SAO PAULO;HOSP CRUZEIRO DO SUL;sim;alta;;Hospital Geral;Praça pequena (7 prestadores na base): todos entram
+SP;ITAPEVI;GRANDE SAO PAULO;HOSP E MATER NOVA VIDA - HAPVIDA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;ITAPEVI;GRANDE SAO PAULO;HOSPITAL YES;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;ITAPEVI;GRANDE SAO PAULO;HOSPITALIS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;ITAPEVI;GRANDE SAO PAULO;DIMEG;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;ITAPEVI;GRANDE SAO PAULO;SPECIALIS PRONTO ATENDIMENTO;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;MAUÁ;ABCD;HOSP IMACULADA CONCEICAO - STA CASA DE MAUA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (6 prestadores na base): todos entram
+SP;MAUÁ;ABCD;HOSPITAL E MATERNIDADE BRASIL - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (6 prestadores na base): todos entram
+SP;MAUÁ;ABCD;HOSPITAL SAGRADA FAMILIA - VITAL;sim;alta;;Hospital Geral, PS Geral;Praça pequena (6 prestadores na base): todos entram
+SP;MAUÁ;ABCD;PRONTO ATENDIMENTO MAUA;sim;alta;;PS Geral;Praça pequena (6 prestadores na base): todos entram
+SP;MAUÁ;ABCD;SANTA HELENA - CTO MED HOSPITALAR;sim;alta;;PS Geral;Praça pequena (6 prestadores na base): todos entram
+SP;MAUÁ;ABCD;CTO CLIN BANDEIRANTES - INTERMEDICA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSP E MATER IPIRANGA;sim;alta;;Hospital Geral, PS Geral;"Top of mind do Alto Tietê; Rede Ipiranga  [nome atual: Hospital Ipiranga Mogi das Cruzes; a maternidade da marca fica em Arujá]"
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSP SANTANA - NOTREDAME INTERMEDICA;sim;alta;NotreDame/Hapvida;Hospital Geral, PS Geral, Maternidade;"Independente; cerca de 300 mil atendimentos por ano  [não é independente: é hospital atual da rede]"
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSPITAL MOGI MATER;sim;alta;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;"Mogi Mater / Mogi D’Or; maternidade com UTI neonatal"
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSPITAL NOSSA SENHORA APARECIDA - STA CASA;sim;alta;;Hospital Geral, PS Geral;"Santa Casa; referência regional  [ATENÇÃO: maternidade e UTI neonatal encerradas em 31/08/2026]"
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSPITAL SEPACO;sim;media;;PS Geral;Hospital geral
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;INST MOGIANO DE ORTOP E TRAUMATO;sim;alta;;Hospital Geral;"Mogi Mater / Mogi D’Or; maternidade com UTI neonatal"
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;C C - NOTREDAME INTERMEDICA;nao;;;PS Geral;
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;CLINICA INFANTIL SAO NICOLAU;nao;;;—;
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;CTO UROL E NEFRO SANTIAGO NOVAES;nao;;;Hospital Dia;
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSP BIOCOR;nao;;;Hospital Geral;CNES atual: clínica/centro de especialidade, não hospital
+SP;MOGI DAS CRUZES;GRANDE SAO PAULO;HOSP PREVINA;nao;;;Hospital Geral;[hospital real, 25 leitos e 9 de UTI, mas rede comercial muito estreita]
+SP;OSASCO;GRANDE SAO PAULO;HOSP E MATER NOSSA SENHORA DE FATIMA;sim;media;;Hospital Geral, PS Geral;Hospital geral
+SP;OSASCO;GRANDE SAO PAULO;HOSP E MATER SAO LUIZ - REDE DOR;sim;alta;Rede D’Or;Hospital Geral, PS Geral, Maternidade;"Rede D’Or; hospital geral com maternidade  [complexo atual incorpora o antigo Sino-Brasileiro — evitar duplicidade]"
+SP;OSASCO;GRANDE SAO PAULO;HOSPITAL CRUZEIRO DO SUL - HAPVIDA;sim;alta;Hapvida;Hospital Geral, PS Geral, Maternidade;"Alta complexidade; rede própria Hapvida NotreDame"
+SP;OSASCO;GRANDE SAO PAULO;HOSPITAL SAO FRANCISCO;sim;media;;Hospital Geral, PS Geral;Hospital geral
+SP;OSASCO;GRANDE SAO PAULO;AMIL ESPACO SAUDE;nao;;;—;
+SP;OSASCO;GRANDE SAO PAULO;CC OSASCO - INTERMEDICA;nao;;;PS Geral;
+SP;OSASCO;GRANDE SAO PAULO;CEMA HOSPITAL ESPECIALIZADO;nao;;;—;
+SP;OSASCO;GRANDE SAO PAULO;GTO TRAUMATOLOGIA E ORTOPEDIA;nao;;;—;
+SP;OSASCO;GRANDE SAO PAULO;PROJETO CRIANCA;nao;;;—;
+SP;OSASCO;GRANDE SAO PAULO;PROJETO CRIANCA UNID II;nao;;;—;
+SP;OSASCO;GRANDE SAO PAULO;UNID AVANC CRUZEIRO DO SUL;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;PRAIA GRANDE;BAIXADA SANTISTA;CASA DE SAUDE SANTOS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;CENTRO MEDICO ANTONIO BENTO - STA CASA;sim;alta;;PS Geral, Maternidade;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;HOSP CASA DE SAUDE;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;IGESP PRAIA GRANDE;sim;alta;;Hospital Geral, PS Geral;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;P A - PRAIA GRANDE;sim;alta;;PS Geral;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;PRONTO ATENDIMENTO ANA COSTA;sim;alta;;Hospital Dia, PS Geral;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;PS ANA COSTA - HOSP ANA COSTA;sim;alta;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;Praça pequena (9 prestadores na base): todos entram
+SP;PRAIA GRANDE;BAIXADA SANTISTA;HOSP DE OLHOS DE SAO PAULO;nao;alta;;Hospital Dia;Prestador especializado — não é hospital geral
+SP;PRAIA GRANDE;BAIXADA SANTISTA;HOSP DIA CANTO DO FORTE;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;SANTO ANDRÉ;ABCD;HOSP E MATER BENEFICENCIA PORTUGUESA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Tradicional do ABC
+SP;SANTO ANDRÉ;ABCD;HOSP E MATER DR CHRISTOVAO DA GAMA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede Américas; maternidade; Anahp"
+SP;SANTO ANDRÉ;ABCD;HOSPITAL BARTIRA - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; hospital geral"
+SP;SANTO ANDRÉ;ABCD;HOSPITAL DAS ACACIAS;sim;media;;Hospital Geral, PS Geral;"Hospital geral com PS 24h, ~47 leitos; relevante na oferta local  [reverte decisão anterior: fontes divergiram]"
+SP;SANTO ANDRÉ;ABCD;HOSPITAL E MATERNIDADE BRASIL - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"49º no Brasil (Newsweek 2026); principal do ABC; Rede D’Or"
+SP;SANTO ANDRÉ;ABCD;HOSPITAL E MATERNIDADE SAO JOSE;sim;media;;Hospital Geral, PS Geral;"Maternidade  [marca atual: Hospital São José ABC; segue com PS e UTI]"
+SP;SANTO ANDRÉ;ABCD;HOSPITAL SANTA HELENA;sim;media;;Hospital Geral, PS Geral;Hospital geral
+SP;SANTO ANDRÉ;ABCD;CTO CLIN SANTO ANDRE I - INTERMEDICA;nao;;;PS Geral;
+SP;SANTO ANDRÉ;ABCD;DAY HOSPITAL ANA ROSA;nao;;;Hospital Dia;
+SP;SANTO ANDRÉ;ABCD;HOSPITAL SILOE;nao;;;—;
+SP;SANTO ANDRÉ;ABCD;NDI - UNIDADE AVANCADA;nao;;NotreDame/Hapvida;—;Hoje Hospital Santo André (44 leitos), mas a base ainda o cadastra sem Hospital Geral, PS Geral nem Maternidade — não passa no filtro de especialidade. Rever quando o SiscorNet atualizar.
+SP;SANTOS;BAIXADA SANTISTA;HOSP E PS INFANTIL GONZAGA;sim;media;;Hospital Geral, Hospital Dia;Pronto-socorro infantil de referência
+SP;SANTOS;BAIXADA SANTISTA;HOSPITAL ANA COSTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Principal privado da cidade
+SP;SANTOS;BAIXADA SANTISTA;HOSPITAL FREI GALVAO;sim;media;NotreDame/Hapvida;Hospital Geral, PS Geral;Hospital geral  [hospital próprio da antiga NotreDame, com internação, UTI e PS]
+SP;SANTOS;BAIXADA SANTISTA;HOSPITAL SANTO ANTONIO - BP;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Beneficência Portuguesa de Santos; tradicional"
+SP;SANTOS;BAIXADA SANTISTA;HOSPITAL SAO LUCAS;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral
+SP;SANTOS;BAIXADA SANTISTA;SANTA CASA DE SANTOS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Referência regional da Baixada Santista
+SP;SANTOS;BAIXADA SANTISTA;IGESP SANTOS;nao;;;PS Geral;"Hoje unidade ambulatorial com PA 24h; o hospital completo é o IGESP Litoral, em Praia Grande"
+SP;SANTOS;BAIXADA SANTISTA;MED CENTER;nao;;;—;
+SP;SANTOS;BAIXADA SANTISTA;MED CENTER LABORATORIO;nao;;;Hospital Dia;
+SP;SANTOS;BAIXADA SANTISTA;ONCOLOGIA VITORIA;nao;;;—;
+SP;SANTOS;BAIXADA SANTISTA;PRONTO ATENDIMENTO UNIMED;nao;;;Hospital Geral;
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP E MATER NOTRECARE ABC;sim;media;NotreDame/Hapvida;Hospital Geral, PS Geral, Maternidade;78 leitos + 20 de UTI neo/ped, maternidade e ONA 2  [fontes divergiram]
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP E MATER SANTA HELENA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Maternidade e hospital geral
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP NEOMATER - SANTA MARCELINA;sim;media;;Hospital Geral, PS Geral;Maternidade  [nome atual: Santa Marcelina Saúde São Bernardo do Campo]
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP SANTA HELENA - SBC;sim;alta;;PS Geral;Hospital geral de referência no ABC
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP SAO BERNARDO - HAPVIDA;sim;media;Hapvida;Hospital Geral, PS Geral;Rede própria Hapvida
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSPITAL ASSUNCAO - REDE DOR;sim;alta;Rede D’Or;Hospital Geral, PS Geral, Maternidade;"Nome antigo do São Luiz São Bernardo; Rede D’Or  [nome atual: Hospital São Luiz São Bernardo — Rede D’Or]"
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSPITAL IFOR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Ortopedia e geral; Rede D’Or"
+SP;SÃO BERNARDO DO CAMPO;ABCD;API - ASSIST PSIQUIATRICA INTEGRADA;nao;;;—;
+SP;SÃO BERNARDO DO CAMPO;ABCD;CENTRO DE TRAT BEZERRA DE MENEZES;nao;;;—;
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP DE OLHOS PAULISTA - CERPO;nao;;;PS Geral;
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSP STA HELENA - ALVORADA TAGUATINGA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSPITAL DE OLHOS ABC - CERPO;nao;;;PS Geral;
+SP;SÃO BERNARDO DO CAMPO;ABCD;HOSPITAL INTERMEDICA ABC;nao;;NotreDame/Hapvida;—;Hospital próprio 24h da Hapvida/NotreDame, mas a base ainda o cadastra sem as especialidades alvo — não passa no filtro. Rever quando o SiscorNet atualizar.
+SP;SÃO CAETANO DO SUL;ABCD;CENTRO CLINICO S.C.DO SUL - INTERMEDICA;sim;alta;;PS Geral;Praça pequena (7 prestadores na base): todos entram
+SP;SÃO CAETANO DO SUL;ABCD;HOSP BENEF PORTUGUESA - SCS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;SÃO CAETANO DO SUL;ABCD;HOSP DI THIENE SAO CAETANO;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;SÃO CAETANO DO SUL;ABCD;HOSPITAL E MATERNIDADE CENTRAL;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;SÃO CAETANO DO SUL;ABCD;HOSPITAL SANTA ANA;sim;alta;;Hospital Geral, PS Geral;Praça pequena (7 prestadores na base): todos entram
+SP;SÃO CAETANO DO SUL;ABCD;HOSPITAL SAO LUIZ - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (7 prestadores na base): todos entram
+SP;SÃO CAETANO DO SUL;ABCD;HAPVIDA - CTO SANTA PAULA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;SÃO PAULO;CENTRO;HOSP DO CANCER A C CAMARGO;sim;alta;;Hospital Geral, PS Geral;"Principal centro oncológico privado do país; Anahp"
+SP;SÃO PAULO;CENTRO;HOSP LEFORTE LIBERDADE - DASA;sim;alta;;Hospital Geral, PS Geral;"Alta complexidade; Anahp; amplo uso em saúde suplementar (rede atual: Rede Américas)"
+SP;SÃO PAULO;CENTRO;HOSP SAMARITANO PAULISTA;sim;alta;;Hospital Geral, PS Geral;"Unidade Paulista do Samaritano; JCI; Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL ALEMAO OSWALDO CRUZ;sim;alta;;Hospital Geral, PS Geral;"3º no Brasil (Newsweek 2026); JCI; Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL BP;sim;alta;;Hospital Geral, PS Geral, Maternidade;"13º no Brasil (Newsweek 2026); Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL BP MIRANTE;sim;alta;;Hospital Geral, PS Geral, Maternidade;"13º no Brasil (Newsweek 2026); Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL IGESP;sim;baixa;;Hospital Geral, PS Geral;INCERTO: 220 leitos, 60 de UTI e Qmentum Diamond, mas SP tem muitos acima  [fontes divergiram]
+SP;SÃO PAULO;CENTRO;HOSPITAL NOVE DE JULHO - DASA;sim;alta;;Hospital Geral, PS Geral;"26º no Brasil (Newsweek 2026); Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL SAMARITANO;sim;alta;;Hospital Geral, PS Geral, Maternidade;"12º no Brasil (Newsweek 2026); JCI; Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL SANTA CATARINA;sim;alta;;Hospital Geral, PS Geral;"6º no Brasil (Newsweek 2026); Anahp"
+SP;SÃO PAULO;CENTRO;HOSPITAL SIRIO LIBANES;sim;alta;;Hospital Geral, PS Geral;"2º no Brasil (Newsweek 2026); JCI; Anahp"
+SP;SÃO PAULO;CENTRO;PRO MATRE PAULISTA;sim;alta;;PS Geral, Maternidade;"Maternidade de referência (Grupo Santa Joana); Anahp"
+SP;SÃO PAULO;CENTRO;CERTA CENTRO DE REFERENCIA EM TRATAMENTOS AVANCADOS HOSP;nao;;;Hospital Dia;
+SP;SÃO PAULO;CENTRO;DAYCLINIC;nao;;;—;
+SP;SÃO PAULO;CENTRO;FLEURY;nao;;;Hospital Dia;
+SP;SÃO PAULO;CENTRO;HCLOE - HOSP DE OLHOS;nao;;;Hospital Dia;
+SP;SÃO PAULO;CENTRO;HOSP ADVENTISTA DE SAO PAULO;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;CENTRO;HOSPITAL CRUZ AZUL;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;CENTRO;HOSPITAL DAS CLINICAS FMUSP;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;CENTRO;HOSPITAL INFANTIL SABARA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;SÃO PAULO;CENTRO;HOSPITAL INGLES;nao;;;—;
+SP;SÃO PAULO;CENTRO;HOSPITAL MORIAH;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;CENTRO;HOSPITAL PAULISTANO;nao;;;Hospital Geral, PS Geral;"[1º suplente: Anahp e histórico JCI; subir se abrir vaga no Centro]"
+SP;SÃO PAULO;CENTRO;HOSPITAL SAHA;nao;;;Hospital Geral;
+SP;SÃO PAULO;CENTRO;HOSPITAL SANTA ISABEL;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;CENTRO;INCOR - INST DO CORACAO;nao;;;Hospital Geral, Hospital Dia;
+SP;SÃO PAULO;CENTRO;INSTITUTO A CASA;nao;;;—;
+SP;SÃO PAULO;CENTRO;OPHTHAL HOSP ESPECIALIZADO;nao;;;—;
+SP;SÃO PAULO;ZONA LESTE;HOSP CENTRAL DO TATUAPE - AVICCENA;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral do Tatuapé
+SP;SÃO PAULO;ZONA LESTE;HOSP E MATER SAO LUIZ - REDE DOR;sim;alta;;Hospital Geral, PS Geral, Maternidade;"15º no Brasil (Newsweek 2026); São Luiz Anália Franco"
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL E MATERNIDADE VITORIA;sim;alta;;Hospital Geral, PS Geral, Maternidade;"JCI; alta complexidade"
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL SAN GENNARO;sim;media;;Hospital Geral;Hospital geral da região
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL SANTA MARCELINA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Referência regional de Itaquera
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL STA VIRGINIA;sim;media;;Hospital Geral, PS Geral;Hospital geral da região
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL VILLA LOBOS - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; referência da zona leste"
+SP;SÃO PAULO;ZONA LESTE;IBCC;sim;media;;Hospital Geral, PS Geral;"Oncologia; referência"
+SP;SÃO PAULO;ZONA LESTE;AMIL ESPACO SAUDE;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA LESTE;CC NDI - HAPVIDA;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA LESTE;CC NDI - HAPVIDA;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA LESTE;CEMA HOSP ESPECIALIZADO;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;SÃO PAULO;ZONA LESTE;CENTRO MEDICO SAO GABRIEL;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSP E MATER 8 DE MAIO;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSP E MATER PARANAGUA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSP E MATER SAO MIGUEL;nao;;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA LESTE;HOSP E MATER STA IZILDINHA - MASTER CLIN;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA LESTE;HOSP E MATER STO EXPEDITO;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSP SAO MIGUEL - ERMELINO M.;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL CENTRAL LESTE;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL DE CLINICAS JARDIM HELENA;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL E MATERNIDADE SALVALUS;nao;;NotreDame/Hapvida;Hospital Geral, PS Geral, Maternidade;329 leitos, mas verticalizado Hapvida/NDI e fora da rede aberta  [fontes divergiram]
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL INDEPENDENCIA;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL ITAQUERA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL MONTEMAGNO;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL SAGRADA FAMILIA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA LESTE;HOSPITAL SANTA CLARA;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA LESTE;PRONTO SAUDE SAO MATHEUS;nao;;;Hospital Geral;
+SP;SÃO PAULO;ZONA NORTE;HOSP E MATER NSA SRA DO ROSARIO;sim;media;NotreDame/Hapvida;Hospital Geral, PS Geral, Maternidade;Maternidade e hospital geral
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL NIPO BRASILEIRO;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Porte e tradição; Anahp"
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL SAN PAOLO - HSANP;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral de grande porte
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL SAO CAMILO;sim;alta;;Hospital Geral, PS Geral, Maternidade;"Rede São Camilo; principal marca da zona norte"
+SP;SÃO PAULO;ZONA NORTE;AMIL ESPACO SAUDE;nao;;;—;
+SP;SÃO PAULO;ZONA NORTE;HOSP DE OLHOS DE SAO PAULO;nao;;;—;
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL CANTAREIRA;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL IGESP;nao;;;PS Geral;Unidade Santana é ambulatorial/pronto atendimento da marca, não equivalente ao IGESP Paulista
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL PRESIDENTE;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL PREVINA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA NORTE;HOSPITAL VERA CRUZ;nao;;;—;Sem Hospital Geral, Hospital Dia, PS Geral nem Maternidade — fora do critério
+SP;SÃO PAULO;ZONA NORTE;IRMAS HOSPITALEIRAS - CASA N.SA DE FATIMA;nao;;;—;
+SP;SÃO PAULO;ZONA OESTE;HOSP E MATER SAO LUIZ - REDE DOR;sim;media;;Hospital Geral, PS Geral;"Rede D’Or; hospital geral com maternidade"
+SP;SÃO PAULO;ZONA OESTE;HOSP E MATER SAO LUIZ - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; São Luiz Itaim/Morumbi; Anahp"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL ALBERT EINSTEIN;sim;alta;;Hospital Geral, PS Geral, Maternidade;"1º no Brasil e 16º no mundo (Newsweek 2026); JCI"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL ALBERT EINSTEIN;sim;alta;;Hospital Dia, PS Geral;"1º no Brasil e 16º no mundo (Newsweek 2026); JCI"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL ALBERT SABIN;sim;media;;Hospital Geral, PS Geral;Associado Anahp
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL LEFORTE - DASA;sim;alta;;Hospital Geral, PS Geral;"Rede Américas; alta complexidade"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL METROPOLITANO;sim;media;;Hospital Geral, PS Geral, Maternidade;Hospital geral de grande porte na região oeste
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL SANTA PAULA;sim;alta;;Hospital Geral, PS Geral;"16º no Brasil (Newsweek 2026); Rede Américas"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL SAO CAMILO;sim;alta;;Hospital Geral, PS Geral;"Rede São Camilo; hospital geral tradicional; Anahp"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL SIRIO LIBANES;sim;alta;;Hospital Dia, PS Geral;"2º no Brasil (Newsweek 2026); JCI; Anahp"
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL VILA NOVA STAR - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"35º no Brasil (Newsweek 2026); Rede D’Or premium"
+SP;SÃO PAULO;ZONA OESTE;MATERNIDADE STAR - REDE DOR;sim;alta;;Maternidade;Maternidade premium Rede D’Or / Atlântica D’Or
+SP;SÃO PAULO;ZONA OESTE;BLANC HOSPITAL SP;nao;;;Hospital Geral;
+SP;SÃO PAULO;ZONA OESTE;CC - NDI HAPVIDA - BARRA FUNDA;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA OESTE;CLINISUL SERV MED DA ZONA SUL;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL CENTRAL SUL - SERRA MAYOR;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL E PRONTO SOCORRO PORTINARI;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA OESTE;HOSPITAL NEXT BUTANTA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA OESTE;MAIA PRIME PSIQUIATRIA;nao;;;—;
+SP;SÃO PAULO;ZONA OESTE;ORTOCITY SERV MEDICOS;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;HOSP ADVENTISTA DE SAO PAULO;sim;media;;PS Geral, Maternidade;"Rede Adventista; hospital geral"
+SP;SÃO PAULO;ZONA SUL;HOSP DO RIM E HIPERTENSAO;sim;media;;Hospital Geral, Hospital Dia, PS Geral;Referência nacional em transplante renal
+SP;SÃO PAULO;ZONA SUL;HOSP E MATER SANTA JOANA;sim;alta;;PS Geral, Maternidade;"Maternidade de maior prestígio de SP; Anahp"
+SP;SÃO PAULO;ZONA SUL;HOSP E MATER SAO LUIZ - REDE DOR;sim;alta;;Hospital Geral, PS Geral;"Rede D’Or; 23º no Brasil (Newsweek 2026)"
+SP;SÃO PAULO;ZONA SUL;HOSP EDMUNDO VASCONCELOS;sim;alta;;Hospital Geral, PS Geral;"Hospital geral tradicional; Anahp"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL ALBERT EINSTEIN;sim;alta;;PS Geral;"1º no Brasil (Newsweek 2026); unidade Morumbi/Ibirapuera"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL ALBERT EINSTEIN;sim;alta;;Hospital Geral, Hospital Dia, PS Geral;"1º no Brasil (Newsweek 2026); unidade Morumbi/Ibirapuera"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL ALVORADA MOEMA;sim;media;;Hospital Geral, Hospital Dia, PS Geral;"JCI; Anahp; referência em ortopedia"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL DO CORACAO - HCOR;sim;alta;;Hospital Geral, Hospital Dia, PS Geral;"5º no Brasil (Newsweek 2026); JCI; cardiologia"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL E MATERNIDADE SEPACO;sim;media;;Hospital Geral, PS Geral, Maternidade;"Anahp; Newsweek Specialized em obstetrícia"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL GRAACC;sim;media;;Hospital Dia;"Oncologia pediátrica; Anahp"
+SP;SÃO PAULO;ZONA SUL;HOSPITAL SANTA CRUZ;sim;media;;Hospital Geral, Hospital Dia, PS Geral;Hospital geral tradicional da Vila Mariana
+SP;SÃO PAULO;ZONA SUL;AACD - ASSOC DE ASSIST A CRIANCA DEFICIENTE;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;API - ASSIST PSIQUIATRICA INTEGRADA;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;CASA DE SAUDE N.SRA DO CAMINHO - IRMAS HOSPITALEIRAS;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;CC NDI - HAPVIDA;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA SUL;CLIN INFANTIL SANTA ISABELLA;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;CLIN KIDS;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;CLINICA MAIA;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;CTO DE TRATAMENTO BEZERRA DE MENEZES;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;HOSP DA CRUZ VERMELHA BRASILEIRA;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;HOSP DA STA CASA DE STO AMARO;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA SUL;HOSP DE OLHOS PAULISTA - CERPO;nao;;;PS Geral;
+SP;SÃO PAULO;ZONA SUL;HOSP DOM ANTONIO ALVARENGA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA SUL;HOSP E MATER SANTA MARIA;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA SUL;HOSP PAULISTA DE OTORRINOLARINGOLOGIA;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL BOSQUE DA SAUDE;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL DA CRIANCA - REDE DOR;nao;;;Hospital Dia;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL DA LUZ - SANTO AMARO;nao;;;Hospital Geral, Hospital Dia, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL DA LUZ - VILA MARIANA;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL DIA SP PLUS;nao;;;—;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL E MATERNIDADE VIDAS;nao;;;Hospital Geral, PS Geral, Maternidade;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL E MATERNIIDADE SAO RAFAEL;nao;;;Hospital Geral;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL RUBEN BERTA;nao;;;Hospital Geral, Hospital Dia;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL SANTA RITA;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL SAO CAMILO;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA SUL;HOSPITAL SAO PAULO;nao;;;Hospital Geral, PS Geral;
+SP;SÃO PAULO;ZONA SUL;INSTITUTO DANTE PAZZANESE DE CARDIOLOGIA;nao;;;—;
+SP;SÃO VICENTE;BAIXADA SANTISTA;CTO MED FREI GALVAO - INTERMEDICA;sim;alta;;Hospital Geral, PS Geral;Praça pequena (3 prestadores na base): todos entram
+SP;SÃO VICENTE;BAIXADA SANTISTA;HOSP ANA COSTA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (3 prestadores na base): todos entram
+SP;SÃO VICENTE;BAIXADA SANTISTA;HOSP SAO JOSE SAO VICENTE - SANTA CASA;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (3 prestadores na base): todos entram
+SP;VALINHOS;;HOSP E MATER GALILEO;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (2 prestadores na base): todos entram
+SP;VALINHOS;;SANTA CASA DE VALINHOS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Praça pequena (2 prestadores na base): todos entram
+TO;PALMAS;;HOSP CENTRAL DE PALMAS;sim;alta;;Hospital Geral, PS Geral, Maternidade;Hospital geral de referência  [conferir CNPJ/CNES: pode ser o atual Medical Palmas, da Kora]
+TO;PALMAS;;HOSP E MATER CRISTO REI;sim;media;;Hospital Geral, PS Geral, Maternidade;Maternidade
+TO;PALMAS;;HOSP OSWALDO CRUZ - HOSP DE URG DE PALMAS;sim;media;;Hospital Geral, PS Geral, Maternidade;"Independente; fundado em 1995"
+TO;PALMAS;;HOSP SANTA THEREZA;sim;alta;Kora;Hospital Geral;"Kora Saúde; UTI neonatal  [nome atual: Medical Santa Thereza]"
+TO;PALMAS;;HOSP UNIMED PALMAS;sim;alta;Unimed;Hospital Geral, Maternidade;"Rede própria; cerca de 74 leitos  [~103 leitos e 20 de UTI no CNES de 2026]"
+TO;PALMAS;;IOP - HOSP ORTOPEDICO DO TOCANTINS;sim;media;;Hospital Geral, PS Geral;CNES atualizado: hospital geral com 30 leitos e operação contínua  [reverte decisão anterior: fontes divergiram]
+TO;PALMAS;;CLINICA PROVIDA;nao;;;—;
+TO;PALMAS;;HOSPITAL DE OLHOS YANO;nao;;;—;
+TO;PALMAS;;INSTITUTO DE OLHOS PALMAS;nao;;;Hospital Geral;
+TO;PALMAS;;INSTITUTO SINAI;nao;;;Hospital Geral, PS Geral, Maternidade;[INCERTO: cadastro aponta 95 leitos e 20 de UTI, sem confirmação primária de operação]
+TO;PALMAS;;UNI PED PRONTO ATENDIMENTO PEDIATRICO;nao;;;—;
