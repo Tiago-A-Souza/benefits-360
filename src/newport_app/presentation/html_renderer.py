@@ -1498,6 +1498,9 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
   font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:2px}
 .rede-sandbox-btn-discreto{background:transparent;border:0;color:var(--grafite-3);font-size:12px;
   text-decoration:underline;cursor:pointer;margin-top:12px}
+.rede-sandbox-aviso-download{margin:16px 0;padding:14px 18px;background:var(--ouro-cl);
+  border:1px solid var(--ouro);font-size:13px;line-height:1.5;color:var(--grafite)}
+.rede-sandbox-aviso-download strong{font-weight:700;color:var(--grafite)}
 .rede-marcar-bloco{float:right;font-size:10px;font-weight:500;margin-left:12px;background:transparent;
   border:1px solid rgba(255,255,255,.35);color:#fff;padding:4px 8px;cursor:pointer}
 .rede-sandbox-final .rede-sandbox-check{display:none!important}
@@ -1731,6 +1734,7 @@ def render_html_completo(
     *,
     rede: RedeApresentacaoDocumento | None = None,
     estudo_id: str | None = None,
+    nome_arquivo_html: str | None = None,
 ) -> str:
     """Documento cliente com abas — CSS puro nas quatro primeiras; rede pode ter sandbox D2."""
     rotulos = _mapa_rotulos_propostas(vm_resumo)
@@ -1779,7 +1783,9 @@ def render_html_completo(
         inner_rede = render_corpo_rede(rede)
         if estudo_id:
             inner_rede = envolver_rede_sandbox(
-                inner_rede, hash_desbloqueio_estudo(estudo_id)
+                inner_rede,
+                hash_desbloqueio_estudo(estudo_id),
+                nome_arquivo_origem=nome_arquivo_html or "apresentacao_completo.html",
             )
         corpo_rede = (
             _tit_secao(

@@ -204,22 +204,44 @@
     return ex;
   }
 
-  function downloadHtml(state) {
+  function clientDownloadName(root) {
+    var nome =
+      root.getAttribute("data-arquivo-cliente") ||
+      root.getAttribute("data-arquivo-origem") ||
+      "apresentacao_completo_para_cliente.html";
+    return nome.replace(/^.*[/\\]/, "");
+  }
+
+  function showDownloadNotice(root, fileName) {
+    var aviso = $("#rede-aviso-download", root);
+    if (!aviso) return;
+    aviso.innerHTML =
+      "<strong>Envie ao cliente o arquivo que acabou de ser baixado:</strong> " +
+      "<code>" +
+      fileName +
+      "</code>. " +
+      "Não envie o arquivo que você estava editando nesta aba do navegador.";
+    aviso.hidden = false;
+  }
+
+  function downloadHtml(root, state) {
     writeState(state);
     var docEl = document.documentElement.cloneNode(true);
     var st = docEl.querySelector("#newport-rede-state");
     if (st) st.textContent = JSON.stringify(state);
     var html = "<!DOCTYPE html>\n" + docEl.outerHTML;
     var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    var fileName = clientDownloadName(root);
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "apresentacao_rede.html";
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(function () {
       URL.revokeObjectURL(a.href);
     }, 500);
+    showDownloadNotice(root, fileName);
   }
 
   function wireBlockToggle(root) {
@@ -286,7 +308,7 @@
           }
         });
         applyExcluded(root, state);
-        downloadHtml(state);
+        downloadHtml(root, state);
       });
     }
 

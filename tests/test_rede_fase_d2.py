@@ -11,7 +11,10 @@ import pytest
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.html_renderer import render_html_completo
 from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
-from newport_app.presentation.rede_sandbox import hash_desbloqueio_estudo
+from newport_app.presentation.rede_sandbox import (
+    hash_desbloqueio_estudo,
+    nome_arquivo_para_cliente,
+)
 from tests.test_correcao_resumo_regime import _aprovar as _aprovar_anistia
 from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
 from tests.test_rede_fase_d1 import _rascunho_dois_grupos_um_cenario
@@ -191,3 +194,37 @@ def test_19_hash_python_igual_embed(tmp_path: Path):
     assert len(h) == 64
     html, _, _ = _html_completo_rede(tmp_path, estudo_id=eid)
     assert h in html
+
+
+def test_20_nome_download_para_cliente(tmp_path: Path):
+    origem = "apresentacao_completo_71e431d7.html"
+    assert nome_arquivo_para_cliente(origem) == (
+        "apresentacao_completo_71e431d7_para_cliente.html"
+    )
+    html, _, _ = _html_completo_rede(tmp_path, estudo_id="anistia-d2")
+    assert "data-arquivo-origem='apresentacao_completo.html'" in html or (
+        "data-arquivo-origem=\"apresentacao_completo.html\"" in html
+    )
+    assert "rede-aviso-download" in html
+    assert "_para_cliente.html" in html
+
+
+def test_21_nome_download_com_nome_explicito(tmp_path: Path):
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    snap = _aprovar_anistia(tmp_path, rascunho)
+    vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=[cen_id])
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    nome = "anistia_completo_cinco_abas.html"
+    html = render_html_completo(
+        vm,
+        vm,
+        vm,
+        rede=doc,
+        estudo_id=rascunho.id,
+        nome_arquivo_html=nome,
+    )
+    cliente = nome_arquivo_para_cliente(nome)
+    assert f"data-arquivo-origem='{nome}'" in html or f'data-arquivo-origem="{nome}"' in html
+    assert cliente in html

@@ -102,12 +102,14 @@ class ApresentacaoService:
             rede_doc = montar_rede_apresentacao(
                 rascunho, propostas, formato=rascunho.formato
             )
+            nome = f"apresentacao_{req.modo}_{snapshot_id[:8]}.html"
             html_content = render_html_completo(
                 vm_resumo,
                 vm_faixas,
                 vm_grupos,
                 rede=rede_doc,
                 estudo_id=estudo_id,
+                nome_arquivo_html=nome,
             )
             digest = hash_sha256_objeto(
                 {
@@ -142,7 +144,8 @@ class ApresentacaoService:
                     "Armazene apenas em local privado."
                 )
 
-        nome = f"apresentacao_{req.modo}_{snapshot_id[:8]}.html"
+        if req.modo != "completo" or rede_doc is None:
+            nome = f"apresentacao_{req.modo}_{snapshot_id[:8]}.html"
         caminho = self._storage.salvar(
             html_content.encode("utf-8"),
             nome_arquivo=nome,
