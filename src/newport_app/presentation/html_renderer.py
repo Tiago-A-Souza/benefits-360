@@ -12,9 +12,11 @@ from newport_app.models.presentation import (
     PlanoAtualApresentacao,
     PresentationViewModel,
     PropostaApresentacao,
+    RedeApresentacaoDocumento,
     SecaoRegimeApresentacao,
     TabelaPlanosConsultados,
 )
+from newport_app.presentation.rede_renderer import render_corpo_rede
 from newport_app.presentation.branding import (
     lema_newport,
     logo_data_uri,
@@ -1455,6 +1457,7 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 #tab-resumo:checked ~ .doc-controles label[for=tab-resumo],
 #tab-faixas:checked ~ .doc-controles label[for=tab-faixas],
 #tab-benef:checked ~ .doc-controles label[for=tab-benef],
+#tab-rede:checked ~ .doc-controles label[for=tab-rede],
 #tab-regras:checked ~ .doc-controles label[for=tab-regras]{color:var(--grafite);border-bottom-color:var(--ouro)}
 #tab-todas:checked ~ .doc-controles .doc-btn-todas{background:var(--grafite);border-color:var(--grafite);color:#fff}
 #tab-todas:checked ~ .doc-controles .doc-btn-todas{display:none}
@@ -1464,7 +1467,25 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 #tab-resumo:checked ~ .doc-corpo .visao-resumo,
 #tab-faixas:checked ~ .doc-corpo .visao-faixas,
 #tab-benef:checked ~ .doc-corpo .visao-benef,
+#tab-rede:checked ~ .doc-corpo .visao-rede,
 #tab-regras:checked ~ .doc-corpo .visao-regras{display:block}
+.tabela-rede .op{display:block;font-size:9px;font-weight:400;letter-spacing:.1em;color:#9AA0A8;text-transform:uppercase}
+.tabela-rede .pl{display:block;font-size:10.5px;font-weight:600;margin-top:2px}
+.tabela-rede thead th{background:var(--grafite);color:#fff;vertical-align:bottom}
+.tabela-rede thead th:first-child{text-align:left;width:280px}
+.tabela-rede td.nm{text-align:left;font-weight:500}
+.tabela-rede tr.bloco-rede td{background:var(--grafite);color:#fff;text-align:left;font-weight:700;
+  text-transform:uppercase;font-size:12px;padding:8px 10px;border-top:3px solid var(--papel)}
+.tabela-rede tr.bloco-rede .q{float:right;font-weight:300;text-transform:none;color:var(--ouro);font-size:11px}
+.tabela-rede td.on{background:var(--ouro-cl);color:var(--ouro-esc);font-weight:700;font-size:10.5px}
+.tabela-rede td.off{color:#CFCFC9}
+.tabela-rede tr.cont-rede td{background:var(--papel-2);font-weight:700;font-size:11px;border-bottom:2px solid var(--grafite)}
+.tabela-rede tr.cont-rede td:first-child{text-align:left;text-transform:uppercase;font-size:10px;color:var(--grafite-3)}
+.secao-rede{margin-bottom:36px}
+.secao-rede-tit{font-size:1.05rem;margin:24px 0 12px;color:var(--grafite)}
+.rede-legenda{margin-top:24px;padding:16px 18px;background:var(--papel-2);font-size:12px;color:var(--grafite-2)}
+.rede-pontos{margin-top:12px}
+.rede-pontos ul{margin:8px 0 0;padding-left:18px}
 #tab-todas:checked ~ .doc-corpo .visao { display: block !important; }
 .corpo,.doc-corpo{padding:0 56px 64px}
 .visao-titulo{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -1560,6 +1581,7 @@ tfoot tr td.atual{background:#F1E7D6}
 #tab-resumo:focus-visible ~ .doc-controles label[for="tab-resumo"],
 #tab-faixas:focus-visible ~ .doc-controles label[for="tab-faixas"],
 #tab-benef:focus-visible ~ .doc-controles label[for="tab-benef"],
+#tab-rede:focus-visible ~ .doc-controles label[for="tab-rede"],
 #tab-regras:focus-visible ~ .doc-controles label[for="tab-regras"],
 #tab-todas:focus-visible ~ .doc-controles label[for="tab-todas"],
 #tab-resumo:focus-visible ~ .doc-controles label.doc-btn-voltar,
@@ -1690,6 +1712,8 @@ def render_html_completo(
     vm_resumo: PresentationViewModel,
     vm_faixas: PresentationViewModel,
     vm_grupos: PresentationViewModel,
+    *,
+    rede: RedeApresentacaoDocumento | None = None,
 ) -> str:
     """Documento cliente com visões em abas — CSS puro (radios), sem script."""
     rotulos = _mapa_rotulos_propostas(vm_resumo)
@@ -1733,6 +1757,17 @@ def render_html_completo(
         _tit_secao("03", "Detalhamento", titulo_detalhe, lead_detalhe)
         + "".join("".join(p) for p in _paginas_corpo_visao(vm_grupos))
     )
+    corpo_rede = ""
+    if rede is not None and rede.secoes:
+        corpo_rede = (
+            _tit_secao(
+                "04",
+                "Rede",
+                "Credenciada",
+                "Hospitais principais no recorte geográfico dos beneficiários de cada grupo.",
+            )
+            + render_corpo_rede(rede)
+        )
     del rotulos
 
     radios = [
@@ -1751,6 +1786,15 @@ def render_html_completo(
         '<label class="doc-aba" for="tab-benef" role="tab" aria-controls="visao-benef">'
         f"{titulo_detalhe}</label>",
     ]
+    if corpo_rede:
+        radios.append(
+            '<input type="radio" name="doc-visao" id="tab-rede" class="doc-tab-input" '
+            'aria-label="Rede credenciada">'
+        )
+        abas.append(
+            '<label class="doc-aba" for="tab-rede" role="tab" aria-controls="visao-rede">'
+            "Rede credenciada</label>"
+        )
     secoes = [
         '<section class="visao visao-resumo" id="visao-resumo" role="tabpanel" '
         'aria-labelledby="tit-resumo">',
@@ -1768,6 +1812,16 @@ def render_html_completo(
         corpo_grupos,
         "</section>",
     ]
+    if corpo_rede:
+        secoes.extend(
+            [
+                '<section class="visao visao-rede" id="visao-rede" role="tabpanel" '
+                'aria-labelledby="tit-rede">',
+                '<h2 class="visao-titulo" id="tit-rede">Rede credenciada</h2>',
+                corpo_rede,
+                "</section>",
+            ]
+        )
     if tabela_regras is not None:
         radios.append(
             '<input type="radio" name="doc-visao" id="tab-regras" class="doc-tab-input" '
@@ -1777,13 +1831,14 @@ def render_html_completo(
             '<label class="doc-aba" for="tab-regras" role="tab" aria-controls="visao-regras">'
             "Regras contratuais</label>"
         )
+        num_regras = "05" if corpo_rede else "04"
         secoes.extend(
             [
                 '<section class="visao visao-regras" id="visao-regras" role="tabpanel" '
                 'aria-labelledby="tit-regras">',
                 '<h2 class="visao-titulo" id="tit-regras">Regras contratuais</h2>',
                 _tit_secao(
-                    "04",
+                    num_regras,
                     "Regras",
                     "Contratuais",
                     "Condições comerciais das operadoras que participam desta cotação.",

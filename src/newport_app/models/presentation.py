@@ -174,6 +174,46 @@ class TotaisGeraisApresentacao(BaseModel):
     baseline_rotulo: str | None = None
 
 
+class ColunaRedeApresentacao(BaseModel):
+    chave: str
+    operadora: str
+    plano_nome: str
+    rede_nao_mapeada: bool = False
+
+
+class LinhaRedeApresentacao(BaseModel):
+    prestador: str
+    chave_municipio: str
+    bairro: str
+    zona: str
+    celulas: dict[str, str] = Field(default_factory=dict)
+
+
+class BlocoRedeApresentacao(BaseModel):
+    titulo: str
+    linhas: list[LinhaRedeApresentacao] = Field(default_factory=list)
+    contagem_por_coluna: dict[str, int] = Field(default_factory=dict)
+
+
+class PaginaRedeApresentacao(BaseModel):
+    colunas: list[ColunaRedeApresentacao] = Field(default_factory=list)
+    blocos: list[BlocoRedeApresentacao] = Field(default_factory=list)
+
+
+class SecaoRedeApresentacao(BaseModel):
+    subgrupo_id: str
+    rotulo: str
+    colunas: list[ColunaRedeApresentacao] = Field(default_factory=list)
+    blocos: list[BlocoRedeApresentacao] = Field(default_factory=list)
+    paginas: list[PaginaRedeApresentacao] = Field(default_factory=list)
+    total_linhas: int = 0
+
+
+class RedeApresentacaoDocumento(BaseModel):
+    data_base_rede: str
+    secoes: list[SecaoRedeApresentacao] = Field(default_factory=list)
+
+
 class PresentationViewModel(BaseModel):
     titulo: str
     subtitulo: str | None = None

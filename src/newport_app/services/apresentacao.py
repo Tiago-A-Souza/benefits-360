@@ -14,11 +14,13 @@ from newport_app.models.snapshot import (
 )
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.delivery_storage import LocalFileDeliveryStorage
+from newport_app.models.draft import RascunhoEstudo
 from newport_app.presentation.html_renderer import (
     RENDERER_VERSAO,
     render_html,
     render_html_completo,
 )
+from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
 from newport_app.presentation.motor_por_proposta import PropostaNaoCalculavelError
 from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.services.comparativo_ui import resolver_propostas_apresentacao_snapshot
@@ -96,7 +98,13 @@ class ApresentacaoService:
                 beneficiarios_agregados=False,
                 aprovado_em=aprov.aprovado_em,
             )
-            html_content = render_html_completo(vm_resumo, vm_faixas, vm_grupos)
+            rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
+            rede_doc = montar_rede_apresentacao(
+                rascunho, propostas, formato=rascunho.formato
+            )
+            html_content = render_html_completo(
+                vm_resumo, vm_faixas, vm_grupos, rede=rede_doc
+            )
             digest = hash_sha256_objeto(
                 {
                     "html": html_content,

@@ -51,6 +51,8 @@ class EstadoMapeamentoPlanoRede(StrEnum):
 class PrestadorVisaoRede:
     prestador: str
     chave_municipio: str
+    bairro: str
+    zona: str
     principal: bool
     coberto: bool
     rede_verticalizada: str
@@ -91,6 +93,18 @@ def _localizacoes_rascunho(rascunho: RascunhoEstudo) -> set[tuple[str, str]]:
     loc: set[tuple[str, str]] = set()
     for vida in rascunho.vidas:
         if not vida.incluida:
+            continue
+        if vida.uf and vida.cidade:
+            loc.add((vida.uf.strip().upper(), vida.cidade))
+    return loc
+
+
+def localizacoes_subgrupo(
+    rascunho: RascunhoEstudo, subgrupo_id: str
+) -> set[tuple[str, str]]:
+    loc: set[tuple[str, str]] = set()
+    for vida in rascunho.vidas:
+        if not vida.incluida or vida.subgrupo_atual_id != subgrupo_id:
             continue
         if vida.uf and vida.cidade:
             loc.add((vida.uf.strip().upper(), vida.cidade))
@@ -142,10 +156,12 @@ def montar_visao_rede_estudo(
     *,
     modo_recorte: ModoRecorteGeografico | None = None,
     planos: list[tuple[str, str]] | None = None,
+    localizacoes: set[tuple[str, str]] | None = None,
 ) -> VisaoRedeEstudo:
     """Monta prestadores filtrados e cobertura por plano do cenário."""
     aliases = carregar_aliases()
-    localizacoes = _localizacoes_rascunho(rascunho)
+    if localizacoes is None:
+        localizacoes = _localizacoes_rascunho(rascunho)
     mun_perm, pos_geo = _filtrar_por_geografia(
         base, localizacoes, modo=modo_recorte
     )
@@ -201,10 +217,15 @@ def montar_visao_rede_estudo(
             ent = principais.por_prestador_matriz.get(p.chave)
             princ = ent.principal if ent else False
             cob, val = _coberto_na_coluna(p, col_idx, op_col, entrada_principal=ent)
+            bairro_norm = normalizar_cabecalho(p.bairro) if p.bairro else ""
+            regiao_matriz = (p.regiao or "").strip()
+            zona_visao = regiao_matriz or ((ent.zona if ent else "") or "")
             lista_prest.append(
                 PrestadorVisaoRede(
                     prestador=p.prestador,
                     chave_municipio=p.chave_municipio,
+                    bairro=bairro_norm,
+                    zona=zona_visao,
                     principal=princ,
                     coberto=cob,
                     rede_verticalizada=ent.rede_verticalizada if ent else "",

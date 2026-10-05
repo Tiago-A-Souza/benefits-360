@@ -75,6 +75,41 @@ def _abrir_csv(caminho: Path) -> list[tuple[int, list[str]]]:
     return registros
 
 
+def _zona_norm(zona: str) -> str:
+    return normalizar_cabecalho(zona or "")
+
+
+def _mesclar_linhas_csv(
+    linhas: tuple[EntradaHospitalPrincipal, ...] | list[EntradaHospitalPrincipal],
+) -> EntradaHospitalPrincipal:
+    if not linhas:
+        raise ValueError("mesclar_linhas_csv: lista vazia")
+    meta = linhas[0]
+    for e in linhas[1:]:
+        meta = _mesclar(meta, e)
+    return meta
+
+
+def _meta_por_registro_matriz(
+    prestador_matriz: "PrestadorRedeHospital",
+    linhas_grupo: list[EntradaHospitalPrincipal],
+    *,
+    fallback: EntradaHospitalPrincipal,
+) -> EntradaHospitalPrincipal:
+    """Associa cada linha da matriz (bairro) às entradas do CSV na mesma zona."""
+    from newport_app.presentation.rede_matriz_hospital import PrestadorRedeHospital
+
+    assert isinstance(prestador_matriz, PrestadorRedeHospital)
+    regiao = _zona_norm(prestador_matriz.regiao)
+    if regiao:
+        filtradas = [e for e in linhas_grupo if _zona_norm(e.zona) == regiao]
+        if filtradas:
+            return _mesclar_linhas_csv(filtradas)
+    if len(linhas_grupo) == 1:
+        return linhas_grupo[0]
+    return fallback
+
+
 def _mesclar(a: EntradaHospitalPrincipal, b: EntradaHospitalPrincipal) -> EntradaHospitalPrincipal:
     return EntradaHospitalPrincipal(
         uf=a.uf,
@@ -169,16 +204,25 @@ def carregar_hospitais_principais(
             por_prestador_matriz=por_matriz,  # type: ignore[assignment]
         )
 
+    linhas_por_grupo: dict[tuple[str, str], list[EntradaHospitalPrincipal]] = {}
+    for entrada in linhas:
+        ch_gr = entrada.chave_grupo
+        linhas_por_grupo.setdefault(ch_gr, []).append(entrada)
+
     por_matriz: dict[tuple[str, str, str], EntradaHospitalPrincipal] = {}
     for p in matriz_ref:
         assert isinstance(p, PrestadorRedeHospital)
-        meta = agrupado.get((p.prestador, p.chave_municipio))
-        if meta is None:
+        ch_gr = (p.prestador, p.chave_municipio)
+        fallback = agrupado.get(ch_gr)
+        if fallback is None:
             raise BaseHospitaisPrincipaisInvalida(
                 f"{origem}: prestador {p.prestador!r} em {p.chave_municipio} "
                 f"(bairro {p.bairro!r}) não consta no CSV de principais"
             )
-        por_matriz[p.chave] = meta
+        grupo = linhas_por_grupo.get(ch_gr, [])
+        por_matriz[p.chave] = _meta_por_registro_matriz(
+            p, grupo, fallback=fallback
+        )
 
     return BaseHospitaisPrincipais(
         linhas_csv=tuple(linhas),
