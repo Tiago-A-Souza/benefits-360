@@ -1329,10 +1329,39 @@ implementada é provisória até confirmação com o Wesley.
 Números de funil (planilha real 41 vidas, quando disponível no ambiente):
 1.071 prestadores na base → **391** após recorte geo (capital+município) →
 **287** após especialidade → **117** linhas `principal=sim` na matriz filtrada
-(contagem direta; export tabular por prestador+município pode ser menor por
-deduplicação na visão por plano). O teste versionado `test_10_funil_anistia`
+(contagem por `(prestador, município, bairro)` na matriz). Um CSV de revisão
+em `.private/runtime/` colapsou para **103** chaves `(município, prestador)` —
+**não** é comportamento de `montar_visao_rede_estudo()`. O teste versionado `test_10_funil_anistia`
 usa a primeira planilha `POSI*.xlsx` encontrada e trava **312 / 234** quando
 essa planilha é a de 39 localizações (gabarito CI).
+
+### Unidade física — bairro e zona (§12, fase D)
+
+`PrestadorVisaoRede` (`rede_visao.py`) transporta hoje `prestador`,
+`chave_municipio`, `principal`, cobertura e rede verticalizada — **sem `bairro`
+nem `zona`**. A matriz e o CSV de principais, porém, são **por registro**
+`(prestador, município, bairro)`; a zona correta está em
+`hospitais_principais_base.csv` **por linha**, não por nome do hospital no
+município.
+
+**Decisão de produto (Anistia / estudo 16):** a aba rede (fase D) deve usar
+**uma linha por registro** `(prestador, município, bairro)`, não colapsar só
+por `(município, prestador)`. Exemplo: **Hospital Albert Einstein** em
+**SP.SAO PAULO** — **4** linhas na matriz filtrada, **3** zonas distintas no
+CSV (Chácara Klabin, Ibirapuera/Morumbi/Perdizes com rótulos de zona
+diferentes). Sem bairro+zona na visão, unidades distintas ficam
+indistinguíveis.
+
+**Script de export de revisão (não versionado, não corrigir):** ao colapsar
+por `(município, prestador)`, copiou a **zona do primeiro registro do laço**
+para a linha única — ex.: São Luiz **Jabaquara** exibido com zona do par
+**Itaim Bibi**; Einstein **Ibirapuera** com zona do par **Chácara Klabin**. O
+defeito é só do CSV ad hoc; o pipeline fase C mantém **117** entradas por plano
+na tupla `prestadores`.
+
+**Fase D:** estender `PrestadorVisaoRede` (ou equivalente) com **`bairro`** e
+**`zona`** vindos de `EntradaHospitalPrincipal` / chave da matriz, para a UI
+alinhada ao CSV de principais.
 
 ### Validação pós-merge (`master` @ `59dc2eb`)
 
