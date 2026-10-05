@@ -155,15 +155,18 @@ def test_06_rodape_tres_ressalvas():
     assert "centros clínicos" in html.lower() or "centros clinicos" in html.lower()
 
 
-def test_07_zero_script_no_html_completo(tmp_path: Path):
+def test_07_script_apenas_dentro_visao_rede(tmp_path: Path):
     rascunho, cen_id, _prop_id = _rascunho_dois_grupos_um_cenario()
     snap = _aprovar_anistia(tmp_path, rascunho)
     from newport_app.presentation.builder import construir_view_model
 
     vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=[cen_id])
     doc = montar_rede_apresentacao(rascunho, [cen_id])
-    html = render_html_completo(vm, vm, vm, rede=doc)
-    assert "<script" not in html.lower()
+    html = render_html_completo(vm, vm, vm, rede=doc, estudo_id=rascunho.id)
+    antes_rede = html.split('id="visao-rede"', 1)[0]
+    assert "<script" not in antes_rede.lower()
+    assert "visao-rede" in html
+    assert "newport-rede-state" in html
 
 
 def test_08_quatro_abas_anteriores_intactas(tmp_path: Path):
@@ -173,7 +176,13 @@ def test_08_quatro_abas_anteriores_intactas(tmp_path: Path):
 
     vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=[cen_id])
     sem = render_html_completo(vm, vm, vm, rede=None)
-    com = render_html_completo(vm, vm, vm, rede=montar_rede_apresentacao(rascunho, [cen_id]))
+    com = render_html_completo(
+        vm,
+        vm,
+        vm,
+        rede=montar_rede_apresentacao(rascunho, [cen_id]),
+        estudo_id=rascunho.id,
+    )
     extrair = lambda h: re.search(r'id="visao-resumo"[^>]*>(.*?)</section>', h, re.S).group(1)
     assert extrair(sem) == extrair(com)
 

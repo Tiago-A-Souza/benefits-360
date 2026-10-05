@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime, timezone
 
@@ -35,6 +36,11 @@ from newport_app.siscor_importer.normalize import normalizar_cabecalho
 
 _CHAVE_ATUAL = "rede-atual"
 _CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
+
+
+def _id_linha_rede(prestador: str, chave_municipio: str, bairro: str) -> str:
+    bruto = f"{prestador}\0{chave_municipio}\0{bairro}"
+    return hashlib.sha256(bruto.encode("utf-8")).hexdigest()[:16]
 
 
 def _chave_coluna_proposta(operadora: str, plano_nome: str) -> str:
@@ -219,6 +225,7 @@ def _montar_secao(
             k = (pr.prestador, pr.chave_municipio, pr.bairro)
             if k not in linhas_map:
                 linhas_map[k] = LinhaRedeApresentacao(
+                    linha_id=_id_linha_rede(pr.prestador, pr.chave_municipio, pr.bairro),
                     prestador=pr.prestador,
                     chave_municipio=pr.chave_municipio,
                     bairro=pr.bairro,

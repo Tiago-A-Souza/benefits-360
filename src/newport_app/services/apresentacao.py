@@ -103,7 +103,11 @@ class ApresentacaoService:
                 rascunho, propostas, formato=rascunho.formato
             )
             html_content = render_html_completo(
-                vm_resumo, vm_faixas, vm_grupos, rede=rede_doc
+                vm_resumo,
+                vm_faixas,
+                vm_grupos,
+                rede=rede_doc,
+                estudo_id=estudo_id,
             )
             digest = hash_sha256_objeto(
                 {

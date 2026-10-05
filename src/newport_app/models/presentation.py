@@ -182,6 +182,7 @@ class ColunaRedeApresentacao(BaseModel):
 
 
 class LinhaRedeApresentacao(BaseModel):
+    linha_id: str = ""
     prestador: str
     chave_municipio: str
     bairro: str

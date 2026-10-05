@@ -48,9 +48,23 @@ def _rotulo_prestador(ln: LinhaRedeApresentacao) -> str:
     return html.escape(nome)
 
 
+def _attrs_linha(ln: LinhaRedeApresentacao) -> str:
+    sigla = sigla_zona_capital(ln.zona) if ln.zona else ""
+    nome_busca = ln.prestador.lower()
+    lid = html.escape(ln.linha_id, quote=True)
+    mun = html.escape(ln.chave_municipio, quote=True)
+    return (
+        f" data-rede-id='{lid}' data-zona='{html.escape(sigla, quote=True)}'"
+        f" data-municipio='{mun}' data-nome='{html.escape(nome_busca, quote=True)}'"
+    )
+
+
 def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
-    ncols = 1 + len(pag.colunas)
+    ncols = 2 + len(pag.colunas)
     partes = ["<div class='rolo'><table class='tabela-rede n'><thead><tr>"]
+    partes.append(
+        "<th class='rede-sandbox-check rede-sandbox-js-only' scope='col'>Incl.</th>"
+    )
     partes.append("<th>Prestador</th>")
     for col in pag.colunas:
         partes.append(_th_coluna(col))
@@ -59,10 +73,16 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
         partes.append(
             f"<tr class='bloco-rede'><td colspan='{ncols}'>"
             f"{html.escape(bloco.titulo)}"
-            f"<span class='q'>{len(bloco.linhas)} prestadores</span></td></tr>"
+            f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
+            "<button type='button' class='rede-marcar-bloco rede-sandbox-js-only' "
+            "data-checked='1'>Desmarcar bloco</button></td></tr>"
         )
         for ln in bloco.linhas:
-            partes.append("<tr class='p-rede'>")
+            partes.append(f"<tr class='p-rede'{_attrs_linha(ln)}>")
+            partes.append(
+                "<td class='rede-sandbox-check rede-sandbox-js-only'>"
+                "<input type='checkbox' checked aria-label='Incluir prestador'></td>"
+            )
             partes.append(f"<td class='nm'>{_rotulo_prestador(ln)}</td>")
             for col in pag.colunas:
                 val = ln.celulas.get(col.chave, "")
@@ -70,7 +90,7 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
                 partes.append(f"<td class='{cls}'>{html.escape(val)}</td>")
             partes.append("</tr>")
         partes.append(
-            f"<tr class='cont-rede'><td>Prestadores cobertos</td>"
+            f"<tr class='cont-rede'><td colspan='2'>Prestadores cobertos</td>"
         )
         contagem = contagem_coberturas_bloco(bloco.linhas, pag.colunas)
         for col in pag.colunas:
