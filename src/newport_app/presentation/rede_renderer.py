@@ -7,21 +7,45 @@ import html
 from newport_app.models.presentation import (
     BlocoRedeApresentacao,
     ColunaRedeApresentacao,
+    LinhaRedeApresentacao,
     PaginaRedeApresentacao,
     RedeApresentacaoDocumento,
     SecaoRedeApresentacao,
 )
+from newport_app.presentation.rede_apresentacao import contagem_coberturas_bloco
+from newport_app.presentation.rede_codigos import sigla_zona_capital
+
+_CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
 
 
 def _th_coluna(col: ColunaRedeApresentacao) -> str:
-    op = html.escape(col.operadora)
-    pl = html.escape(col.plano_nome)
     if col.rede_nao_mapeada:
-        pl = "Rede não mapeada"
-    return (
-        f"<th><span class='op'>{op}</span>"
-        f"<span class='pl'>{html.escape(pl)}</span></th>"
-    )
+        return (
+            "<th><span class='op'>Proposta</span>"
+            "<span class='pl'>Rede não mapeada</span></th>"
+        )
+    pl = html.escape(col.plano_nome)
+    if col.chave == "rede-atual":
+        return (
+            f"<th class='atual'><span class='op'>Contrato atual</span>"
+            f"<span class='pl'>{pl}</span></th>"
+        )
+    op = html.escape(col.operadora)
+    return f"<th><span class='op'>{op}</span><span class='pl'>{pl}</span></th>"
+
+
+def _rotulo_prestador(ln: LinhaRedeApresentacao) -> str:
+    nome = ln.prestador
+    if ln.chave_municipio in _CAPITAIS_COM_ZONA:
+        sigla = sigla_zona_capital(ln.zona)
+        if sigla:
+            nome = f"{sigla} {nome}"
+    if ln.bairro:
+        return (
+            f"{html.escape(nome)}"
+            f"<span class='bairro-rede'>{html.escape(ln.bairro)}</span>"
+        )
+    return html.escape(nome)
 
 
 def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
@@ -39,7 +63,7 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
         )
         for ln in bloco.linhas:
             partes.append("<tr class='p-rede'>")
-            partes.append(f"<td class='nm'>{html.escape(ln.prestador)}</td>")
+            partes.append(f"<td class='nm'>{_rotulo_prestador(ln)}</td>")
             for col in pag.colunas:
                 val = ln.celulas.get(col.chave, "")
                 cls = "on" if val else "off"
@@ -48,9 +72,9 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
         partes.append(
             f"<tr class='cont-rede'><td>Prestadores cobertos</td>"
         )
+        contagem = contagem_coberturas_bloco(bloco.linhas, pag.colunas)
         for col in pag.colunas:
-            n = bloco.contagem_por_coluna.get(col.chave, 0)
-            partes.append(f"<td>{n}</td>")
+            partes.append(f"<td>{contagem[col.chave]}</td>")
         partes.append("</tr>")
     partes.append("</tbody></table></div>")
     return "".join(partes)

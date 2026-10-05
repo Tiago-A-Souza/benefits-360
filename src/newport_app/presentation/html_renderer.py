@@ -1474,6 +1474,7 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .tabela-rede thead th{background:var(--grafite);color:#fff;vertical-align:bottom}
 .tabela-rede thead th:first-child{text-align:left;width:280px}
 .tabela-rede td.nm{text-align:left;font-weight:500}
+.tabela-rede .bairro-rede{display:block;font-size:10px;font-weight:400;color:var(--grafite-3);margin-top:2px}
 .tabela-rede tr.bloco-rede td{background:var(--grafite);color:#fff;text-align:left;font-weight:700;
   text-transform:uppercase;font-size:12px;padding:8px 10px;border-top:3px solid var(--papel)}
 .tabela-rede tr.bloco-rede .q{float:right;font-weight:300;text-transform:none;color:var(--ouro);font-size:11px}

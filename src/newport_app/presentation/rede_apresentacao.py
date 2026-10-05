@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
-from newport_app.models.draft import RascunhoEstudo
+from newport_app.models.draft import CenarioRascunho, RascunhoEstudo
 from newport_app.models.presentation import (
     BlocoRedeApresentacao,
     ColunaRedeApresentacao,
@@ -17,7 +17,10 @@ from newport_app.models.presentation import (
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.hospitais_principais import carregar_hospitais_principais
 from newport_app.presentation.planos_rede import carregar_aliases_rede
-from newport_app.presentation.rede_codigos import formatar_cobertura_abreviada
+from newport_app.presentation.rede_codigos import (
+    formatar_cobertura_abreviada,
+    sigla_zona_capital,
+)
 from newport_app.presentation.rede_matriz_hospital import (
     CAMINHO_XLSX_PADRAO,
     carregar_base_rede_hospital,
@@ -34,16 +37,80 @@ _CHAVE_ATUAL = "rede-atual"
 _CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
 
 
-def _cenario_das_propostas(rascunho: RascunhoEstudo, propostas_ids: list[str]):
-    sel = set(propostas_ids)
-    for cen in rascunho.cenarios:
-        if any(
-            atr.opcao_plano_id in sel
-            for atr in cen.atribuicoes
-            if atr.opcao_plano_id
-        ):
-            return cen
-    return rascunho.cenarios[0] if rascunho.cenarios else None
+def _chave_coluna_proposta(operadora: str, plano_nome: str) -> str:
+    """Uma coluna por plano distinto — vários cenários com o mesmo plano colapsam."""
+    return (
+        f"prop:{normalizar_cabecalho(operadora)}:"
+        f"{normalizar_cabecalho(plano_nome)}"
+    )
+
+
+def _paginas_colunas_rede(
+    colunas_doc: list[ColunaRedeApresentacao],
+    blocos_out: list[BlocoRedeApresentacao],
+) -> list[PaginaRedeApresentacao]:
+    """Contrato atual em toda fatia; MAX_PROPOSTAS_POR_PAGINA só nas propostas."""
+    atual = [c for c in colunas_doc if c.chave == _CHAVE_ATUAL]
+    propostas = [c for c in colunas_doc if c.chave != _CHAVE_ATUAL]
+    if not propostas:
+        return [PaginaRedeApresentacao(colunas=colunas_doc, blocos=blocos_out)]
+    paginas: list[PaginaRedeApresentacao] = []
+    for i in range(0, len(propostas), MAX_PROPOSTAS_POR_PAGINA):
+        fatia = [*atual, *propostas[i : i + MAX_PROPOSTAS_POR_PAGINA]]
+        paginas.append(PaginaRedeApresentacao(colunas=fatia, blocos=blocos_out))
+    return paginas
+
+
+def _valor_conta_cobertura(val: str | None) -> bool:
+    if not val or not str(val).strip():
+        return False
+    return str(val).strip() != "—"
+
+
+def contagem_coberturas_bloco(
+    linhas: list[LinhaRedeApresentacao],
+    colunas: list[ColunaRedeApresentacao],
+) -> dict[str, int]:
+    """Conta células com código visível — mesma regra do renderer HTML."""
+    contagem = {c.chave: 0 for c in colunas}
+    for ln in linhas:
+        for cm in colunas:
+            if _valor_conta_cobertura(ln.celulas.get(cm.chave)):
+                contagem[cm.chave] += 1
+    return contagem
+
+
+def _cenarios_da_selecao(
+    rascunho: RascunhoEstudo, selecao: list[str]
+) -> list[CenarioRascunho]:
+    """Colunas da apresentação usam `cenario_id` (FASE 4); aceita `opcao_id` legado."""
+    if not rascunho.cenarios:
+        return []
+    if not selecao:
+        return [rascunho.cenarios[0]]
+    ids_cenario = {c.id for c in rascunho.cenarios}
+    ids_opcao = {o.id for o in rascunho.opcoes_proposta}
+    out: list[CenarioRascunho] = []
+    vistos: set[str] = set()
+    for item in selecao:
+        if item in ids_cenario and item not in vistos:
+            out.append(next(c for c in rascunho.cenarios if c.id == item))
+            vistos.add(item)
+    for item in selecao:
+        if item not in ids_opcao:
+            continue
+        for cen in rascunho.cenarios:
+            if cen.id in vistos:
+                continue
+            if any(
+                atr.opcao_plano_id == item
+                for atr in cen.atribuicoes
+                if atr.opcao_plano_id
+            ):
+                out.append(cen)
+                vistos.add(cen.id)
+                break
+    return out
 
 
 def _colunas_subgrupo(
@@ -63,18 +130,23 @@ def _colunas_subgrupo(
                 plano_nome=sg.plano_nome,
             )
         )
-    cenario = _cenario_das_propostas(rascunho, propostas_ids)
-    opcao_id = None
-    if cenario is not None:
-        for atr in cenario.atribuicoes:
+    planos_vistos: set[tuple[str, str]] = set()
+    for cen in _cenarios_da_selecao(rascunho, propostas_ids):
+        opcao_id = None
+        for atr in cen.atribuicoes:
             if atr.alvo_tipo == "subgrupo" and atr.alvo_id == subgrupo_id:
                 opcao_id = atr.opcao_plano_id
                 break
-    if opcao_id and opcao_id in propostas_ids:
+        if not opcao_id:
+            continue
         op = next(o for o in rascunho.opcoes_proposta if o.id == opcao_id)
+        ch_plano = (op.operadora, op.plano_nome)
+        if ch_plano in planos_vistos:
+            continue
+        planos_vistos.add(ch_plano)
         cols.append(
             ColunaRedeApresentacao(
-                chave=opcao_id,
+                chave=_chave_coluna_proposta(op.operadora, op.plano_nome),
                 operadora=op.operadora,
                 plano_nome=op.plano_nome,
             )
@@ -82,22 +154,23 @@ def _colunas_subgrupo(
     return cols
 
 
-def _titulo_bloco(chave_municipio: str, zona: str) -> str:
+def _titulo_bloco(chave_municipio: str) -> str:
     uf, cidade = parse_municipio_base(chave_municipio)
-    cidade_titulo = cidade.title()
-    if chave_municipio in _CAPITAIS_COM_ZONA and zona:
-        return f"{cidade_titulo} · {uf} · {zona}"
-    return f"{cidade_titulo} · {uf}"
+    return f"{cidade.title()} · {uf}"
 
 
-def _ordenar_blocos(chaves: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    def key(item: tuple[str, str]) -> tuple:
-        mun, zona = item
+def _ordenar_municipios(municipios: list[str]) -> list[str]:
+    def key(mun: str) -> tuple:
         uf, _ = parse_municipio_base(mun)
         cap = 0 if mun in _CAPITAIS_COM_ZONA else 1
-        return (cap, uf, mun, normalizar_cabecalho(zona))
+        return (cap, uf, mun)
 
-    return sorted(set(chaves), key=key)
+    return sorted(set(municipios), key=key)
+
+
+def _ordem_linha_capital(ln: LinhaRedeApresentacao) -> tuple:
+    sigla = sigla_zona_capital(ln.zona) if ln.chave_municipio in _CAPITAIS_COM_ZONA else ""
+    return (sigla, ln.prestador, ln.bairro)
 
 
 def _montar_secao(
@@ -160,40 +233,22 @@ def _montar_secao(
                 )
             linhas_map[k] = linhas_map[k].model_copy(update={"celulas": celulas})
 
-    blocos_keys: list[tuple[str, str]] = []
-    for ln in linhas_map.values():
-        z = ln.zona if ln.chave_municipio in _CAPITAIS_COM_ZONA else ""
-        blocos_keys.append((ln.chave_municipio, z))
-
+    municipios = [ln.chave_municipio for ln in linhas_map.values()]
     blocos_out: list[BlocoRedeApresentacao] = []
-    for mun, zona in _ordenar_blocos(blocos_keys):
-        if mun in _CAPITAIS_COM_ZONA:
-            linhas_bloco = [
-                ln for ln in linhas_map.values() if ln.chave_municipio == mun and ln.zona == zona
-            ]
-        else:
-            linhas_bloco = [ln for ln in linhas_map.values() if ln.chave_municipio == mun]
-        linhas_bloco.sort(key=lambda x: (x.prestador, x.bairro))
-        contagem = {cm.chave: 0 for cm in cols_meta}
-        for ln in linhas_bloco:
-            for cm in cols_meta:
-                if ln.celulas.get(cm.chave):
-                    contagem[cm.chave] += 1
+    for mun in _ordenar_municipios(municipios):
+        linhas_bloco = [ln for ln in linhas_map.values() if ln.chave_municipio == mun]
+        linhas_bloco.sort(key=_ordem_linha_capital)
+        contagem = contagem_coberturas_bloco(linhas_bloco, cols_meta)
         blocos_out.append(
             BlocoRedeApresentacao(
-                titulo=_titulo_bloco(mun, zona),
+                titulo=_titulo_bloco(mun),
                 linhas=linhas_bloco,
                 contagem_por_coluna=contagem,
             )
         )
 
     sg = next(s for s in rascunho.subgrupos_atuais if s.id == subgrupo_id)
-    paginas: list[PaginaRedeApresentacao] = []
-    for i in range(0, len(colunas_doc), MAX_PROPOSTAS_POR_PAGINA):
-        fatia = colunas_doc[i : i + MAX_PROPOSTAS_POR_PAGINA]
-        paginas.append(PaginaRedeApresentacao(colunas=fatia, blocos=blocos_out))
-    if not paginas:
-        paginas = [PaginaRedeApresentacao(colunas=colunas_doc, blocos=blocos_out)]
+    paginas = _paginas_colunas_rede(colunas_doc, blocos_out)
 
     return SecaoRedeApresentacao(
         subgrupo_id=subgrupo_id,

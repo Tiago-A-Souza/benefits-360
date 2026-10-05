@@ -79,6 +79,39 @@ def _zona_norm(zona: str) -> str:
     return normalizar_cabecalho(zona or "")
 
 
+# Zona auditada (CSV) por bairro — prevalece sobre `regiao` da matriz SiscorNet em SP.
+_SP_BAIRRO_ZONA_AUDITADA: dict[str, str] = {
+    "ITAIM BIBI": "ZONA OESTE",
+    "MOEMA": "ZONA SUL",
+    "CAPAO REDONDO": "ZONA SUL",
+    "VILA OLIMPIA": "ZONA OESTE",
+    "VILA NOVA CONCEICAO": "ZONA OESTE",
+    "BELA VISTA": "CENTRO",
+    "POMPEIA": "ZONA OESTE",
+    "SANTANA": "ZONA NORTE",
+    "IPIRANGA": "ZONA SUL",
+}
+
+
+def _zona_auditada_por_bairro(chave_municipio: str, bairro: str) -> str | None:
+    if chave_municipio != "SP.SAO PAULO":
+        return None
+    return _SP_BAIRRO_ZONA_AUDITADA.get(normalizar_cabecalho(bairro))
+
+
+def _bairro_no_texto(bairro: str, *textos: str) -> bool:
+    b = normalizar_cabecalho(bairro)
+    if not b:
+        return False
+    blob = normalizar_cabecalho(" ".join(t for t in textos if t))
+    if b in blob:
+        return True
+    for tok in b.split():
+        if len(tok) >= 4 and tok in blob:
+            return True
+    return False
+
+
 def _mesclar_linhas_csv(
     linhas: tuple[EntradaHospitalPrincipal, ...] | list[EntradaHospitalPrincipal],
 ) -> EntradaHospitalPrincipal:
@@ -96,15 +129,39 @@ def _meta_por_registro_matriz(
     *,
     fallback: EntradaHospitalPrincipal,
 ) -> EntradaHospitalPrincipal:
-    """Associa cada linha da matriz (bairro) às entradas do CSV na mesma zona."""
+    """Associa registro da matriz (bairro) à linha do CSV — zona auditada primeiro."""
     from newport_app.presentation.rede_matriz_hospital import PrestadorRedeHospital
 
     assert isinstance(prestador_matriz, PrestadorRedeHospital)
+    bairro = normalizar_cabecalho(prestador_matriz.bairro or "")
+    ch = prestador_matriz.chave_municipio
+
+    zona_alvo = _zona_auditada_por_bairro(ch, bairro)
+    if zona_alvo:
+        filtradas = [e for e in linhas_grupo if _zona_norm(e.zona) == _zona_norm(zona_alvo)]
+        if filtradas:
+            return _mesclar_linhas_csv(filtradas)
+
+    if bairro:
+        por_obs = [
+            e
+            for e in linhas_grupo
+            if _bairro_no_texto(bairro, e.observacao, e.especialidades)
+        ]
+        if por_obs:
+            princ = [e for e in por_obs if e.principal] or por_obs
+            return _mesclar_linhas_csv(princ)
+
+    com_zona = [e for e in linhas_grupo if (e.zona or "").strip()]
+    if len(com_zona) == 1:
+        return com_zona[0]
+
     regiao = _zona_norm(prestador_matriz.regiao)
-    if regiao:
+    if regiao and not com_zona:
         filtradas = [e for e in linhas_grupo if _zona_norm(e.zona) == regiao]
         if filtradas:
             return _mesclar_linhas_csv(filtradas)
+
     if len(linhas_grupo) == 1:
         return linhas_grupo[0]
     return fallback

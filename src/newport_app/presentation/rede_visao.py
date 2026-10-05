@@ -219,7 +219,8 @@ def montar_visao_rede_estudo(
             cob, val = _coberto_na_coluna(p, col_idx, op_col, entrada_principal=ent)
             bairro_norm = normalizar_cabecalho(p.bairro) if p.bairro else ""
             regiao_matriz = (p.regiao or "").strip()
-            zona_visao = regiao_matriz or ((ent.zona if ent else "") or "")
+            zona_csv = ((ent.zona if ent else "") or "").strip()
+            zona_visao = zona_csv or regiao_matriz
             lista_prest.append(
                 PrestadorVisaoRede(
                     prestador=p.prestador,

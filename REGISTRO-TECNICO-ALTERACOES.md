@@ -1360,8 +1360,9 @@ defeito é só do CSV ad hoc; o pipeline fase C mantém **117** entradas por pla
 na tupla `prestadores`.
 
 **Fase D1 (entregue):** `PrestadorVisaoRede` inclui **`bairro`** (matriz) e
-**`zona`** (campo `regiao` da matriz quando preenchido; metadados de principal /
-rede verticalizada via CSV filtrado pela mesma zona). Aba estática no HTML
+**`zona`** (**coluna `zona` do CSV de principais** prevalece; `regiao` da matriz
+SiscorNet só se o CSV estiver vazio). Em SP, bairros auditados (Itaim → Oeste,
+Moema → Sul, etc.) escolhem a linha correta do CSV. Aba estática no HTML
 (`tab-rede`), colunas por grupo+cenário, agrupamento município/zona, códigos
 abreviados e rodapé «Pontos de atenção». **D2:** interação no documento.
 
