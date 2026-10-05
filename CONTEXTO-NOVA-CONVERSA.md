@@ -96,18 +96,22 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**10/09/2026 — `master` em `845c1a2`, tag `comparacao-por-grupo`.** Comparação
-por grupo de beneficiários entregue (sete fases + jornada da etapa 3). A grade
-do motor só calcula pares atribuídos; IOF e arredondamento intactos.
+**05/10/2026 — `master` em `59dc2eb`, tag `rede-fase-c`.** Rede hospitalar fase C
+mergeada: matriz SiscorNet + CSV de principais em `docs/`, filtro de
+especialidade, recorte geográfico configurável (`rede_recorte.py`) e junção
+`montar_visao_rede_estudo()` — **sem aba rede no documento** (fase D).
 
-pytest na master: **1265 passed, 15 skipped, 1 failed** (censo 51≠49 de
-`selecao_apresentacao` no banco demo, não gabarito). vitest: 126 passed.
-Snapshots: 78/78 hashes iguais. Rascunhos: 99 carregam, 72 compilam.
-Harness: 16/16 mutações detectadas.
+pytest na master: **1364 passed, 16 skipped**, ~3 min 37 s. vitest: **131
+passed**. `npm run build`: ok. Snapshots demo: **96/96** hashes iguais.
+Rascunhos demo: **107** carregam, **78** compilam. Harness: **16/16** mutações
+detectadas. HTML export Anistia (fixture): **inalterado** vs. pré-merge.
 
-**Ainda aberto (§12):** validade da cotação em cenário misto (só a opção de
-referência; teste 333); confirmações Wesley das regras comerciais; demais
-itens do §12.
+Tags recentes: `comparacao-por-grupo`, `rede-casamento-e-localizacao`,
+**`rede-fase-c`**. Branches `rede-fase-a/b/c` preservadas.
+
+**Ainda aberto (§12):** validade da cotação em cenário misto; confirmações
+Wesley (regras comerciais e **recorte geográfico da rede** — prática Newport
+vs. «município + capital»); demais itens do §12 no registro técnico.
 
 **22 defeitos** da validação com dados reais permanecem o histórico; o motor
 financeiro (IOF, half-up, `por_vida_entao_soma`) não foi alterado.

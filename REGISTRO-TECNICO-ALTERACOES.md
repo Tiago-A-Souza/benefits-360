@@ -1286,6 +1286,79 @@ hash e gabarito da Anistia. Renderer `html@2.11.0`.
 
 ---
 
+## Rede hospitalar — fase C (merge na `master`, tag `rede-fase-c`)
+
+**Data:** 05/10/2026. **Commit:** `59dc2eb` (fast-forward sobre `9a409c7`).
+
+### Bases versionadas e portas de manutenção
+
+| Artefato | Caminho | Porta de manutenção (código) |
+|---|---|---|
+| Matriz SiscorNet (aba `Matriz_Hospital`) | `docs/SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx` | `rede_matriz_hospital.py` — `carregar_base_rede_hospital()` |
+| Marcação de hospitais principais | `docs/hospitais_principais_base.csv` | `hospitais_principais.py` — `carregar_hospitais_principais()` |
+| Aliases de plano → coluna da matriz | `docs/planos_rede_aliases.csv` | `planos_rede.py` (fases A–B, intactas) |
+
+READMEs: `docs/rede_siscor_README.md`, `docs/hospitais_principais_README.md`.
+
+Junção consumível pela aba (fase D ainda não implementada):
+`montar_visao_rede_estudo()` em `rede_visao.py` — recorte geo, filtro de
+especialidade (HGER, HD, PSGER, MAT), principais do CSV, cobertura por plano,
+estado `rede_nao_mapeada` quando não há casamento.
+
+### Base SiscorNet vs. realidade operacional
+
+A planilha **não remove** hospital que fechou: o **Santa Genoveva** (Goiânia)
+deixou de operar por volta de 2016; o **Santa Helena** (Florianópolis) fechou
+em **17/01/2026** — ambos seguem listados na matriz nacional. A marcação
+`principal=sim` no CSV de principais **exclui** esses casos da visão enxuta;
+a base bruta continua trazendo todas as linhas para auditoria e manutenção.
+
+### Recorte geográfico — suposição (§12, pendência Wesley)
+
+Critério único configurável: `CRITERIO_RECORTE_GEOGRAFICO` em
+`rede_recorte.py` (`MUNICIPIO_E_CAPITAL_UF` — município do beneficiário na
+base, mais capital da UF quando o município não está na matriz).
+
+**Evidência Anistia (estudo real `est-0755b92d7a`, planilha 41 vidas):** a
+prática aparente da Newport no material de referência aponta **só a praça
+principal do cliente** (ex.: RJ — ~15 hospitais para funcionários e ~4 para
+diretoria), enquanto o pipeline com localização completa dos beneficiários
+(6 municípios no recorte) produz **centenas** de principais na matriz. A regra
+implementada é provisória até confirmação com o Wesley.
+
+Números de funil (planilha real 41 vidas, quando disponível no ambiente):
+1.071 prestadores na base → **391** após recorte geo (capital+município) →
+**287** após especialidade → **117** linhas `principal=sim` na matriz filtrada
+(contagem direta; export tabular por prestador+município pode ser menor por
+deduplicação na visão por plano). O teste versionado `test_10_funil_anistia`
+usa a primeira planilha `POSI*.xlsx` encontrada e trava **312 / 234** quando
+essa planilha é a de 39 localizações (gabarito CI).
+
+### Validação pós-merge (`master` @ `59dc2eb`)
+
+| Checagem | Resultado |
+|---|---|
+| pytest | **1364 passed**, 16 skipped, ~3 min 37 s |
+| vitest | **131 passed** (13 arquivos) |
+| `npm run build` | ok |
+| Snapshots demo | **96/96** hashes iguais |
+| Rascunhos demo | **107** carregam, **0** falha de carga, **78** compilam. Bloqueios: APP-ESC-001 **29**, APP-ESC-002 **24**, APP-IMP-001 **118** |
+| Harness mutações | **16/16** detectadas |
+| HTML export (fixture Anistia) | SHA-256 **idêntico** antes (`9a409c7`) e depois do merge |
+| 391 principais × especialidade | **0** falhas |
+| Especialidade global | **782** de 1.071 |
+| Plano inexistente | `rede_nao_mapeada` (não vazio silencioso) |
+| Fases A–B | 55/55 planos casando; UF/CIDADE na importação SISCOR |
+
+Gabaritos financeiros/HTML intactos na suíte (Anistia R$ 48.479,31; S750
+R$ 29.386,76; ONE R$ 19.092,55; Prata R$ 23.607,17 / R$ 6.100,61; IVTEC
+R$ 3.741,89 e R$ 5.652,04). ATEF: §11 / corpus privado.
+
+Marca de retorno: tag **`rede-fase-c`**. Branches `rede-fase-a`, `rede-fase-b`,
+`rede-fase-c` mantidas.
+
+---
+
 ## Nota final
 
 Vale registrar o padrão dominante entre os vinte e dois defeitos: em quase
