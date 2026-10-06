@@ -824,6 +824,18 @@ baixa e pode «Editar rede» informando o ID.
 trabalho, ajusta a seleção, confirma de novo e baixa **outro** `_para_cliente`. O que
 já foi ao cliente não é editável por desenho.
 
+### Leitura da tabela Rede (cabeçalho e nomes)
+
+Tabelas longas por município ganharam **dois reforços só de HTML/CSS** (sem script):
+`thead` com `position:sticky` (fundo opaco, abaixo da barra de abas) e **repetição
+da linha de colunas** após cada cabeçalho de bloco (`São Paulo · SP … prestadores`),
+como no material Newport (cada praça com cabeçalho próprio). Rolagem horizontal
+permanece em `.rede-rolo` (`overflow-x:auto`, sem `overflow:hidden` nos ancestrais).
+
+Nomes de plano nos `<th>` da rede usam **`nome_plano_documento`** — mesma regra das
+outras abas (retira acomodação e abrangência já exibidas em linha própria). Chaves de
+coluna e células **H/PS/…** não mudam; só rótulo visível.
+
 ### Consentimento do plano atual (etapa 2)
 
 O checkbox «Revisei e confirmo as informações do plano atual» saiu: a

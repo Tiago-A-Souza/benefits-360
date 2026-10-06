@@ -422,3 +422,34 @@ def test_12_anistia_contagem_por_secao(capfd):
         print(f"SEC {sec.rotulo} linhas={sec.total_linhas}")
     assert doc.secoes[0].total_linhas > 0
     assert doc.secoes[1].total_linhas > 0
+
+
+def test_18_cabecalho_repetido_por_bloco_municipio():
+    rascunho, cen_id, _prop_id = _rascunho_dois_grupos_um_cenario()
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    from newport_app.presentation.rede_renderer import render_corpo_rede
+
+    html = render_corpo_rede(doc)
+    n_blocos = sum(len(p.blocos) for s in doc.secoes for p in s.paginas)
+    assert html.count("rede-cab-repetido") == n_blocos
+    assert html.count("class='bloco-rede'") == n_blocos
+    idx = html.find("bloco-rede")
+    assert idx >= 0
+    trecho = html[idx : idx + 800]
+    assert "rede-cab-repetido" in trecho
+    assert trecho.index("bloco-rede") < trecho.index("rede-cab-repetido")
+
+
+def test_19_cabecalho_rede_sticky_e_nomes_encurtados(tmp_path: Path):
+    from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
+    from newport_app.presentation.rede_renderer import render_corpo_rede
+
+    rascunho, cen_id, _prop_id = _rascunho_dois_grupos_um_cenario()
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    html_rede = render_corpo_rede(doc)
+    assert "rede-rolo" in html_rede
+    html_doc, _ = _html_de(tmp_path, rascunho)
+    assert ".tabela-rede thead th{position:sticky" in html_doc
+    for col in doc.secoes[0].colunas:
+        curto = nome_plano_documento(col.plano_nome)
+        assert f"<span class='pl'>{curto}</span>" in html_rede

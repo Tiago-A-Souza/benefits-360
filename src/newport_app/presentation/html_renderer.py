@@ -1472,8 +1472,15 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 #tab-regras:checked ~ .doc-corpo .visao-regras{display:block}
 .tabela-rede .op{display:block;font-size:9px;font-weight:400;letter-spacing:.1em;color:#9AA0A8;text-transform:uppercase}
 .tabela-rede .pl{display:block;font-size:10.5px;font-weight:600;margin-top:2px}
-.tabela-rede thead th{background:var(--grafite);color:#fff;vertical-align:bottom}
-.tabela-rede thead th:first-child{text-align:left;width:280px}
+.tabela-rede thead th,.tabela-rede tr.rede-cab-repetido th{
+  background:var(--grafite);color:#fff;vertical-align:bottom}
+.tabela-rede thead th{position:sticky;top:var(--rede-thead-sticky-top,54px);z-index:11;
+  box-shadow:0 2px 0 var(--papel)}
+.tabela-rede thead th:first-child,.tabela-rede tr.rede-cab-repetido th:first-child{
+  text-align:left;width:280px}
+.tabela-rede tr.rede-cab-repetido th{font-size:10.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+.rede-rolo{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;max-width:100%}
 .tabela-rede td.nm{text-align:left;font-weight:500}
 .tabela-rede .bairro-rede{display:block;font-size:10px;font-weight:400;color:var(--grafite-3);margin-top:2px}
 .tabela-rede tr.bloco-rede td{background:var(--grafite);color:#fff;text-align:left;font-weight:700;

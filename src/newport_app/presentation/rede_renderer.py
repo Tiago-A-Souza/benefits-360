@@ -14,6 +14,7 @@ from newport_app.models.presentation import (
 )
 from newport_app.presentation.rede_apresentacao import contagem_coberturas_bloco
 from newport_app.presentation.rede_avisos import AVISO_REDE_SECAO_SEM_LOCALIZACAO
+from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
 from newport_app.presentation.rede_codigos import sigla_zona_capital
 
 _CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
@@ -25,7 +26,7 @@ def _th_coluna(col: ColunaRedeApresentacao) -> str:
             "<th><span class='op'>Proposta</span>"
             "<span class='pl'>Rede não mapeada</span></th>"
         )
-    pl = html.escape(col.plano_nome)
+    pl = html.escape(nome_plano_documento(col.plano_nome))
     if col.chave == "rede-atual":
         return (
             f"<th class='atual'><span class='op'>Contrato atual</span>"
@@ -60,16 +61,24 @@ def _attrs_linha(ln: LinhaRedeApresentacao) -> str:
     )
 
 
-def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
-    ncols = 2 + len(pag.colunas)
-    partes = ["<div class='rolo'><table class='tabela-rede n'><thead><tr>"]
+def _tr_cabecalho_colunas(pag: PaginaRedeApresentacao, *, classe: str = "") -> str:
+    cls = f" class='{classe}'" if classe else ""
+    partes = [f"<tr{cls}>"]
     partes.append(
         "<th class='rede-sandbox-check rede-sandbox-js-only' scope='col'>Incl.</th>"
     )
-    partes.append("<th>Prestador</th>")
+    partes.append("<th scope='col'>Prestador</th>")
     for col in pag.colunas:
         partes.append(_th_coluna(col))
-    partes.append("</tr></thead><tbody>")
+    partes.append("</tr>")
+    return "".join(partes)
+
+
+def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
+    ncols = 2 + len(pag.colunas)
+    partes = ["<div class='rolo rede-rolo'><table class='tabela-rede n'><thead>"]
+    partes.append(_tr_cabecalho_colunas(pag))
+    partes.append("</thead><tbody>")
     for bloco in pag.blocos:
         partes.append(
             f"<tr class='bloco-rede'><td colspan='{ncols}'>"
@@ -81,6 +90,7 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
             f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
             "</span></div></td></tr>"
         )
+        partes.append(_tr_cabecalho_colunas(pag, classe="rede-cab-repetido"))
         for ln in bloco.linhas:
             partes.append(f"<tr class='p-rede'{_attrs_linha(ln)}>")
             partes.append(
