@@ -13,6 +13,7 @@ from newport_app.models.presentation import (
     SecaoRedeApresentacao,
 )
 from newport_app.presentation.rede_apresentacao import contagem_coberturas_bloco
+from newport_app.presentation.rede_avisos import AVISO_REDE_SECAO_SEM_LOCALIZACAO
 from newport_app.presentation.rede_codigos import sigla_zona_capital
 
 _CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
@@ -126,12 +127,27 @@ def _rodape_rede(doc: RedeApresentacaoDocumento) -> str:
 
 def render_corpo_rede(doc: RedeApresentacaoDocumento) -> str:
     partes: list[str] = []
+    if doc.aviso_sem_localizacao:
+        aviso = html.escape(doc.aviso_sem_localizacao)
+        partes.append(
+            "<div class='aviso-rede-localizacao aviso-vinculo-familiar "
+            f"aviso-acomodacao aviso-acomodacao--info'>{aviso}</div>"
+        )
     for sec in doc.secoes:
-        partes.append(f"<div class='secao-rede'><h3 class='secao-rede-tit'>{html.escape(sec.rotulo)}</h3>")
-        for i, pag in enumerate(sec.paginas):
-            if i > 0:
-                partes.append("<div class='quebra-pagina-rede'></div>")
-            partes.append(_render_tabela_pagina(pag))
+        partes.append(
+            f"<div class='secao-rede'><h3 class='secao-rede-tit'>{html.escape(sec.rotulo)}</h3>"
+        )
+        if sec.sem_localizacao_beneficiarios:
+            msg = html.escape(AVISO_REDE_SECAO_SEM_LOCALIZACAO)
+            partes.append(
+                "<div class='rede-secao-sem-localizacao aviso-acomodacao "
+                f"aviso-acomodacao--info'>{msg}</div>"
+            )
+        else:
+            for i, pag in enumerate(sec.paginas):
+                if i > 0:
+                    partes.append("<div class='quebra-pagina-rede'></div>")
+                partes.append(_render_tabela_pagina(pag))
         partes.append("</div>")
     partes.append(_rodape_rede(doc))
     return "".join(partes)

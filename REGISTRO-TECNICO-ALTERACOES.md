@@ -793,6 +793,20 @@ documento.
 
 ## 12. Em aberto
 
+### Localização na base importada e aba Rede (pós-D2)
+
+Os **107** rascunhos do banco demo (`.data/newport_app.db`) foram importados **antes
+da fase B** (UF/CIDADE na planilha SISCOR) e **não foram reprocessados** — decisão
+explícita de não alterar estudos existentes. Nesses payloads, `vidas[].uf` e
+`vidas[].cidade` ficam vazios; o recorte geográfico da rede (`municipios_permitidos`)
+não seleciona município nenhum e a aba **Rede credenciada** não lista prestadores.
+
+Isso **não é defeito** de mapeamento de planos nem da matriz SiscorNet: colunas e
+seções montam; faltam dados de localização. A apresentação passa a exibir aviso no
+topo da aba e mensagem por seção, orientando **reimportar a posição cadastral com
+colunas UF e CIDADE** e **gerar o documento de novo**. Não há município padrão nem
+rede nacional inteira.
+
 ### Consentimento do plano atual (etapa 2)
 
 O checkbox «Revisei e confirmo as informações do plano atual» saiu: a

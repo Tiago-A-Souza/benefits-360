@@ -89,6 +89,11 @@ def operadoras_rede_verticalizada(rede_verticalizada: str) -> frozenset[str]:
     return frozenset(ops)
 
 
+def estudo_tem_localizacao_rede(rascunho: RascunhoEstudo) -> bool:
+    """True se alguma vida incluída tem UF e cidade para recorte geográfico."""
+    return bool(_localizacoes_rascunho(rascunho))
+
+
 def _localizacoes_rascunho(rascunho: RascunhoEstudo) -> set[tuple[str, str]]:
     loc: set[tuple[str, str]] = set()
     for vida in rascunho.vidas:

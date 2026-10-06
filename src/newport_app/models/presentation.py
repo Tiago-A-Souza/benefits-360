@@ -208,11 +208,13 @@ class SecaoRedeApresentacao(BaseModel):
     blocos: list[BlocoRedeApresentacao] = Field(default_factory=list)
     paginas: list[PaginaRedeApresentacao] = Field(default_factory=list)
     total_linhas: int = 0
+    sem_localizacao_beneficiarios: bool = False
 
 
 class RedeApresentacaoDocumento(BaseModel):
     data_base_rede: str
     secoes: list[SecaoRedeApresentacao] = Field(default_factory=list)
+    aviso_sem_localizacao: str | None = None
 
 
 class PresentationViewModel(BaseModel):

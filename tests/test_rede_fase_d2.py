@@ -11,6 +11,10 @@ import pytest
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.html_renderer import render_html_completo
 from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
+from newport_app.presentation.rede_avisos import (
+    AVISO_REDE_SEM_LOCALIZACAO,
+    AVISO_REDE_SECAO_SEM_LOCALIZACAO,
+)
 from newport_app.presentation.rede_sandbox import (
     hash_desbloqueio_estudo,
     nome_arquivo_para_cliente,
@@ -228,3 +232,42 @@ def test_21_nome_download_com_nome_explicito(tmp_path: Path):
     cliente = nome_arquivo_para_cliente(nome)
     assert f"data-arquivo-origem='{nome}'" in html or f'data-arquivo-origem="{nome}"' in html
     assert cliente in html
+
+
+def _rascunho_sem_localizacao(rascunho):
+    vidas = [
+        v.model_copy(update={"uf": None, "cidade": None}) for v in rascunho.vidas
+    ]
+    return rascunho.model_copy(update={"vidas": vidas})
+
+
+def test_22_sem_localizacao_aviso_e_secao_sem_tabela(tmp_path: Path):
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    rasc = _rascunho_sem_localizacao(rascunho)
+    snap = _aprovar_anistia(tmp_path, rasc)
+    vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=[cen_id])
+    doc = montar_rede_apresentacao(rasc, [cen_id])
+    assert doc is not None
+    assert doc.aviso_sem_localizacao == AVISO_REDE_SEM_LOCALIZACAO
+    assert all(s.sem_localizacao_beneficiarios for s in doc.secoes)
+    html = render_html_completo(
+        vm, vm, vm, rede=doc, estudo_id=rasc.id
+    )
+    rede = html.split('id="visao-rede"', 1)[1]
+    assert "aviso-rede-localizacao" in rede
+    assert AVISO_REDE_SEM_LOCALIZACAO[:40] in html
+    assert "rede-secao-sem-localizacao" in rede
+    assert AVISO_REDE_SECAO_SEM_LOCALIZACAO[:30] in html
+    assert "class='tabela-rede" not in rede
+
+
+def test_23_com_localizacao_tabela_sem_banner(tmp_path: Path):
+    html, _, _ = _html_completo_rede(tmp_path)
+    rede = html.split('id="visao-rede"', 1)[1]
+    assert "aviso-rede-localizacao" not in rede
+    assert AVISO_REDE_SEM_LOCALIZACAO not in html
+    assert "rede-secao-sem-localizacao" not in rede
+    assert "class='tabela-rede" in rede
+    assert "tr class='p-rede'" in rede or 'class="p-rede"' in rede

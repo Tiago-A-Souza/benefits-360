@@ -27,8 +27,10 @@ from newport_app.presentation.rede_matriz_hospital import (
     carregar_base_rede_hospital,
 )
 from newport_app.presentation.rede_recorte import parse_municipio_base
+from newport_app.presentation.rede_avisos import AVISO_REDE_SEM_LOCALIZACAO
 from newport_app.presentation.rede_visao import (
     EstadoMapeamentoPlanoRede,
+    estudo_tem_localizacao_rede,
     localizacoes_subgrupo,
     montar_visao_rede_estudo,
 )
@@ -196,6 +198,19 @@ def _montar_secao(
         return None
     planos_vm = [(c.operadora, c.plano_nome) for c in cols_meta]
     loc = localizacoes_subgrupo(rascunho, subgrupo_id)
+    if not loc:
+        sg = next(s for s in rascunho.subgrupos_atuais if s.id == subgrupo_id)
+        colunas_doc = list(cols_meta)
+        paginas = _paginas_colunas_rede(colunas_doc, [])
+        return SecaoRedeApresentacao(
+            subgrupo_id=subgrupo_id,
+            rotulo=f"Comparativo — {sg.plano_nome}",
+            colunas=colunas_doc,
+            blocos=[],
+            paginas=paginas,
+            total_linhas=0,
+            sem_localizacao_beneficiarios=True,
+        )
     visao = montar_visao_rede_estudo(
         rascunho,
         base,
@@ -302,4 +317,9 @@ def montar_rede_apresentacao(
         return None
     mtime = os.path.getmtime(CAMINHO_XLSX_PADRAO)
     atualizado = datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%d/%m/%Y")
-    return RedeApresentacaoDocumento(data_base_rede=atualizado, secoes=secoes)
+    aviso = None if estudo_tem_localizacao_rede(rascunho) else AVISO_REDE_SEM_LOCALIZACAO
+    return RedeApresentacaoDocumento(
+        data_base_rede=atualizado,
+        secoes=secoes,
+        aviso_sem_localizacao=aviso,
+    )
