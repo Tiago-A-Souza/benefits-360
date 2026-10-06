@@ -1401,7 +1401,7 @@ R$ 3.741,89 e R$ 5.652,04). ATEF: §11 / corpus privado.
 Marca de retorno: tag **`rede-fase-c`**. Branches `rede-fase-a`, `rede-fase-b`,
 `rede-fase-c` mantidas.
 
-### Validação pós-merge D2 (`master` @ `b02b6a1`)
+### Validação pós-merge D2 (`master` @ `0d418bb`, tag `sandbox-rede`)
 
 | Checagem | Resultado |
 |---|---|
