@@ -453,3 +453,78 @@ def test_19_cabecalho_rede_sticky_e_nomes_encurtados(tmp_path: Path):
     for col in doc.secoes[0].colunas:
         curto = nome_plano_documento(col.plano_nome)
         assert f"<span class='pl'>{curto}</span>" in html_rede
+
+
+def _anistia_seis_com_localizacao():
+    from newport_app.siscor_importer.parser import parse_planilha_siscor
+    from tests.fixtures.siscor.xlsx_builder import planilha_anistia_41_sintetica
+    from tests.test_frente2_grupo_familiar import _anistia_com_vinculos
+
+    rascunho = _anistia_com_vinculos()
+    parsed = parse_planilha_siscor(
+        planilha_anistia_41_sintetica(), estudo_id="t", documento_id="d"
+    )
+    vidas = []
+    for v, lin in zip(rascunho.vidas, parsed.candidata.linhas, strict=True):
+        vidas.append(
+            v.model_copy(
+                update={
+                    "uf": (lin.uf or "").upper() if lin.uf else None,
+                    "cidade": lin.cidade,
+                }
+            )
+        )
+    return rascunho.model_copy(update={"vidas": vidas})
+
+
+def _doc_anistia_seis_rede(tmp_path: Path):
+    from newport_app.presentation.colisao_coluna import resolver_colunas_selecionadas
+    from newport_app.snapshot.comparativo import ler_comparativo_congelado
+
+    rascunho = _anistia_seis_com_localizacao()
+    snap = _aprovar_anistia(tmp_path, rascunho)
+    matriz = ler_comparativo_congelado(snap.payload)
+    calculadas = [p for p in matriz.propostas if p.calculo_realizado]
+    cen_ids = resolver_colunas_selecionadas([], calculadas)
+    doc = montar_rede_apresentacao(rascunho, cen_ids)
+    assert doc is not None
+    return doc, rascunho
+
+
+def test_20_omite_prestador_sem_cobertura_em_nenhuma_coluna(tmp_path: Path):
+    from newport_app.presentation.rede_renderer import render_corpo_rede
+
+    doc, _ = _doc_anistia_seis_rede(tmp_path)
+    bloco_belem = next(
+        b for b in doc.secoes[0].blocos if "BELEM" in b.titulo.upper()
+    )
+    assert not any("HOSP RIO MAR" in ln.prestador.upper() for ln in bloco_belem.linhas)
+    html = render_corpo_rede(doc)
+    assert "HOSP RIO MAR" not in html.upper()
+    assert f"{len(bloco_belem.linhas)} prestadores" in html
+
+
+def test_21_belem_mantem_prestador_so_contrato_atual(tmp_path: Path):
+    from newport_app.presentation.rede_apresentacao import (
+        _valor_conta_cobertura,
+        linha_tem_cobertura_na_secao,
+    )
+    from newport_app.presentation.rede_renderer import render_corpo_rede
+
+    doc, _ = _doc_anistia_seis_rede(tmp_path)
+    sec = doc.secoes[0]
+    bloco_belem = next(b for b in sec.blocos if "BELEM" in b.titulo.upper())
+    props = [c for c in sec.colunas if c.chave != "rede-atual"]
+    maradei = next(
+        ln
+        for ln in bloco_belem.linhas
+        if "MARADEI" in ln.prestador.upper()
+    )
+    assert _valor_conta_cobertura(maradei.celulas.get("rede-atual"))
+    assert not any(
+        _valor_conta_cobertura(maradei.celulas.get(c.chave)) for c in props
+    )
+    assert linha_tem_cobertura_na_secao(maradei, sec.colunas)
+    html = render_corpo_rede(doc)
+    assert "MARADEI" in html.upper()
+    assert maradei.prestador.upper() in html.upper()

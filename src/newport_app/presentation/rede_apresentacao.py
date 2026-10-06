@@ -75,6 +75,16 @@ def _valor_conta_cobertura(val: str | None) -> bool:
     return str(val).strip() != "—"
 
 
+def linha_tem_cobertura_na_secao(
+    ln: LinhaRedeApresentacao,
+    colunas: list[ColunaRedeApresentacao],
+) -> bool:
+    """True se alguma coluna da seção (contrato atual ou proposta) tem cobertura."""
+    return any(
+        _valor_conta_cobertura(ln.celulas.get(c.chave)) for c in colunas
+    )
+
+
 def contagem_coberturas_bloco(
     linhas: list[LinhaRedeApresentacao],
     colunas: list[ColunaRedeApresentacao],
@@ -255,10 +265,18 @@ def _montar_secao(
                 )
             linhas_map[k] = linhas_map[k].model_copy(update={"celulas": celulas})
 
-    municipios = [ln.chave_municipio for ln in linhas_map.values()]
     blocos_out: list[BlocoRedeApresentacao] = []
-    for mun in _ordenar_municipios(municipios):
-        linhas_bloco = [ln for ln in linhas_map.values() if ln.chave_municipio == mun]
+    for mun in _ordenar_municipios(
+        [ln.chave_municipio for ln in linhas_map.values()]
+    ):
+        linhas_bloco = [
+            ln
+            for ln in linhas_map.values()
+            if ln.chave_municipio == mun
+            and linha_tem_cobertura_na_secao(ln, cols_meta)
+        ]
+        if not linhas_bloco:
+            continue
         linhas_bloco.sort(key=_ordem_linha_capital)
         contagem = contagem_coberturas_bloco(linhas_bloco, cols_meta)
         blocos_out.append(
@@ -271,6 +289,7 @@ def _montar_secao(
 
     sg = next(s for s in rascunho.subgrupos_atuais if s.id == subgrupo_id)
     paginas = _paginas_colunas_rede(colunas_doc, blocos_out)
+    total_visiveis = sum(len(b.linhas) for b in blocos_out)
 
     return SecaoRedeApresentacao(
         subgrupo_id=subgrupo_id,
@@ -278,7 +297,7 @@ def _montar_secao(
         colunas=colunas_doc,
         blocos=blocos_out,
         paginas=paginas,
-        total_linhas=len(linhas_map),
+        total_linhas=total_visiveis,
     )
 
 

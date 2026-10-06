@@ -836,6 +836,11 @@ Nomes de plano nos `<th>` da rede usam **`nome_plano_documento`** — mesma regr
 outras abas (retira acomodação e abrangência já exibidas em linha própria). Chaves de
 coluna e células **H/PS/…** não mudam; só rótulo visível.
 
+Prestadores **sem cobertura em nenhuma coluna da seção** (contrato atual **e**
+propostas) **não entram** na tabela; contagem do bloco e linha «Prestadores cobertos»
+usam só o que ficou. Cobertura **só no contrato atual** permanece (sinal de perda ao
+trocar).
+
 ### Consentimento do plano atual (etapa 2)
 
 O checkbox «Revisei e confirmo as informações do plano atual» saiu: a
