@@ -431,13 +431,14 @@ def test_18_cabecalho_repetido_por_bloco_municipio():
 
     html = render_corpo_rede(doc)
     n_blocos = sum(len(p.blocos) for s in doc.secoes for p in s.paginas)
-    assert html.count("rede-cab-repetido") == n_blocos
+    n_tabelas = sum(len(s.paginas) for s in doc.secoes)
+    assert html.count("rede-cab-repetido") == n_blocos - n_tabelas
     assert html.count("class='bloco-rede'") == n_blocos
     idx = html.find("bloco-rede")
     assert idx >= 0
-    trecho = html[idx : idx + 800]
-    assert "rede-cab-repetido" in trecho
-    assert trecho.index("bloco-rede") < trecho.index("rede-cab-repetido")
+    trecho = html[idx : idx + 600]
+    assert "rede-cab-repetido" not in trecho
+    assert "class='p-rede'" in trecho or "p-rede" in trecho
 
 
 def test_19_cabecalho_rede_sticky_e_nomes_encurtados(tmp_path: Path):

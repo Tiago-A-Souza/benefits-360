@@ -79,7 +79,7 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
     partes = ["<div class='rolo rede-rolo'><table class='tabela-rede n'><thead>"]
     partes.append(_tr_cabecalho_colunas(pag))
     partes.append("</thead><tbody>")
-    for bloco in pag.blocos:
+    for i_bloco, bloco in enumerate(pag.blocos):
         partes.append(
             f"<tr class='bloco-rede'><td colspan='{ncols}'>"
             "<div class='bloco-rede-cab'>"
@@ -90,7 +90,9 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
             f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
             "</span></div></td></tr>"
         )
-        partes.append(_tr_cabecalho_colunas(pag, classe="rede-cab-repetido"))
+        # O <thead> já cobre o primeiro bloco; repetir colunas só a partir do 2º município.
+        if i_bloco > 0:
+            partes.append(_tr_cabecalho_colunas(pag, classe="rede-cab-repetido"))
         for ln in bloco.linhas:
             partes.append(f"<tr class='p-rede'{_attrs_linha(ln)}>")
             partes.append(
