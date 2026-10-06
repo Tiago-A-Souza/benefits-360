@@ -225,7 +225,7 @@ def test_13_cabecalho_atual_sem_operadora_duplicada():
     html = render_corpo_rede(doc)
     assert "Contrato atual" in html
     assert "AMIL | AMIL" not in html
-    assert html.count("<th>") >= 4
+    assert html.count("<th") >= 4
 
 
 def test_14_bairro_na_linha_prestador():

@@ -838,8 +838,13 @@ coluna e células **H/PS/…** não mudam; só rótulo visível.
 
 Prestadores **sem cobertura em nenhuma coluna da seção** (contrato atual **e**
 propostas) **não entram** na tabela; contagem do bloco e linha «Prestadores cobertos»
-usam só o que ficou. Cobertura **só no contrato atual** permanece (sinal de perda ao
-trocar).
+usam só o que ficou. Cobertura **só no contrato atual** permanece **de propósito**
+(sinal de perda ao trocar — ex.: hospitais em Belém). Filtrar por «sem cobertura nas
+**propostas**» apagaria justamente esse sinal; o critério é zero em **toda** a seção.
+
+Tamanho típico medido (Anistia com localização, pós-corte, heurística de impressão
+só na aba Rede): **~8 páginas** com **um** cenário (1 tabela por seção); **~18
+páginas** com **seis** propostas (2 tabelas por seção, mesmas linhas duplicadas).
 
 ### Consentimento do plano atual (etapa 2)
 
