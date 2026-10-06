@@ -224,11 +224,56 @@
     aviso.hidden = false;
   }
 
+  function ajustarColspanAposRemoverIncl(root) {
+    root.querySelectorAll("tr.bloco-rede td[colspan]").forEach(function (td) {
+      var n = parseInt(td.getAttribute("colspan") || "1", 10);
+      if (n > 1) td.setAttribute("colspan", String(n - 1));
+    });
+    root.querySelectorAll("tr.cont-rede td[colspan]").forEach(function (td) {
+      var n = parseInt(td.getAttribute("colspan") || "1", 10);
+      if (n > 1) td.setAttribute("colspan", String(n - 1));
+    });
+  }
+
+  function prepareDocumentoCliente(docEl, state) {
+    var st = docEl.querySelector("#newport-rede-state");
+    if (st) st.textContent = JSON.stringify(state);
+    var root = docEl.querySelector(".rede-sandbox");
+    if (!root) return;
+    root.classList.add("rede-sandbox-no-js", "rede-sandbox-cliente");
+    root.classList.remove("rede-sandbox-final");
+    root.querySelectorAll(".rede-sandbox-bar, .rede-sandbox-foot").forEach(
+      function (el) {
+        el.remove();
+      }
+    );
+    var aviso = $("#rede-aviso-download", root);
+    if (aviso) aviso.remove();
+    root.querySelectorAll("script").forEach(function (s) {
+      if (s.getAttribute("type") === "application/json") return;
+      s.remove();
+    });
+    root.querySelectorAll("th.rede-sandbox-check, td.rede-sandbox-check").forEach(
+      function (el) {
+        el.remove();
+      }
+    );
+    root.querySelectorAll("button.rede-marcar-bloco").forEach(function (el) {
+      el.remove();
+    });
+    ajustarColspanAposRemoverIncl(root);
+    var excluded = state.excluded || [];
+    $$("tr.p-rede", root).forEach(function (tr) {
+      tr.classList.remove("rede-filter-hide");
+      tr.style.display = "";
+      if (excluded.indexOf(rowId(tr)) >= 0) tr.remove();
+    });
+  }
+
   function downloadHtml(root, state) {
     writeState(state);
     var docEl = document.documentElement.cloneNode(true);
-    var st = docEl.querySelector("#newport-rede-state");
-    if (st) st.textContent = JSON.stringify(state);
+    prepareDocumentoCliente(docEl, state);
     var html = "<!DOCTYPE html>\n" + docEl.outerHTML;
     var blob = new Blob([html], { type: "text/html;charset=utf-8" });
     var fileName = clientDownloadName(root);

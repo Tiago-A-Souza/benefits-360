@@ -1495,6 +1495,7 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .rede-pontos{margin-top:12px}
 .rede-pontos ul{margin:8px 0 0;padding-left:18px}
 .rede-sandbox-no-js .rede-sandbox-js-only{display:none!important}
+.rede-sandbox-cliente .rede-sandbox-js-only{display:none!important}
 .rede-sandbox-bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:14px 0 18px;
   border-bottom:1px solid var(--risco);margin-bottom:12px;font-size:12px}
 .rede-sandbox-bar label{display:flex;flex-direction:column;gap:4px;font-weight:600;color:var(--grafite-3)}

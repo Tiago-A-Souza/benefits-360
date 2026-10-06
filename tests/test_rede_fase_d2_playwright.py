@@ -70,7 +70,7 @@ def page(browser_instance, html_trabalho: tuple[Path, str]) -> Page:
     context.close()
 
 
-def _ir_aba_rede(page: Page) -> None:
+def _ir_aba_rede(page: Page, *, entregavel_cliente: bool = False) -> None:
     page.evaluate(
         """() => {
         const t = document.getElementById('tab-rede');
@@ -78,9 +78,12 @@ def _ir_aba_rede(page: Page) -> None:
         t.checked = true;
     }"""
     )
-    page.wait_for_selector(
-        "#visao-rede .rede-sandbox:not(.rede-sandbox-no-js)", state="visible"
-    )
+    if entregavel_cliente:
+        page.wait_for_selector("#visao-rede .rede-sandbox-cliente", state="visible")
+    else:
+        page.wait_for_selector(
+            "#visao-rede .rede-sandbox:not(.rede-sandbox-no-js)", state="visible"
+        )
 
 
 def _visible_prestadores(page: Page) -> int:
@@ -151,12 +154,15 @@ def test_10_desmarcar_some_na_visao_final(
     assert rid in conteudo
     pg2 = page.context.new_page()
     pg2.goto(dest.as_uri())
-    _ir_aba_rede(pg2)
-    pg2.wait_for_selector(".rede-sandbox-final")
-    visivel = pg2.locator(f'tr.p-rede[data-rede-id="{rid}"]').evaluate_all(
-        "els => els.filter(el => el.offsetParent !== null).length"
-    )
+    _ir_aba_rede(pg2, entregavel_cliente=True)
+    assert pg2.locator("#rede-filtro-zona").count() == 0
+    assert pg2.locator("#rede-btn-confirmar").count() == 0
+    assert pg2.locator("#rede-btn-editar").count() == 0
+    assert pg2.locator("tr.p-rede input[type=checkbox]").count() == 0
+    assert pg2.locator("button.rede-marcar-bloco").count() == 0
+    visivel = pg2.locator(f'tr.p-rede[data-rede-id="{rid}"]').count()
     assert visivel == 0
+    assert pg2.locator("tr.p-rede").count() >= 1
     pg2.close()
 
 
@@ -213,9 +219,11 @@ def test_13_ciclo_confirmar_reabrir_editar_id(
 
     pg2 = page.context.new_page()
     pg2.goto(dest.as_uri())
-    _ir_aba_rede(pg2)
-    pg2.wait_for_selector("#rede-btn-editar:not([hidden])")
+    _ir_aba_rede(pg2, entregavel_cliente=True)
+    assert pg2.locator("#rede-btn-editar").count() == 0
+    pg2.close()
 
+    page.wait_for_selector("#rede-btn-editar:not([hidden])")
     alerts: list[str] = []
     fase = {"prompts": 0}
 
@@ -230,12 +238,11 @@ def test_13_ciclo_confirmar_reabrir_editar_id(
         else:
             d.accept(ESTUDO_ID)
 
-    pg2.on("dialog", on_dialog)
-    pg2.locator("#rede-btn-editar").click()
-    pg2.wait_for_timeout(400)
+    page.on("dialog", on_dialog)
+    page.locator("#rede-btn-editar").click()
+    page.wait_for_timeout(400)
     assert any("incorreto" in a.lower() for a in alerts)
-    pg2.locator("#rede-btn-editar").click()
-    pg2.wait_for_selector(".rede-sandbox-bar:not([hidden])")
-    pg2.remove_listener("dialog", on_dialog)
-    assert pg2.locator("#rede-btn-confirmar").is_visible()
-    pg2.close()
+    page.locator("#rede-btn-editar").click()
+    page.wait_for_selector(".rede-sandbox-bar:not([hidden])")
+    page.remove_listener("dialog", on_dialog)
+    assert page.locator("#rede-btn-confirmar").is_visible()

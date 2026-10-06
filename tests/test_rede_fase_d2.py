@@ -79,10 +79,13 @@ def test_02_confirmar_esconde_controles_no_estado_final(tmp_path: Path):
     assert st2["mode"] == "final"
 
 
-def test_03_reabrir_mantem_modo_final(tmp_path: Path):
-    html, _, _ = _html_completo_rede(tmp_path)
-    html3 = html.replace('"mode":"edit"', '"mode":"final"')
-    assert _estado(html3)["mode"] == "final"
+def test_03_entregavel_cliente_preparado_no_script():
+    js = (ROOT / "src/newport_app/presentation/rede_sandbox.js").read_text(
+        encoding="utf-8"
+    )
+    assert "prepareDocumentoCliente" in js
+    assert "rede-sandbox-cliente" in js
+    assert "prepareDocumentoCliente(docEl, state)" in js
 
 
 def test_04_botao_editar_no_rodape(tmp_path: Path):

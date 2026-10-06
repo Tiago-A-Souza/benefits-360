@@ -807,6 +807,23 @@ topo da aba e mensagem por seção, orientando **reimportar a posição cadastra
 colunas UF e CIDADE** e **gerar o documento de novo**. Não há município padrão nem
 rede nacional inteira.
 
+### Entregável `_para_cliente` vs HTML de trabalho (sandbox D2)
+
+**Decisão (opção A):** o arquivo baixado `{nome}_para_cliente.html` é **documento
+estático** para o cliente — **sem** script do sandbox, **sem** controles (filtros,
+checkboxes, confirmar, «Editar rede») e **sem** tranca por hash do ID. Prestadores
+desmarcados na confirmação são **removidos do DOM** no entregável (não ficam
+ocultos recuperáveis).
+
+A **tranca por hash** do `estudo_id` permanece só no **HTML de trabalho** (aba aberta
+no navegador ou arquivo gerado pela API com sandbox intacto), onde o corretor confirma,
+baixa e pode «Editar rede» informando o ID.
+
+**Implicação operacional:** se o corretor errar **depois** de enviar o
+`_para_cliente`, **não** reabre esse arquivo para corrigir — ele volta ao HTML de
+trabalho, ajusta a seleção, confirma de novo e baixa **outro** `_para_cliente`. O que
+já foi ao cliente não é editável por desenho.
+
 ### Consentimento do plano atual (etapa 2)
 
 O checkbox «Revisei e confirmo as informações do plano atual» saiu: a
