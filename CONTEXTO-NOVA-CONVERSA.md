@@ -96,18 +96,19 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**05/10/2026 — `master` em `59dc2eb`, tag `rede-fase-c`.** Rede hospitalar fase C
-mergeada: matriz SiscorNet + CSV de principais em `docs/`, filtro de
-especialidade, recorte geográfico configurável (`rede_recorte.py`) e junção
-`montar_visao_rede_estudo()` — **sem aba rede no documento** (fase D).
+**05/10/2026 — `master` em `b02b6a1`, tag `sandbox-rede`.** Rede fase **D2**
+mergeada: sandbox do corretor na aba **Rede credenciada** (filtros, checkboxes,
+confirmar → download `{nome}_para_cliente.html`, tranca por hash do ID do estudo).
+JavaScript **só** nessa aba; demais abas permanecem CSS puro. D1 intacta
+(seções por grupo, colunas por plano, bairro/zona, contagem por bloco).
 
-pytest na master: **1364 passed, 16 skipped**, ~3 min 37 s. vitest: **131
-passed**. `npm run build`: ok. Snapshots demo: **96/96** hashes iguais.
-Rascunhos demo: **107** carregam, **78** compilam. Harness: **16/16** mutações
-detectadas. HTML export Anistia (fixture): **inalterado** vs. pré-merge.
+pytest na master: **1413 passed, 15 skipped**, ~4 min 45 s. Playwright rede D2:
+**7/7**. vitest: **131 passed**. `npm run build`: ok. Snapshots demo: **97/97**
+hashes iguais. `SNAPSHOT_VERSAO`: **2.8.0**. Rascunhos demo: **107** carregam,
+**78** compilam. Harness: **16/16** mutações detectadas.
 
-Tags recentes: `comparacao-por-grupo`, `rede-casamento-e-localizacao`,
-**`rede-fase-c`**. Branches `rede-fase-a/b/c` preservadas.
+Tags recentes: `rede-fase-d1`, **`sandbox-rede`**. Branches `rede-fase-d1`,
+`rede-fase-d2` preservadas (não apagar).
 
 **Ainda aberto (§12):** validade da cotação em cenário misto; confirmações
 Wesley (regras comerciais e **recorte geográfico da rede** — prática Newport

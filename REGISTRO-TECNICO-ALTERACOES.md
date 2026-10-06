@@ -1364,7 +1364,19 @@ na tupla `prestadores`.
 SiscorNet só se o CSV estiver vazio). Em SP, bairros auditados (Itaim → Oeste,
 Moema → Sul, etc.) escolhem a linha correta do CSV. Aba estática no HTML
 (`tab-rede`), colunas por grupo+cenário, agrupamento município/zona, códigos
-abreviados e rodapé «Pontos de atenção». **D2:** interação no documento.
+abreviados e rodapé «Pontos de atenção».
+
+**Fase D2 (entregue):** sandbox do corretor **somente na aba Rede** — primeira
+introdução de JavaScript no documento HTML entregável ao cliente. Motivo:
+filtros, seleção de prestadores, confirmação com download distinto e reedição
+trancada sem servidor. **Estado** em
+`<script type="application/json" id="newport-rede-state">` (`mode`, `excluded`);
+**não** usa `localStorage`/`sessionStorage` (arquivo autocontido, auditável,
+reaberto offline). **Tranca:** `data-unlock` = SHA-256 hex do `estudo_id`; o ID
+em claro **não** aparece no HTML — protege contra edição casual, **não** criptografia
+contra quem inspeciona o arquivo. **Download:** nome `{stem}_para_cliente.html`
+derivado do arquivo de trabalho; aviso na tela pós-confirmar **não** entra no blob
+baixado. Script em `rede_sandbox.js`; degradação sem JS: tabela D1 completa visível.
 
 ### Validação pós-merge (`master` @ `59dc2eb`)
 
@@ -1388,6 +1400,28 @@ R$ 3.741,89 e R$ 5.652,04). ATEF: §11 / corpus privado.
 
 Marca de retorno: tag **`rede-fase-c`**. Branches `rede-fase-a`, `rede-fase-b`,
 `rede-fase-c` mantidas.
+
+### Validação pós-merge D2 (`master` @ `b02b6a1`)
+
+| Checagem | Resultado |
+|---|---|
+| pytest | **1413 passed**, 15 skipped, ~4 min 45 s |
+| Playwright (rede D2) | **7/7** |
+| vitest | **131 passed** (13 arquivos) |
+| `npm run build` | ok |
+| Snapshots demo | **97/97** hashes iguais (`HASH_DIVERGENTE=0`) |
+| `SNAPSHOT_VERSAO` | **2.8.0** (inalterada) |
+| Rascunhos demo | **107** carregam, **0** falha de carga, **78** compilam |
+| Harness mutações | **16/16** detectadas |
+| Export Anistia (5 abas + sandbox) | **0** `<script>` fora da aba Rede; **2** scripts na Rede (JSON + JS); sem `localStorage`/`sessionStorage`; ID do estudo ausente do HTML |
+
+Gabaritos financeiros/HTML intactos na suíte (Anistia R$ 48.479,31; S750
+R$ 29.386,76; ONE R$ 19.092,55; Prata R$ 23.607,17 / R$ 6.100,61; IVTEC
+R$ 3.741,89 e R$ 5.652,04). Quatro abas anteriores à Rede: paridade D1
+(`test_17_quatro_abas_inalteradas`).
+
+Marca de retorno: tag **`sandbox-rede`**. Branches `rede-fase-d1`, `rede-fase-d2`
+mantidas.
 
 ---
 
