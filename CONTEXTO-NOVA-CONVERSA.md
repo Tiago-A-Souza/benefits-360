@@ -96,7 +96,7 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**05/10/2026 — `master` em `0d418bb`, tag `sandbox-rede`.** Rede fase **D2**
+**05/10/2026 — `master` em `d305869`, tag `sandbox-rede` (anotada em `0d418bb`).** Rede fase **D2**
 mergeada: sandbox do corretor na aba **Rede credenciada** (filtros, checkboxes,
 confirmar → download `{nome}_para_cliente.html`, tranca por hash do ID do estudo).
 JavaScript **só** nessa aba; demais abas permanecem CSS puro. D1 intacta
