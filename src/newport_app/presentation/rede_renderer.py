@@ -72,10 +72,13 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
     for bloco in pag.blocos:
         partes.append(
             f"<tr class='bloco-rede'><td colspan='{ncols}'>"
-            f"{html.escape(bloco.titulo)}"
-            f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
+            "<div class='bloco-rede-cab'>"
+            f"<span class='bloco-rede-tit'>{html.escape(bloco.titulo)}</span>"
+            "<span class='bloco-rede-meta'>"
             "<button type='button' class='rede-marcar-bloco rede-sandbox-js-only' "
-            "data-checked='1'>Desmarcar bloco</button></td></tr>"
+            "data-checked='1'>Desmarcar bloco</button>"
+            f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
+            "</span></div></td></tr>"
         )
         for ln in bloco.linhas:
             partes.append(f"<tr class='p-rede'{_attrs_linha(ln)}>")

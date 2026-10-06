@@ -1477,8 +1477,14 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .tabela-rede td.nm{text-align:left;font-weight:500}
 .tabela-rede .bairro-rede{display:block;font-size:10px;font-weight:400;color:var(--grafite-3);margin-top:2px}
 .tabela-rede tr.bloco-rede td{background:var(--grafite);color:#fff;text-align:left;font-weight:700;
-  text-transform:uppercase;font-size:12px;padding:8px 10px;border-top:3px solid var(--papel)}
-.tabela-rede tr.bloco-rede .q{float:right;font-weight:300;text-transform:none;color:var(--ouro);font-size:11px}
+  text-transform:uppercase;font-size:12px;padding:8px 12px;border-top:3px solid var(--papel);vertical-align:middle}
+.bloco-rede-cab{display:flex;align-items:center;justify-content:space-between;gap:16px 24px;flex-wrap:wrap;width:100%}
+.bloco-rede-tit{flex:1 1 auto;min-width:8rem;line-height:1.35}
+.bloco-rede-meta{display:inline-flex;align-items:center;gap:14px;flex-shrink:0;white-space:nowrap}
+.tabela-rede tr.bloco-rede .q{font-weight:300;text-transform:none;color:var(--ouro);font-size:11px;line-height:1.2}
+.tabela-rede th.rede-sandbox-check,.tabela-rede td.rede-sandbox-check{
+  width:46px;min-width:46px;max-width:46px;text-align:center;padding:8px 6px;vertical-align:middle;white-space:nowrap}
+.tabela-rede td.rede-sandbox-check input[type=checkbox]{margin:0;vertical-align:middle}
 .tabela-rede td.on{background:var(--ouro-cl);color:var(--ouro-esc);font-weight:700;font-size:10.5px}
 .tabela-rede td.off{color:#CFCFC9}
 .tabela-rede tr.cont-rede td{background:var(--papel-2);font-weight:700;font-size:11px;border-bottom:2px solid var(--grafite)}
@@ -1501,8 +1507,9 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .rede-sandbox-aviso-download{margin:16px 0;padding:14px 18px;background:var(--ouro-cl);
   border:1px solid var(--ouro);font-size:13px;line-height:1.5;color:var(--grafite)}
 .rede-sandbox-aviso-download strong{font-weight:700;color:var(--grafite)}
-.rede-marcar-bloco{float:right;font-size:10px;font-weight:500;margin-left:12px;background:transparent;
-  border:1px solid rgba(255,255,255,.35);color:#fff;padding:4px 8px;cursor:pointer}
+.rede-marcar-bloco{font-size:10px;font-weight:500;background:transparent;flex-shrink:0;
+  border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 10px;cursor:pointer;line-height:1.2}
+.rede-sandbox-no-js .bloco-rede-meta{gap:0}
 .rede-sandbox-final .rede-sandbox-check{display:none!important}
 @media print{.rede-sandbox-js-only,.rede-sandbox-bar,.rede-sandbox-foot{display:none!important}}
 #tab-todas:checked ~ .doc-corpo .visao { display: block !important; }
