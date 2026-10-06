@@ -828,9 +828,9 @@ já foi ao cliente não é editável por desenho.
 
 Tabelas longas por município ganharam **dois reforços só de HTML/CSS** (sem script):
 `thead` com `position:sticky` (fundo opaco, abaixo da barra de abas) e **repetição
-da linha de colunas** após cada cabeçalho de bloco (`São Paulo · SP … prestadores`),
-como no material Newport (cada praça com cabeçalho próprio). Rolagem horizontal
-permanece em `.rede-rolo` (`overflow-x:auto`, sem `overflow:hidden` nos ancestrais).
+da linha de colunas** a partir do **2º** bloco de município (o `<thead>` já cobre o
+primeiro; evita duplicata no topo). Rolagem horizontal permanece em `.rede-rolo`
+(`overflow-x:auto`, sem `overflow:hidden` nos ancestrais).
 
 Nomes de plano nos `<th>` da rede usam **`nome_plano_documento`** — mesma regra das
 outras abas (retira acomodação e abrangência já exibidas em linha própria). Chaves de
