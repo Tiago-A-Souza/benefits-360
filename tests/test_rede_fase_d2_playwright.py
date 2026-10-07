@@ -15,6 +15,7 @@ from newport_app.presentation.html_renderer import render_html_completo
 from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
 from newport_app.presentation.rede_sandbox import nome_arquivo_para_cliente
 from tests.test_correcao_resumo_regime import _aprovar as _aprovar_anistia
+from tests.test_rede_cont_rede_colspan import _tabelas_rede, _valores_cont_rede
 from tests.test_rede_fase_d1 import _rascunho_dois_grupos_um_cenario
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -280,6 +281,28 @@ def test_13_ciclo_confirmar_reabrir_editar_id(
     assert page.locator("#rede-btn-confirmar").is_visible()
 
 
+def _cont_rede_valores_dom(page: Page) -> list[list[str]]:
+    out: list[list[str]] = []
+    for tr in page.locator("tr.cont-rede").all():
+        texts = [t.strip() for t in tr.locator("td").all_inner_texts()]
+        out.append(texts[1:])
+    return out
+
+
+def test_15_contagens_cobertos_js_igual_renderer(
+    page: Page, html_trabalho: tuple[Path, str]
+):
+    """recalcBlock não desloca números (Incl. não vira coluna 0)."""
+    path, _ = html_trabalho
+    esperado: list[list[str]] = []
+    html = path.read_text(encoding="utf-8")
+    for tbl in _tabelas_rede(html):
+        esperado.extend(_valores_cont_rede(tbl))
+    page.locator("#rede-filtro-nome").fill("")
+    obtido = _cont_rede_valores_dom(page)
+    assert obtido == esperado
+
+
 def test_14_confirmar_baixa_html_estatico_opcao_a(
     page: Page, html_trabalho: tuple[Path, str], tmp_path: Path
 ):
@@ -296,3 +319,7 @@ def test_14_confirmar_baixa_html_estatico_opcao_a(
     _assert_html_para_cliente_opcao_a(conteudo)
     assert "rede-sandbox-cliente" in conteudo
     assert '"mode":"final"' in conteudo.replace(" ", "")
+    for tbl in _tabelas_rede(conteudo):
+        for vals in _valores_cont_rede(tbl):
+            assert vals
+            assert not (len(vals) >= 2 and vals[0] == "0" and vals[1] != "0")

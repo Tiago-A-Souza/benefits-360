@@ -44,6 +44,13 @@
     return state.excluded.indexOf(id) < 0;
   }
 
+  function planColumnCount(table) {
+    return $$("thead tr:first-child th.rede-col-plano", table).length;
+  }
+
+  /** Índice da 1ª coluna de plano em tr.p-rede: Incl. + Prestador antes dos planos. */
+  var PLAN_CELL_OFFSET = 2;
+
   function recalcBlock(table, blocoTr) {
     var rows = [];
     var node = blocoTr.nextElementSibling;
@@ -63,15 +70,17 @@
       node = node.nextElementSibling;
     }
     if (!contTr) return;
-    var cols = $$("thead th", table).length - 1;
+    var nPlans = planColumnCount(table);
     var tds = $$("td", contTr);
-    for (var c = 1; c < tds.length && c <= cols; c++) {
+    for (var p = 0; p < nPlans; p++) {
+      var colIdx = PLAN_CELL_OFFSET + p;
       var n = 0;
       for (var r = 0; r < rows.length; r++) {
         var cells = $$("td", rows[r]);
-        if (cells[c] && cells[c].classList.contains("on")) n++;
+        if (cells[colIdx] && cells[colIdx].classList.contains("on")) n++;
       }
-      tds[c].textContent = String(n);
+      var outIdx = 1 + p;
+      if (tds[outIdx]) tds[outIdx].textContent = String(n);
     }
     var q = $(".q", blocoTr);
     if (q) q.textContent = rows.length + " prestadores";
@@ -308,6 +317,7 @@
           node = node.nextElementSibling;
         }
         updateCounter(root, readState());
+        recalcAll(root);
       });
     });
   }
@@ -325,6 +335,7 @@
     $$("tr.p-rede input[type=checkbox]", root).forEach(function (cb) {
       cb.addEventListener("change", function () {
         updateCounter(root, readState());
+        recalcAll(root);
       });
     });
 
