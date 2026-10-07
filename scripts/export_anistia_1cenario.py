@@ -29,6 +29,13 @@ def _saida(planos: int) -> Path:
     return base / nome
 
 
+def _saida_para_cliente(planos: int) -> Path:
+    base = ROOT / ".private/runtime/entregaveis/rede-cabecalho-leitura"
+    if planos == 1:
+        return base / "anistia_1cenario_para_cliente.html"
+    return base / f"anistia_{planos}planos_para_cliente.html"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Export HTML Anistia (aba Rede com localização).")
     ap.add_argument(
@@ -77,9 +84,9 @@ def main() -> None:
     )
     saida.parent.mkdir(parents=True, exist_ok=True)
     saida.write_text(html, encoding="utf-8")
-    stem = saida.stem
-    saida_cliente = saida.with_name(f"{stem}_para_cliente.html")
+    saida_cliente = _saida_para_cliente(n_planos)
     html_cliente, n_tabelas = aplicar_colspans_cliente_em_documento(html)
+    saida_cliente.parent.mkdir(parents=True, exist_ok=True)
     saida_cliente.write_text(html_cliente, encoding="utf-8")
     print(f"EXPORT={saida}")
     print(f"EXPORT_PARA_CLIENTE={saida_cliente}")
