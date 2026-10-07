@@ -278,7 +278,7 @@ def test_15_contagem_prestadores_cobertos_bate_celulas():
     assert cont[ch_prop] > 0
     html = _render_tabela_pagina(sec.paginas[0])
     assert f"<td>{cont[ch_prop]}</td>" in html
-    assert "Prestadores cobertos" in html
+    assert "Cobertos" in html
 
 
 def test_16_tres_cenarios_uma_tabela_por_secao():

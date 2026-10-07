@@ -846,6 +846,11 @@ Tamanho típico medido (Anistia com localização, pós-corte, heurística de im
 só na aba Rede): **~8 páginas** com **um** cenário (1 tabela por seção); **~18
 páginas** com **seis** propostas (2 tabelas por seção, mesmas linhas duplicadas).
 
+**Layout estreito (aba Rede):** colunas de plano **112px** (`nome_plano_documento`
+quebra no cabeçalho); bairro **inline** com corte de sufixo repetido no nome;
+cabeçalho repetido leve (só plano); rótulo de rodapé de bloco **«Cobertos»**.
+Largura alvo: **~844px** (2 planos + prestador) e **1180px** (5 planos + prestador).
+
 ### Consentimento do plano atual (etapa 2)
 
 O checkbox «Revisei e confirmo as informações do plano atual» saiu: a

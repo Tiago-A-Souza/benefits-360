@@ -126,7 +126,7 @@ def test_09_marcar_bloco_botao(tmp_path: Path):
 
 def test_10_contagem_por_bloco_mantida(tmp_path: Path):
     html, _, _ = _html_completo_rede(tmp_path)
-    assert "Prestadores cobertos" in html
+    assert "Cobertos" in html
     assert "cont-rede" in html
 
 
