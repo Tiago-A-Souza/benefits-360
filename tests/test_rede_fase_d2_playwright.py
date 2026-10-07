@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -95,6 +96,36 @@ def _visible_prestadores(page: Page) -> int:
     )
 
 
+def _assert_html_para_cliente_opcao_a(conteudo: str) -> None:
+    """Opção A (REGISTRO): estático — sem sandbox, sem controles, sem checkbox."""
+    assert not re.search(
+        r"<t[hd][^>]*class='[^']*rede-sandbox-check",
+        conteudo,
+        re.I,
+    )
+    assert re.search(
+        r"<tr class='p-rede'[^>]*>[\s\S]*?<input[^>]*type=['\"]checkbox['\"]",
+        conteudo,
+        re.I,
+    ) is None
+    for ctl_id in (
+        "rede-btn-confirmar",
+        "rede-btn-editar",
+        "rede-filtro-zona",
+        "rede-filtro-mun",
+        "rede-filtro-nome",
+    ):
+        assert f'id="{ctl_id}"' not in conteudo and f"id='{ctl_id}'" not in conteudo
+    assert not re.search(r"<div class='rede-sandbox-bar", conteudo)
+    assert "rede-marcar-bloco" not in conteudo.split("</style>", 1)[-1]
+    assert "prepareDocumentoCliente" not in conteudo
+    assert "wireBlockToggle" not in conteudo
+    scripts = list(re.finditer(r"<script\b([^>]*)>", conteudo, re.I))
+    assert len(scripts) == 1, f"esperado 1 bloco JSON de estado, got {len(scripts)}"
+    attrs = scripts[0].group(1).lower()
+    assert "application/json" in attrs and "newport-rede-state" in attrs
+
+
 def test_07_filtro_zona_reduz_linhas(page: Page):
     antes = _visible_prestadores(page)
     sel = page.locator("#rede-filtro-zona")
@@ -152,6 +183,7 @@ def test_10_desmarcar_some_na_visao_final(
     conteudo = dest.read_text(encoding="utf-8")
     assert '"mode":"final"' in conteudo.replace(" ", "")
     assert rid in conteudo
+    _assert_html_para_cliente_opcao_a(conteudo)
     pg2 = page.context.new_page()
     pg2.goto(dest.as_uri())
     _ir_aba_rede(pg2, entregavel_cliente=True)
@@ -246,3 +278,21 @@ def test_13_ciclo_confirmar_reabrir_editar_id(
     page.wait_for_selector(".rede-sandbox-bar:not([hidden])")
     page.remove_listener("dialog", on_dialog)
     assert page.locator("#rede-btn-confirmar").is_visible()
+
+
+def test_14_confirmar_baixa_html_estatico_opcao_a(
+    page: Page, html_trabalho: tuple[Path, str], tmp_path: Path
+):
+    """Download via «Confirmar seleção» — entregável opção A (não export de conferência)."""
+    _, nome_cliente = html_trabalho
+    page.locator("#rede-filtro-nome").fill("")
+    dest = tmp_path / nome_cliente
+    with page.expect_download() as dl_info:
+        page.locator("#rede-btn-confirmar").click()
+    download = dl_info.value
+    assert download.suggested_filename == nome_cliente
+    download.save_as(dest)
+    conteudo = dest.read_text(encoding="utf-8")
+    _assert_html_para_cliente_opcao_a(conteudo)
+    assert "rede-sandbox-cliente" in conteudo
+    assert '"mode":"final"' in conteudo.replace(" ", "")
