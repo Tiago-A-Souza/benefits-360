@@ -13,7 +13,12 @@ from newport_app.presentation.rede_apresentacao import (
     linha_tem_cobertura_na_secao,
     montar_rede_apresentacao,
 )
-from newport_app.presentation.rede_prestador_rotulo import recortar_bairro_do_nome
+from newport_app.presentation.rede_prestador_rotulo import (
+    _fold,
+    nome_prestador_para_rotulo,
+    recortar_bairro_do_nome,
+    rotulo_prestador_html,
+)
 from newport_app.presentation.rede_renderer import render_corpo_rede
 from newport_app.snapshot.comparativo import ler_comparativo_congelado
 from tests.test_rede_fase_d1 import (
@@ -46,13 +51,55 @@ def test_02_bairro_na_mesma_linha():
 
 
 def test_03_recorte_sufixo_bairro_cemeru():
-    nome = recortar_bairro_do_nome("HOSP CEMERU - AMESC SANTA CRUZ", "SANTA CRUZ")
-    assert nome == "HOSP CEMERU - AMESC"
+    longo = "HOSP CEMERU - AMESC SANTA CRUZ"
+    assert recortar_bairro_do_nome(longo, "SANTA CRUZ") == "HOSP CEMERU - AMESC"
+    assert recortar_bairro_do_nome(longo, "Santa Cruz") == "HOSP CEMERU - AMESC"
+    # Matriz real: prestador curto + bairro em coluna aparte (Anistia / SiscorNet).
+    assert (
+        nome_prestador_para_rotulo("HOSP CEMERU - AMESC", "SANTA CRUZ")
+        == "HOSP CEMERU - AMESC"
+    )
+    assert (
+        nome_prestador_para_rotulo("HOSP RIO BARRA - DOR", "BARRA DA TIJUCA")
+        == "HOSP RIO BARRA - DOR"
+    )
+    assert (
+        nome_prestador_para_rotulo("HOSP SAMARITANO", "BARRA DA TIJUCA")
+        == "HOSP SAMARITANO"
+    )
+    html_cemeru = rotulo_prestador_html("HOSP CEMERU - AMESC", "SANTA CRUZ")
+    assert html_cemeru.startswith("HOSP CEMERU - AMESC<span")
+    assert " AMESC SANTA CRUZ" not in html_cemeru
 
 
 def test_04_nome_intacto_quando_sufixo_nao_bate():
     nome = "HOSPITAL SIrio Libanes"
     assert recortar_bairro_do_nome(nome, "BELA VISTA") == nome
+    assert nome_prestador_para_rotulo(nome, "BELA VISTA") == nome
+
+
+def test_04b_nome_so_bairro_nao_recorta():
+    assert recortar_bairro_do_nome("SANTA CRUZ", "SANTA CRUZ") == "SANTA CRUZ"
+    assert recortar_bairro_do_nome("MOEMA", "MOEMA") == "MOEMA"
+    assert nome_prestador_para_rotulo("MOEMA", "MOEMA") == "MOEMA"
+
+
+def test_04c_recorte_nome_longo_real_matriz():
+    # Bairro no meio do nome — não é sufixo; mantém inteiro.
+    assert (
+        recortar_bairro_do_nome(
+            "HOSP DE CLIN SANTA CRUZ - MEMORIAL", "SANTA CRUZ"
+        )
+        == "HOSP DE CLIN SANTA CRUZ - MEMORIAL"
+    )
+    assert (
+        recortar_bairro_do_nome("HOSPITAL CASA SANTA CRUZ", "SANTA CRUZ")
+        == "HOSPITAL CASA"
+    )
+    assert (
+        recortar_bairro_do_nome("NIG - CLIN BARRA DA TIJUCA", "BARRA DA TIJUCA")
+        == "NIG - CLIN"
+    )
 
 
 def test_05_cabecalho_repetido_so_nome_plano(tmp_path: Path):
@@ -157,7 +204,26 @@ def test_17_contagem_recortes_bairro_anistia(tmp_path: Path):
     for sec in doc.secoes:
         for b in sec.blocos:
             for ln in b.linhas:
-                if ln.bairro and recortar_bairro_do_nome(ln.prestador, ln.bairro) != ln.prestador:
+                if not ln.bairro:
+                    continue
+                if nome_prestador_para_rotulo(ln.prestador, ln.bairro) != ln.prestador:
+                    recortes += 1
+                elif recortar_bairro_do_nome(ln.prestador, ln.bairro) != ln.prestador:
                     recortes += 1
     assert recortes > 0
     print(f"RECORTES_BAIRRO={recortes}")
+
+
+def test_18_export_rj_sem_bairro_no_nome_antes_do_span(tmp_path: Path):
+    doc, _ = _doc_anistia_seis_rede(tmp_path)
+    html = render_corpo_rede(doc)
+    casos = [
+        ("HOSP CEMERU - AMESC", "SANTA CRUZ"),
+        ("HOSP RIO BARRA - DOR", "BARRA DA TIJUCA"),
+        ("HOSP SAMARITANO", "BARRA DA TIJUCA"),
+    ]
+    for prest, bairro in casos:
+        trecho = rotulo_prestador_html(prest, bairro)
+        assert trecho in html
+        nome_html = trecho.split("<span", 1)[0]
+        assert not _fold(nome_html).endswith(_fold(bairro))

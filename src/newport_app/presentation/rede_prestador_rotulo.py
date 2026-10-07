@@ -5,6 +5,11 @@ from __future__ import annotations
 import html
 import unicodedata
 
+_SEPARADORES_SUFIXO = " \t-–—/"
+
+# Não encurtar se o que sobrar ficar vazio ou insignificante.
+_MIN_CARACTERES_RESTO = 3
+
 
 def _fold(texto: str) -> str:
     bruto = unicodedata.normalize("NFKD", texto or "")
@@ -18,20 +23,38 @@ def recortar_bairro_do_nome(prestador: str, bairro: str) -> str:
     b = (bairro or "").strip()
     if not p or not b:
         return p
-    if not _fold(p).endswith(_fold(b)):
+    bf = _fold(b)
+    if not bf or not _fold(p).endswith(bf):
         return p
-    n = len(p)
-    # Variação de separador e espaços antes do sufixo.
-    for sep_len in range(0, 5):
-        cut = n - len(b) - sep_len
-        if cut <= 0:
+
+    melhor: str | None = None
+    for i in range(len(p)):
+        cauda = p[i:].lstrip(_SEPARADORES_SUFIXO)
+        if _fold(cauda) != bf:
             continue
-        cand = p[:cut].rstrip(" \t-–—")
-        resto = p[cut:].lstrip(" \t-–—")
-        if _fold(resto) == _fold(b):
-            return cand
-    if _fold(p[-len(b) :]) == _fold(b):
-        return p[: max(0, n - len(b))].rstrip(" \t-–—")
+        cand = p[:i].rstrip(_SEPARADORES_SUFIXO)
+        if len(cand.strip()) < _MIN_CARACTERES_RESTO:
+            continue
+        melhor = cand
+    return melhor if melhor is not None else p
+
+
+def nome_prestador_para_rotulo(prestador: str, bairro: str) -> str:
+    """Nome exibido antes do span de bairro — recorta sufixo real ou implícito."""
+    p = (prestador or "").strip()
+    b = (bairro or "").strip()
+    if not p or not b:
+        return p
+    curto = recortar_bairro_do_nome(p, b)
+    if _fold(curto) != _fold(p):
+        return curto
+    # Matriz SiscorNet: coluna Prestador costuma vir sem o bairro; o par completo
+    # é prestador + bairro. Simula só para recortar repetição, não altera a base.
+    virtual = f"{p} {b}"
+    if _fold(virtual).endswith(_fold(b)):
+        recortado = recortar_bairro_do_nome(virtual, b)
+        if _fold(recortado) != _fold(virtual):
+            return recortado
     return p
 
 
@@ -46,7 +69,7 @@ def rotulo_prestador_html(
         nome = f"{prefixo_zona} {nome}".strip()
     b = (bairro or "").strip()
     if b:
-        nome = recortar_bairro_do_nome(nome, b)
+        nome = nome_prestador_para_rotulo(nome, b)
         return (
             f"{html.escape(nome)}"
             f"<span class='bairro-rede'>{html.escape(b)}</span>"
