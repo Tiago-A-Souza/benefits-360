@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import re
 from pathlib import Path
 
 _ESTADO_INICIAL = {"v": 1, "mode": "edit", "excluded": []}
@@ -31,6 +32,57 @@ def nome_arquivo_para_cliente(nome_arquivo_origem: str) -> str:
 
 def _carregar_script() -> str:
     return _SCRIPT_PATH.read_text(encoding="utf-8")
+
+
+def remover_coluna_incl_da_marca_rede(html: str) -> str:
+    """Remove células «Incl.» — espelha prepareDocumentoCliente (testes estruturais)."""
+    out = html
+    for pat in (
+        r"<th class='rede-sandbox-check[^']*'[^>]*>.*?</th>",
+        r"<td class='rede-sandbox-check[^']*'[^>]*>.*?</td>",
+    ):
+        out = re.sub(pat, "", out, flags=re.S)
+    return out
+
+
+def ajustar_colspans_rede_cliente(html: str) -> str:
+    """Ajusta colspan de bloco e cont-rede após remover Incl. (paridade com JS)."""
+
+    out = re.sub(
+        r"(<tr class='bloco-rede'[^>]*>\s*<td )colspan='(\d+)'",
+        lambda m: f"{m.group(1)}colspan='{max(1, int(m.group(2)) - 1)}'",
+        html,
+        flags=re.S,
+    )
+    out = re.sub(
+        r"(<tr class='cont-rede'[^>]*>\s*<td )colspan='\d+'",
+        r"\1colspan='1'",
+        out,
+        flags=re.S,
+    )
+    return out
+
+
+def preparar_marcacao_rede_para_cliente(html: str) -> str:
+    """Transformações DOM da aba Rede no entregável _para_cliente (sem script)."""
+    return ajustar_colspans_rede_cliente(remover_coluna_incl_da_marca_rede(html))
+
+
+def aplicar_colspans_cliente_em_documento(html: str) -> tuple[str, int]:
+    """Prepara cada ``table.tabela-rede`` — paridade com prepareDocumentoCliente."""
+    matches = list(
+        re.finditer(r"<table class='tabela-rede[^>]*>.*?</table>", html, re.S)
+    )
+    if not matches:
+        return html, 0
+    out: list[str] = []
+    last = 0
+    for m in matches:
+        out.append(html[last : m.start()])
+        out.append(preparar_marcacao_rede_para_cliente(m.group(0)))
+        last = m.end()
+    out.append(html[last:])
+    return "".join(out), len(matches)
 
 
 def envolver_rede_sandbox(

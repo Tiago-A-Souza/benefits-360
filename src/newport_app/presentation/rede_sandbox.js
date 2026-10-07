@@ -229,9 +229,10 @@
       var n = parseInt(td.getAttribute("colspan") || "1", 10);
       if (n > 1) td.setAttribute("colspan", String(n - 1));
     });
-    root.querySelectorAll("tr.cont-rede td[colspan]").forEach(function (td) {
-      var n = parseInt(td.getAttribute("colspan") || "1", 10);
-      if (n > 1) td.setAttribute("colspan", String(n - 1));
+    // Cobertos: colspan 2 = Incl. + prestador; sem Incl. o rótulo ocupa só prestador.
+    root.querySelectorAll("tr.cont-rede").forEach(function (tr) {
+      var first = tr.querySelector("td");
+      if (first) first.setAttribute("colspan", "1");
     });
   }
 
