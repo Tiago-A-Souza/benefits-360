@@ -58,13 +58,16 @@ export default function RedeSelecaoPanel({
   revisadaRef.current = revisada;
 
   const recarregar = useCallback(async () => {
-    setCarregando(true);
     setErro(null);
     try {
       const r = await obterRedeSelecao(estudoId);
       setDados(r);
-      setExcluidos(new Set(r.excluidos || []));
-      setRevisada(Boolean(r.revisada));
+      const ex = new Set(r.excluidos || []);
+      setExcluidos(ex);
+      excluidosRef.current = ex;
+      const rev = Boolean(r.revisada);
+      setRevisada(rev);
+      revisadaRef.current = rev;
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -76,38 +79,41 @@ export default function RedeSelecaoPanel({
     recarregar();
   }, [recarregar]);
 
-  const persistir = useCallback(
-    async (marcarRevisada) => {
-      if (!estudoId) return false;
-      const rev = marcarRevisada || revisadaRef.current;
-      setSalvando(true);
-      setErro(null);
-      try {
-        const resp = await salvarRedeSelecao(estudoId, [...excluidosRef.current], rev);
-        setRevisada(Boolean(resp.revisada));
-        revisadaRef.current = Boolean(resp.revisada);
-        return true;
-      } catch (e) {
-        setErro(e.message);
-        return false;
-      } finally {
-        setSalvando(false);
-      }
-    },
-    [estudoId]
-  );
+  const persistir = useCallback(async (marcarRevisada) => {
+    if (!estudoId) return false;
+    const rev = marcarRevisada || revisadaRef.current;
+    setSalvando(true);
+    setErro(null);
+    try {
+      const resp = await salvarRedeSelecao(estudoId, [...excluidosRef.current], rev);
+      const okRev = Boolean(resp.revisada);
+      setRevisada(okRev);
+      revisadaRef.current = okRev;
+      return true;
+    } catch (e) {
+      setErro(e.message);
+      return false;
+    } finally {
+      setSalvando(false);
+    }
+  }, [estudoId]);
+
+  const persistirRef = useRef(persistir);
+  persistirRef.current = persistir;
 
   useEffect(() => {
     if (!onRegistrarAvanco) return undefined;
-    return onRegistrarAvanco(async () => persistir(true));
-  }, [onRegistrarAvanco, persistir]);
+    return onRegistrarAvanco(() => persistirRef.current(true));
+  }, [onRegistrarAvanco]);
 
+  /** Só no desmonte ou troca de estudo — nunca depender de `dados` (cleanup PUT em loop). */
   useEffect(() => {
+    const id = estudoId;
     return () => {
-      if (!estudoId || !dados) return;
-      void salvarRedeSelecao(estudoId, [...excluidosRef.current], true).catch(() => {});
+      if (!id) return;
+      void salvarRedeSelecao(id, [...excluidosRef.current], true).catch(() => {});
     };
-  }, [estudoId, dados]);
+  }, [estudoId]);
 
   const linhas = useMemo(() => linhasFlat(dados?.secoes), [dados]);
 
