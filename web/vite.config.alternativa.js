@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   root: ".",
   base: "/",
+  cacheDir: "node_modules/.vite-alt",
   resolve: {
     preserveSymlinks: true,
   },
