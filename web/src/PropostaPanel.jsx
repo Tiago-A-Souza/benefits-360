@@ -68,6 +68,7 @@ export default function PropostaPanel({
   const [msg, setMsg] = useState(null);
 
   function recarregar() {
+    setErro(null);
     obterRascunho(estudoId)
       .then((r) => {
         if (!r.opcoes_proposta.length && manualAberto) {
@@ -80,7 +81,10 @@ export default function PropostaPanel({
         }
         setRascunho({ ...r });
       })
-      .catch((e) => setErro(e.message));
+      .catch((e) => {
+        setErro(e.message);
+        setRascunho(null);
+      });
   }
 
   useEffect(() => {
@@ -88,7 +92,17 @@ export default function PropostaPanel({
     recarregar();
   }, [estudoId]);
 
-  if (!rascunho) return <p className="muted">Carregando cotações…</p>;
+  if (!rascunho) {
+    return (
+      <section className="etapa-fluxo">
+        {erro ? (
+          <p className="erro">{erro}</p>
+        ) : (
+          <p className="muted">Carregando cotações…</p>
+        )}
+      </section>
+    );
+  }
 
   const planosAtuais = subgruposAtuais.length
     ? subgruposAtuais

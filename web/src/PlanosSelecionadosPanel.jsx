@@ -299,7 +299,10 @@ export default function PlanosSelecionadosPanel({
         setCenarios(iniciais);
         setRascunho({ ...r });
       })
-      .catch((e) => setErro(e.message));
+      .catch((e) => {
+        setErro(e.message);
+        setRascunho(null);
+      });
     obterMatrizEstimativa(estudoId)
       .then(setMatrizEstimativa)
       .catch(() => setMatrizEstimativa(null));
@@ -348,7 +351,17 @@ export default function PlanosSelecionadosPanel({
     return onRegistrarAvanco(handleSalvar);
   }, [onRegistrarAvanco, handleSalvar]);
 
-  if (!rascunho) return <p className="muted">Carregando atribuições…</p>;
+  if (!rascunho) {
+    return (
+      <section className="etapa-fluxo">
+        {erro ? (
+          <p className="erro">{erro}</p>
+        ) : (
+          <p className="muted">Carregando atribuições…</p>
+        )}
+      </section>
+    );
+  }
 
   const subgrupos = subgruposComVidas(rascunho);
   const multiplosPlanosAtuais = subgrupos.length > 1;

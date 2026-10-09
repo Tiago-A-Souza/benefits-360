@@ -114,7 +114,13 @@ export default function App() {
     if (passo >= passos.length) return;
     const confirmar = avancarEtapaRef.current;
     if (typeof confirmar === "function") {
-      const ok = await confirmar();
+      let ok = false;
+      try {
+        ok = await confirmar();
+      } catch (e) {
+        window.alert(e?.message || "Não foi possível salvar esta etapa.");
+        return;
+      }
       if (!ok) return;
       await recarregarContexto();
     } else if (!proximaEtapaDisponivel(passo, ctxFluxo)) {
