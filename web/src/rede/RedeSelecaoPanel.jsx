@@ -8,7 +8,15 @@ function linhasFlat(secoes) {
   for (const sec of secoes || []) {
     for (const bloco of sec.blocos || []) {
       for (const ln of bloco.linhas || []) {
-        out.push({ ...ln, secao: sec.rotulo, bloco: bloco.titulo });
+        out.push({
+          linha_id: ln.linha_id,
+          prestador: ln.prestador || "",
+          municipio: ln.municipio || "",
+          bairro: ln.bairro || "",
+          zona: ln.zona || "",
+          secao: sec.rotulo,
+          bloco: bloco.titulo,
+        });
       }
     }
   }
@@ -172,6 +180,10 @@ export default function RedeSelecaoPanel({
             </label>
           </div>
 
+          <p className="rede-selecao-contador-visiveis" aria-live="polite">
+            {linhasVisiveis.length} de {linhas.length} prestador(es) visível(is)
+          </p>
+
           <div className="rede-selecao-tabela-wrap">
             <table className="tabela-densa rede-selecao-tabela">
               <thead>
@@ -183,10 +195,17 @@ export default function RedeSelecaoPanel({
                 </tr>
               </thead>
               <tbody>
-                {linhasVisiveis.map((ln) => {
+                {linhasVisiveis.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="muted">
+                      Nenhum prestador corresponde aos filtros.
+                    </td>
+                  </tr>
+                ) : null}
+                {linhasVisiveis.map((ln, idx) => {
                   const incl = !excluidos.has(ln.linha_id);
                   return (
-                    <tr key={ln.linha_id}>
+                    <tr key={`${ln.secao}|${ln.bloco}|${ln.linha_id}|${idx}`}>
                       <td>
                         <input
                           type="checkbox"
