@@ -726,6 +726,7 @@
     }
   },
   "selecao_apresentacao": null,
+  "selecao_rede": null,
   "confirmacao_comparativo": null,
   "observacoes": null,
   "metadados_pptx": null

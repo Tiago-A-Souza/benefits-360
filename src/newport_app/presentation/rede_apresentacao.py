@@ -306,6 +306,7 @@ def montar_rede_apresentacao(
     propostas_ids: list[str],
     *,
     formato: str = "renovacao",
+    excluidos: set[str] | None = None,
 ) -> RedeApresentacaoDocumento | None:
     if not CAMINHO_XLSX_PADRAO.is_file():
         return None
@@ -337,8 +338,13 @@ def montar_rede_apresentacao(
     mtime = os.path.getmtime(CAMINHO_XLSX_PADRAO)
     atualizado = datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%d/%m/%Y")
     aviso = None if estudo_tem_localizacao_rede(rascunho) else AVISO_REDE_SEM_LOCALIZACAO
-    return RedeApresentacaoDocumento(
+    doc = RedeApresentacaoDocumento(
         data_base_rede=atualizado,
         secoes=secoes,
         aviso_sem_localizacao=aviso,
     )
+    if excluidos:
+        from newport_app.services.rede_selecao import aplicar_exclusoes_rede_documento
+
+        doc = aplicar_exclusoes_rede_documento(doc, excluidos)
+    return doc

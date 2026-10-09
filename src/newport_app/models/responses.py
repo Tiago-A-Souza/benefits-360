@@ -256,6 +256,44 @@ class SalvarSelecaoApresentacaoResponse(BaseModel):
     ordem: list[str] = Field(default_factory=list)
 
 
+class LinhaRedeSelecaoItem(BaseModel):
+    linha_id: str
+    prestador: str
+    municipio: str
+    bairro: str
+    zona: str
+    incluido: bool
+    celulas: dict[str, str] = Field(default_factory=dict)
+
+
+class BlocoRedeSelecaoItem(BaseModel):
+    titulo: str
+    linhas: list[LinhaRedeSelecaoItem] = Field(default_factory=list)
+
+
+class SecaoRedeSelecaoItem(BaseModel):
+    rotulo: str
+    sem_localizacao: bool = False
+    blocos: list[BlocoRedeSelecaoItem] = Field(default_factory=list)
+
+
+class RedeSelecaoResponse(BaseModel):
+    aviso_sem_localizacao: str | None = None
+    revisada: bool = False
+    excluidos: list[str] = Field(default_factory=list)
+    secoes: list[SecaoRedeSelecaoItem] = Field(default_factory=list)
+
+
+class SalvarSelecaoRedeRequest(BaseModel):
+    excluidos: list[str] = Field(default_factory=list)
+    revisada: bool = False
+
+
+class SalvarSelecaoRedeResponse(BaseModel):
+    excluidos: list[str] = Field(default_factory=list)
+    revisada: bool = False
+
+
 class ConfirmarComparativoRequest(BaseModel):
     hash_comparativo: str | None = None
     opcao_ids: list[str] = Field(default_factory=list)

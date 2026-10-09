@@ -10,10 +10,11 @@ import {
 } from "./avancoEtapa.js";
 
 describe("avancoEtapa", () => {
-  it("etapas 1, 2 e 4 confirmam no avanço; a 5 não", () => {
+  it("etapas 1, 2 e 4 confirmam no avanço; rede e comparativo não", () => {
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("base")).toBe(true);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("plano")).toBe(true);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("selecionados")).toBe(true);
+    expect(ETAPAS_CONFIRMA_NO_AVANCO.has("rede")).toBe(false);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("comparativo")).toBe(false);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("cotacoes")).toBe(false);
   });

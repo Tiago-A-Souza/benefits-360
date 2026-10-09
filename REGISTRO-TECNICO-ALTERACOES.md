@@ -851,6 +851,34 @@ quebra no cabeçalho); bairro **inline** com corte de sufixo repetido no nome;
 cabeçalho repetido leve (só plano); rótulo de rodapé de bloco **«Cobertos»**.
 Largura alvo: **~844px** (2 planos + prestador) e **1180px** (5 planos + prestador).
 
+### Linha «Cobertos» — dois donos (Python + JS)
+
+A linha **«Cobertos»** da aba Rede tem **dois donos**: o renderizador Python
+(`rede_renderer.py` + `contagem_coberturas_bloco`) **monta** a linha no HTML
+inicial; o JavaScript do sandbox (`recalcBlock` em `rede_sandbox.js`) **recalcula**
+os números quando o corretor marca ou desmarca prestadores, filtra ou confirma
+exclusões.
+
+Foram **três correções** no mesmo lugar; nas três o defeito esteve na **costura**
+entre os dois caminhos, nunca dentro de um só:
+
+1. **Contagem lendo chave diferente da que gravava as células** — valores
+   divergentes entre motor da apresentação e células H/PS/… exibidas.
+2. **Colspan não ajustado** ao remover a coluna **Incl.** no arquivo
+   `_para_cliente` — alinhamento visual quebrado (tag **`rede-layout-estreito-v1`**).
+3. **`recalcBlock` usando o índice das linhas de prestador**, onde há **uma
+   coluna a mais** (Incl.) — primeiro número virava **0** e empurrava o resto
+   (tag **`fix-cont-rede`**).
+
+Quem mexer nessa linha precisa tratar **Python e JS juntos**. O teste que
+protege o conteúdo é o de **paridade**:
+`tests/test_rede_fase_d2_playwright.py::test_15_contagens_cobertos_js_igual_renderer`
+— compara o DOM **depois** do script com o HTML do renderizador. Complemento
+estrutural (colunas/colspan, paridade trabalho × `_para_cliente` estático):
+`tests/test_rede_cont_rede_colspan.py`. Os testes **só estruturais** (número de
+colunas, `colspan`) **passaram nas três vezes com o conteúdo errado**; não
+substituem o teste de paridade de valores.
+
 ### Consentimento do plano atual (etapa 2)
 
 O checkbox «Revisei e confirmo as informações do plano atual» saiu: a

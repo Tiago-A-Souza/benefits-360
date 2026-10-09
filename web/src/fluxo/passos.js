@@ -9,7 +9,8 @@ export const PASSOS_FLUXO = [
     titulo: "Correspondência com os planos atuais",
     somenteMultiplosPlanosAtuais: true,
   },
-  { chave: "comparativo", titulo: "Comparativo" },
+  { chave: "rede", titulo: "Rede credenciada" },
+  { chave: "comparativo", titulo: "Comparativo e exportação" },
 ];
 
 export function exigeCorrespondenciaManual(rascunho) {

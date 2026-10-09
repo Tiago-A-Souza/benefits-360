@@ -1759,6 +1759,7 @@ def render_html_completo(
     rede: RedeApresentacaoDocumento | None = None,
     estudo_id: str | None = None,
     nome_arquivo_html: str | None = None,
+    rede_entrega_cliente: bool = False,
 ) -> str:
     """Documento cliente com abas — CSS puro nas quatro primeiras; rede pode ter sandbox D2."""
     rotulos = _mapa_rotulos_propostas(vm_resumo)
@@ -1804,8 +1805,8 @@ def render_html_completo(
     )
     corpo_rede = ""
     if rede is not None and rede.secoes:
-        inner_rede = render_corpo_rede(rede)
-        if estudo_id:
+        inner_rede = render_corpo_rede(rede, entrega_cliente=rede_entrega_cliente)
+        if estudo_id and not rede_entrega_cliente:
             inner_rede = envolver_rede_sandbox(
                 inner_rede,
                 hash_desbloqueio_estudo(estudo_id),

@@ -14,6 +14,7 @@ import EstudoCabecalho from "./EstudoCabecalho";
 import HistoricoPanel from "./HistoricoPanel";
 import MeusEstudos from "./MeusEstudos";
 import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
+import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
@@ -264,6 +265,14 @@ export default function App() {
                 etapaIndice={passo}
                 totalEtapas={passos.length}
                 onSalvo={recarregarContexto}
+                onRegistrarAvanco={registrarAvancoEtapa}
+              />
+            )}
+            {chavePassoAtual === "rede" && (
+              <RedeSelecaoPanel
+                estudoId={estudoId}
+                etapaIndice={passo}
+                totalEtapas={passos.length}
                 onRegistrarAvanco={registrarAvancoEtapa}
               />
             )}

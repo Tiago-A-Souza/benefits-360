@@ -142,6 +142,20 @@ export async function confirmarComparativo(estudoId, hashComparativo, opcaoIds) 
   return tratarResposta(res, "Não foi possível confirmar o comparativo.");
 }
 
+export async function obterRedeSelecao(estudoId) {
+  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao`);
+  return tratarResposta(res, "Não foi possível carregar a rede credenciada.");
+}
+
+export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
+  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ excluidos, revisada }),
+  });
+  return tratarResposta(res, "Não foi possível salvar a seleção da rede.");
+}
+
 export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
   const res = await fetch(`${API}/estudos/${estudoId}/comparativo/selecao-apresentacao`, {
     method: "PUT",

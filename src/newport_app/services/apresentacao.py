@@ -24,6 +24,7 @@ from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
 from newport_app.presentation.motor_por_proposta import PropostaNaoCalculavelError
 from newport_app.repository.snapshot import SnapshotRepository
 from newport_app.services.comparativo_ui import resolver_propostas_apresentacao_snapshot
+from newport_app.services.rede_selecao import excluidos_rede
 from newport_app.services.snapshot import AprovacaoInvalidaError, SnapshotService
 from newport_app.snapshot.hashing import hash_sha256_objeto
 
@@ -100,7 +101,10 @@ class ApresentacaoService:
             )
             rascunho = RascunhoEstudo.model_validate(snap.payload["rascunho"])
             rede_doc = montar_rede_apresentacao(
-                rascunho, propostas, formato=rascunho.formato
+                rascunho,
+                propostas,
+                formato=rascunho.formato,
+                excluidos=excluidos_rede(rascunho),
             )
             nome = f"apresentacao_{req.modo}_{snapshot_id[:8]}.html"
             html_content = render_html_completo(
@@ -110,6 +114,7 @@ class ApresentacaoService:
                 rede=rede_doc,
                 estudo_id=estudo_id,
                 nome_arquivo_html=nome,
+                rede_entrega_cliente=True,
             )
             digest = hash_sha256_objeto(
                 {

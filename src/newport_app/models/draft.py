@@ -142,6 +142,17 @@ class SelecaoApresentacaoRascunho(BaseModel):
     ordem: list[str] = Field(default_factory=list)
 
 
+class SelecaoRedeRascunho(BaseModel):
+    """Prestadores excluídos da aba Rede (etapa 5 — alternativa ao sandbox HTML).
+
+    Grava **exclusões**, não inclusões: prestador novo na base entra marcado por
+    padrão (principal) até o corretor excluir.
+    """
+
+    excluidos: list[str] = Field(default_factory=list)
+    revisada: bool = False
+
+
 class ConfirmacaoComparativoRascunho(BaseModel):
     """Revisão do comparativo confirmada pelo analista — libera aprovação e exportação."""
 
@@ -281,6 +292,7 @@ class RascunhoEstudo(BaseModel):
     documentos_siscor: list[DocumentoSiscorRascunho] = Field(default_factory=list)
     escolhas: EscolhasEstudo = Field(default_factory=EscolhasEstudo)
     selecao_apresentacao: SelecaoApresentacaoRascunho | None = None
+    selecao_rede: SelecaoRedeRascunho | None = None
     confirmacao_comparativo: ConfirmacaoComparativoRascunho | None = None
     observacoes: ObservacoesRascunho | None = None
     metadados_pptx: MetadadosPptxRascunho | None = None

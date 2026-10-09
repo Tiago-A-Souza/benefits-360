@@ -61,8 +61,11 @@ from newport_app.models.responses import (
     PendenciaItem,
     MatrizEstimativaResponse,
     ResumoPlanoAtualResponse,
+    RedeSelecaoResponse,
     SalvarSelecaoApresentacaoRequest,
     SalvarSelecaoApresentacaoResponse,
+    SalvarSelecaoRedeRequest,
+    SalvarSelecaoRedeResponse,
     SugestaoReajustePmeItem,
     SugestaoReajustePmeResponse,
 )
@@ -117,6 +120,8 @@ from newport_app.services.comparativo_ui import (
     resolver_propostas_apresentacao_snapshot,
     salvar_selecao_apresentacao,
 )
+from newport_app.services.rede_selecao import salvar_selecao_rede
+from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui, todos_ids_linha_rede
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
     CotacaoDescartadaError,
@@ -281,7 +286,12 @@ def create_app(
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174",
+        ],
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -941,6 +951,40 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(exc)) from None
         service.salvar_rascunho(rascunho)
         return resp
+
+    @app.get(
+        "/api/estudos/{estudo_id}/rede-selecao",
+        response_model=RedeSelecaoResponse,
+    )
+    def obter_rede_selecao(estudo_id: str) -> RedeSelecaoResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        return montar_rede_selecao_ui(rascunho)
+
+    @app.put(
+        "/api/estudos/{estudo_id}/rede-selecao",
+        response_model=SalvarSelecaoRedeResponse,
+    )
+    def salvar_rede_selecao_estudo(
+        estudo_id: str,
+        body: SalvarSelecaoRedeRequest,
+    ) -> SalvarSelecaoRedeResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        ids = todos_ids_linha_rede(rascunho)
+        sel = salvar_selecao_rede(
+            rascunho,
+            body.excluidos,
+            revisada=body.revisada,
+            ids_validos=ids,
+        )
+        service.salvar_rascunho(rascunho)
+        return SalvarSelecaoRedeResponse(
+            excluidos=list(sel.excluidos),
+            revisada=sel.revisada,
+        )
 
     @app.get(
         "/api/estudos/{estudo_id}/selecao-planos-grupo",

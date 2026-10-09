@@ -124,9 +124,24 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
   const bloqueios = pendencias.filter((p) => p.tipo === "bloqueio");
   const alertas = pendencias.filter((p) => p.tipo === "alerta");
   const pronto = bloqueios.length === 0;
+  const redeNaoRevisada = !rascunho?.selecao_rede?.revisada;
 
   return (
     <section className="etapa-fluxo cmp-pagina">
+      {redeNaoRevisada && (
+        <div className="notice notice--amber" role="status">
+          <div className="notice-icon" aria-hidden="true">
+            !
+          </div>
+          <div>
+            <b>Rede credenciada não revisada</b>
+            <p>
+              Você ainda não alterou a seleção na etapa Rede. Vale a lista padrão
+              (principais da base). Revise na etapa anterior se quiser ajustar.
+            </p>
+          </div>
+        </div>
+      )}
       {!resultado?.calculo_realizado && (
         <>
           <div className="page-head">

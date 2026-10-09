@@ -191,6 +191,15 @@ export function statusEtapaPorChave(chave, ctx) {
       }
       return { concluida: true, pendencia: null };
     }
+    case "rede": {
+      if (!cenariosSincronizados(rascunho)) {
+        return {
+          concluida: false,
+          pendencia: "Confirme as propostas antes de revisar a rede",
+        };
+      }
+      return { concluida: true, pendencia: null };
+    }
     case "comparativo": {
       if (!cenariosSincronizados(rascunho)) {
         return {
