@@ -2,7 +2,7 @@
 
 import { formatarDiffCentavos } from "../money";
 
-export const ETAPAS_CONFIRMA_NO_AVANCO = new Set(["base", "plano", "selecionados", "rede"]);
+export const ETAPAS_CONFIRMA_NO_AVANCO = new Set(["base", "plano", "selecionados"]);
 
 export function proximaEtapaClicavel(chave, passoAtual, ctx, proximaDisponivel) {
   if (ETAPAS_CONFIRMA_NO_AVANCO.has(chave)) return true;

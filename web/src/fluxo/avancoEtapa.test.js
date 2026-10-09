@@ -14,7 +14,7 @@ describe("avancoEtapa", () => {
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("base")).toBe(true);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("plano")).toBe(true);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("selecionados")).toBe(true);
-    expect(ETAPAS_CONFIRMA_NO_AVANCO.has("rede")).toBe(true);
+    expect(ETAPAS_CONFIRMA_NO_AVANCO.has("rede")).toBe(false);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("comparativo")).toBe(false);
     expect(ETAPAS_CONFIRMA_NO_AVANCO.has("cotacoes")).toBe(false);
   });
@@ -24,7 +24,6 @@ describe("avancoEtapa", () => {
     expect(proximaEtapaClicavel("base", 1, {}, never)).toBe(true);
     expect(proximaEtapaClicavel("plano", 2, {}, never)).toBe(true);
     expect(proximaEtapaClicavel("selecionados", 4, {}, never)).toBe(true);
-    expect(proximaEtapaClicavel("rede", 5, {}, never)).toBe(true);
     expect(proximaEtapaClicavel("cotacoes", 3, {}, never)).toBe(false);
     expect(proximaEtapaClicavel("comparativo", 5, {}, never)).toBe(false);
   });

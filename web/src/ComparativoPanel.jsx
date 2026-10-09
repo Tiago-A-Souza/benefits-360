@@ -39,7 +39,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
 
   useEffect(() => {
     recarregarContextoLocal();
-  }, [estudoId, etapaIndice]);
+  }, [estudoId]);
 
   const rotuloEtapa = useMemo(
     () => tituloPasso(rascunho, "comparativo"),
@@ -136,8 +136,8 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
           <div>
             <b>Rede credenciada não revisada</b>
             <p>
-              Aviso informativo — não bloqueia cálculo nem exportação. Vale a lista padrão
-              (principais da base) até você confirmar a seleção na etapa Rede.
+              Você ainda não alterou a seleção na etapa Rede. Vale a lista padrão
+              (principais da base). Revise na etapa anterior se quiser ajustar.
             </p>
           </div>
         </div>
