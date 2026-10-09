@@ -5,7 +5,7 @@ Duas instâncias **ao mesmo tempo**: código da `master` num **worktree** separa
 | Instância | UI | API | Código | Banco |
 |-----------|-----|-----|--------|-------|
 | **Master** | 5173 | 8002 | worktree `C:\wt\np-master` | `C:\np\.data\newport_app.db` (original) |
-| **Alternativa** | 5174 | 8003 | clone `C:\np` (branch `rede-etapa5-alternativa`) | `C:\np\.data\demo-etapa5-alt\newport_app.db` (cópia) |
+| **Alternativa** | 5174 | 8003 | clone `C:\np` (branch `rede-etapa5-alternativa`) | `C:\np\.data\demo-etapa5-alt\newport_app.db` (cópia via VACUUM INTO) |
 
 Modo demo: `NEWPORT_MODO=demo`. O app usa **`newport_app.db`** em `NEWPORT_DATA_DIR` (padrão: `.data/` do repositório em uso).
 
@@ -22,10 +22,34 @@ git worktree add C:\wt\np-master master
 
 Cópia do banco da alternativa (evita gravar `selecao_rede` no mesmo arquivo da master):
 
+**Não use `Copy-Item` no `.db` bruto.** Cópia de arquivo preserva fragmentação e estatísticas desatualizadas; na prática a listagem `GET /api/estudos` na 8003 ficou ~2× mais lenta que a master com o mesmo código. Use **`VACUUM INTO`** (reconstrói o arquivo e índices) e depois **`ANALYZE`**.
+
 ```powershell
+# Derrube a API 8003 antes, se estiver usando demo-etapa5-alt.
 New-Item -ItemType Directory -Force -Path C:\np\.data\demo-etapa5-alt | Out-Null
-Copy-Item C:\np\.data\newport_app.db C:\np\.data\demo-etapa5-alt\newport_app.db -Force
+Remove-Item -Force -ErrorAction SilentlyContinue C:\np\.data\demo-etapa5-alt\newport_app.db*
+
+C:\np\.venv\Scripts\python.exe -c @"
+import sqlite3
+src = r'C:\np\.data\newport_app.db'
+dst = r'C:\np\.data\demo-etapa5-alt\newport_app.db'
+with sqlite3.connect(src) as c:
+    c.execute('VACUUM INTO ?', (dst,))
+with sqlite3.connect(dst) as c:
+    c.execute('ANALYZE')
+    c.commit()
+print('demo-etapa5-alt: VACUUM INTO + ANALYZE ok')
+"@
 ```
+
+Equivalente com `sqlite3` no PATH:
+
+```powershell
+sqlite3 C:\np\.data\newport_app.db "VACUUM INTO 'C:\np\.data\demo-etapa5-alt\newport_app.db'"
+sqlite3 C:\np\.data\demo-etapa5-alt\newport_app.db "ANALYZE;"
+```
+
+Atalho (mesma lógica): `C:\np\.venv\Scripts\python.exe C:\np\scripts\recriar_demo_etapa5_alt_db.py` — derrube a 8003 antes.
 
 Junção do `node_modules` no worktree (Vite da master roda em `C:\wt\np-master\web`):
 
