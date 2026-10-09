@@ -22,6 +22,7 @@ from newport_app.models.presentation import (
 from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.html_renderer import render_html_completo
 from newport_app.presentation.rede_apresentacao import (
+    _id_linha_rede,
     contagem_coberturas_bloco,
     montar_rede_apresentacao,
 )
@@ -93,6 +94,79 @@ def client_etapa5(repo_etapa5: SQLiteStudyRepository) -> TestClient:
 def _gravar_rascunho(repo: SQLiteStudyRepository, rascunho: RascunhoEstudo) -> None:
     rascunho = rascunho.model_copy(update={"id": "est-rede-etapa5"})
     repo.salvar_rascunho(rascunho)
+
+
+def test_00_linha_id_unica_por_subgrupo_e_local():
+    barra_sg1 = _id_linha_rede(
+        "HOSP SAMARITANO",
+        "RJ.RIO DE JANEIRO",
+        "BARRA DA TIJUCA",
+        subgrupo_id="sg-a",
+    )
+    botafogo_sg1 = _id_linha_rede(
+        "HOSP SAMARITANO",
+        "RJ.RIO DE JANEIRO",
+        "BOTAFOGO",
+        subgrupo_id="sg-a",
+    )
+    barra_sg2 = _id_linha_rede(
+        "HOSP SAMARITANO",
+        "RJ.RIO DE JANEIRO",
+        "BARRA DA TIJUCA",
+        subgrupo_id="sg-b",
+    )
+    assert barra_sg1 != botafogo_sg1
+    assert barra_sg1 != barra_sg2
+
+
+def test_00c_excluir_samaritano_barra_mantem_botafogo():
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    assert doc
+    sam = [
+        (ln.linha_id, ln.bairro)
+        for sec in doc.secoes
+        for bl in sec.blocos
+        for ln in bl.linhas
+        if "SAMARITANO" in ln.prestador.upper()
+    ]
+    assert len(sam) >= 2
+    barra_id = next(lid for lid, b in sam if "BARRA" in (b or "").upper())
+    botafogo_id = next(lid for lid, b in sam if "BOTAFOGO" in (b or "").upper())
+    assert barra_id != botafogo_id
+    salvar_selecao_rede(rascunho, [barra_id], revisada=True)
+    doc2 = montar_rede_apresentacao(
+        rascunho, [cen_id], excluidos=excluidos_rede(rascunho)
+    )
+    restantes = {
+        ln.linha_id
+        for sec in doc2.secoes
+        for bl in sec.blocos
+        for ln in bl.linhas
+        if "SAMARITANO" in ln.prestador.upper()
+    }
+    assert botafogo_id in restantes
+    assert barra_id not in restantes
+
+
+def test_00b_dois_grupos_mesmo_prestador_ids_distintos_na_ui():
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    assert doc and len(doc.secoes) >= 2
+    ids = [
+        ln.linha_id
+        for sec in doc.secoes
+        for bl in sec.blocos
+        for ln in bl.linhas
+        if "SAMARITANO" in ln.prestador.upper()
+        and ln.chave_municipio == "RJ.RIO DE JANEIRO"
+    ]
+    assert len(ids) >= 2
+    assert len(set(ids)) == len(ids)
 
 
 def test_01_passos_incluem_rede_antes_do_comparativo():
