@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { obterRedeSelecao, salvarRedeSelecao } from "../api";
 import { tituloPasso } from "../fluxo/passos";
 import { filtrarLinhasRede } from "./redeSelecaoFiltros.js";
@@ -29,6 +29,11 @@ export default function RedeSelecaoPanel({
   const [filtroNome, setFiltroNome] = useState("");
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(true);
+
+  const excluidosRef = useRef(excluidos);
+  const revisadaRef = useRef(revisada);
+  excluidosRef.current = excluidos;
+  revisadaRef.current = revisada;
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
@@ -78,11 +83,13 @@ export default function RedeSelecaoPanel({
   );
 
   const toggle = (linhaId) => {
+    revisadaRef.current = true;
     setRevisada(true);
     setExcluidos((prev) => {
       const next = new Set(prev);
       if (next.has(linhaId)) next.delete(linhaId);
       else next.add(linhaId);
+      excluidosRef.current = next;
       return next;
     });
   };
@@ -90,10 +97,14 @@ export default function RedeSelecaoPanel({
   useEffect(() => {
     if (!onRegistrarAvanco) return undefined;
     return onRegistrarAvanco(async () => {
-      await salvarRedeSelecao(estudoId, [...excluidos], revisada);
+      await salvarRedeSelecao(
+        estudoId,
+        [...excluidosRef.current],
+        revisadaRef.current
+      );
       return true;
     });
-  }, [onRegistrarAvanco, estudoId, excluidos, revisada]);
+  }, [onRegistrarAvanco, estudoId]);
 
   const rotulo = tituloPasso(null, "rede");
 

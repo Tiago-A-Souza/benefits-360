@@ -13,7 +13,13 @@ import GovernancaComparativo from "./apresentacao/GovernancaComparativo";
 import { comparativoConfirmado, confirmacaoEmVigor, confirmacaoPrecisaRefazer } from "./fluxo/stepStatus";
 import { tituloPasso } from "./fluxo/passos";
 
-export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapas = 5, onAtualizado }) {
+export default function ComparativoPanel({
+  estudoId,
+  etapaIndice = 5,
+  totalEtapas = 5,
+  rascunhoFluxo = null,
+  onAtualizado,
+}) {
   const [pendencias, setPendencias] = useState([]);
   const [rascunho, setRascunho] = useState(null);
   const [resultado, setResultado] = useState(null);
@@ -124,7 +130,7 @@ export default function ComparativoPanel({ estudoId, etapaIndice = 5, totalEtapa
   const bloqueios = pendencias.filter((p) => p.tipo === "bloqueio");
   const alertas = pendencias.filter((p) => p.tipo === "alerta");
   const pronto = bloqueios.length === 0;
-  const redeNaoRevisada = !rascunho?.selecao_rede?.revisada;
+  const redeNaoRevisada = !(rascunhoFluxo ?? rascunho)?.selecao_rede?.revisada;
 
   return (
     <section className="etapa-fluxo cmp-pagina">

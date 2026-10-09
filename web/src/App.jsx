@@ -281,6 +281,7 @@ export default function App() {
                 estudoId={estudoId}
                 etapaIndice={passo}
                 totalEtapas={passos.length}
+                rascunhoFluxo={ctxFluxo.rascunho}
                 onAtualizado={recarregarContexto}
               />
             )}
