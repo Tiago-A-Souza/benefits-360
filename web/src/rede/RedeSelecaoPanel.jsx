@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { obterRedeSelecao, salvarRedeSelecao } from "../api";
 import { tituloPasso } from "../fluxo/passos";
+import { filtrarLinhasRede } from "./redeSelecaoFiltros.js";
 
 function linhasFlat(secoes) {
   const out = [];
@@ -66,15 +67,15 @@ export default function RedeSelecaoPanel({
     return [...s].sort();
   }, [linhas]);
 
-  const linhasVisiveis = useMemo(() => {
-    const nome = filtroNome.trim().toLowerCase();
-    return linhas.filter((ln) => {
-      if (filtroZona && ln.zona !== filtroZona) return false;
-      if (filtroMun && ln.municipio !== filtroMun) return false;
-      if (nome && !(ln.prestador || "").toLowerCase().includes(nome)) return false;
-      return true;
-    });
-  }, [linhas, filtroZona, filtroMun, filtroNome]);
+  const linhasVisiveis = useMemo(
+    () =>
+      filtrarLinhasRede(linhas, {
+        zona: filtroZona,
+        municipio: filtroMun,
+        nome: filtroNome,
+      }),
+    [linhas, filtroZona, filtroMun, filtroNome]
+  );
 
   const toggle = (linhaId) => {
     setRevisada(true);
