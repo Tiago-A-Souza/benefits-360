@@ -5,12 +5,28 @@ from __future__ import annotations
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import (
     BlocoRedeSelecaoItem,
+    ColunaRedeSelecaoItem,
     LinhaRedeSelecaoItem,
     RedeSelecaoResponse,
     SecaoRedeSelecaoItem,
 )
 from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
+from newport_app.presentation.rede_codigos import sigla_zona_capital
+from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
+from newport_app.presentation.rede_prestador_rotulo import nome_prestador_para_rotulo
 from newport_app.services.rede_selecao import excluidos_rede
+
+_CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
+_CHAVE_ATUAL = "rede-atual"
+
+
+def _prestador_nome_ui(prestador: str, bairro: str, chave_municipio: str, zona: str) -> str:
+    nome = nome_prestador_para_rotulo(prestador, bairro or "")
+    if chave_municipio in _CAPITAIS_COM_ZONA:
+        sigla = sigla_zona_capital(zona or "")
+        if sigla:
+            nome = f"{sigla} {nome}".strip()
+    return nome
 
 
 def _ids_cenarios_rede(rascunho: RascunhoEstudo) -> list[str]:
@@ -31,6 +47,15 @@ def montar_rede_selecao_ui(rascunho: RascunhoEstudo) -> RedeSelecaoResponse:
         )
     secoes: list[SecaoRedeSelecaoItem] = []
     for sec in doc.secoes:
+        colunas = [
+            ColunaRedeSelecaoItem(
+                chave=c.chave,
+                operadora=c.operadora,
+                plano_nome=nome_plano_documento(c.plano_nome),
+                contrato_atual=c.chave == _CHAVE_ATUAL,
+            )
+            for c in sec.colunas
+        ]
         blocos: list[BlocoRedeSelecaoItem] = []
         for bloco in sec.blocos:
             linhas = [
@@ -40,6 +65,9 @@ def montar_rede_selecao_ui(rascunho: RascunhoEstudo) -> RedeSelecaoResponse:
                     municipio=ln.chave_municipio,
                     bairro=ln.bairro or "",
                     zona=ln.zona or "",
+                    prestador_nome=_prestador_nome_ui(
+                        ln.prestador, ln.bairro or "", ln.chave_municipio, ln.zona or ""
+                    ),
                     incluido=ln.linha_id not in excl,
                     celulas=dict(ln.celulas),
                 )
@@ -50,6 +78,7 @@ def montar_rede_selecao_ui(rascunho: RascunhoEstudo) -> RedeSelecaoResponse:
             SecaoRedeSelecaoItem(
                 rotulo=sec.rotulo,
                 sem_localizacao=sec.sem_localizacao_beneficiarios,
+                colunas=colunas,
                 blocos=blocos,
             )
         )

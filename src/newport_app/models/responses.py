@@ -256,12 +256,20 @@ class SalvarSelecaoApresentacaoResponse(BaseModel):
     ordem: list[str] = Field(default_factory=list)
 
 
+class ColunaRedeSelecaoItem(BaseModel):
+    chave: str
+    operadora: str
+    plano_nome: str
+    contrato_atual: bool = False
+
+
 class LinhaRedeSelecaoItem(BaseModel):
     linha_id: str
     prestador: str
     municipio: str
     bairro: str
     zona: str
+    prestador_nome: str = ""
     incluido: bool
     celulas: dict[str, str] = Field(default_factory=dict)
 
@@ -274,6 +282,7 @@ class BlocoRedeSelecaoItem(BaseModel):
 class SecaoRedeSelecaoItem(BaseModel):
     rotulo: str
     sem_localizacao: bool = False
+    colunas: list[ColunaRedeSelecaoItem] = Field(default_factory=list)
     blocos: list[BlocoRedeSelecaoItem] = Field(default_factory=list)
 
 

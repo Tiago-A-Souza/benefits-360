@@ -228,6 +228,39 @@ def test_05_selecao_padrao_sem_exclusao_igual_rede_completa(tmp_path: Path):
     assert n1 == n2
 
 
+def test_06b_ui_api_colunas_por_secao_e_cobertura():
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui
+
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    ui = montar_rede_selecao_ui(rascunho)
+    assert ui.secoes
+    assert len(ui.secoes) >= 2
+    sets_col = [frozenset(c.chave for c in sec.colunas) for sec in ui.secoes]
+    assert sets_col[0] and sets_col[1]
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    assert [tuple(c.chave for c in s.colunas) for s in doc.secoes] == [
+        tuple(c.chave for c in s.colunas) for s in ui.secoes
+    ]
+    achou_codigo = False
+    for sec in ui.secoes:
+        assert sec.colunas, "cada seção deve expor colunas de plano"
+        for bl in sec.blocos:
+            for ln in bl.linhas:
+                assert ln.prestador_nome
+                for v in ln.celulas.values():
+                    if v and v.strip() not in ("", "—"):
+                        achou_codigo = True
+    assert achou_codigo
+
+
+def test_06c_css_colunas_plano_largura_fixa():
+    css = (ROOT / "web" / "src" / "styles.css").read_text(encoding="utf-8")
+    assert ".rede-selecao-tabela.tabela-rede .rede-col-plano" in css
+    assert "112px" in css
+
+
 def test_07_persistencia_api_sair_e_voltar(
     client_etapa5: TestClient, repo_etapa5: SQLiteStudyRepository
 ):

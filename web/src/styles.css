@@ -7244,3 +7244,82 @@ a.btn-link {
   background: #eef2f7;
   color: var(--muted);
 }
+
+/* Etapa 5 — tabela de rede alinhada ao documento (colunas de plano fixas) */
+.rede-selecao-tabela.tabela-rede {
+  font-size: 10px;
+}
+.rede-selecao-tabela.tabela-rede th,
+.rede-selecao-tabela.tabela-rede td {
+  padding: 6px 7px;
+  vertical-align: middle;
+}
+.rede-selecao-tabela.tabela-rede .op {
+  display: block;
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.rede-selecao-tabela.tabela-rede .pl {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+  line-height: 1.15;
+}
+.rede-selecao-tabela.tabela-rede thead th {
+  background: var(--grafite);
+  color: #fff;
+  vertical-align: bottom;
+}
+.rede-selecao-tabela.tabela-rede .rede-col-plano {
+  width: 112px;
+  max-width: 112px;
+  min-width: 112px;
+  text-align: center;
+}
+.rede-selecao-tabela.tabela-rede .rede-col-prestador {
+  text-align: left;
+  min-width: 12rem;
+  max-width: 22rem;
+}
+.rede-selecao-tabela.tabela-rede td.nm {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.rede-selecao-tabela.tabela-rede .bairro-rede {
+  display: inline;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--grafite-3);
+  margin-left: 0.35rem;
+}
+.rede-selecao-tabela.tabela-rede td.rede-col-plano.on {
+  background: var(--ouro-cl);
+  color: var(--ouro-esc);
+  font-weight: 700;
+  font-size: 10px;
+}
+.rede-selecao-tabela.tabela-rede td.rede-col-plano.off {
+  color: #cfcfc9;
+  font-size: 10px;
+}
+.rede-selecao-tabela .rede-col-incl {
+  width: 3rem;
+  text-align: center;
+}
+.rede-bloco-municipio {
+  margin-bottom: 1.25rem;
+}
+.rede-bloco-municipio:last-child {
+  margin-bottom: 0;
+}
+.rede-bloco-titulo {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  color: var(--grafite);
+}

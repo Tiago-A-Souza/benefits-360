@@ -3,17 +3,13 @@ import { obterRedeSelecao, salvarRedeSelecao } from "../api";
 import { tituloPasso } from "../fluxo/passos";
 import { filtrarLinhasRede } from "./redeSelecaoFiltros.js";
 
-function linhasFlat(secoes) {
+function todasLinhas(secoes) {
   const out = [];
   for (const sec of secoes || []) {
     for (const bloco of sec.blocos || []) {
       for (const ln of bloco.linhas || []) {
         out.push({
-          linha_id: ln.linha_id,
-          prestador: ln.prestador || "",
-          municipio: ln.municipio || "",
-          bairro: ln.bairro || "",
-          zona: ln.zona || "",
+          ...ln,
           secao: sec.rotulo,
           bloco: bloco.titulo,
         });
@@ -23,16 +19,14 @@ function linhasFlat(secoes) {
   return out;
 }
 
-function rotuloMunicipio(chave) {
-  if (!chave) return "—";
-  const ponto = chave.indexOf(".");
-  if (ponto >= 0 && ponto < chave.length - 1) return chave.slice(ponto + 1).trim();
-  return chave;
+function celulaCobertura(val) {
+  const t = (val || "").trim();
+  return t && t !== "—" ? t : "";
 }
 
-function rotuloZona(z) {
-  if (!z) return "—";
-  return z;
+function rotuloPlanoColuna(col) {
+  if (col.contrato_atual) return { op: "Contrato atual", pl: col.plano_nome };
+  return { op: col.operadora, pl: col.plano_nome };
 }
 
 export default function RedeSelecaoPanel({
@@ -74,14 +68,24 @@ export default function RedeSelecaoPanel({
     recarregar();
   }, [recarregar]);
 
-  const linhas = useMemo(() => linhasFlat(dados?.secoes), [dados]);
+  const linhas = useMemo(() => todasLinhas(dados?.secoes), [dados]);
+
+  const filtros = useMemo(
+    () => ({ zona: filtroZona, municipio: filtroMun, nome: filtroNome }),
+    [filtroZona, filtroMun, filtroNome]
+  );
+
+  const idsVisiveis = useMemo(() => {
+    const vis = filtrarLinhasRede(linhas, filtros);
+    return new Set(vis.map((ln) => ln.linha_id));
+  }, [linhas, filtros]);
 
   const zonas = useMemo(() => {
     const s = new Set();
     linhas.forEach((ln) => {
       if (ln.zona) s.add(ln.zona);
     });
-    return [...s].sort((a, b) => rotuloZona(a).localeCompare(rotuloZona(b), "pt-BR"));
+    return [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [linhas]);
 
   const municipios = useMemo(() => {
@@ -89,20 +93,21 @@ export default function RedeSelecaoPanel({
     linhas.forEach((ln) => {
       if (ln.municipio) s.add(ln.municipio);
     });
-    return [...s].sort((a, b) =>
-      rotuloMunicipio(a).localeCompare(rotuloMunicipio(b), "pt-BR")
-    );
+    return [...s].sort((a, b) => {
+      const la = a.includes(".") ? a.slice(a.indexOf(".") + 1) : a;
+      const lb = b.includes(".") ? b.slice(b.indexOf(".") + 1) : b;
+      return la.localeCompare(lb, "pt-BR");
+    });
   }, [linhas]);
 
-  const linhasVisiveis = useMemo(
-    () =>
-      filtrarLinhasRede(linhas, {
-        zona: filtroZona,
-        municipio: filtroMun,
-        nome: filtroNome,
-      }),
-    [linhas, filtroZona, filtroMun, filtroNome]
-  );
+  const rotuloMunicipio = (chave) => {
+    if (!chave) return "—";
+    const ponto = chave.indexOf(".");
+    if (ponto >= 0 && ponto < chave.length - 1) return chave.slice(ponto + 1).trim();
+    return chave;
+  };
+
+  const linhasVisiveisCount = idsVisiveis.size;
 
   const filtrosAtivos =
     (filtroZona ? 1 : 0) + (filtroMun ? 1 : 0) + (filtroNome.trim() ? 1 : 0);
@@ -207,7 +212,7 @@ export default function RedeSelecaoPanel({
               <div>
                 <h2>Filtros</h2>
                 <p>
-                  {linhasVisiveis.length} de {linhas.length} prestador(es) visível(is)
+                  {linhasVisiveisCount} de {linhas.length} prestador(es) visível(is)
                   {filtrosAtivos > 0 ? ` · ${filtrosAtivos} filtro(s) ativo(s)` : ""}
                 </p>
               </div>
@@ -231,7 +236,7 @@ export default function RedeSelecaoPanel({
                     <option value="">Todas</option>
                     {zonas.map((z) => (
                       <option key={z} value={z}>
-                        {rotuloZona(z)}
+                        {z}
                       </option>
                     ))}
                   </select>
@@ -270,62 +275,104 @@ export default function RedeSelecaoPanel({
             </div>
           </section>
 
-          <div className="panel">
-            <div className="panel-head">
-              <div>
-                <h2>Prestadores</h2>
-                <p>
-                  Desmarque os que não devem aparecer no HTML entregue ao cliente.
-                </p>
+          {(dados?.secoes || []).map((sec) => {
+            const colunas = sec.colunas || [];
+            let secaoTemLinha = false;
+            const blocosRender = (sec.blocos || []).map((bloco) => {
+              const linhasBloco = (bloco.linhas || []).filter((ln) =>
+                idsVisiveis.has(ln.linha_id)
+              );
+              if (linhasBloco.length) secaoTemLinha = true;
+              return { bloco, linhasBloco };
+            }).filter((x) => x.linhasBloco.length > 0);
+
+            if (!secaoTemLinha) return null;
+
+            return (
+              <div className="panel rede-secao-panel" key={sec.rotulo}>
+                <div className="panel-head">
+                  <div>
+                    <h2>{sec.rotulo}</h2>
+                    <p>Cobertura por plano — mesma base da aba Rede do documento.</p>
+                  </div>
+                </div>
+                <div className="panel-body">
+                  {blocosRender.map(({ bloco, linhasBloco }) => (
+                    <div className="rede-bloco-municipio" key={bloco.titulo}>
+                      <div className="rede-bloco-titulo">{bloco.titulo}</div>
+                      <div className="tabela-scroll">
+                        <table className="conferencia rede-selecao-tabela tabela-rede">
+                          <thead>
+                            <tr>
+                              <th className="rede-col-incl" scope="col">
+                                Incl.
+                              </th>
+                              <th className="rede-col-prestador" scope="col">
+                                Prestador
+                              </th>
+                              {colunas.map((col) => {
+                                const { op, pl } = rotuloPlanoColuna(col);
+                                return (
+                                  <th
+                                    key={col.chave}
+                                    className={
+                                      col.contrato_atual
+                                        ? "rede-col-plano atual"
+                                        : "rede-col-plano"
+                                    }
+                                    scope="col"
+                                  >
+                                    <span className="op">{op}</span>
+                                    <span className="pl">{pl}</span>
+                                  </th>
+                                );
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {linhasBloco.map((ln) => {
+                              const incl = !excluidos.has(ln.linha_id);
+                              return (
+                                <tr key={ln.linha_id}>
+                                  <td className="rede-col-incl">
+                                    <input
+                                      type="checkbox"
+                                      checked={incl}
+                                      onChange={() => toggle(ln.linha_id)}
+                                      aria-label={`Incluir ${ln.prestador}`}
+                                    />
+                                  </td>
+                                  <td className="nm rede-col-prestador">
+                                    <span className="cell-main">{ln.prestador_nome || ln.prestador}</span>
+                                    {ln.bairro ? (
+                                      <span className="bairro-rede">{ln.bairro}</span>
+                                    ) : null}
+                                  </td>
+                                  {colunas.map((col) => {
+                                    const cod = celulaCobertura(ln.celulas?.[col.chave]);
+                                    const cls = cod ? "on" : "off";
+                                    return (
+                                      <td key={col.chave} className={`rede-col-plano ${cls}`}>
+                                        {cod || ""}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="panel-body">
-              <div className="tabela-scroll">
-                <table className="conferencia rede-selecao-tabela">
-                  <thead>
-                    <tr>
-                      <th className="rede-col-incl">Incl.</th>
-                      <th>Prestador</th>
-                      <th>Município</th>
-                      <th>Bairro</th>
-                      <th>Zona</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {linhasVisiveis.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="muted">
-                          Nenhum prestador corresponde aos filtros — limpe ou ajuste a busca.
-                        </td>
-                      </tr>
-                    ) : (
-                      linhasVisiveis.map((ln) => {
-                        const incl = !excluidos.has(ln.linha_id);
-                        return (
-                          <tr key={ln.linha_id}>
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={incl}
-                                onChange={() => toggle(ln.linha_id)}
-                                aria-label={`Incluir ${ln.prestador}`}
-                              />
-                            </td>
-                            <td>
-                              <span className="cell-main">{ln.prestador}</span>
-                            </td>
-                            <td>{rotuloMunicipio(ln.municipio)}</td>
-                            <td>{ln.bairro || "—"}</td>
-                            <td>{rotuloZona(ln.zona)}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+            );
+          })}
+
+          {linhasVisiveisCount === 0 && (
+            <p className="muted">Nenhum prestador corresponde aos filtros — limpe ou ajuste a busca.</p>
+          )}
         </>
       )}
 
