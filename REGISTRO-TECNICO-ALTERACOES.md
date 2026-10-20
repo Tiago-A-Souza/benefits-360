@@ -851,6 +851,21 @@ quebra no cabeçalho); bairro **inline** com corte de sufixo repetido no nome;
 cabeçalho repetido leve (só plano); rótulo de rodapé de bloco **«Cobertos»**.
 Largura alvo: **~844px** (2 planos + prestador) e **1180px** (5 planos + prestador).
 
+**Etapa 5 do sistema (tela Rede credenciada, entrega 2):** mesma largura de coluna
+de plano (**112px**, paridade com o documento — **não** comprimir). Área útil da
+tabela fica **abaixo** dos 1180px da folha HTML porque o wizard tem menu lateral
+(**270px**) e o conteúdo do fluxo limita-se a **1120px** (`fluxo-conteudo`).
+
+Medição (Playwright, estudo «teste redes 2», colunas fixas):
+
+| Colunas de plano (atual + propostas) | ~1366×900 | ~1920×900 |
+|---|---|---|
+| **Até 3** | cabe sem rolagem horizontal | cabe |
+| **4 ou mais** | rola **dentro** de `.tabela-scroll` | rola |
+
+Filtros e menu lateral permanecem fixos; só o bloco da tabela desliza. Caso típico
+Anistia (atual + 2 propostas por seção): **3 colunas de plano**, sem rolagem.
+
 ### Linha «Cobertos» — dois donos (Python + JS)
 
 A linha **«Cobertos»** da aba Rede tem **dois donos**: o renderizador Python
@@ -1532,8 +1547,17 @@ para não disputar cache com a 5173.
 
 Marca de retorno desta entrega: tag **`selecao-rede-no-sistema`**.
 
-Pendente (entregas 2–4): colunas de planos na tela da etapa 5; remoção do sandbox
-do HTML; Simular Rede na home.
+**Entrega 2 de 4** (merge `etapa5-colunas-planos` → `master`): na etapa **Rede
+credenciada**, tabelas por seção (subgrupo vigente) e bloco (município) com
+**colunas de plano + códigos H/HD/M/PS** como na aba Rede do documento; colunas
+**isoladas por grupo** (proposta atribuída só ao ONE não aparece na seção S750).
+API `GET …/rede-selecao` expõe `colunas` e `celulas`; export HTML e sandbox **sem
+alteração** nesta entrega.
+
+Marca de retorno desta entrega: tag **`etapa5-colunas-planos-v1`**. Branch
+`etapa5-colunas-planos` preservada.
+
+Pendente (entregas 3–4): remoção do sandbox do HTML; Simular Rede na home.
 
 ---
 
