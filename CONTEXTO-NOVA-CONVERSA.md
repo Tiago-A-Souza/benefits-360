@@ -96,26 +96,23 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**20/10/2026 — `master` em `4a87368`, tag `selecao-rede-no-sistema`.** Merge da
-`rede-etapa5-alternativa`: **seis etapas** (Rede credenciada na 5ª, comparativo e
-exportação na 6ª); seleção grava **exclusões** no rascunho; HTML completo **sem**
-sandbox na aba Rede (`rede_entrega_cliente=True`). Código do sandbox D2 **ainda no
-repo**, morto no export — remoção em entrega dedicada.
+**20/10/2026 — `master` em `08d7e2f`, tag `etapa5-colunas-planos-v1`.** Entrega 2:
+etapa **Rede credenciada** com **colunas de plano + códigos H/HD/M/PS** por seção
+(subgrupo), paridade 112px com o documento; isolamento por grupo (testes `06d`/`06e`).
+Entrega 1 (`selecao-rede-no-sistema`): exclusões no rascunho; export **sem** sandbox na
+Rede. Sandbox D2 ainda no repo — remoção em entrega dedicada.
 
-pytest: **1463 passed, 16 skipped** (~7 min 35 s). Playwright etapa 5 + rede D2 legado:
-**20 passed**. vitest: **136 passed**. `npm run build`: ok. Snapshots demo:
-**107/107** hashes iguais (`HASH_DIVERGENTE=0`). `SNAPSHOT_VERSAO`: **2.8.0**
-(campo `selecao_rede` no rascunho, como `selecao_apresentacao`). Rascunhos demo:
-**109** carregam, **80** compilam. Harness: **16/16** mutações detectadas.
+pytest: **1467 passed, 16 skipped** (~7 min 10 s). Playwright rede D2: **9 passed**.
+vitest: **136 passed**. `npm run build`: ok. Snapshots demo: **107/107** hashes iguais
+(`HASH_DIVERGENTE=0`). `SNAPSHOT_VERSAO`: **2.8.0**. Rascunhos demo: **109** carregam,
+**80** compilam. Harness: **16/16** mutações detectadas.
 
 **Instância única:** Vite **5173** + API **8002**, `NEWPORT_DATA_DIR=C:\np\.data`.
-Encerrar 5174/8003 e worktree de demo lado a lado quando não for comparar branches.
 
-**Próximas entregas (2–4):** colunas de planos na etapa 5; remover sandbox do HTML;
-Simular Rede na home.
+**Próximas entregas (3–4):** remover sandbox do HTML; Simular Rede na home.
 
-Tags recentes: **`selecao-rede-no-sistema`**, `sandbox-rede`, `rede-fase-d1`.
-Branch `rede-etapa5-alternativa` preservada (não apagar).
+Tags recentes: **`etapa5-colunas-planos-v1`**, `selecao-rede-no-sistema`, `sandbox-rede`.
+Branches `etapa5-colunas-planos` e `rede-etapa5-alternativa` preservadas (não apagar).
 
 **Ainda aberto (§12):** validade da cotação em cenário misto; confirmações
 Wesley (regras comerciais e **recorte geográfico da rede** — prática Newport

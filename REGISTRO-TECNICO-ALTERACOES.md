@@ -1557,6 +1557,20 @@ alteração** nesta entrega.
 Marca de retorno desta entrega: tag **`etapa5-colunas-planos-v1`**. Branch
 `etapa5-colunas-planos` preservada.
 
+### Validação pós-merge entrega 2 (`master` @ `08d7e2f`, tag `etapa5-colunas-planos-v1`)
+
+| Checagem | Resultado |
+|---|---|
+| pytest | **1467 passed**, 16 skipped, ~7 min 10 s |
+| Playwright (rede D2) | **9/9** |
+| vitest | **136 passed** (15 arquivos) |
+| `npm run build` | ok |
+| Snapshots demo | **107/107** hashes iguais (`HASH_DIVERGENTE=0`) |
+| `SNAPSHOT_VERSAO` | **2.8.0** (inalterada) |
+| Rascunhos demo | **109** carregam, **0** falha de carga, **80** compilam |
+| Gabaritos financeiros | `test_12_gabaritos_valor_por_valor` (via etapa 5) — ok |
+| Quatro abas anteriores à Rede | `test_17_quatro_abas_inalteradas` — ok |
+
 Pendente (entregas 3–4): remoção do sandbox do HTML; Simular Rede na home.
 
 ---
