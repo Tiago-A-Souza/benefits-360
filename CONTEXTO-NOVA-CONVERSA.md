@@ -96,19 +96,26 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**05/10/2026 — `master` em `d305869`, tag `sandbox-rede` (anotada em `0d418bb`).** Rede fase **D2**
-mergeada: sandbox do corretor na aba **Rede credenciada** (filtros, checkboxes,
-confirmar → download `{nome}_para_cliente.html`, tranca por hash do ID do estudo).
-JavaScript **só** nessa aba; demais abas permanecem CSS puro. D1 intacta
-(seções por grupo, colunas por plano, bairro/zona, contagem por bloco).
+**20/10/2026 — `master` em `4a87368`, tag `selecao-rede-no-sistema`.** Merge da
+`rede-etapa5-alternativa`: **seis etapas** (Rede credenciada na 5ª, comparativo e
+exportação na 6ª); seleção grava **exclusões** no rascunho; HTML completo **sem**
+sandbox na aba Rede (`rede_entrega_cliente=True`). Código do sandbox D2 **ainda no
+repo**, morto no export — remoção em entrega dedicada.
 
-pytest na master: **1413 passed, 15 skipped**, ~4 min 45 s. Playwright rede D2:
-**7/7**. vitest: **131 passed**. `npm run build`: ok. Snapshots demo: **97/97**
-hashes iguais. `SNAPSHOT_VERSAO`: **2.8.0**. Rascunhos demo: **107** carregam,
-**78** compilam. Harness: **16/16** mutações detectadas.
+pytest: **1463 passed, 16 skipped** (~7 min 35 s). Playwright etapa 5 + rede D2 legado:
+**20 passed**. vitest: **136 passed**. `npm run build`: ok. Snapshots demo:
+**107/107** hashes iguais (`HASH_DIVERGENTE=0`). `SNAPSHOT_VERSAO`: **2.8.0**
+(campo `selecao_rede` no rascunho, como `selecao_apresentacao`). Rascunhos demo:
+**109** carregam, **80** compilam. Harness: **16/16** mutações detectadas.
 
-Tags recentes: `rede-fase-d1`, **`sandbox-rede`**. Branches `rede-fase-d1`,
-`rede-fase-d2` preservadas (não apagar).
+**Instância única:** Vite **5173** + API **8002**, `NEWPORT_DATA_DIR=C:\np\.data`.
+Encerrar 5174/8003 e worktree de demo lado a lado quando não for comparar branches.
+
+**Próximas entregas (2–4):** colunas de planos na etapa 5; remover sandbox do HTML;
+Simular Rede na home.
+
+Tags recentes: **`selecao-rede-no-sistema`**, `sandbox-rede`, `rede-fase-d1`.
+Branch `rede-etapa5-alternativa` preservada (não apagar).
 
 **Ainda aberto (§12):** validade da cotação em cenário misto; confirmações
 Wesley (regras comerciais e **recorte geográfico da rede** — prática Newport
