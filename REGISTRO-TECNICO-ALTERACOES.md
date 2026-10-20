@@ -1509,6 +1509,32 @@ R$ 3.741,89 e R$ 5.652,04). Quatro abas anteriores à Rede: paridade D1
 Marca de retorno: tag **`sandbox-rede`**. Branches `rede-fase-d1`, `rede-fase-d2`
 mantidas.
 
+### Seleção de rede como etapa 5 do sistema (merge 20/10/2026)
+
+**Decisão (reunião de mentoria 15/10/2026 — Leonardo Brunetti, Fábio Camboim e
+equipe):** o mapeamento de hospitais fica **dentro do sistema**, não no HTML.
+Pelo HTML a seleção não é registrada; no rascunho a Newport captura quais
+prestadores o corretor inclui ou exclui, por região — inteligência de mercado.
+
+**Entrega 1 de 4** (merge `rede-etapa5-alternativa` → `master`): etapa **Rede
+credenciada** no wizard (5ª de seis, comparativo na 6ª); gravação de
+**exclusões** (`selecao_rede.excluidos`) no rascunho; documento completo com
+**`rede_entrega_cliente=True`** (tabela final, sem barra/checkboxes/script do
+sandbox). O código do sandbox D2 **permanece no repositório** (`rede_sandbox.py`,
+`rede_sandbox.js`) para remoção em entrega própria — não é o fluxo de exportação
+após este merge.
+
+**Operação demo:** cópia do SQLite para segunda instância só via **`VACUUM INTO`**
++ **`ANALYZE`** (`scripts/recriar_demo_etapa5_alt_db.py`). Cópia bruta de `.db`
+(~94 MB) deixou leituras ~2× mais lentas e custou rodadas de diagnóstico. Segunda
+instância Vite: **`cacheDir: node_modules/.vite-alt`** (`vite.config.alternativa.js`)
+para não disputar cache com a 5173.
+
+Marca de retorno desta entrega: tag **`selecao-rede-no-sistema`**.
+
+Pendente (entregas 2–4): colunas de planos na tela da etapa 5; remoção do sandbox
+do HTML; Simular Rede na home.
+
 ---
 
 ## Nota final
