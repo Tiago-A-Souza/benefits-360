@@ -34,7 +34,10 @@ from newport_app.services.rede_selecao import (
     salvar_selecao_rede,
     sanitizar_selecao_rede,
 )
+from newport_app.models.draft import AtribuicaoRascunho, CenarioRascunho
+
 from tests.test_correcao_resumo_regime import _aprovar as _aprovar_anistia
+from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
 from tests.test_rede_fase_d1 import _rascunho_dois_grupos_um_cenario
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -226,6 +229,123 @@ def test_05_selecao_padrao_sem_exclusao_igual_rede_completa(tmp_path: Path):
     n1 = sum(len(b.linhas) for s in doc.secoes for b in s.blocos)
     n2 = sum(len(b.linhas) for s in doc2.secoes for b in s.blocos)
     assert n1 == n2
+
+
+def _rascunho_s750_one_atribuicoes_distintas():
+    """Dois grupos (S750 × ONE vigentes), propostas diferentes por subgrupo."""
+    rascunho = _rascunho_anistia_seis()
+    vidas = []
+    for v in rascunho.vidas:
+        uf, cidade = "RJ", "RIO DE JANEIRO"
+        if v.subgrupo_atual_id == "sg-b":
+            uf, cidade = "SP", "SAO PAULO"
+        vidas.append(v.model_copy(update={"uf": uf, "cidade": cidade}))
+    op_sg_a = next(o for o in rascunho.opcoes_proposta if "PRATA MAIS" in o.plano_nome)
+    op_sg_b = next(o for o in rascunho.opcoes_proposta if "OURO MAIS" in o.plano_nome)
+    cen = CenarioRascunho(
+        id="c-s750-one",
+        rotulo="S750 × ONE distintos",
+        atribuicoes=[
+            AtribuicaoRascunho(
+                id="atr-a",
+                alvo_tipo="subgrupo",
+                alvo_id="sg-a",
+                opcao_plano_id=op_sg_a.id,
+            ),
+            AtribuicaoRascunho(
+                id="atr-b",
+                alvo_tipo="subgrupo",
+                alvo_id="sg-b",
+                opcao_plano_id=op_sg_b.id,
+            ),
+        ],
+    )
+    rasc = rascunho.model_copy(update={"vidas": vidas, "cenarios": [cen]})
+    return rasc, cen.id, op_sg_a, op_sg_b
+
+
+def test_06d_secao_s750_nao_mostra_proposta_do_one():
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui
+
+    rasc, cen_id, op_a, op_b = _rascunho_s750_one_atribuicoes_distintas()
+    ui = montar_rede_selecao_ui(rasc)
+    doc = montar_rede_apresentacao(rasc, [cen_id])
+    assert len(ui.secoes) == 2
+    sec_s750 = next(s for s in ui.secoes if "S750" in s.rotulo)
+    sec_one = next(s for s in ui.secoes if "ONE" in s.rotulo.upper())
+    doc_s750 = next(s for s in doc.secoes if "S750" in s.rotulo)
+    doc_one = next(s for s in doc.secoes if "ONE" in s.rotulo.upper())
+
+    def nomes_proposta_ui(sec):
+        return {c.plano_nome for c in sec.colunas if not c.contrato_atual}
+
+    def nomes_proposta_doc(sec):
+        return {c.plano_nome for c in sec.colunas if c.chave != "rede-atual"}
+
+    prop_s750 = nomes_proposta_ui(sec_s750)
+    prop_one = nomes_proposta_ui(sec_one)
+    assert op_a.plano_nome in prop_s750
+    assert op_b.plano_nome in prop_one
+    assert op_b.plano_nome not in prop_s750, (
+        f"seção S750 não deve listar proposta do ONE: {prop_s750}"
+    )
+    assert op_a.plano_nome not in prop_one, (
+        f"seção ONE não deve listar proposta do S750: {prop_one}"
+    )
+    assert "ONE S2500" not in prop_s750
+    assert "S750" not in prop_one or all("S750" not in n for n in prop_one)
+    assert nomes_proposta_doc(doc_s750) == prop_s750
+    assert nomes_proposta_doc(doc_one) == prop_one
+
+
+def test_06e_proposta_so_do_outro_grupo_nao_vaza_na_secao():
+    """Paridade com estudo real: 2 cenários; coluna só entra se atribuída ao subgrupo."""
+    if not _XLSX.is_file():
+        pytest.skip("base SiscorNet ausente")
+    from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui
+
+    rasc = _rascunho_anistia_seis()
+    vidas = []
+    for v in rasc.vidas:
+        uf, cidade = "RJ", "RIO DE JANEIRO"
+        if v.subgrupo_atual_id == "sg-b":
+            uf, cidade = "SP", "SAO PAULO"
+        vidas.append(v.model_copy(update={"uf": uf, "cidade": cidade}))
+    op_prata = next(o for o in rasc.opcoes_proposta if "PRATA MAIS" in o.plano_nome)
+    op_ouro = next(o for o in rasc.opcoes_proposta if "OURO MAIS" in o.plano_nome)
+    op_exec = next(o for o in rasc.opcoes_proposta if "Executivo R1" in o.plano_nome)
+    op_one2 = next(o for o in rasc.opcoes_proposta if "Especial 100 R1" in o.plano_nome)
+    cen1 = CenarioRascunho(
+        id="c1",
+        rotulo="C1",
+        atribuicoes=[
+            AtribuicaoRascunho(id="a1a", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id=op_prata.id),
+            AtribuicaoRascunho(id="a1b", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id=op_exec.id),
+        ],
+    )
+    cen2 = CenarioRascunho(
+        id="c2",
+        rotulo="C2",
+        atribuicoes=[
+            AtribuicaoRascunho(id="a2a", alvo_tipo="subgrupo", alvo_id="sg-a", opcao_plano_id=op_ouro.id),
+            AtribuicaoRascunho(id="a2b", alvo_tipo="subgrupo", alvo_id="sg-b", opcao_plano_id=op_one2.id),
+        ],
+    )
+    rasc = rasc.model_copy(update={"vidas": vidas, "cenarios": [cen1, cen2]})
+    ui = montar_rede_selecao_ui(rasc)
+    sec_s750 = next(s for s in ui.secoes if "S750" in s.rotulo)
+    sec_one = next(s for s in ui.secoes if "ONE" in s.rotulo.upper())
+    props_s750 = {c.plano_nome for c in sec_s750.colunas if not c.contrato_atual}
+    props_one = {c.plano_nome for c in sec_one.colunas if not c.contrato_atual}
+    assert op_prata.plano_nome in props_s750 and op_ouro.plano_nome in props_s750
+    assert op_exec.plano_nome not in props_s750
+    assert op_one2.plano_nome not in props_s750
+    assert any("Executivo" in p for p in props_one)
+    assert any("Especial 100" in p for p in props_one)
+    assert op_prata.plano_nome not in props_one
+    assert op_ouro.plano_nome not in props_one
 
 
 def test_06b_ui_api_colunas_por_secao_e_cobertura():
