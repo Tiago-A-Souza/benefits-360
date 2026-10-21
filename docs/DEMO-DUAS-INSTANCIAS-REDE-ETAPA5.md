@@ -73,7 +73,7 @@ Cada linha abre **duas** janelas PowerShell (API + Vite).
 Start-Process powershell -ArgumentList '-NoExit','-Command','cd C:\wt\np-master; $env:NEWPORT_MODO=''demo''; $env:NEWPORT_DATA_DIR=''C:\np\.data''; C:\np\.venv\Scripts\python.exe -m uvicorn newport_app.api.main:app --reload --host 127.0.0.1 --port 8002'; Start-Process powershell -ArgumentList '-NoExit','-Command','cd C:\wt\np-master\web; npm run dev -- --host 127.0.0.1 --port 5173'
 ```
 
-Abrir **http://127.0.0.1:5173** — até **5** etapas visíveis (sem etapa Rede no wizard); etapa 5 = Comparativo; HTML da aba Rede **com** sandbox e download `_para_cliente`.
+Abrir **http://127.0.0.1:5173** — fluxo completo com etapa **Rede credenciada**; documento exportado **estático** (zero JavaScript), nome `apresentacao_completo_*.html`.
 
 **Alternativa (5174 + 8003, banco copiado):**
 

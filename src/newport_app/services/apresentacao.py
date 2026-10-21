@@ -112,9 +112,6 @@ class ApresentacaoService:
                 vm_faixas,
                 vm_grupos,
                 rede=rede_doc,
-                estudo_id=estudo_id,
-                nome_arquivo_html=nome,
-                rede_entrega_cliente=True,
             )
             digest = hash_sha256_objeto(
                 {

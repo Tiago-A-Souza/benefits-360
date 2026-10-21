@@ -96,20 +96,18 @@ Só extraem números; depois todos entregam a mesma estrutura tipada.
 
 ## Estado atual
 
-**20/10/2026 — `master` em `08d7e2f`, tag `etapa5-colunas-planos-v1`.** Entrega 2:
-etapa **Rede credenciada** com **colunas de plano + códigos H/HD/M/PS** por seção
-(subgrupo), paridade 112px com o documento; isolamento por grupo (testes `06d`/`06e`).
-Entrega 1 (`selecao-rede-no-sistema`): exclusões no rascunho; export **sem** sandbox na
-Rede. Sandbox D2 ainda no repo — remoção em entrega dedicada.
+**20/10/2026 — branch `remover-sandbox-html` (entrega 3, pré-merge).** `master` @
+`68e0717`, tag `etapa5-colunas-planos-v1`. Entrega 3: **sandbox D2 removido** do HTML
+(documento **zero JavaScript**; sem `_para_cliente`, sem tranca por hash); seleção na
+etapa 5; atributos `data-rede-*` nas linhas da Rede **mantidos**.
 
-pytest: **1467 passed, 16 skipped** (~7 min 10 s). Playwright rede D2: **9 passed**.
-vitest: **136 passed**. `npm run build`: ok. Snapshots demo: **107/107** hashes iguais
-(`HASH_DIVERGENTE=0`). `SNAPSHOT_VERSAO`: **2.8.0**. Rascunhos demo: **109** carregam,
-**80** compilam. Harness: **16/16** mutações detectadas.
+pytest: **1442 passed, 16 skipped** (~6 min 30 s; **−25** testes do sandbox, **+8**
+documento estático). vitest: **136 passed**. `npm run build`: ok. Snapshots:
+**107/107** (`HASH_DIVERGENTE=0`). `SNAPSHOT_VERSAO`: **2.8.0** (sem bump).
 
 **Instância única:** Vite **5173** + API **8002**, `NEWPORT_DATA_DIR=C:\np\.data`.
 
-**Próximas entregas (3–4):** remover sandbox do HTML; Simular Rede na home.
+**Próxima entrega (4):** Simular Rede na home.
 
 Tags recentes: **`etapa5-colunas-planos-v1`**, `selecao-rede-no-sistema`, `sandbox-rede`.
 Branches `etapa5-colunas-planos` e `rede-etapa5-alternativa` preservadas (não apagar).

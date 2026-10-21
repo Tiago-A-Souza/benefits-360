@@ -65,15 +65,9 @@ def _attrs_linha(ln: LinhaRedeApresentacao) -> str:
     )
 
 
-def _tr_cabecalho_colunas(
-    pag: PaginaRedeApresentacao, *, classe: str = "", entrega_cliente: bool = False
-) -> str:
+def _tr_cabecalho_colunas(pag: PaginaRedeApresentacao, *, classe: str = "") -> str:
     cls = f" class='{classe}'" if classe else ""
     partes = [f"<tr{cls}>"]
-    if not entrega_cliente:
-        partes.append(
-            "<th class='rede-sandbox-check rede-sandbox-js-only' scope='col'>Incl.</th>"
-        )
     partes.append("<th class='rede-col-prestador' scope='col'>Prestador</th>")
     for col in pag.colunas:
         partes.append(_th_coluna(col))
@@ -81,12 +75,8 @@ def _tr_cabecalho_colunas(
     return "".join(partes)
 
 
-def _tr_cabecalho_repetido(pag: PaginaRedeApresentacao, *, entrega_cliente: bool = False) -> str:
+def _tr_cabecalho_repetido(pag: PaginaRedeApresentacao) -> str:
     partes = ["<tr class='rede-cab-repetido'>"]
-    if not entrega_cliente:
-        partes.append(
-            "<th class='rede-sandbox-check rede-sandbox-js-only' scope='col'></th>"
-        )
     partes.append("<th class='rede-col-prestador' scope='col'></th>")
     for col in pag.colunas:
         partes.append(_th_coluna_repetido(col))
@@ -94,10 +84,10 @@ def _tr_cabecalho_repetido(pag: PaginaRedeApresentacao, *, entrega_cliente: bool
     return "".join(partes)
 
 
-def _render_tabela_pagina(pag: PaginaRedeApresentacao, *, entrega_cliente: bool = False) -> str:
-    ncols = (1 if entrega_cliente else 2) + len(pag.colunas)
+def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
+    ncols = 1 + len(pag.colunas)
     partes = ["<div class='rolo rede-rolo'><table class='tabela-rede n'><thead>"]
-    partes.append(_tr_cabecalho_colunas(pag, entrega_cliente=entrega_cliente))
+    partes.append(_tr_cabecalho_colunas(pag))
     partes.append("</thead><tbody>")
     for i_bloco, bloco in enumerate(pag.blocos):
         partes.append(
@@ -105,27 +95,13 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao, *, entrega_cliente: bool 
             "<div class='bloco-rede-cab'>"
             f"<span class='bloco-rede-tit'>{html.escape(bloco.titulo)}</span>"
             "<span class='bloco-rede-meta'>"
-            + (
-                ""
-                if entrega_cliente
-                else (
-                    "<button type='button' class='rede-marcar-bloco rede-sandbox-js-only' "
-                    "data-checked='1'>Desmarcar bloco</button>"
-                )
-            )
-            + f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
+            f"<span class='q'>{len(bloco.linhas)} prestadores</span>"
             "</span></div></td></tr>"
         )
-        # O <thead> já cobre o primeiro bloco; repetir colunas só a partir do 2º município.
         if i_bloco > 0:
-            partes.append(_tr_cabecalho_repetido(pag, entrega_cliente=entrega_cliente))
+            partes.append(_tr_cabecalho_repetido(pag))
         for ln in bloco.linhas:
             partes.append(f"<tr class='p-rede'{_attrs_linha(ln)}>")
-            if not entrega_cliente:
-                partes.append(
-                    "<td class='rede-sandbox-check rede-sandbox-js-only'>"
-                    "<input type='checkbox' checked aria-label='Incluir prestador'></td>"
-                )
             partes.append(f"<td class='nm rede-col-prestador'>{_rotulo_prestador(ln)}</td>")
             for col in pag.colunas:
                 val = ln.celulas.get(col.chave, "")
@@ -134,8 +110,7 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao, *, entrega_cliente: bool 
                     f"<td class='rede-col-plano {cls}'>{html.escape(val)}</td>"
                 )
             partes.append("</tr>")
-        cob_colspan = "1" if entrega_cliente else "2"
-        partes.append(f"<tr class='cont-rede'><td colspan='{cob_colspan}'>Cobertos</td>")
+        partes.append("<tr class='cont-rede'><td colspan='1'>Cobertos</td>")
         contagem = contagem_coberturas_bloco(bloco.linhas, pag.colunas)
         for col in pag.colunas:
             partes.append(f"<td>{contagem[col.chave]}</td>")
@@ -148,9 +123,9 @@ def _rodape_rede(doc: RedeApresentacaoDocumento) -> str:
     data = html.escape(doc.data_base_rede)
     itens = [
         f"Base SiscorNet atualizada em {data}. A rede credenciada pode ser "
-        "alterada pelas operadoras sem aviso prévio.",
+        "alterada pelas operadoras sem aviso prévio. ",
         "Este comparativo contempla hospital geral e pronto-socorro credenciados; "
-        "não inclui centros clínicos ou consultórios.",
+        "não inclui centros clínicos ou consultórios. ",
         "Fora de São Paulo, Rio de Janeiro e Distrito Federal, planos Porto Seguro "
         "utilizam a rede Medservice, que não consta nesta extração — a cobertura "
         "pode aparecer vazia por limitação da base, não por falha do sistema.",
@@ -165,9 +140,7 @@ def _rodape_rede(doc: RedeApresentacaoDocumento) -> str:
     )
 
 
-def render_corpo_rede(
-    doc: RedeApresentacaoDocumento, *, entrega_cliente: bool = False
-) -> str:
+def render_corpo_rede(doc: RedeApresentacaoDocumento) -> str:
     partes: list[str] = []
     if doc.aviso_sem_localizacao:
         aviso = html.escape(doc.aviso_sem_localizacao)
@@ -189,25 +162,18 @@ def render_corpo_rede(
             for i, pag in enumerate(sec.paginas):
                 if i > 0:
                     partes.append("<div class='quebra-pagina-rede'></div>")
-                partes.append(
-                    _render_tabela_pagina(pag, entrega_cliente=entrega_cliente)
-                )
+                partes.append(_render_tabela_pagina(pag))
         partes.append("</div>")
     partes.append(_rodape_rede(doc))
     return "".join(partes)
 
 
-def render_secao_rede_html(
-    sec: SecaoRedeApresentacao,
-    doc: RedeApresentacaoDocumento,
-    *,
-    entrega_cliente: bool = False,
-) -> str:
+def render_secao_rede_html(sec: SecaoRedeApresentacao, doc: RedeApresentacaoDocumento) -> str:
     del doc
     inner = []
     inner.append(f"<h3 class='secao-rede-tit'>{html.escape(sec.rotulo)}</h3>")
     for i, pag in enumerate(sec.paginas):
         if i > 0:
             inner.append("<div class='quebra-pagina-rede'></div>")
-        inner.append(_render_tabela_pagina(pag, entrega_cliente=entrega_cliente))
+        inner.append(_render_tabela_pagina(pag))
     return "".join(inner)

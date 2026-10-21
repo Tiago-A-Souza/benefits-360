@@ -118,7 +118,7 @@ def test_06_linha_bloco_diz_cobertos(tmp_path: Path):
 
 
 def test_07_cinco_planos_cabe_em_1180px():
-    # Cliente: prestador + 5×112px (checkbox oculto no _para_cliente).
+    # Prestador + 5 colunas de plano × 112px.
     assert _LARGURA_PRESTADOR_MAX + 5 * _LARGURA_COL_PLANO == _LARGURA_MAX_5_PLANOS
 
 
@@ -148,14 +148,6 @@ def test_11_thead_sticky_mantido():
     assert "position:sticky" in css and ".tabela-rede thead th" in css
 
 
-def test_12_para_cliente_sem_script_no_js():
-    js = (ROOT / "src/newport_app/presentation/rede_sandbox.js").read_text(
-        encoding="utf-8"
-    )
-    assert "prepareDocumentoCliente" in js
-    assert "rede-sandbox-cliente" in js
-
-
 def test_13_gabarito_anistia_ivtec(tmp_path: Path):
     from tests.test_fase5_faixas_por_grupo import test_12_gabaritos_valor_por_valor
 
@@ -163,9 +155,9 @@ def test_13_gabarito_anistia_ivtec(tmp_path: Path):
 
 
 def test_14_quatro_abas_inalteradas(tmp_path: Path):
-    from tests.test_rede_fase_d2 import test_17_quatro_abas_inalteradas
+    from tests.test_rede_documento_estatico import test_05_quatro_abas_anteriores_intactas
 
-    test_17_quatro_abas_inalteradas(tmp_path)
+    test_05_quatro_abas_anteriores_intactas(tmp_path)
 
 
 def test_15_rascunhos_banco_carregam():

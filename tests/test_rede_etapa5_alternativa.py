@@ -78,9 +78,7 @@ def _html_completo_etapa5(tmp_path: Path, rascunho: RascunhoEstudo, cen_id: str)
     rede = montar_rede_apresentacao(
         rascunho, [cen_id], excluidos=excl
     )
-    html = render_html_completo(
-        vm, vm, vm, rede=rede, rede_entrega_cliente=True
-    )
+    html = render_html_completo(vm, vm, vm, rede=rede)
     return html, rede
 
 
@@ -185,10 +183,10 @@ def test_02_documento_gerado_sem_sandbox_na_rede(tmp_path: Path):
         pytest.skip("base SiscorNet ausente")
     rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
     html, _ = _html_completo_etapa5(tmp_path, rascunho, cen_id)
+    assert "<script" not in html.lower()
     rede = html.split('id="visao-rede"', 1)[-1]
     assert "rede-btn-confirmar" not in rede
-    assert "rede-sandbox-bar" not in rede.split("</style>", 1)[-1]
-    assert not re.search(r"<script(?![^>]*application/json)", rede, re.I)
+    assert "rede-sandbox-bar" not in rede
 
 
 def test_03_exclusao_remove_prestador_do_documento(tmp_path: Path):
@@ -501,9 +499,9 @@ def test_15_gabaritos_valor_por_valor(tmp_path: Path):
 
 
 def test_16_quatro_abas_anteriores_inalteradas(tmp_path: Path):
-    from tests.test_rede_fase_d2 import test_17_quatro_abas_inalteradas
+    from tests.test_rede_documento_estatico import test_05_quatro_abas_anteriores_intactas
 
-    test_17_quatro_abas_inalteradas(tmp_path)
+    test_05_quatro_abas_anteriores_intactas(tmp_path)
 
 
 def test_17_rascunhos_demo_carregam():
@@ -554,6 +552,8 @@ def test_20_apresentacao_service_sem_sandbox_no_html(tmp_path: Path):
         ressalvas=[],
     )
     res = apres.gerar_html(rascunho.id, snap.id, req)
+    assert "_para_cliente" not in res.caminho_relativo
     html = (apres._entregaveis_dir / res.caminho_relativo).read_text(encoding="utf-8")
+    assert "<script" not in html.lower()
     rede = html.split('id="visao-rede"', 1)[-1]
-    assert "rede-btn-confirmar" not in rede.split("</style>", 1)[-1]
+    assert "rede-btn-confirmar" not in rede

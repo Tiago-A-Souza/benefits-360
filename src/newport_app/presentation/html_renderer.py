@@ -17,7 +17,6 @@ from newport_app.models.presentation import (
     TabelaPlanosConsultados,
 )
 from newport_app.presentation.rede_renderer import render_corpo_rede
-from newport_app.presentation.rede_sandbox import envolver_rede_sandbox, hash_desbloqueio_estudo
 from newport_app.presentation.branding import (
     lema_newport,
     logo_data_uri,
@@ -1498,9 +1497,6 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .bloco-rede-tit{flex:1 1 auto;min-width:8rem;line-height:1.35}
 .bloco-rede-meta{display:inline-flex;align-items:center;gap:14px;flex-shrink:0;white-space:nowrap}
 .tabela-rede tr.bloco-rede .q{font-weight:300;text-transform:none;color:var(--ouro);font-size:11px;line-height:1.2}
-.tabela-rede th.rede-sandbox-check,.tabela-rede td.rede-sandbox-check{
-  width:46px;min-width:46px;max-width:46px;text-align:center;padding:6px 4px;vertical-align:middle;white-space:nowrap}
-.tabela-rede td.rede-sandbox-check input[type=checkbox]{margin:0;vertical-align:middle}
 .tabela-rede td.rede-col-plano.on{background:var(--ouro-cl);color:var(--ouro-esc);font-weight:700;font-size:10px}
 .tabela-rede td.rede-col-plano.off{color:#CFCFC9;font-size:10px}
 .tabela-rede tr.cont-rede td{background:var(--papel-2);font-weight:700;font-size:10px;border-bottom:2px solid var(--grafite)}
@@ -1510,25 +1506,6 @@ body{background:var(--papel-2);color:var(--grafite);font-family:var(--sans);
 .rede-legenda{margin-top:24px;padding:16px 18px;background:var(--papel-2);font-size:12px;color:var(--grafite-2)}
 .rede-pontos{margin-top:12px}
 .rede-pontos ul{margin:8px 0 0;padding-left:18px}
-.rede-sandbox-no-js .rede-sandbox-js-only{display:none!important}
-.rede-sandbox-cliente .rede-sandbox-js-only{display:none!important}
-.rede-sandbox-bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:14px 0 18px;
-  border-bottom:1px solid var(--risco);margin-bottom:12px;font-size:12px}
-.rede-sandbox-bar label{display:flex;flex-direction:column;gap:4px;font-weight:600;color:var(--grafite-3)}
-.rede-sandbox-bar select,.rede-sandbox-bar input{min-width:140px;padding:6px 8px;font:inherit}
-.rede-sandbox-contador{margin-left:auto;font-weight:600;color:var(--grafite)}
-.rede-sandbox-btn{background:var(--grafite);color:#fff;border:0;padding:10px 18px;font:inherit;
-  font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:2px}
-.rede-sandbox-btn-discreto{background:transparent;border:0;color:var(--grafite-3);font-size:12px;
-  text-decoration:underline;cursor:pointer;margin-top:12px}
-.rede-sandbox-aviso-download{margin:16px 0;padding:14px 18px;background:var(--ouro-cl);
-  border:1px solid var(--ouro);font-size:13px;line-height:1.5;color:var(--grafite)}
-.rede-sandbox-aviso-download strong{font-weight:700;color:var(--grafite)}
-.rede-marcar-bloco{font-size:10px;font-weight:500;background:transparent;flex-shrink:0;
-  border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 10px;cursor:pointer;line-height:1.2}
-.rede-sandbox-no-js .bloco-rede-meta{gap:0}
-.rede-sandbox-final .rede-sandbox-check{display:none!important}
-@media print{.rede-sandbox-js-only,.rede-sandbox-bar,.rede-sandbox-foot{display:none!important}}
 #tab-todas:checked ~ .doc-corpo .visao { display: block !important; }
 .corpo,.doc-corpo{padding:0 56px 64px}
 .visao-titulo{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -1757,11 +1734,8 @@ def render_html_completo(
     vm_grupos: PresentationViewModel,
     *,
     rede: RedeApresentacaoDocumento | None = None,
-    estudo_id: str | None = None,
-    nome_arquivo_html: str | None = None,
-    rede_entrega_cliente: bool = False,
 ) -> str:
-    """Documento cliente com abas — CSS puro nas quatro primeiras; rede pode ter sandbox D2."""
+    """Documento cliente com abas — HTML estático (zero JavaScript)."""
     rotulos = _mapa_rotulos_propostas(vm_resumo)
     seguro_novo = vm_resumo.formato == "novo"
     tabela_regras = montar_tabela_regras(nomes_operadora_do_view_model(vm_resumo))
@@ -1805,13 +1779,7 @@ def render_html_completo(
     )
     corpo_rede = ""
     if rede is not None and rede.secoes:
-        inner_rede = render_corpo_rede(rede, entrega_cliente=rede_entrega_cliente)
-        if estudo_id and not rede_entrega_cliente:
-            inner_rede = envolver_rede_sandbox(
-                inner_rede,
-                hash_desbloqueio_estudo(estudo_id),
-                nome_arquivo_origem=nome_arquivo_html or "apresentacao_completo.html",
-            )
+        inner_rede = render_corpo_rede(rede)
         corpo_rede = (
             _tit_secao(
                 "04",

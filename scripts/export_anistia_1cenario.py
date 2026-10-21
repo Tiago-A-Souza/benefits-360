@@ -10,7 +10,6 @@ from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.colisao_coluna import resolver_colunas_selecionadas
 from newport_app.presentation.html_renderer import render_html_completo
 from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
-from newport_app.presentation.rede_sandbox import aplicar_colspans_cliente_em_documento
 from newport_app.snapshot.comparativo import ler_comparativo_congelado
 from newport_app.siscor_importer.parser import parse_planilha_siscor
 from tests.fixtures.siscor.xlsx_builder import planilha_anistia_41_sintetica
@@ -27,13 +26,6 @@ def _saida(planos: int) -> Path:
     else:
         nome = f"anistia_{planos}planos_com_localizacao.html"
     return base / nome
-
-
-def _saida_para_cliente(planos: int) -> Path:
-    base = ROOT / ".private/runtime/entregaveis/rede-cabecalho-leitura"
-    if planos == 1:
-        return base / "anistia_1cenario_para_cliente.html"
-    return base / f"anistia_{planos}planos_para_cliente.html"
 
 
 def main() -> None:
@@ -80,17 +72,10 @@ def main() -> None:
             beneficiarios_agregados=False,
         ),
         rede=doc,
-        estudo_id=r.id,
     )
     saida.parent.mkdir(parents=True, exist_ok=True)
     saida.write_text(html, encoding="utf-8")
-    saida_cliente = _saida_para_cliente(n_planos)
-    html_cliente, n_tabelas = aplicar_colspans_cliente_em_documento(html)
-    saida_cliente.parent.mkdir(parents=True, exist_ok=True)
-    saida_cliente.write_text(html_cliente, encoding="utf-8")
     print(f"EXPORT={saida}")
-    print(f"EXPORT_PARA_CLIENTE={saida_cliente}")
-    print(f"TABELAS_REDE_COLSPAN_AJUSTADO={n_tabelas}")
     print(
         f"cenarios_rede={cen_rede} colunas_por_secao={len(doc.secoes[0].colunas)}"
     )

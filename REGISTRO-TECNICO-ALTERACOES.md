@@ -807,9 +807,9 @@ topo da aba e mensagem por seção, orientando **reimportar a posição cadastra
 colunas UF e CIDADE** e **gerar o documento de novo**. Não há município padrão nem
 rede nacional inteira.
 
-### Entregável `_para_cliente` vs HTML de trabalho (sandbox D2)
+### Entregável `_para_cliente` vs HTML de trabalho (sandbox D2) — **revogado na entrega 3**
 
-**Decisão (opção A):** o arquivo baixado `{nome}_para_cliente.html` é **documento
+**Histórico (D2):** o arquivo baixado `{nome}_para_cliente.html` era **documento
 estático** para o cliente — **sem** script do sandbox, **sem** controles (filtros,
 checkboxes, confirmar, «Editar rede») e **sem** tranca por hash do ID. Prestadores
 desmarcados na confirmação são **removidos do DOM** no entregável (não ficam
@@ -866,16 +866,14 @@ Medição (Playwright, estudo «teste redes 2», colunas fixas):
 Filtros e menu lateral permanecem fixos; só o bloco da tabela desliza. Caso típico
 Anistia (atual + 2 propostas por seção): **3 colunas de plano**, sem rolagem.
 
-### Linha «Cobertos» — dois donos (Python + JS)
+### Linha «Cobertos» — Python (pós-entrega 3)
 
-A linha **«Cobertos»** da aba Rede tem **dois donos**: o renderizador Python
-(`rede_renderer.py` + `contagem_coberturas_bloco`) **monta** a linha no HTML
-inicial; o JavaScript do sandbox (`recalcBlock` em `rede_sandbox.js`) **recalcula**
-os números quando o corretor marca ou desmarca prestadores, filtra ou confirma
-exclusões.
+A linha **«Cobertos»** é montada só pelo renderizador Python (`rede_renderer.py` +
+`contagem_coberturas_bloco`). Exclusões vêm da etapa 5 (`selecao_rede.excluidos`)
+antes do HTML. **Removido** o recálculo JS (`recalcBlock`) com o sandbox (entrega 3).
 
-Foram **três correções** no mesmo lugar; nas três o defeito esteve na **costura**
-entre os dois caminhos, nunca dentro de um só:
+**Histórico (D2):** havia **dois donos** (Python + JS). Foram **três correções** na
+costura; nas três o defeito esteve entre os caminhos, nunca dentro de um só:
 
 1. **Contagem lendo chave diferente da que gravava as células** — valores
    divergentes entre motor da apresentação e células H/PS/… exibidas.
@@ -1533,11 +1531,8 @@ prestadores o corretor inclui ou exclui, por região — inteligência de mercad
 
 **Entrega 1 de 4** (merge `rede-etapa5-alternativa` → `master`): etapa **Rede
 credenciada** no wizard (5ª de seis, comparativo na 6ª); gravação de
-**exclusões** (`selecao_rede.excluidos`) no rascunho; documento completo com
-**`rede_entrega_cliente=True`** (tabela final, sem barra/checkboxes/script do
-sandbox). O código do sandbox D2 **permanece no repositório** (`rede_sandbox.py`,
-`rede_sandbox.js`) para remoção em entrega própria — não é o fluxo de exportação
-após este merge.
+**exclusões** (`selecao_rede.excluidos`) no rascunho; export passou a usar tabela
+final na aba Rede (sem barra/checkboxes do sandbox — ver entrega 3).
 
 **Operação demo:** cópia do SQLite para segunda instância só via **`VACUUM INTO`**
 + **`ANALYZE`** (`scripts/recriar_demo_etapa5_alt_db.py`). Cópia bruta de `.db`
@@ -1551,11 +1546,25 @@ Marca de retorno desta entrega: tag **`selecao-rede-no-sistema`**.
 credenciada**, tabelas por seção (subgrupo vigente) e bloco (município) com
 **colunas de plano + códigos H/HD/M/PS** como na aba Rede do documento; colunas
 **isoladas por grupo** (proposta atribuída só ao ONE não aparece na seção S750).
-API `GET …/rede-selecao` expõe `colunas` e `celulas`; export HTML e sandbox **sem
-alteração** nesta entrega.
+API `GET …/rede-selecao` expõe `colunas` e `celulas`.
 
 Marca de retorno desta entrega: tag **`etapa5-colunas-planos-v1`**. Branch
 `etapa5-colunas-planos` preservada.
+
+**Entrega 3 de 4** (branch `remover-sandbox-html`, **sem merge ainda**): remoção
+do **sandbox D2** do HTML — decisão da reunião de **15/10/2026** (seleção no
+sistema, etapa 5). Saíram `rede_sandbox.py` / `rede_sandbox.js`, barra de
+filtros, checkboxes, confirmar, JSON de estado, download `_para_cliente`, tranca
+`data-unlock` e botão «Editar rede». O documento exportado volta a ser **zero
+JavaScript** (como as outras quatro abas). A aba Rede mantém seção por grupo,
+colunas de plano, blocos, zona/bairro, cabeçalho repetido, corte sem cobertura e
+linha «Cobertos» (somente Python). **Permanecem** nos `<tr class='p-rede'>` os
+atributos `data-rede-id`, `data-zona`, `data-municipio`, `data-nome` (Simular
+Rede / visualizações futuras). Nome do arquivo: padrão do serviço
+(`apresentacao_completo_{snapshot}.html`), **sem** sufixo `_para_cliente`.
+`SNAPSHOT_VERSAO` **2.8.0** inalterada (hashes demo intactos).
+
+Pendente (entrega 4): Simular Rede na home.
 
 ### Validação pós-merge entrega 2 (`master` @ `08d7e2f`, tag `etapa5-colunas-planos-v1`)
 
@@ -1571,7 +1580,15 @@ Marca de retorno desta entrega: tag **`etapa5-colunas-planos-v1`**. Branch
 | Gabaritos financeiros | `test_12_gabaritos_valor_por_valor` (via etapa 5) — ok |
 | Quatro abas anteriores à Rede | `test_17_quatro_abas_inalteradas` — ok |
 
-Pendente (entregas 3–4): remoção do sandbox do HTML; Simular Rede na home.
+### Validação entrega 3 (`remover-sandbox-html`, pré-merge)
+
+| Checagem | Resultado |
+|---|---|
+| pytest | **1442 passed**, 16 skipped (~25 testes do sandbox removidos; **+8** em `test_rede_documento_estatico.py`; **−1** `test_12` layout estreito) |
+| vitest | **136 passed** |
+| `npm run build` | ok |
+| Snapshots demo | **107/107** (`HASH_DIVERGENTE=0`) |
+| `SNAPSHOT_VERSAO` | **2.8.0** — **não** subir |
 
 ---
 

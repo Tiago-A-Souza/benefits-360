@@ -1,4 +1,4 @@
-"""Linha «Cobertos» e bloco no HTML _para_cliente — estrutura e paridade de valores."""
+"""Linha «Cobertos» — alinhamento de colunas no HTML estático da aba Rede."""
 
 from __future__ import annotations
 
@@ -7,8 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from newport_app.presentation.rede_sandbox import preparar_marcacao_rede_para_cliente
-from tests.test_rede_fase_d2 import _html_completo_rede
+from tests.test_rede_documento_estatico import _html_completo_rede
 
 ROOT = Path(__file__).resolve().parents[1]
 _XLSX = ROOT / "docs" / "SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx"
@@ -28,7 +27,6 @@ def _texto_td(td_html: str) -> str:
 
 
 def _valores_cont_rede(table_html: str) -> list[list[str]]:
-    """Números da linha Cobertos (uma lista por bloco), sem o rótulo."""
     out: list[list[str]] = []
     for inner in re.findall(
         r"<tr class='cont-rede'[^>]*>(.*?)</tr>", table_html, re.S
@@ -60,36 +58,27 @@ def _tabelas_rede(html: str) -> list[str]:
     return re.findall(r"<table class='tabela-rede[^>]*>.*?</table>", rede, re.S)
 
 
-def test_cont_rede_valores_identicos_trabalho_e_cliente(tmp_path):
-    if not _XLSX.is_file():
-        pytest.skip("base SiscorNet ausente")
-    html, _, _ = _html_completo_rede(tmp_path)
+def test_cont_rede_valores_nao_vazios_e_sem_deslocamento(tmp_path):
+    html, _, _, _ = _html_completo_rede(tmp_path)
     for table in _tabelas_rede(html):
-        trabalho = _valores_cont_rede(table)
-        assert trabalho, "Cobertos ausente"
-        assert all(vals for vals in trabalho), "contagem vazia no HTML de trabalho"
-        cliente_tbl = preparar_marcacao_rede_para_cliente(table)
-        cliente = _valores_cont_rede(cliente_tbl)
-        assert cliente == trabalho, (trabalho, cliente)
-        for vals in trabalho:
-            assert vals, "sem números na linha Cobertos"
+        vals_por_bloco = _valores_cont_rede(table)
+        assert vals_por_bloco, "Cobertos ausente"
+        for vals in vals_por_bloco:
+            assert vals, "contagem vazia"
             assert not (
                 len(vals) >= 2 and vals[0] == "0" and vals[1] != "0"
             ), f"deslocamento (zero à esquerda): {vals}"
 
 
-def test_cont_rede_mesmo_numero_colunas_que_cabecalho_no_cliente(tmp_path):
-    if not _XLSX.is_file():
-        pytest.skip("base SiscorNet ausente")
-    html, _, _ = _html_completo_rede(tmp_path)
+def test_cont_rede_mesmo_numero_colunas_que_cabecalho(tmp_path):
+    html, _, _, _ = _html_completo_rede(tmp_path)
     for table in _tabelas_rede(html):
-        cliente = preparar_marcacao_rede_para_cliente(table)
-        thead = re.search(r"<thead>.*?<tr[^>]*>(.*?)</tr>", cliente, re.S)
+        thead = re.search(r"<thead>.*?<tr[^>]*>(.*?)</tr>", table, re.S)
         assert thead, "thead ausente"
         n_cab = _colunas_visuais_tr(thead.group(1))
         assert n_cab >= 2
         cont_rows = re.findall(
-            r"<tr class='cont-rede'[^>]*>(.*?)</tr>", cliente, re.S
+            r"<tr class='cont-rede'[^>]*>(.*?)</tr>", table, re.S
         )
         assert cont_rows, "linha Cobertos ausente"
         for inner in cont_rows:
@@ -102,24 +91,12 @@ def test_cont_rede_mesmo_numero_colunas_que_cabecalho_no_cliente(tmp_path):
             ), inner[:160]
 
 
-def test_bloco_rede_colspan_alinhado_ao_cabecalho_no_cliente(tmp_path):
-    if not _XLSX.is_file():
-        pytest.skip("base SiscorNet ausente")
-    html, _, _ = _html_completo_rede(tmp_path)
+def test_bloco_rede_colspan_alinhado_ao_cabecalho(tmp_path):
+    html, _, _, _ = _html_completo_rede(tmp_path)
     for table in _tabelas_rede(html):
-        cliente = preparar_marcacao_rede_para_cliente(table)
-        thead = re.search(r"<thead>.*?<tr[^>]*>(.*?)</tr>", cliente, re.S)
+        thead = re.search(r"<thead>.*?<tr[^>]*>(.*?)</tr>", table, re.S)
         assert thead
         n_cab = _colunas_visuais_tr(thead.group(1))
-        blocos_antes = _blocos_colspan(table)
-        blocos_depois = _blocos_colspan(cliente)
-        assert blocos_antes
-        assert blocos_depois == [n_cab] * len(blocos_depois)
-        assert len(blocos_depois) == len(blocos_antes)
-        titulos_antes = re.findall(
-            r"class='bloco-rede-tit'>([^<]+)", table
-        )
-        titulos_depois = re.findall(
-            r"class='bloco-rede-tit'>([^<]+)", cliente
-        )
-        assert titulos_antes == titulos_depois
+        blocos = _blocos_colspan(table)
+        assert blocos
+        assert blocos == [n_cab] * len(blocos)
