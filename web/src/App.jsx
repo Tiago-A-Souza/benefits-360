@@ -285,6 +285,43 @@ export default function App() {
                 onAtualizado={recarregarContexto}
               />
             )}
+
+            <footer className="wizard-nav" aria-label="Navegação entre etapas">
+              {passo > 1 && (
+                <button type="button" className="secundario" onClick={irAnterior}>
+                  ← Etapa anterior
+                </button>
+              )}
+              <div className="wizard-nav-direita">
+                {!proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.pendencia && (
+                  <p className="wizard-nav-pendencia">{statusPassos[passo].pendencia}</p>
+                )}
+                {proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.aviso && (
+                  <p className="wizard-nav-aviso">{statusPassos[passo].aviso}</p>
+                )}
+                {passo < passos.length && (
+                  <button
+                    type="button"
+                    onClick={irProximo}
+                    disabled={
+                      !proximaEtapaClicavel(
+                        chavePassoAtual,
+                        passo,
+                        ctxFluxo,
+                        proximaEtapaDisponivel
+                      )
+                    }
+                    title={
+                      !proximaEtapaDisponivel(passo, ctxFluxo)
+                        ? statusPassos[passo]?.pendencia || "Conclua esta etapa primeiro"
+                        : statusPassos[passo]?.aviso || undefined
+                    }
+                  >
+                    Próxima etapa →
+                  </button>
+                )}
+              </div>
+            </footer>
           </main>
 
           {historicoAberto && (
@@ -292,43 +329,6 @@ export default function App() {
               <HistoricoPanel estudoId={estudoId} />
             </aside>
           )}
-
-          <div className="wizard-nav">
-            {passo > 1 && (
-              <button type="button" className="secundario" onClick={irAnterior}>
-                ← Etapa anterior
-              </button>
-            )}
-            <div className="wizard-nav-direita">
-              {!proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.pendencia && (
-                <p className="wizard-nav-pendencia">{statusPassos[passo].pendencia}</p>
-              )}
-              {proximaEtapaDisponivel(passo, ctxFluxo) && statusPassos[passo]?.aviso && (
-                <p className="wizard-nav-aviso">{statusPassos[passo].aviso}</p>
-              )}
-              {passo < passos.length && (
-                <button
-                  type="button"
-                  onClick={irProximo}
-                  disabled={
-                    !proximaEtapaClicavel(
-                      chavePassoAtual,
-                      passo,
-                      ctxFluxo,
-                      proximaEtapaDisponivel
-                    )
-                  }
-                  title={
-                    !proximaEtapaDisponivel(passo, ctxFluxo)
-                      ? statusPassos[passo]?.pendencia || "Conclua esta etapa primeiro"
-                      : statusPassos[passo]?.aviso || undefined
-                  }
-                >
-                  Próxima etapa →
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

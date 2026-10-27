@@ -29,6 +29,16 @@ function rotuloPlanoColuna(col) {
   return { op: col.operadora, pl: col.plano_nome };
 }
 
+function idsLinhasSecao(sec) {
+  const ids = [];
+  for (const bloco of sec.blocos || []) {
+    for (const ln of bloco.linhas || []) {
+      ids.push(ln.linha_id);
+    }
+  }
+  return ids;
+}
+
 export default function RedeSelecaoPanel({
   estudoId,
   etapaIndice,
@@ -124,6 +134,28 @@ export default function RedeSelecaoPanel({
       const next = new Set(prev);
       if (next.has(linhaId)) next.delete(linhaId);
       else next.add(linhaId);
+      excluidosRef.current = next;
+      return next;
+    });
+  };
+
+  const marcarRevisada = () => {
+    revisadaRef.current = true;
+    setRevisada(true);
+  };
+
+  const alternarInclusaoSecao = (sec) => {
+    const ids = idsLinhasSecao(sec);
+    if (!ids.length) return;
+    marcarRevisada();
+    setExcluidos((prev) => {
+      const todosIncluidos = ids.every((id) => !prev.has(id));
+      const next = new Set(prev);
+      if (todosIncluidos) {
+        ids.forEach((id) => next.add(id));
+      } else {
+        ids.forEach((id) => next.delete(id));
+      }
       excluidosRef.current = next;
       return next;
     });
@@ -288,6 +320,11 @@ export default function RedeSelecaoPanel({
 
             if (!secaoTemLinha) return null;
 
+            const idsSec = idsLinhasSecao(sec);
+            const incluidosSec = idsSec.filter((id) => !excluidos.has(id)).length;
+            const todosIncluidosSec =
+              idsSec.length > 0 && incluidosSec === idsSec.length;
+
             return (
               <div className="panel rede-secao-panel" key={sec.rotulo}>
                 <div className="panel-head">
@@ -295,6 +332,13 @@ export default function RedeSelecaoPanel({
                     <h2>{sec.rotulo}</h2>
                     <p>Cobertura por plano — mesma base da aba Rede do documento.</p>
                   </div>
+                  <button
+                    type="button"
+                    className="secundario btn-compacto"
+                    onClick={() => alternarInclusaoSecao(sec)}
+                  >
+                    {todosIncluidosSec ? "Desmarcar todos" : "Marcar todos"}
+                  </button>
                 </div>
                 <div className="panel-body">
                   {blocosRender.map(({ bloco, linhasBloco }) => (
