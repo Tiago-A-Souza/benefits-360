@@ -1622,6 +1622,48 @@ R$ 5.652,04 conferidos um a um; snapshots **108/108** hashes iguais;
 `SNAPSHOT_VERSAO` **2.8.0** (inalterada); rascunhos demo **110**, **110**
 compilam; documento gerado idêntico ao da master anterior, sem `<script>`.
 
+### Entrega 5 — Inclusão manual de hospital na etapa 5 (`etapa5-inclusao-manual`)
+
+Pedido de Leonardo Brunetti: a seleção só subtraía; agora o corretor também
+acrescenta um hospital fora dos principais (o cliente pediu aquele hospital).
+
+- **Busca** por seção (`GET /api/estudos/{id}/rede-selecao/busca`): base inteira
+  (1.071 prestadores), sem recorte geográfico e sem filtro de especialidade,
+  nome parcial sem acento/caixa, mínimo de 2 letras, no máximo 30 resultados.
+  Só lê — não grava rascunho nem CSV. Cada resultado traz a cobertura em cada
+  plano da seção e os avisos: já na tabela, incluído manualmente, fora do
+  recorte, rede verticalizada (mais «fora do critério padrão» e «nenhum plano
+  desta seção cobre»).
+- **Inclusão** por seção (`POST .../incluidos`, `.../incluidos/remover`):
+  `selecao_rede.incluidos` ao lado de `excluidos`. Identidade = prestador +
+  município + bairro normalizado + subgrupo (o mesmo `linha_id`). Município sem
+  bloco ganha bloco. Recusa o que já está na tabela, o duplicado e o que
+  nenhum plano da seção cobre.
+- **`sanitizar_selecao_rede`** valida `incluidos` contra a **base completa**
+  (`chaves_base`), nunca contra a visão dos principais. Descarta prestador que
+  sumiu da base, seção que não existe mais e prestador que **virou principal do
+  recorte** (já está na visão calculada).
+- **Código real** quando o hospital não tem HGER/HD/PSGER/MAT em nenhum plano
+  (`rede_inclusao_manual.py`, função própria; `formatar_cobertura_abreviada`
+  intocada). Quem passa no critério mostra só as siglas H HD M PS, igual ao
+  principal. Pior caso: 9 códigos crus, 52 caracteres, cabe nos 112px (só cresce
+  em altura, 45px).
+- **Selos («Manual», «Fora do critério padrão») e cinza itálico só na tela.** No
+  documento o hospital incluído é uma linha como as outras.
+- **Legenda dinâmica** (`docs/codigos_rede_legenda.csv`, `codigo;nome;confianca`,
+  lida por `rede_legenda.py`): só linhas de confiança «alta» são impressas, só
+  para códigos que aparecem de fato; código fora do CSV fica cru. Os nomes são
+  interpretação, não vêm da base — corrigir editando o CSV após confirmação do
+  Wesley. Estudo sem inclusão manual gera documento byte-idêntico ao da master.
+- **Snapshot:** `incluidos` vazio **não é serializado** (o rascunho inteiro entra
+  no conteúdo canônico) — hash de todo estudo sem inclusão fica idêntico.
+  `SNAPSHOT_VERSAO` segue **2.8.0**. Com inclusão o conteúdo muda, como já ocorre
+  com `excluidos`.
+- Cache da base de rede reaproveitado (o da entrega 4); nenhum cache novo.
+
+Validação: pytest **1496 passed**, 16 skipped (master: 1459); vitest 147 passed;
+snapshots **108/108**; rascunhos do banco 110 carregam, 0 falha de carga.
+
 ---
 
 ## Nota final

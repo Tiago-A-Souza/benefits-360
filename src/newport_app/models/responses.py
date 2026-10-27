@@ -272,6 +272,8 @@ class LinhaRedeSelecaoItem(BaseModel):
     prestador_nome: str = ""
     incluido: bool
     celulas: dict[str, str] = Field(default_factory=dict)
+    manual: bool = False
+    fora_criterio: bool = False
 
 
 class BlocoRedeSelecaoItem(BaseModel):
@@ -280,6 +282,7 @@ class BlocoRedeSelecaoItem(BaseModel):
 
 
 class SecaoRedeSelecaoItem(BaseModel):
+    subgrupo_id: str = ""
     rotulo: str
     sem_localizacao: bool = False
     colunas: list[ColunaRedeSelecaoItem] = Field(default_factory=list)
@@ -357,3 +360,38 @@ class SugestaoReajustePmeResponse(BaseModel):
     data_referencia_idade: str | None = None
     formato: str
     por_plano: list[SugestaoReajustePmeItem] = Field(default_factory=list)
+
+
+class ResultadoBuscaInclusao(BaseModel):
+    """Um prestador da base inteira encontrado pela busca da inclusão manual."""
+
+    prestador: str
+    prestador_nome: str = ""
+    municipio: str
+    municipio_titulo: str = ""
+    bairro: str = ""
+    zona: str = ""
+    celulas: dict[str, str] = Field(default_factory=dict)
+    fora_criterio: bool = False
+    fora_recorte: bool = False
+    verticalizado: bool = False
+    ja_na_tabela: bool = False
+    incluido_manual: bool = False
+    sem_cobertura: bool = False
+
+
+class BuscaInclusaoResponse(BaseModel):
+    subgrupo_id: str
+    consulta: str
+    colunas: list[ColunaRedeSelecaoItem] = Field(default_factory=list)
+    resultados: list[ResultadoBuscaInclusao] = Field(default_factory=list)
+    total_encontrado: int = 0
+    limite: int = 0
+    aviso: str | None = None
+
+
+class IncluirManualRequest(BaseModel):
+    subgrupo_id: str
+    prestador: str
+    municipio: str
+    bairro: str = ""

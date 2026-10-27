@@ -22,6 +22,11 @@ from newport_app.presentation.rede_codigos import (
     formatar_cobertura_abreviada,
     sigla_zona_capital,
 )
+from newport_app.presentation.rede_inclusao_manual import (
+    ColunaManual,
+    celulas_prestador_manual,
+    prestador_fora_do_criterio,
+)
 from newport_app.presentation.rede_matriz_hospital import (
     CAMINHO_XLSX_PADRAO,
     carregar_base_rede_hospital,
@@ -198,6 +203,63 @@ def _ordem_linha_capital(ln: LinhaRedeApresentacao) -> tuple:
     return (sigla, ln.prestador, ln.bairro)
 
 
+def _manuais_da_secao(rascunho: RascunhoEstudo, subgrupo_id: str) -> list:
+    sel = rascunho.selecao_rede
+    if not sel or not sel.incluidos:
+        return []
+    return [i for i in sel.incluidos if i.subgrupo_id == subgrupo_id]
+
+
+def _acrescentar_linhas_manuais(
+    linhas_map: dict[tuple[str, str, str], LinhaRedeApresentacao],
+    manuais: list,
+    *,
+    subgrupo_id: str,
+    cols_meta: list[ColunaRedeApresentacao],
+    planos_vis: dict,
+    base,
+    principais,
+) -> None:
+    """Inclusões manuais da seção: entram no bloco do seu município (criado se preciso)."""
+    por_chave = {p.chave: p for p in base.prestadores}
+    col_por_idx = {c.col_idx: c for c in base.colunas}
+    colunas: list[ColunaManual] = []
+    for cm in cols_meta:
+        pl = planos_vis.get(f"{cm.operadora}\0{cm.plano_nome}")
+        if pl is None:
+            continue
+        nao_map = pl.estado_mapeamento == EstadoMapeamentoPlanoRede.REDE_NAO_MAPEADA
+        col = col_por_idx.get(pl.col_idx) if pl.col_idx is not None else None
+        colunas.append(
+            ColunaManual(
+                chave=cm.chave,
+                col_idx=pl.col_idx,
+                operadora_canon=(col.operadora_canon or "") if col else "",
+                nao_mapeada=nao_map,
+            )
+        )
+    for inc in manuais:
+        k = (inc.prestador, inc.municipio, inc.bairro)
+        p = por_chave.get(k)
+        if p is None or k in linhas_map:
+            continue  # sumiu da base, ou já está na tabela como principal
+        ent = principais.por_prestador_matriz.get(p.chave)
+        fora = prestador_fora_do_criterio(p)
+        zona = ((ent.zona if ent else "") or "").strip() or (p.regiao or "").strip()
+        linhas_map[k] = LinhaRedeApresentacao(
+            linha_id=_id_linha_rede(
+                p.prestador, p.chave_municipio, k[2], subgrupo_id=subgrupo_id
+            ),
+            prestador=p.prestador,
+            chave_municipio=p.chave_municipio,
+            bairro=k[2],
+            zona=zona,
+            celulas=celulas_prestador_manual(p, ent, colunas, fora_criterio=fora),
+            manual=True,
+            fora_criterio=fora,
+        )
+
+
 def _montar_secao(
     rascunho: RascunhoEstudo,
     subgrupo_id: str,
@@ -207,6 +269,7 @@ def _montar_secao(
     base,
     principais,
     tabela,
+    manuais: list | None = None,
 ) -> SecaoRedeApresentacao | None:
     cols_meta = _colunas_subgrupo(
         rascunho, subgrupo_id, propostas_ids, seguro_novo=seguro_novo
@@ -277,6 +340,17 @@ def _montar_secao(
                 )
             linhas_map[k] = linhas_map[k].model_copy(update={"celulas": celulas})
 
+    if manuais:
+        _acrescentar_linhas_manuais(
+            linhas_map,
+            manuais,
+            subgrupo_id=subgrupo_id,
+            cols_meta=cols_meta,
+            planos_vis=planos_vis,
+            base=base,
+            principais=principais,
+        )
+
     blocos_out: list[BlocoRedeApresentacao] = []
     for mun in _ordenar_municipios(
         [ln.chave_municipio for ln in linhas_map.values()]
@@ -319,7 +393,9 @@ def montar_rede_apresentacao(
     *,
     formato: str = "renovacao",
     excluidos: set[str] | None = None,
+    incluir_manuais: bool = True,
 ) -> RedeApresentacaoDocumento | None:
+    """`incluir_manuais=False` devolve só a visão calculada (principais do recorte)."""
     if not CAMINHO_XLSX_PADRAO.is_file():
         return None
     if not rascunho.subgrupos_atuais:
@@ -342,6 +418,7 @@ def montar_rede_apresentacao(
             base=base,
             principais=principais,
             tabela=tabela,
+            manuais=_manuais_da_secao(rascunho, sg.id) if incluir_manuais else None,
         )
         if sec is not None:
             secoes.append(sec)
