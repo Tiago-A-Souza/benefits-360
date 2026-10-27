@@ -223,6 +223,77 @@ export default function RedeSelecaoPanel({
     (s) => s.subgrupo_id && !s.sem_localizacao
   );
 
+  function painelFiltros(sufixo) {
+    return (
+              <section className="panel panel-flat cmp-filtros">
+                <div className="panel-head">
+                  <div>
+                    <h2>Filtros</h2>
+                    <p>
+                      {linhasVisiveisCount} de {linhas.length} prestador(es) visível(is)
+                      {filtrosAtivos > 0 ? ` · ${filtrosAtivos} filtro(s) ativo(s)` : ""}
+                    </p>
+                  </div>
+                  {filtrosAtivos > 0 && (
+                    <button type="button" className="secundario btn-compacto" onClick={limparFiltros}>
+                      Limpar filtros
+                    </button>
+                  )}
+                </div>
+                <div className="panel-body">
+                  <div className="cmp-filtros-grid catalog-filters">
+                    <div className="cmp-filtro field">
+                      <label className="cmp-filtro-label" htmlFor={`rede-filtro-zona-${sufixo}`}>
+                        Zona
+                      </label>
+                      <select
+                        id={`rede-filtro-zona-${sufixo}`}
+                        value={filtroZona}
+                        onChange={(e) => setFiltroZona(e.target.value)}
+                      >
+                        <option value="">Todas</option>
+                        {zonas.map((z) => (
+                          <option key={z} value={z}>
+                            {z}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="cmp-filtro field">
+                      <label className="cmp-filtro-label" htmlFor={`rede-filtro-mun-${sufixo}`}>
+                        Município
+                      </label>
+                      <select
+                        id={`rede-filtro-mun-${sufixo}`}
+                        value={filtroMun}
+                        onChange={(e) => setFiltroMun(e.target.value)}
+                      >
+                        <option value="">Todos</option>
+                        {municipios.map((m) => (
+                          <option key={m} value={m}>
+                            {rotuloMunicipio(m)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="cmp-filtro cmp-filtro--ordem field">
+                      <label className="cmp-filtro-label" htmlFor={`rede-filtro-nome-${sufixo}`}>
+                        Busca por nome
+                      </label>
+                      <input
+                        id={`rede-filtro-nome-${sufixo}`}
+                        type="search"
+                        value={filtroNome}
+                        onChange={(e) => setFiltroNome(e.target.value)}
+                        placeholder="Nome do prestador"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+    );
+  }
   return (
     <section className="etapa-fluxo rede-selecao-etapa">
       <div className="page-head">
@@ -265,73 +336,23 @@ export default function RedeSelecaoPanel({
 
       {!aviso && (linhas.length > 0 || temSecaoComBusca) && (
         <>
-          <section className="panel panel-flat cmp-filtros">
-            <div className="panel-head">
-              <div>
-                <h2>Filtros</h2>
-                <p>
-                  {linhasVisiveisCount} de {linhas.length} prestador(es) visível(is)
-                  {filtrosAtivos > 0 ? ` · ${filtrosAtivos} filtro(s) ativo(s)` : ""}
-                </p>
-              </div>
-              {filtrosAtivos > 0 && (
-                <button type="button" className="secundario btn-compacto" onClick={limparFiltros}>
-                  Limpar filtros
-                </button>
-              )}
-            </div>
-            <div className="panel-body">
-              <div className="cmp-filtros-grid catalog-filters">
-                <div className="cmp-filtro field">
-                  <label className="cmp-filtro-label" htmlFor="rede-filtro-zona">
-                    Zona
-                  </label>
-                  <select
-                    id="rede-filtro-zona"
-                    value={filtroZona}
-                    onChange={(e) => setFiltroZona(e.target.value)}
-                  >
-                    <option value="">Todas</option>
-                    {zonas.map((z) => (
-                      <option key={z} value={z}>
-                        {z}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="cmp-filtro field">
-                  <label className="cmp-filtro-label" htmlFor="rede-filtro-mun">
-                    Município
-                  </label>
-                  <select
-                    id="rede-filtro-mun"
-                    value={filtroMun}
-                    onChange={(e) => setFiltroMun(e.target.value)}
-                  >
-                    <option value="">Todos</option>
-                    {municipios.map((m) => (
-                      <option key={m} value={m}>
-                        {rotuloMunicipio(m)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="cmp-filtro cmp-filtro--ordem field">
-                  <label className="cmp-filtro-label" htmlFor="rede-filtro-nome">
-                    Busca por nome
-                  </label>
-                  <input
-                    id="rede-filtro-nome"
-                    type="search"
-                    value={filtroNome}
-                    onChange={(e) => setFiltroNome(e.target.value)}
-                    placeholder="Nome do prestador"
-                    autoComplete="off"
+          <div className="rede-incl-topo">
+            {(dados?.secoes || []).map((sec) => {
+              if (!sec.subgrupo_id || sec.sem_localizacao) return null;
+              return (
+                <div key={`incl-${sec.rotulo}`}>
+                  {(dados?.secoes || []).length > 1 && (
+                    <div className="rede-bloco-titulo">{sec.rotulo}</div>
+                  )}
+                  <InclusaoManual
+                    estudoId={estudoId}
+                    secao={sec}
+                    onAtualizado={(nova) => setDados(nova)}
                   />
                 </div>
-              </div>
-            </div>
-          </section>
+              );
+            })}
+          </div>
 
           {(dados?.secoes || []).map((sec) => {
             const colunas = sec.colunas || [];
@@ -369,13 +390,7 @@ export default function RedeSelecaoPanel({
                   </button>
                 </div>
                 <div className="panel-body">
-                  {aceitaInclusao && (
-                    <InclusaoManual
-                      estudoId={estudoId}
-                      secao={sec}
-                      onAtualizado={(nova) => setDados(nova)}
-                    />
-                  )}
+                  {painelFiltros(sec.subgrupo_id || sec.rotulo)}
                   {blocosRender.map(({ bloco, linhasBloco }) => (
                     <div className="rede-bloco-municipio" key={bloco.titulo}>
                       <div className="rede-bloco-titulo">{bloco.titulo}</div>
