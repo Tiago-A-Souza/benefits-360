@@ -1590,6 +1590,38 @@ Pendente (entrega 4): Simular Rede na home.
 | Snapshots demo | **107/107** (`HASH_DIVERGENTE=0`) |
 | `SNAPSHOT_VERSAO` | **2.8.0** — **não** subir |
 
+### Entrega 4 — Simular Rede (`simular-rede`, tag `simular-rede-v1`)
+
+Ferramenta de consulta de rede fora do fluxo do estudo: por hospital (onde
+atende) e por plano (quais hospitais). Somente leitura; não grava rascunho,
+snapshot nem CSV de principais. Rotas `GET /api/simular-rede/opcoes`,
+`/por-hospital`, `/por-plano`; tela em `web/src/simularRede/`. Também nesta
+entrega: botões Anterior/Próxima no fim da etapa (barra flutuante removida) e
+"Desmarcar/Marcar todos" por card na etapa 5.
+
+**Cache compartilhado da base de rede.** `carregar_base_rede_hospital` passou a
+ter cache em memória (chave: caminho resolvido; assinatura: mtime_ns e tamanho
+do xlsx e de `regras_comerciais_aliases.csv`; com lock;
+`limpar_cache_base_rede_hospital()`). `carregar_hospitais_principais` tem cache
+próprio (assinatura do CSV + identidade da matriz;
+`limpar_cache_hospitais_principais()`). O cache é o mesmo para Simular Rede,
+etapa 5 e exportação — **novas funcionalidades de rede devem reutilizá-lo, não
+criar outro**. Invalida sozinho quando a planilha muda.
+
+Medição (estudo est-7b3eae722f, 157 linhas): `montar_rede_selecao_ui` ~850–1650
+ms sem cache → ~100 ms com cache; consulta fria 2143 ms → ~26 ms.
+
+Arquivos fora de simular_rede: `rede_matriz_hospital.py` e
+`hospitais_principais.py` (cache), `api/main.py` (só rotas), `App.jsx`,
+`MeusEstudos.jsx`, `api.js`, `RedeSelecaoPanel.jsx`, `styles.css`.
+
+Validação pós-merge (master `c6a3d30`): pytest **1459 passed**, 16 skipped
+(master anterior 1442); gabaritos Anistia 12% R$ 48.479,31 / S750 R$ 29.386,76 /
+ONE R$ 19.092,55 / Prata R$ 23.607,17 e R$ 6.100,61 / IVTEC R$ 3.741,89 e
+R$ 5.652,04 conferidos um a um; snapshots **108/108** hashes iguais;
+`SNAPSHOT_VERSAO` **2.8.0** (inalterada); rascunhos demo **110**, **110**
+compilam; documento gerado idêntico ao da master anterior, sem `<script>`.
+
 ---
 
 ## Nota final
