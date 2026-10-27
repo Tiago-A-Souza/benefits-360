@@ -1,13 +1,13 @@
 codigo;nome;confianca
-HPED;Hospital Pediátrico;alta
-PSPED;Pronto-socorro Pediátrico;alta
-HOFTA;Hospital Oftalmológico;alta
-PSOFT;Pronto-socorro Oftalmológico;alta
-HPSIQ;Hospital Psiquiátrico;alta
-HONC;Hospital Oncológico;alta
-PSONC;Pronto-socorro Oncológico;alta
-HCAR;Hospital Cardiológico;alta
-PSCAR;Pronto-socorro Cardiológico;alta
-HGINE;Hospital Ginecológico;alta
-HORTO;Hospital Ortopédico;alta
-PSORT;Pronto-socorro Ortopédico;alta
+HPED;Atendimento hospitalar pediátrico;alta
+HGINE;Atendimento hospitalar ginecológico;alta
+HCAR;Atendimento hospitalar cardiológico;alta
+HORTO;Atendimento hospitalar ortopédico;alta
+HONC;Atendimento hospitalar oncológico;alta
+HOFTA;Atendimento hospitalar oftalmológico;alta
+HPSIQ;Atendimento hospitalar psiquiátrico;alta
+PSPED;Pronto-socorro pediátrico;alta
+PSCAR;Pronto-socorro cardiológico;alta
+PSORT;Pronto-socorro ortopédico;alta
+PSONC;Pronto-socorro oncológico;alta
+PSOFT;Pronto-socorro oftalmológico;alta

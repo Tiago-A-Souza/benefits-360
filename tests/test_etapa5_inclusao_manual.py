@@ -782,9 +782,9 @@ def test_x11_legenda_cresce_com_codigo_cru_que_aparece(ctx):
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "x11")
     leg = _legenda(html)
     assert leg.startswith("<b>H</b> Hospital Geral")
-    assert "<b>HPED</b> Hospital Pediátrico" in leg
-    assert "<b>PSPED</b> Pronto-socorro Pediátrico" in leg
-    assert "<b>PSOFT</b> Pronto-socorro Oftalmológico" in leg
+    assert "<b>HPED</b> Atendimento hospitalar pediátrico" in leg
+    assert "<b>PSPED</b> Pronto-socorro pediátrico" in leg
+    assert "<b>PSOFT</b> Pronto-socorro oftalmológico" in leg
     assert "HCAR" not in leg  # só o que aparece no documento
 
 
@@ -794,7 +794,7 @@ def test_x12_codigo_fora_do_csv_aparece_cru_sem_entrada_e_nada_quebra(ctx):
     linha = _trecho_linha(_rede(html), _lid(SG_A, CTO_SAMARITANO))
     assert "HCELT" in linha and "HOESP" in linha and "HONC" in linha
     leg = _legenda(html)
-    assert "<b>HONC</b> Hospital Oncológico" in leg  # no CSV (alta)
+    assert "<b>HONC</b> Atendimento hospitalar oncológico" in leg  # no CSV (alta)
     assert "HCELT" not in leg and "HOESP" not in leg  # não estão no CSV
 
 
