@@ -147,6 +147,37 @@ export async function obterRedeSelecao(estudoId) {
   return tratarResposta(res, "Não foi possível carregar a rede credenciada.");
 }
 
+/** Simular Rede — consultas somente leitura, fora de qualquer estudo. */
+export async function obterOpcoesSimulacaoRede() {
+  const res = await fetch(`${API}/simular-rede/opcoes`);
+  return tratarResposta(res, "Não foi possível carregar a base de rede.");
+}
+
+function paramsSimulacao({ uf, municipio, zona, todos, confirmar }) {
+  const p = new URLSearchParams();
+  if (uf) p.set("uf", uf);
+  if (municipio) p.set("municipio", municipio);
+  if (zona) p.set("zona", zona);
+  if (todos) p.set("todos", "true");
+  if (confirmar) p.set("confirmar", "true");
+  return p;
+}
+
+export async function consultarRedePorHospital({ termo, operadoras = [], ...filtros }) {
+  const p = paramsSimulacao(filtros);
+  p.append("q", termo);
+  operadoras.forEach((o) => p.append("operadoras", o));
+  const res = await fetch(`${API}/simular-rede/por-hospital?${p}`);
+  return tratarResposta(res, "Não foi possível consultar a rede por hospital.");
+}
+
+export async function consultarRedePorPlano({ plano, ...filtros }) {
+  const p = paramsSimulacao(filtros);
+  p.set("plano", plano);
+  const res = await fetch(`${API}/simular-rede/por-plano?${p}`);
+  return tratarResposta(res, "Não foi possível consultar a rede por plano.");
+}
+
 export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
   const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao`, {
     method: "PUT",

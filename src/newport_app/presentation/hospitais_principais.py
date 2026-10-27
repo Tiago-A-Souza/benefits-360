@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -183,7 +184,45 @@ def _mesclar(a: EntradaHospitalPrincipal, b: EntradaHospitalPrincipal) -> Entrad
     )
 
 
+_CACHE_PRINCIPAIS_LOCK = threading.Lock()
+# caminho → (assinatura do CSV, matriz de referência, resultado)
+_CACHE_PRINCIPAIS: dict[Path, tuple[tuple[int, int], object, BaseHospitaisPrincipais]] = {}
+
+
+def limpar_cache_hospitais_principais() -> None:
+    with _CACHE_PRINCIPAIS_LOCK:
+        _CACHE_PRINCIPAIS.clear()
+
+
 def carregar_hospitais_principais(
+    caminho: Path | None = None,
+    *,
+    prestadores_matriz: tuple | None = None,
+) -> BaseHospitaisPrincipais:
+    """Reaproveita o resultado enquanto o CSV (mtime/tamanho) e a matriz forem os mesmos."""
+    origem = caminho or CAMINHO_BASE
+    try:
+        st = origem.stat()
+    except OSError:
+        return _ler_hospitais_principais(caminho, prestadores_matriz=prestadores_matriz)
+    assinatura = (st.st_mtime_ns, st.st_size)
+    chave = origem.resolve()
+    with _CACHE_PRINCIPAIS_LOCK:
+        hit = _CACHE_PRINCIPAIS.get(chave)
+        if (
+            hit is not None
+            and hit[0] == assinatura
+            and hit[1] is prestadores_matriz
+        ):
+            return hit[2]
+        resultado = _ler_hospitais_principais(
+            caminho, prestadores_matriz=prestadores_matriz
+        )
+        _CACHE_PRINCIPAIS[chave] = (assinatura, prestadores_matriz, resultado)
+        return resultado
+
+
+def _ler_hospitais_principais(
     caminho: Path | None = None,
     *,
     prestadores_matriz: tuple | None = None,

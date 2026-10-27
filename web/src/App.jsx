@@ -15,6 +15,8 @@ import HistoricoPanel from "./HistoricoPanel";
 import MeusEstudos from "./MeusEstudos";
 import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
+import NavegacaoFerramentas from "./NavegacaoFerramentas";
+import SimularRede from "./simularRede/SimularRede";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
@@ -36,6 +38,8 @@ export default function App() {
     resumoPlanoAtual: null,
   });
   const [historicoAberto, setHistoricoAberto] = useState(false);
+  // Simular Rede é uma consulta avulsa: não cria nem altera estudo.
+  const [simulando, setSimulando] = useState(false);
   const [cestaGlobal, setCestaGlobal] = useState([]);
   const avancarEtapaRef = useRef(null);
   const registrarAvancoEtapa = useCallback((fn) => {
@@ -138,11 +142,28 @@ export default function App() {
   const totalBaseComparacao = ctxFluxo.resumoPlanoAtual?.total_reajustado_reais;
   const legendaReajusteBase = textoReajusteContrato(ctxFluxo.resumoPlanoAtual);
 
+  if (simulando) {
+    const emEstudo = tela === "fluxo" && estudoId;
+    return (
+      <div className="app-shell">
+        <EstudoCabecalho resumo={null} />
+        <SimularRede
+          onMeusEstudos={() => {
+            if (emEstudo) voltarLista();
+            setSimulando(false);
+          }}
+          onVoltarEstudo={emEstudo ? () => setSimulando(false) : undefined}
+          rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+        />
+      </div>
+    );
+  }
+
   if (tela === "lista") {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} />
-        <MeusEstudos onContinuar={entrarEstudo} />
+        <MeusEstudos onContinuar={entrarEstudo} onSimularRede={() => setSimulando(true)} />
       </div>
     );
   }
@@ -222,6 +243,14 @@ export default function App() {
               })}
             </ol>
           </nav>
+
+          <div className="side-bottom">
+            <NavegacaoFerramentas
+              ativo={null}
+              onMeusEstudos={voltarLista}
+              onSimularRede={() => setSimulando(true)}
+            />
+          </div>
         </aside>
 
         <div className="app-main">

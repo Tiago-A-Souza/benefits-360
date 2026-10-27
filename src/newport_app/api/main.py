@@ -122,6 +122,9 @@ from newport_app.services.comparativo_ui import (
 )
 from newport_app.services.rede_selecao import salvar_selecao_rede
 from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui, todos_ids_linha_rede
+from newport_app.models.simular_rede import ConsultaRedeResponse, OpcoesSimulacaoRede
+from newport_app.presentation import rede_consulta
+from newport_app.presentation.rede_matriz_hospital import BaseRedeHospitalInvalida
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
     CotacaoDescartadaError,
@@ -951,6 +954,61 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(exc)) from None
         service.salvar_rascunho(rascunho)
         return resp
+
+    # --- Simular Rede: consulta da rede fora de estudo. Somente leitura. ---
+
+    @app.get("/api/simular-rede/opcoes", response_model=OpcoesSimulacaoRede)
+    def simular_rede_opcoes() -> OpcoesSimulacaoRede:
+        try:
+            return rede_consulta.opcoes_simulacao()
+        except BaseRedeHospitalInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.get("/api/simular-rede/por-hospital", response_model=ConsultaRedeResponse)
+    def simular_rede_por_hospital(
+        q: list[str] = Query(default_factory=list),
+        uf: str | None = None,
+        municipio: str | None = None,
+        zona: str | None = None,
+        operadoras: list[str] = Query(default_factory=list),
+        todos: bool = False,
+    ) -> ConsultaRedeResponse:
+        try:
+            return rede_consulta.consultar_por_hospital(
+                q,
+                uf=uf,
+                municipio=municipio,
+                zona=zona,
+                operadoras=operadoras,
+                todos=todos,
+            )
+        except rede_consulta.ConsultaRedeInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except BaseRedeHospitalInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.get("/api/simular-rede/por-plano", response_model=ConsultaRedeResponse)
+    def simular_rede_por_plano(
+        plano: str,
+        uf: str | None = None,
+        municipio: str | None = None,
+        zona: str | None = None,
+        todos: bool = False,
+        confirmar: bool = False,
+    ) -> ConsultaRedeResponse:
+        try:
+            return rede_consulta.consultar_por_plano(
+                plano,
+                uf=uf,
+                municipio=municipio,
+                zona=zona,
+                todos=todos,
+                confirmar=confirmar,
+            )
+        except rede_consulta.ConsultaRedeInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except BaseRedeHospitalInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
 
     @app.get(
         "/api/estudos/{estudo_id}/rede-selecao",
