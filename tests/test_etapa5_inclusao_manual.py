@@ -729,7 +729,8 @@ def test_x05_incluir_duas_vezes_e_sem_cobertura_sao_recusados(ctx):
     r2 = ctx["client"].post(
         f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(SG_A, sem_cob)
     )
-    assert r2.status_code == 422 and "Nenhum plano" in r2.json()["detail"]
+    assert r2.status_code == 422
+    assert r2.json()["detail"] == "Nenhum plano desta seção cobre este hospital."
     r3 = ctx["client"].post(
         f"/api/estudos/{EID}/rede-selecao/incluidos",
         json=_corpo(SG_A, ("NAO EXISTE", "RJ.RIO DE JANEIRO", "")),
@@ -852,3 +853,27 @@ def test_x15_celula_mais_larga_cabe_em_112px_so_cresce_em_altura():
     assert ".tabela-rede .rede-col-plano{width:112px;max-width:112px;min-width:112px;" in Path(
         html_renderer.__file__
     ).read_text(encoding="utf-8")
+
+
+def test_x16_coberto_so_pelo_contrato_atual_e_aceito_e_aparece_no_documento(ctx):
+    """«Você perde esse hospital se trocar»: a linha que só o contrato atual cobre."""
+    b = _busca(ctx["client"], SG_A, "urgil")
+    r = _resultado(b, URGIL)
+    assert r["celulas"] == {"rede-atual": "HPED PSPED"}  # nenhuma proposta cobre
+    assert not r["sem_cobertura"]
+    ui = _incluir(ctx["client"], SG_A, URGIL)
+    assert _achar(_linhas(ui, SG_A), URGIL) is not None
+    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL))
+    html = _html_servico(ctx["tmp"], rascunho, cen_id, "x16")
+    linha = _trecho_linha(_rede(html), _lid(SG_A, URGIL))
+    assert "<td class='rede-col-plano on'>HPED PSPED</td>" in linha
+    assert linha.count("class='rede-col-plano on'") == 1  # a coluna da proposta fica vazia
+
+
+def test_x17_recusa_sem_cobertura_diz_a_frase_do_corretor(ctx):
+    sem_cob = ("AMERICAS OFTALMOCENTER", "RJ.RIO DE JANEIRO", "TIJUCA")
+    r = ctx["client"].post(
+        f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(SG_A, sem_cob)
+    )
+    assert r.status_code == 422
+    assert r.json()["detail"] == "Nenhum plano desta seção cobre este hospital."

@@ -138,7 +138,7 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
                     </span>
                   )}
                   {it.sem_cobertura && (
-                    <span className="selo selo--aviso">Nenhum plano desta seção cobre</span>
+                    <span className="selo selo--aviso">Nenhum plano desta seção cobre este hospital</span>
                   )}
                 </div>
                 <div className="incl-manual-cobertura">

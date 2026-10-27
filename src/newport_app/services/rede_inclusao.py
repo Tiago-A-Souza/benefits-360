@@ -236,7 +236,7 @@ def incluir_manual(
     )
     if not _tem_cobertura(celulas):
         raise InclusaoRedeInvalida(
-            "Nenhum plano desta seção cobre este prestador; ele não apareceria no documento."
+            "Nenhum plano desta seção cobre este hospital."
         )
     atual = rascunho.selecao_rede
     rascunho.selecao_rede = SelecaoRedeRascunho(
