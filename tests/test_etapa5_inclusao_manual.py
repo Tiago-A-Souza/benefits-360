@@ -65,6 +65,8 @@ OFTALMO = ("AMERICAS OFTALMOCENTER", "RJ.RIO DE JANEIRO", "BOTAFOGO")
 CTO_SAMARITANO = ("CTO SAMARITANO IPANEMA", "RJ.RIO DE JANEIRO", "IPANEMA")
 # Principal do recorte do Rio: já está na tabela.
 SAMARITANO = ("HOSP SAMARITANO", "RJ.RIO DE JANEIRO", "BOTAFOGO")
+# Nenhum plano do estudo o cobre: todas as células ficam vazias.
+OFTALMO_TIJUCA = ("AMERICAS OFTALMOCENTER", "RJ.RIO DE JANEIRO", "TIJUCA")
 
 EID = "est-incl-manual"
 
@@ -83,24 +85,23 @@ def ctx(tmp_path: Path):
     return {"repo": repo, "client": client, "cen": cen_id, "db": db, "tmp": tmp_path}
 
 
-def _corpo(sg: str, chave: tuple[str, str, str]) -> dict:
+def _corpo(chave: tuple[str, str, str]) -> dict:
     return {
-        "subgrupo_id": sg,
         "prestador": chave[0],
         "municipio": chave[1],
         "bairro": chave[2],
     }
 
 
-def _incluir(client, sg: str, chave, status: int = 200):
-    r = client.post(f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(sg, chave))
+def _incluir(client, chave, status: int = 200):
+    r = client.post(f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(chave))
     assert r.status_code == status, r.text
     return r.json()
 
 
-def _remover(client, sg: str, chave, status: int = 200):
+def _remover(client, chave, status: int = 200):
     r = client.post(
-        f"/api/estudos/{EID}/rede-selecao/incluidos/remover", json=_corpo(sg, chave)
+        f"/api/estudos/{EID}/rede-selecao/incluidos/remover", json=_corpo(chave)
     )
     assert r.status_code == status, r.text
     return r.json()
@@ -112,9 +113,9 @@ def _ui(client) -> dict:
     return r.json()
 
 
-def _busca(client, sg: str, q: str) -> dict:
+def _busca(client, q: str) -> dict:
     r = client.get(
-        f"/api/estudos/{EID}/rede-selecao/busca", params={"subgrupo_id": sg, "q": q}
+        f"/api/estudos/{EID}/rede-selecao/busca", params={"q": q}
     )
     assert r.status_code == 200, r.text
     return r.json()
@@ -152,15 +153,13 @@ def _lid(sg: str, chave) -> str:
     return _id_linha_rede(chave[0], chave[1], chave[2], subgrupo_id=sg)
 
 
-def _rascunho_com_incluidos(*itens: tuple[str, tuple[str, str, str]]):
+def _rascunho_com_incluidos(*chaves: tuple[str, str, str]):
     rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
     rascunho = rascunho.model_copy(update={"id": EID})
     rascunho.selecao_rede = SelecaoRedeRascunho(
         incluidos=[
-            IncluidoRedeRascunho(
-                subgrupo_id=sg, prestador=c[0], municipio=c[1], bairro=c[2]
-            )
-            for sg, c in itens
+            IncluidoRedeRascunho(prestador=c[0], municipio=c[1], bairro=c[2])
+            for c in chaves
         ]
     )
     return rascunho, cen_id
@@ -221,14 +220,14 @@ def test_01_busca_acha_prestador_que_nao_e_principal(ctx):
         prestadores_matriz=base.prestadores
     ).por_prestador_matriz.get(p.chave)
     assert not (ent and ent.principal)  # premissa: não é principal
-    b = _busca(ctx["client"], SG_A, "adventista silvestre")
+    b = _busca(ctx["client"], "adventista silvestre")
     r = _resultado(b, ADVENTISTA)
     assert r["ja_na_tabela"] is False
     assert r["incluido_manual"] is False
 
 
 def test_02_busca_acha_prestador_fora_do_recorte_com_aviso(ctx):
-    b = _busca(ctx["client"], SG_A, "hosp da crianca urgil")
+    b = _busca(ctx["client"], "hosp da crianca urgil")
     r = _resultado(b, URGIL)
     assert r["fora_recorte"] is True  # sg-a é Rio de Janeiro; URGIL é Rio Branco/AC
     ui = _ui(ctx["client"])
@@ -236,7 +235,7 @@ def test_02_busca_acha_prestador_fora_do_recorte_com_aviso(ctx):
 
 
 def test_03_busca_acha_prestador_sem_as_quatro_especialidades(ctx):
-    b = _busca(ctx["client"], SG_A, "oftalmocenter")
+    b = _busca(ctx["client"], "oftalmocenter")
     r = _resultado(b, OFTALMO)
     assert r["fora_criterio"] is True
     assert r["celulas"], "tem cobertura real, com o código real da base"
@@ -244,20 +243,33 @@ def test_03_busca_acha_prestador_sem_as_quatro_especialidades(ctx):
     assert any("PSOFT" in v for v in r["celulas"].values())
 
 
-def test_04_resultado_mostra_a_cobertura_em_cada_plano_da_secao(ctx):
+def test_04_resultado_mostra_a_cobertura_em_cada_plano_distinto_do_estudo(ctx):
     ui = _ui(ctx["client"])
-    chaves_secao = [c["chave"] for c in _secao(ui, SG_A)["colunas"]]
-    b = _busca(ctx["client"], SG_A, "adventista silvestre")
-    assert [c["chave"] for c in b["colunas"]] == chaves_secao
+    planos_secoes = {
+        (c["operadora"], c["plano_nome"])
+        for s in ui["secoes"]
+        for c in s["colunas"]
+    }
+    b = _busca(ctx["client"], "adventista silvestre")
+    planos_busca = [(c["operadora"], c["plano_nome"]) for c in b["colunas"]]
+    assert len(planos_busca) == len(set(planos_busca))  # cada plano uma vez só
+    assert set(planos_busca) == planos_secoes  # S750, ONE S2500 e a proposta
+    nomes = {n for _, n in planos_busca}
+    assert {"AMIL S750 - Apto.", "AMIL ONE S2500 - Apto."} <= nomes
     r = _resultado(b, ADVENTISTA)
-    assert set(r["celulas"]) <= set(chaves_secao)
+    assert set(r["celulas"]) <= {c["chave"] for c in b["colunas"]}
     assert r["celulas"] and all(
         set(v.split()) <= {"H", "HD", "M", "PS"} for v in r["celulas"].values()
     )
     # mesmos códigos da tabela: o que o resultado promete é o que entra depois
-    ui2 = _incluir(ctx["client"], SG_A, ADVENTISTA)
-    ln = _achar(_linhas(ui2, SG_A), ADVENTISTA)
-    assert {k: v for k, v in ln["celulas"].items() if v} == r["celulas"]
+    por_chave = {c["chave"]: (c["operadora"], c["plano_nome"]) for c in b["colunas"]}
+    prometido = {por_chave[k]: v for k, v in r["celulas"].items()}
+    ui2 = _incluir(ctx["client"], ADVENTISTA)
+    for sec in ui2["secoes"]:
+        ln = _achar(_linhas(ui2, sec["subgrupo_id"]), ADVENTISTA)
+        for col in sec["colunas"]:
+            texto = ln["celulas"].get(col["chave"], "")
+            assert texto == prometido.get((col["operadora"], col["plano_nome"]), "")
 
 
 def test_05_tabela_nao_muda_enquanto_so_busca(ctx):
@@ -270,8 +282,8 @@ def test_05_tabela_nao_muda_enquanto_so_busca(ctx):
     csv_antes = hashlib.sha256(CAMINHO_BASE.read_bytes()).hexdigest()
 
     for q in ("adventista", "urgil", "oftalmocenter", "einstein", "samaritano"):
-        _busca(ctx["client"], SG_A, q)
-        _busca(ctx["client"], SG_B, q)
+        _busca(ctx["client"], q)
+        _busca(ctx["client"], q)
 
     assert _ui(ctx["client"]) == antes_ui
     with ctx["repo"]._connect() as conn:
@@ -286,7 +298,7 @@ def test_05_tabela_nao_muda_enquanto_so_busca(ctx):
 
 
 def test_06_incluir_faz_o_prestador_aparecer_no_bloco_do_municipio(ctx):
-    ui = _incluir(ctx["client"], SG_A, ADVENTISTA)
+    ui = _incluir(ctx["client"], ADVENTISTA)
     bloco = next(
         b
         for b in _secao(ui, SG_A)["blocos"]
@@ -302,19 +314,19 @@ def test_06_incluir_faz_o_prestador_aparecer_no_bloco_do_municipio(ctx):
 def test_07_municipio_sem_bloco_ganha_bloco_novo(ctx):
     antes = {b["titulo"] for b in _secao(_ui(ctx["client"]), SG_A)["blocos"]}
     assert "Rio Branco · AC" not in antes
-    ui = _incluir(ctx["client"], SG_A, URGIL)
+    ui = _incluir(ctx["client"], URGIL)
     blocos = {b["titulo"]: b for b in _secao(ui, SG_A)["blocos"]}
     assert "Rio Branco · AC" in blocos
     assert [ln["prestador"] for ln in blocos["Rio Branco · AC"]["linhas"]] == [URGIL[0]]
 
 
 def test_08_incluido_aparece_marcado_como_manual(ctx):
-    ui = _incluir(ctx["client"], SG_A, URGIL)
+    ui = _incluir(ctx["client"], URGIL)
     ln = _achar(_linhas(ui, SG_A), URGIL)
     assert ln["manual"] is True
     assert ln["fora_criterio"] is True  # sem as quatro especialidades
     assert any("HPED" in v and "PSPED" in v for v in ln["celulas"].values())
-    ui2 = _incluir(ctx["client"], SG_A, ADVENTISTA)
+    ui2 = _incluir(ctx["client"], ADVENTISTA)
     ln2 = _achar(_linhas(ui2, SG_A), ADVENTISTA)
     assert ln2["manual"] is True and ln2["fora_criterio"] is False
     # os principais não ganham marca nenhuma
@@ -324,47 +336,49 @@ def test_08_incluido_aparece_marcado_como_manual(ctx):
 
 def test_09_remover_a_inclusao_tira_o_prestador_da_tabela(ctx):
     base = _ui(ctx["client"])
-    _incluir(ctx["client"], SG_A, URGIL)
-    ui = _remover(ctx["client"], SG_A, URGIL)
+    _incluir(ctx["client"], URGIL)
+    ui = _remover(ctx["client"], URGIL)
     assert _achar(_linhas(ui, SG_A), URGIL) is None
     assert "Rio Branco · AC" not in {b["titulo"] for b in _secao(ui, SG_A)["blocos"]}
     assert ui["secoes"] == base["secoes"]  # volta exatamente ao que era
     assert _ui(ctx["client"])["secoes"] == base["secoes"]
     # remover o que não existe é 404 (nada silencioso)
-    _remover(ctx["client"], SG_A, URGIL, status=404)
+    _remover(ctx["client"], URGIL, status=404)
 
 
-def test_10_inclusao_e_por_secao_incluir_no_s750_nao_inclui_no_one(ctx):
-    """Destaque: incluir numa seção não inclui na outra."""
-    ui = _incluir(ctx["client"], SG_A, ADVENTISTA)
+def test_10_campo_unico_o_hospital_entra_em_todas_as_secoes(ctx):
+    """Destaque: um único «Incluir» vale para o estudo — entra em S750 e em ONE S2500."""
+    ui0 = _ui(ctx["client"])
+    assert _achar(_linhas(ui0, SG_A), ADVENTISTA) is None
+    assert _achar(_linhas(ui0, SG_B), ADVENTISTA) is None
+    ui = _incluir(ctx["client"], ADVENTISTA)  # uma chamada, sem seção
     assert _achar(_linhas(ui, SG_A), ADVENTISTA)["manual"] is True
-    assert _achar(_linhas(ui, SG_B), ADVENTISTA) is None
-    # a busca na outra seção não o trata como incluído
-    b = _busca(ctx["client"], SG_B, "adventista silvestre")
-    assert _resultado(b, ADVENTISTA)["incluido_manual"] is False
-    # e dá para incluir nas duas, de forma independente
-    ui2 = _incluir(ctx["client"], SG_B, ADVENTISTA)
-    assert _achar(_linhas(ui2, SG_B), ADVENTISTA)["manual"] is True
-    ui3 = _remover(ctx["client"], SG_A, ADVENTISTA)
-    assert _achar(_linhas(ui3, SG_A), ADVENTISTA) is None
-    assert _achar(_linhas(ui3, SG_B), ADVENTISTA) is not None
-    # os ids são distintos por seção
+    assert _achar(_linhas(ui, SG_B), ADVENTISTA)["manual"] is True
+    # cada tabela tem o seu id (o escopo da exclusão continua por seção)
     assert _lid(SG_A, ADVENTISTA) != _lid(SG_B, ADVENTISTA)
+    b = _busca(ctx["client"], "adventista silvestre")
+    r = _resultado(b, ADVENTISTA)
+    assert r["incluido_manual"] is True and r["secoes_a_incluir"] == []
+    assert len(r["secoes_ja_presentes"]) == 2
+    # remover tira das duas
+    ui3 = _remover(ctx["client"], ADVENTISTA)
+    assert _achar(_linhas(ui3, SG_A), ADVENTISTA) is None
+    assert _achar(_linhas(ui3, SG_B), ADVENTISTA) is None
 
 
 def test_11_inclusao_persiste_sair_do_estudo_e_voltar(ctx):
-    _incluir(ctx["client"], SG_A, URGIL)
+    _incluir(ctx["client"], URGIL)
     # «sair e voltar»: outro repositório e outro app sobre o mesmo banco
     repo2 = SQLiteStudyRepository(ctx["db"])
     client2 = TestClient(create_app(repo=repo2, seed_demos=False))
     ln = _achar(_linhas(_ui(client2), SG_A), URGIL)
     assert ln is not None and ln["manual"] is True
     sel = repo2.obter_rascunho(EID).selecao_rede
-    assert [(i.subgrupo_id, i.prestador) for i in sel.incluidos] == [(SG_A, URGIL[0])]
+    assert [i.prestador for i in sel.incluidos] == [URGIL[0]]
 
 
 def test_12_incluido_aparece_no_documento_exportado(ctx):
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, ADVENTISTA), (SG_A, URGIL))
+    rascunho, cen_id = _rascunho_com_incluidos(ADVENTISTA, URGIL)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "t12")
     rede = _rede(html)
     assert "Rio Branco · AC" in rede
@@ -376,7 +390,7 @@ def test_12_incluido_aparece_no_documento_exportado(ctx):
 
 
 def test_13_rascunho_guarda_incluidos_ao_lado_de_excluidos(ctx):
-    ui = _incluir(ctx["client"], SG_A, URGIL)
+    ui = _incluir(ctx["client"], URGIL)
     principal = next(ln for ln in _linhas(ui, SG_A) if not ln["manual"])
     r = ctx["client"].put(
         f"/api/estudos/{EID}/rede-selecao",
@@ -392,7 +406,7 @@ def test_13_rascunho_guarda_incluidos_ao_lado_de_excluidos(ctx):
 
 def test_14_sanitizar_selecao_rede_nao_apaga_os_incluidos(ctx):
     """Destaque: os incluidos NÃO estão na visão dos principais — validar contra ela os apagaria."""
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, ADVENTISTA), (SG_A, URGIL))
+    rascunho, cen_id = _rascunho_com_incluidos(ADVENTISTA, URGIL)
     visao = todos_ids_linha_rede(rascunho, incluir_manuais=False)
     assert _lid(SG_A, ADVENTISTA) not in visao  # premissa: é inclusão de verdade
     assert _lid(SG_A, URGIL) not in visao
@@ -421,18 +435,15 @@ def test_14_sanitizar_selecao_rede_nao_apaga_os_incluidos(ctx):
 
 
 def test_15_incluido_cujo_prestador_sumiu_da_base_e_descartado(ctx):
-    rascunho, _ = _rascunho_com_incluidos((SG_A, ADVENTISTA))
+    rascunho, _ = _rascunho_com_incluidos(ADVENTISTA)
     fantasma = IncluidoRedeRascunho(
-        subgrupo_id=SG_A, prestador="HOSPITAL QUE FECHOU", municipio="RJ.RIO DE JANEIRO", bairro="CENTRO"
+        prestador="HOSPITAL QUE FECHOU", municipio="RJ.RIO DE JANEIRO", bairro="CENTRO"
     )
-    sem_secao = IncluidoRedeRascunho(
-        subgrupo_id="sg-que-nao-existe",
-        prestador=ADVENTISTA[0],
-        municipio=ADVENTISTA[1],
-        bairro=ADVENTISTA[2],
+    duplicado = IncluidoRedeRascunho(
+        prestador=ADVENTISTA[0], municipio=ADVENTISTA[1], bairro=ADVENTISTA[2]
     )
     rascunho.selecao_rede = rascunho.selecao_rede.model_copy(
-        update={"incluidos": [*rascunho.selecao_rede.incluidos, fantasma, sem_secao]}
+        update={"incluidos": [*rascunho.selecao_rede.incluidos, fantasma, duplicado]}
     )
     base = carregar_base_rede_hospital()
     visao = todos_ids_linha_rede(rascunho, incluir_manuais=False)
@@ -441,7 +452,7 @@ def test_15_incluido_cujo_prestador_sumiu_da_base_e_descartado(ctx):
     )
     assert [i.prestador for i in rascunho.selecao_rede.incluidos] == [ADVENTISTA[0]]
     # e no caminho real (salvar no banco) o que sumiu da base também sai
-    rascunho2, _ = _rascunho_com_incluidos((SG_A, ADVENTISTA))
+    rascunho2, _ = _rascunho_com_incluidos(ADVENTISTA)
     rascunho2.selecao_rede = rascunho2.selecao_rede.model_copy(
         update={"incluidos": [*rascunho2.selecao_rede.incluidos, fantasma]}
     )
@@ -466,7 +477,7 @@ def test_16_cobertos_do_bloco_conta_tambem_os_incluidos(ctx):
     rascunho.selecao_rede = None
     antes = _doc(rascunho, cen_id)
     n0, c0 = _contagem_bloco(antes, SG_A, "Rio De Janeiro · RJ")
-    rascunho_com, _ = _rascunho_com_incluidos((SG_A, ADVENTISTA))
+    rascunho_com, _ = _rascunho_com_incluidos(ADVENTISTA)
     depois = _doc(rascunho_com, cen_id)
     n1, c1 = _contagem_bloco(depois, SG_A, "Rio De Janeiro · RJ")
     ln = next(x for x in _linhas_doc(depois, SG_A) if x.manual)
@@ -486,12 +497,12 @@ def test_16_cobertos_do_bloco_conta_tambem_os_incluidos(ctx):
 
 def test_17_contador_de_linhas_visiveis_acompanha(ctx):
     ui0 = _ui(ctx["client"])
-    n0 = len(_linhas(ui0, SG_A))
+    n0, n0b = len(_linhas(ui0, SG_A)), len(_linhas(ui0, SG_B))
     doc0 = _doc(ctx["repo"].obter_rascunho(EID), ctx["cen"])
     total0 = next(s for s in doc0.secoes if s.subgrupo_id == SG_A).total_linhas
-    ui1 = _incluir(ctx["client"], SG_A, ADVENTISTA)
+    ui1 = _incluir(ctx["client"], ADVENTISTA)
     assert len(_linhas(ui1, SG_A)) == n0 + 1
-    assert len(_linhas(ui1, SG_B)) == len(_linhas(ui0, SG_B))
+    assert len(_linhas(ui1, SG_B)) == n0b + 1  # entra em todas as seções
     doc1 = _doc(ctx["repo"].obter_rascunho(EID), ctx["cen"])
     sec1 = next(s for s in doc1.secoes if s.subgrupo_id == SG_A)
     assert sec1.total_linhas == total0 + 1
@@ -499,8 +510,8 @@ def test_17_contador_de_linhas_visiveis_acompanha(ctx):
     n_bloco0, _ = _contagem_bloco(doc0, SG_A, "Rio De Janeiro · RJ")
     n_bloco1, _ = _contagem_bloco(doc1, SG_A, "Rio De Janeiro · RJ")
     assert n_bloco1 == n_bloco0 + 1
-    ui2 = _remover(ctx["client"], SG_A, ADVENTISTA)
-    assert len(_linhas(ui2, SG_A)) == n0
+    ui2 = _remover(ctx["client"], ADVENTISTA)
+    assert len(_linhas(ui2, SG_A)) == n0 and len(_linhas(ui2, SG_B)) == n0b
 
 
 # --------------------------------------------------------------- Não regressão
@@ -527,7 +538,7 @@ def test_18_gabaritos_valor_a_valor_com_inclusao_manual(tmp_path):
     com.selecao_rede = SelecaoRedeRascunho(
         incluidos=[
             IncluidoRedeRascunho(
-                subgrupo_id="sg-a", prestador=ADVENTISTA[0], municipio=ADVENTISTA[1], bairro=ADVENTISTA[2]
+                prestador=ADVENTISTA[0], municipio=ADVENTISTA[1], bairro=ADVENTISTA[2]
             )
         ]
     )
@@ -541,7 +552,7 @@ def test_18_gabaritos_valor_a_valor_com_inclusao_manual(tmp_path):
 
 
 def test_19_exclusao_continua_funcionando_como_antes(ctx):
-    ui = _incluir(ctx["client"], SG_A, ADVENTISTA)
+    ui = _incluir(ctx["client"], ADVENTISTA)
     principal = next(ln for ln in _linhas(ui, SG_A) if not ln["manual"])
     manual = _achar(_linhas(ui, SG_A), ADVENTISTA)
     r = ctx["client"].put(
@@ -565,7 +576,7 @@ def test_19_exclusao_continua_funcionando_como_antes(ctx):
 
 def test_20_documento_continua_sem_script_e_sem_controles(ctx):
     """Destaque: o HTML do cliente não ganha script nem controle com a inclusão manual."""
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL), (SG_A, ADVENTISTA), (SG_B, OFTALMO))
+    rascunho, cen_id = _rascunho_com_incluidos(URGIL, ADVENTISTA, OFTALMO)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "t20")
     assert "<script" not in html.lower()
     rede = _rede(html)
@@ -585,7 +596,7 @@ def test_21_as_quatro_abas_anteriores_inalteradas(ctx):
     from tests.test_rede_documento_estatico import test_05_quatro_abas_anteriores_intactas
 
     test_05_quatro_abas_anteriores_intactas(ctx["tmp"])
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL))
+    rascunho, cen_id = _rascunho_com_incluidos(URGIL)
     sem = rascunho.model_copy(deep=True)
     sem.selecao_rede = None
     snap = _aprovar_anistia(ctx["tmp"], sem)
@@ -641,7 +652,7 @@ def test_23_hashes_de_snapshot_intactos_e_versao_nao_sobe(ctx):
     assert h_a == _aprovar_anistia(ctx["tmp"] / "b", vazio).hash_sha256
     # Com inclusão o conteúdo muda — como já acontece com `excluidos` — e o hash
     # acompanha. É formato novo só para quem usa; não é preciso subir a versão.
-    rascunho, _ = _rascunho_com_incluidos((SG_A, URGIL))
+    rascunho, _ = _rascunho_com_incluidos(URGIL)
     (ctx["tmp"] / "c").mkdir()
     assert _aprovar_anistia(ctx["tmp"] / "c", rascunho).hash_sha256 != h_a
 
@@ -656,7 +667,7 @@ def test_24_simular_rede_continua_funcionando(ctx):
 
 
 def test_x01_selos_so_na_tela_documento_sem_manual_nem_fora_do_criterio(ctx):
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL), (SG_A, OFTALMO))
+    rascunho, cen_id = _rascunho_com_incluidos(URGIL, OFTALMO)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "x01")
     rede = _rede(html)
     for rotulo in ("Manual", "Fora do critério", "fora do critério", "cod-cru", "selo", "Remover"):
@@ -669,7 +680,7 @@ def test_x01_selos_so_na_tela_documento_sem_manual_nem_fora_do_criterio(ctx):
 
 
 def test_x02_codigo_cru_no_documento_tem_o_mesmo_estilo_dos_demais(ctx):
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, OFTALMO))
+    rascunho, cen_id = _rascunho_com_incluidos(OFTALMO)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "x02")
     linha = _trecho_linha(_rede(html), _lid(SG_A, OFTALMO))
     assert "<td class='rede-col-plano on'>PSOFT</td>" in linha
@@ -684,7 +695,7 @@ def test_x03_hospital_que_passa_no_criterio_mostra_so_as_siglas(ctx):
     """Mesmo hospital, mesmo texto, venha do filtro de principais ou da inclusão à mão."""
     base = carregar_base_rede_hospital()
     principais = carregar_hospitais_principais(prestadores_matriz=base.prestadores)
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, ADVENTISTA))
+    rascunho, cen_id = _rascunho_com_incluidos(ADVENTISTA)
     ln = next(x for x in _linhas_doc(_doc(rascunho, cen_id), SG_A) if x.manual and x.prestador == ADVENTISTA[0])
     assert ln.fora_criterio is False
     for v in ln.celulas.values():
@@ -697,63 +708,63 @@ def test_x03_hospital_que_passa_no_criterio_mostra_so_as_siglas(ctx):
     del principais
 
 
-def test_x04_hospital_que_virou_principal_e_descartado_dos_incluidos(ctx):
-    """Ajuste 4: quem já está na visão calculada sai de incluidos[]."""
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, SAMARITANO), (SG_A, ADVENTISTA))
+def test_x04_hospital_que_virou_principal_em_todas_as_secoes_e_descartado(ctx):
+    """Ajuste 4: sai de incluidos[] só quando já está na visão calculada de TODAS as seções."""
+    rascunho, cen_id = _rascunho_com_incluidos(SAMARITANO, ADVENTISTA)
     visao = todos_ids_linha_rede(rascunho, incluir_manuais=False)
-    assert _lid(SG_A, SAMARITANO) in visao  # premissa: já é principal do recorte
+    assert _lid(SG_A, SAMARITANO) in visao  # principal do recorte do Rio (seção A)
+    assert _lid(SG_B, SAMARITANO) not in visao  # mas não do de São Paulo (seção B)
     base = carregar_base_rede_hospital()
+    # falta na seção B: a inclusão continua valendo
     descartar_incluidos_invalidos(rascunho, base.chaves_prestadores, visao)
+    assert [i.prestador for i in rascunho.selecao_rede.incluidos] == [SAMARITANO[0], ADVENTISTA[0]]
+    # principal em todas as seções com tabela: sai
+    visao_total = visao | {_lid(SG_B, SAMARITANO)}
+    descartar_incluidos_invalidos(rascunho, base.chaves_prestadores, visao_total)
     assert [i.prestador for i in rascunho.selecao_rede.incluidos] == [ADVENTISTA[0]]
-    # pelo caminho real (salvar/carregar) também
-    repo = SQLiteStudyRepository(ctx["tmp"] / "x04.db")
-    rascunho2, _ = _rascunho_com_incluidos((SG_A, SAMARITANO), (SG_A, ADVENTISTA))
-    repo.salvar_rascunho(rascunho2)
-    assert [i.prestador for i in repo.obter_rascunho(EID).selecao_rede.incluidos] == [
-        ADVENTISTA[0]
-    ]
-    # e incluir quem já está na tabela é recusado
-    r = ctx["client"].post(
-        f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(SG_A, SAMARITANO)
+
+
+def test_x04b_incluir_o_que_ja_esta_em_todas_as_secoes_e_recusado(ctx, monkeypatch):
+    from newport_app.services import rede_inclusao
+
+    rascunho = ctx["repo"].obter_rascunho(EID)
+    todos = {_lid(SG_A, SAMARITANO), _lid(SG_B, SAMARITANO)}
+    monkeypatch.setattr(
+        rede_inclusao, "_visao_calculada", lambda r: {SG_A: set(todos), SG_B: set(todos)}
     )
-    assert r.status_code == 422 and "já está na tabela" in r.json()["detail"]
+    with pytest.raises(InclusaoRedeInvalida, match="já está na tabela de todas as seções"):
+        incluir_manual(rascunho, *SAMARITANO)
 
 
-def test_x05_incluir_duas_vezes_e_sem_cobertura_sao_recusados(ctx):
-    _incluir(ctx["client"], SG_A, ADVENTISTA)
+def test_x05_incluir_duas_vezes_e_prestador_inexistente_sao_recusados(ctx):
+    _incluir(ctx["client"], ADVENTISTA)
     r = ctx["client"].post(
-        f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(SG_A, ADVENTISTA)
+        f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(ADVENTISTA)
     )
     assert r.status_code == 422 and "já foi incluído" in r.json()["detail"]
-    sem_cob = ("AMERICAS OFTALMOCENTER", "RJ.RIO DE JANEIRO", "TIJUCA")
-    r2 = ctx["client"].post(
-        f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(SG_A, sem_cob)
-    )
-    assert r2.status_code == 422
-    assert r2.json()["detail"] == "Nenhum plano desta seção cobre este hospital."
     r3 = ctx["client"].post(
         f"/api/estudos/{EID}/rede-selecao/incluidos",
-        json=_corpo(SG_A, ("NAO EXISTE", "RJ.RIO DE JANEIRO", "")),
+        json=_corpo(("NAO EXISTE", "RJ.RIO DE JANEIRO", "")),
     )
     assert r3.status_code == 422
 
 
 def test_x06_busca_exige_minimo_de_letras_e_ignora_acento_e_caixa(ctx):
     r = ctx["client"].get(
-        f"/api/estudos/{EID}/rede-selecao/busca", params={"subgrupo_id": SG_A, "q": "a"}
+        f"/api/estudos/{EID}/rede-selecao/busca", params={"q": "a"}
     )
     assert r.status_code == 422
-    a = _busca(ctx["client"], SG_A, "AMÉRICAS oftalmocenter")
-    b = _busca(ctx["client"], SG_A, "americas OFTALMOCENTER")
+    a = _busca(ctx["client"], "AMÉRICAS oftalmocenter")
+    b = _busca(ctx["client"], "americas OFTALMOCENTER")
     assert a["resultados"] == b["resultados"] and a["resultados"]
-    assert len(_busca(ctx["client"], SG_A, "hosp")["resultados"]) <= 30
+    assert len(_busca(ctx["client"], "hosp")["resultados"]) <= 30
 
 
 def test_x07_csv_de_principais_nunca_e_escrito_pela_inclusao(ctx):
     antes = hashlib.sha256(CAMINHO_BASE.read_bytes()).hexdigest()
-    _incluir(ctx["client"], SG_A, URGIL)
-    _incluir(ctx["client"], SG_A, ADVENTISTA)
-    _remover(ctx["client"], SG_A, URGIL)
+    _incluir(ctx["client"], URGIL)
+    _incluir(ctx["client"], ADVENTISTA)
+    _remover(ctx["client"], URGIL)
     assert hashlib.sha256(CAMINHO_BASE.read_bytes()).hexdigest() == antes
 
 
@@ -778,7 +789,7 @@ def test_x10_sem_inclusao_manual_documento_byte_identico_inclusive_legenda(ctx, 
 
 
 def test_x11_legenda_cresce_com_codigo_cru_que_aparece(ctx):
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL), (SG_A, OFTALMO))
+    rascunho, cen_id = _rascunho_com_incluidos(URGIL, OFTALMO)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "x11")
     leg = _legenda(html)
     assert leg.startswith("<b>H</b> Hospital Geral")
@@ -789,7 +800,7 @@ def test_x11_legenda_cresce_com_codigo_cru_que_aparece(ctx):
 
 
 def test_x12_codigo_fora_do_csv_aparece_cru_sem_entrada_e_nada_quebra(ctx):
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, CTO_SAMARITANO))
+    rascunho, cen_id = _rascunho_com_incluidos(CTO_SAMARITANO)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "x12")
     linha = _trecho_linha(_rede(html), _lid(SG_A, CTO_SAMARITANO))
     assert "HCELT" in linha and "HOESP" in linha and "HONC" in linha
@@ -808,7 +819,7 @@ def test_x13_legenda_vem_do_csv_so_confianca_alta_e_arquivo_ausente_nao_quebra(
     )
     monkeypatch.setattr(rede_legenda, "CAMINHO_LEGENDA", csv)
     rede_legenda.limpar_cache_legenda_codigos()
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL))
+    rascunho, cen_id = _rascunho_com_incluidos(URGIL)
     leg = _legenda(_html_servico(ctx["tmp"], rascunho, cen_id, "x13a"))
     assert "<b>HPED</b> Pediatria geral (teste)" in leg  # o nome vem do CSV, não do código
     assert "PSPED" not in leg  # confiança baixa não é impressa
@@ -857,23 +868,112 @@ def test_x15_celula_mais_larga_cabe_em_112px_so_cresce_em_altura():
 
 def test_x16_coberto_so_pelo_contrato_atual_e_aceito_e_aparece_no_documento(ctx):
     """«Você perde esse hospital se trocar»: a linha que só o contrato atual cobre."""
-    b = _busca(ctx["client"], SG_A, "urgil")
+    b = _busca(ctx["client"], "urgil")
     r = _resultado(b, URGIL)
-    assert r["celulas"] == {"rede-atual": "HPED PSPED"}  # nenhuma proposta cobre
+    atuais = {c["chave"] for c in b["colunas"] if c["contrato_atual"]}
+    assert r["celulas"] and set(r["celulas"]) <= atuais  # nenhuma proposta cobre
     assert not r["sem_cobertura"]
-    ui = _incluir(ctx["client"], SG_A, URGIL)
+    ui = _incluir(ctx["client"], URGIL)
     assert _achar(_linhas(ui, SG_A), URGIL) is not None
-    rascunho, cen_id = _rascunho_com_incluidos((SG_A, URGIL))
+    rascunho, cen_id = _rascunho_com_incluidos(URGIL)
     html = _html_servico(ctx["tmp"], rascunho, cen_id, "x16")
     linha = _trecho_linha(_rede(html), _lid(SG_A, URGIL))
     assert "<td class='rede-col-plano on'>HPED PSPED</td>" in linha
     assert linha.count("class='rede-col-plano on'") == 1  # a coluna da proposta fica vazia
 
 
-def test_x17_recusa_sem_cobertura_diz_a_frase_do_corretor(ctx):
-    sem_cob = ("AMERICAS OFTALMOCENTER", "RJ.RIO DE JANEIRO", "TIJUCA")
-    r = ctx["client"].post(
-        f"/api/estudos/{EID}/rede-selecao/incluidos", json=_corpo(SG_A, sem_cob)
+def test_x17_hospital_que_nenhum_plano_cobre_entra_e_chega_ao_documento_com_celulas_vazias(ctx):
+    """O teste que importa: sem recusa por cobertura, e a linha sobrevive à omissão."""
+    b = _busca(ctx["client"], "americas oftalmocenter")
+    r = _resultado(b, OFTALMO_TIJUCA)
+    assert r["celulas"] == {} and r["sem_cobertura"] is True  # nenhum plano do estudo cobre
+    ui = _incluir(ctx["client"], OFTALMO_TIJUCA)  # 200: sem recusa
+    for sg in (SG_A, SG_B):
+        ln = _achar(_linhas(ui, sg), OFTALMO_TIJUCA)
+        assert ln is not None and ln["manual"] is True
+        assert not any((v or "").strip() and v != "—" for v in ln["celulas"].values())
+    rascunho, cen_id = _rascunho_com_incluidos(OFTALMO_TIJUCA)
+    html = _html_servico(ctx["tmp"], rascunho, cen_id, "x17")
+    for sg in (SG_A, SG_B):
+        linha = _trecho_linha(_rede(html), _lid(sg, OFTALMO_TIJUCA))
+        assert "rede-col-plano on" not in linha  # todas as células vazias
+        assert "AMERICAS OFTALMOCENTER" in linha.upper()
+
+
+def test_x18_regra_de_omissao_nao_remove_linha_incluida_a_mao(ctx):
+    from newport_app.presentation.rede_apresentacao import linha_tem_cobertura_na_secao
+
+    rascunho, cen_id = _rascunho_com_incluidos(OFTALMO_TIJUCA, ADVENTISTA)
+    doc = _doc(rascunho, cen_id)
+    for sec in doc.secoes:
+        linhas = _linhas_doc(doc, sec.subgrupo_id)
+        vazia = next(x for x in linhas if x.prestador == OFTALMO_TIJUCA[0])
+        assert vazia.manual and not linha_tem_cobertura_na_secao(vazia, sec.colunas)
+        # a regra continua valendo para o que NÃO foi incluído à mão
+        for ln in linhas:
+            if not ln.manual:
+                assert linha_tem_cobertura_na_secao(ln, sec.colunas), ln.prestador
+    # sem a inclusão, a linha não aparece (a omissão automática segue de pé)
+    rascunho.selecao_rede = None
+    doc0 = _doc(rascunho, cen_id)
+    assert not any(x.prestador == OFTALMO_TIJUCA[0] for x in _linhas_doc(doc0, SG_A))
+
+
+def test_x19_presente_na_secao_um_e_ausente_na_dois_entra_so_na_dois(ctx):
+    ui0 = _ui(ctx["client"])
+    na_a = _achar(_linhas(ui0, SG_A), SAMARITANO)
+    assert na_a is not None and na_a["manual"] is False  # principal da seção A
+    assert _achar(_linhas(ui0, SG_B), SAMARITANO) is None
+    b = _busca(ctx["client"], "samaritano botafogo")
+    r = _resultado(b, SAMARITANO)
+    assert len(r["secoes_ja_presentes"]) == 1 and len(r["secoes_a_incluir"]) == 1
+    assert r["ja_na_tabela"] is False  # falta na B: dá para incluir
+    ui = _incluir(ctx["client"], SAMARITANO)
+    linhas_a = [x for x in _linhas(ui, SG_A) if (x["prestador"], x["municipio"], x["bairro"]) == SAMARITANO]
+    assert len(linhas_a) == 1 and linhas_a[0]["manual"] is False  # sem duplicar na A
+    assert linhas_a[0]["linha_id"] == na_a["linha_id"]
+    assert _achar(_linhas(ui, SG_B), SAMARITANO)["manual"] is True  # entrou só na B
+    # no documento: uma linha na A (principal), uma na B
+    rascunho = ctx["repo"].obter_rascunho(EID)
+    doc = _doc(rascunho, ctx["cen"])
+    assert sum(1 for x in _linhas_doc(doc, SG_A) if (x.prestador, x.chave_municipio, x.bairro) == SAMARITANO) == 1
+    assert sum(1 for x in _linhas_doc(doc, SG_B) if (x.prestador, x.chave_municipio, x.bairro) == SAMARITANO) == 1
+
+
+def test_x20_incluidos_no_rascunho_e_do_estudo_nao_da_secao(ctx):
+    inc = IncluidoRedeRascunho(prestador="P", municipio="M", bairro="B")
+    assert set(inc.model_dump()) == {"prestador", "municipio", "bairro"}
+    assert "subgrupo_id" not in IncluidoRedeRascunho.model_fields
+    _incluir(ctx["client"], ADVENTISTA)
+    bruto = ctx["repo"].obter_rascunho(EID).model_dump(mode="json")["selecao_rede"]
+    assert bruto["incluidos"] == [
+        {"prestador": ADVENTISTA[0], "municipio": ADVENTISTA[1], "bairro": ADVENTISTA[2]}
+    ]
+    # rascunho gravado pelo modelo anterior (com subgrupo_id) ainda carrega, sem duplicar
+    antigo = {
+        "excluidos": [],
+        "revisada": False,
+        "incluidos": [
+            {"subgrupo_id": SG_A, **{"prestador": ADVENTISTA[0], "municipio": ADVENTISTA[1], "bairro": ADVENTISTA[2]}},
+            {"subgrupo_id": SG_B, **{"prestador": ADVENTISTA[0], "municipio": ADVENTISTA[1], "bairro": ADVENTISTA[2]}},
+        ],
+    }
+    sel = SelecaoRedeRascunho.model_validate(antigo)
+    rascunho = ctx["repo"].obter_rascunho(EID)
+    rascunho.selecao_rede = sel
+    base = carregar_base_rede_hospital()
+    descartar_incluidos_invalidos(rascunho, base.chaves_prestadores)
+    assert len(rascunho.selecao_rede.incluidos) == 1
+
+
+def test_x21_remover_limpa_as_exclusoes_das_linhas_do_hospital(ctx):
+    ui = _incluir(ctx["client"], ADVENTISTA)
+    ids = [_achar(_linhas(ui, sg), ADVENTISTA)["linha_id"] for sg in (SG_A, SG_B)]
+    r = ctx["client"].put(
+        f"/api/estudos/{EID}/rede-selecao", json={"excluidos": ids, "revisada": True}
     )
-    assert r.status_code == 422
-    assert r.json()["detail"] == "Nenhum plano desta seção cobre este hospital."
+    assert r.status_code == 200
+    _remover(ctx["client"], ADVENTISTA)
+    assert ctx["repo"].obter_rascunho(EID).selecao_rede.excluidos == []
+
+

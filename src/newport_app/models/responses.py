@@ -378,10 +378,12 @@ class ResultadoBuscaInclusao(BaseModel):
     ja_na_tabela: bool = False
     incluido_manual: bool = False
     sem_cobertura: bool = False
+    # Rótulos das seções onde o hospital já está / onde entraria ao clicar «Incluir».
+    secoes_ja_presentes: list[str] = Field(default_factory=list)
+    secoes_a_incluir: list[str] = Field(default_factory=list)
 
 
 class BuscaInclusaoResponse(BaseModel):
-    subgrupo_id: str
     consulta: str
     colunas: list[ColunaRedeSelecaoItem] = Field(default_factory=list)
     resultados: list[ResultadoBuscaInclusao] = Field(default_factory=list)
@@ -391,7 +393,6 @@ class BuscaInclusaoResponse(BaseModel):
 
 
 class IncluirManualRequest(BaseModel):
-    subgrupo_id: str
     prestador: str
     municipio: str
     bairro: str = ""

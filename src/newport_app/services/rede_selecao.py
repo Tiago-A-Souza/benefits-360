@@ -16,6 +16,7 @@ from newport_app.presentation.rede_apresentacao import (
     _id_linha_rede,
     contagem_coberturas_bloco,
 )
+from newport_app.presentation.rede_visao import localizacoes_subgrupo
 
 
 def excluidos_rede(rascunho: RascunhoEstudo) -> set[str]:
@@ -25,11 +26,13 @@ def excluidos_rede(rascunho: RascunhoEstudo) -> set[str]:
     return set(sel.excluidos)
 
 
-def linha_id_incluido(inc: IncluidoRedeRascunho) -> str:
-    """Mesmo `linha_id` da tabela: prestador, município, bairro e subgrupo."""
-    return _id_linha_rede(
-        inc.prestador, inc.municipio, inc.bairro, subgrupo_id=inc.subgrupo_id
-    )
+def linha_id_incluido(inc: IncluidoRedeRascunho, subgrupo_id: str) -> str:
+    """Mesmo `linha_id` da tabela da seção: prestador, município, bairro e subgrupo."""
+    return _id_linha_rede(inc.prestador, inc.municipio, inc.bairro, subgrupo_id=subgrupo_id)
+
+
+def chave_incluido(inc: IncluidoRedeRascunho) -> tuple[str, str, str]:
+    return (inc.prestador, inc.municipio, inc.bairro)
 
 
 def incluidos_rede(rascunho: RascunhoEstudo) -> list[IncluidoRedeRascunho]:
@@ -41,32 +44,33 @@ def descartar_incluidos_invalidos(
     rascunho: RascunhoEstudo,
     chaves_base: set[tuple[str, str, str]] | frozenset[tuple[str, str, str]],
     ids_visao_calculada: set[str] | None = None,
-    subgrupos_validos: set[str] | None = None,
 ) -> None:
     """Valida os `incluidos` contra a base COMPLETA (não contra a visão dos principais).
 
-    Descarta: prestador que sumiu da base; seção que não existe mais; e prestador
-    que virou principal do recorte (já está na visão calculada — mantê-lo faria a
-    lista crescer e mostraria «Manual» num hospital que virou padrão).
+    Descarta: prestador que sumiu da base, duplicata, e prestador que virou
+    principal em TODAS as seções com tabela (já está na visão calculada de cada uma —
+    mantê-lo faria a lista crescer e mostraria «Manual» num hospital que virou padrão).
+    Se ainda falta numa seção, a inclusão continua valendo.
     """
     sel = rascunho.selecao_rede
     if sel is None or not sel.incluidos:
         return
-    if subgrupos_validos is None:
-        subgrupos_validos = {s.id for s in rascunho.subgrupos_atuais}
+    secoes_com_tabela = [
+        s.id for s in rascunho.subgrupos_atuais if localizacoes_subgrupo(rascunho, s.id)
+    ]
     mantidos: list[IncluidoRedeRascunho] = []
-    vistos: set[str] = set()
+    vistos: set[tuple[str, str, str]] = set()
     for inc in sel.incluidos:
-        if (inc.prestador, inc.municipio, inc.bairro) not in chaves_base:
+        chave = chave_incluido(inc)
+        if chave not in chaves_base or chave in vistos:
             continue
-        if inc.subgrupo_id not in subgrupos_validos:
+        if (
+            ids_visao_calculada is not None
+            and secoes_com_tabela
+            and all(linha_id_incluido(inc, sg) in ids_visao_calculada for sg in secoes_com_tabela)
+        ):
             continue
-        lid = linha_id_incluido(inc)
-        if lid in vistos:
-            continue
-        if ids_visao_calculada is not None and lid in ids_visao_calculada:
-            continue
-        vistos.add(lid)
+        vistos.add(chave)
         mantidos.append(inc)
     if len(mantidos) != len(sel.incluidos):
         rascunho.selecao_rede = sel.model_copy(update={"incluidos": mantidos})

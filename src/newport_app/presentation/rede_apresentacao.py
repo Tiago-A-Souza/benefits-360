@@ -203,11 +203,12 @@ def _ordem_linha_capital(ln: LinhaRedeApresentacao) -> tuple:
     return (sigla, ln.prestador, ln.bairro)
 
 
-def _manuais_da_secao(rascunho: RascunhoEstudo, subgrupo_id: str) -> list:
+def _manuais_do_estudo(rascunho: RascunhoEstudo) -> list:
+    """Inclusões manuais valem para o estudo: entram na tabela de todas as seções."""
     sel = rascunho.selecao_rede
     if not sel or not sel.incluidos:
         return []
-    return [i for i in sel.incluidos if i.subgrupo_id == subgrupo_id]
+    return list(sel.incluidos)
 
 
 def _acrescentar_linhas_manuais(
@@ -241,8 +242,11 @@ def _acrescentar_linhas_manuais(
     for inc in manuais:
         k = (inc.prestador, inc.municipio, inc.bairro)
         p = por_chave.get(k)
-        if p is None or k in linhas_map:
-            continue  # sumiu da base, ou já está na tabela como principal
+        if p is None:
+            continue  # sumiu da base
+        atual = linhas_map.get(k)
+        if atual is not None and linha_tem_cobertura_na_secao(atual, cols_meta):
+            continue  # já está nesta seção como principal: não duplica
         ent = principais.por_prestador_matriz.get(p.chave)
         fora = prestador_fora_do_criterio(p)
         zona = ((ent.zona if ent else "") or "").strip() or (p.regiao or "").strip()
@@ -359,7 +363,9 @@ def _montar_secao(
             ln
             for ln in linhas_map.values()
             if ln.chave_municipio == mun
-            and linha_tem_cobertura_na_secao(ln, cols_meta)
+            # Linha incluída à mão sobrevive à omissão: o corretor a pôs porque o
+            # cliente pediu o nome, cubra ou não algum plano.
+            and (ln.manual or linha_tem_cobertura_na_secao(ln, cols_meta))
         ]
         if not linhas_bloco:
             continue
@@ -418,7 +424,7 @@ def montar_rede_apresentacao(
             base=base,
             principais=principais,
             tabela=tabela,
-            manuais=_manuais_da_secao(rascunho, sg.id) if incluir_manuais else None,
+            manuais=_manuais_do_estudo(rascunho) if incluir_manuais else None,
         )
         if sec is not None:
             secoes.append(sec)

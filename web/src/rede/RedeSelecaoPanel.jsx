@@ -170,7 +170,7 @@ export default function RedeSelecaoPanel({
     setRemovendo(ln.linha_id);
     setErro(null);
     try {
-      const nova = await removerRedeManual(estudoId, sec.subgrupo_id, {
+      const nova = await removerRedeManual(estudoId, {
         prestador: ln.prestador,
         municipio: ln.municipio,
         bairro: ln.bairro,
@@ -305,7 +305,7 @@ export default function RedeSelecaoPanel({
           <p className="lead">
             Marque os hospitais que entram no documento. O padrão são os principais
             da base; desmarque o que não deve aparecer para o cliente. Para um hospital
-            fora dos principais, use a busca de cada plano.
+            fora dos principais, use o campo «Incluir hospital fora dos principais».
           </p>
         </div>
         <div className="page-head-acoes">
@@ -336,23 +336,9 @@ export default function RedeSelecaoPanel({
 
       {!aviso && (linhas.length > 0 || temSecaoComBusca) && (
         <>
-          <div className="rede-incl-topo">
-            {(dados?.secoes || []).map((sec) => {
-              if (!sec.subgrupo_id || sec.sem_localizacao) return null;
-              return (
-                <div key={`incl-${sec.rotulo}`}>
-                  {(dados?.secoes || []).length > 1 && (
-                    <div className="rede-bloco-titulo">{sec.rotulo}</div>
-                  )}
-                  <InclusaoManual
-                    estudoId={estudoId}
-                    secao={sec}
-                    onAtualizado={(nova) => setDados(nova)}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          {temSecaoComBusca && (
+            <InclusaoManual estudoId={estudoId} onAtualizado={(nova) => setDados(nova)} />
+          )}
 
           {(dados?.secoes || []).map((sec) => {
             const colunas = sec.colunas || [];

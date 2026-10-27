@@ -12,7 +12,7 @@ function rotuloColuna(col) {
  * Busca na BASE INTEIRA (sem recorte e sem filtro de especialidade) para incluir
  * um hospital fora dos principais. Buscar não altera a tabela; só «Incluir» altera.
  */
-export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
+export default function InclusaoManual({ estudoId, onAtualizado }) {
   const [termo, setTermo] = useState("");
   const [resp, setResp] = useState(null);
   const [buscando, setBuscando] = useState(false);
@@ -25,7 +25,7 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
     setBuscando(true);
     setErro(null);
     try {
-      const r = await buscarRedeInclusao(estudoId, secao.subgrupo_id, t);
+      const r = await buscarRedeInclusao(estudoId, t);
       if (minha === seq.current) setResp(r);
     } catch (e) {
       if (minha === seq.current) {
@@ -49,14 +49,14 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
     const h = setTimeout(() => executar(t), 350);
     return () => clearTimeout(h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [termo, estudoId, secao.subgrupo_id]);
+  }, [termo, estudoId]);
 
   async function incluir(item) {
     const chave = `${item.prestador}|${item.municipio}|${item.bairro}`;
     setIncluindo(chave);
     setErro(null);
     try {
-      const nova = await incluirRedeManual(estudoId, secao.subgrupo_id, item);
+      const nova = await incluirRedeManual(estudoId, item);
       onAtualizado(nova);
       await executar(termo.trim());
     } catch (e) {
@@ -66,16 +66,16 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
     }
   }
 
-  const colunas = resp?.colunas || secao.colunas || [];
+  const colunas = resp?.colunas || [];
 
   return (
     <div className="incl-manual" data-testid="incl-manual">
       <div className="field">
-        <label className="cmp-filtro-label" htmlFor={`incl-busca-${secao.subgrupo_id}`}>
+        <label className="cmp-filtro-label" htmlFor="incl-busca">
           Incluir hospital fora dos principais
         </label>
         <input
-          id={`incl-busca-${secao.subgrupo_id}`}
+          id="incl-busca"
           type="search"
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
@@ -83,8 +83,9 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
           autoComplete="off"
         />
         <p className="incl-manual-ajuda">
-          Esta busca não filtra a tabela abaixo: ela varre todos os municípios e todas as
-          especialidades da base. Nada entra no documento até você clicar em «Incluir».
+          Esta busca não filtra as tabelas abaixo: ela varre a base inteira, todos os municípios
+          e todas as especialidades. O hospital incluído entra na tabela de todas as seções
+          (menos onde já estiver). Nada entra no documento até você clicar em «Incluir».
         </p>
       </div>
 
@@ -96,7 +97,7 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
         <ul className="incl-manual-lista">
           {resp.resultados.map((it) => {
             const chave = `${it.prestador}|${it.municipio}|${it.bairro}`;
-            const bloqueado = it.ja_na_tabela || it.incluido_manual || it.sem_cobertura;
+            const bloqueado = it.ja_na_tabela || it.incluido_manual;
             return (
               <li className="incl-manual-item" key={chave}>
                 <div className="incl-manual-topo">
@@ -124,6 +125,15 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
                 </div>
                 <div className="incl-manual-selos">
                   {it.ja_na_tabela && <span className="selo selo--info">Já está na tabela</span>}
+                  {!it.ja_na_tabela &&
+                    !it.incluido_manual &&
+                    (it.secoes_ja_presentes || []).length > 0 &&
+                    (it.secoes_a_incluir || []).length > 0 && (
+                      <span className="selo selo--info">
+                        Já está em: {it.secoes_ja_presentes.join(", ")} · entra em:{" "}
+                        {it.secoes_a_incluir.join(", ")}
+                      </span>
+                    )}
                   {it.incluido_manual && <span className="selo selo--manual">Incluído manualmente</span>}
                   {it.fora_recorte && (
                     <span className="selo selo--aviso">Fora do recorte dos beneficiários</span>
@@ -138,7 +148,9 @@ export default function InclusaoManual({ estudoId, secao, onAtualizado }) {
                     </span>
                   )}
                   {it.sem_cobertura && (
-                    <span className="selo selo--aviso">Nenhum plano desta seção cobre este hospital</span>
+                    <span className="selo selo--aviso">
+                      Nenhum plano do estudo cobre este hospital — entra com as colunas vazias
+                    </span>
                   )}
                 </div>
                 <div className="incl-manual-cobertura">
