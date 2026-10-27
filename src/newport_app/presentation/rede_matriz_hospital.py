@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -74,10 +75,54 @@ def caminho_base_rede_hospital() -> Path:
     )
 
 
+_CACHE_BASE_LOCK = threading.Lock()
+_CACHE_BASE: dict[Path, tuple[tuple[int, int, int, int], BaseRedeHospital]] = {}
+
+
+def _assinatura_arquivo(caminho: Path) -> tuple[int, int]:
+    st = caminho.stat()
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _assinatura_base(origem: Path) -> tuple[int, int, int, int]:
+    """mtime e tamanho da planilha + do CSV de aliases (que molda `operadora_canon`)."""
+    from newport_app.presentation.regras_comerciais import CAMINHO_ALIASES
+
+    xlsx = _assinatura_arquivo(origem)
+    try:
+        aliases = _assinatura_arquivo(CAMINHO_ALIASES)
+    except OSError:
+        aliases = (0, 0)
+    return (*xlsx, *aliases)
+
+
+def limpar_cache_base_rede_hospital() -> None:
+    """Descarta a base em memória (testes e diagnóstico)."""
+    with _CACHE_BASE_LOCK:
+        _CACHE_BASE.clear()
+
+
 def carregar_base_rede_hospital(caminho: Path | None = None) -> BaseRedeHospital:
+    """Lê a planilha uma vez; só relê se o arquivo (mtime/tamanho) mudar.
+
+    A leitura do Excel custa segundos de CPU. A base é imutável por contrato —
+    quem consome nunca altera `prestadores`, `colunas` nem `celulas`.
+    """
     origem = caminho or caminho_base_rede_hospital()
     if not origem.is_file():
         raise BaseRedeHospitalInvalida(f"arquivo ausente: {origem}")
+    chave = origem.resolve()
+    assinatura = _assinatura_base(origem)
+    with _CACHE_BASE_LOCK:
+        hit = _CACHE_BASE.get(chave)
+        if hit is not None and hit[0] == assinatura:
+            return hit[1]
+        base = _ler_base_rede_hospital(origem)
+        _CACHE_BASE[chave] = (assinatura, base)
+        return base
+
+
+def _ler_base_rede_hospital(origem: Path) -> BaseRedeHospital:
     aliases = carregar_aliases()
     colunas = carregar_colunas_rede_xlsx(origem, aliases)
     wb = load_workbook(origem, read_only=True, data_only=True)

@@ -601,8 +601,13 @@ select:focus-visible {
 
 .wizard-nav {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
 }
 
 .pendencias-box {
@@ -2083,7 +2088,7 @@ button.tabela-faixas-acao:focus {
   }
 
   .app-main {
-    padding: 24px 16px 90px;
+    padding: 24px 16px 40px;
   }
 
   .hide-mobile {
@@ -4404,22 +4409,6 @@ a.btn-link {
   font-variant-numeric: tabular-nums;
 }
 
-.wizard-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  position: sticky;
-  bottom: 18px;
-  z-index: 35;
-  margin-top: 26px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
-  padding: 12px 14px;
-}
-
 .wizard-passo {
   display: flex;
   flex-direction: column;
@@ -4483,19 +4472,6 @@ a.btn-link {
   color: #c2410c;
   font-weight: 500;
   line-height: 1.3;
-}
-
-.wizard-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 0;
-  padding: 0.85rem 1rem;
-  background: #fff;
-  border: 1px solid #e3e8ee;
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .wizard-nav-direita {
@@ -7260,7 +7236,7 @@ a.btn-link {
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.85;
+  color: var(--grafite-3, #5b5b58);
 }
 .rede-selecao-tabela.tabela-rede .pl {
   display: block;
@@ -7268,11 +7244,22 @@ a.btn-link {
   font-weight: 600;
   margin-top: 2px;
   line-height: 1.15;
+  color: var(--grafite, #232932);
 }
 .rede-selecao-tabela.tabela-rede thead th {
-  background: var(--grafite);
-  color: #fff;
+  background: #fbfcfd;
+  color: var(--grafite, #232932);
   vertical-align: bottom;
+}
+.rede-selecao-tabela.tabela-rede thead th .op,
+.rede-selecao-tabela.tabela-rede thead th .pl {
+  color: inherit;
+}
+.rede-selecao-tabela.tabela-rede thead th .pl {
+  color: var(--grafite, #232932);
+}
+.rede-selecao-tabela.tabela-rede thead th .op {
+  color: var(--grafite-3, #5b5b58);
 }
 .rede-selecao-tabela.tabela-rede .rede-col-plano {
   width: 112px;
@@ -7322,4 +7309,242 @@ a.btn-link {
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   color: var(--grafite);
+}
+
+/* —— Simular Rede (consulta avulsa) —— */
+
+.nav-ferramentas {
+  margin-bottom: 8px;
+}
+
+.side-bottom {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.side-bottom .lista-filtros {
+  margin-bottom: 0;
+}
+
+.simular-rede {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.simular-rede .lista-head {
+  margin-bottom: 0;
+}
+
+.simular-modos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 10px;
+}
+
+.simular-modos button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 650;
+  text-align: left;
+  box-shadow: none;
+}
+
+.simular-modos button small {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.simular-modos button.ativo {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px var(--blue) inset;
+  background: #f5f9ff;
+}
+
+.simular-filtros .panel-body {
+  display: grid;
+  gap: 16px;
+}
+
+.simular-busca {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.simular-busca-campo {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.simular-busca-campo .hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.simular-plano {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.simular-plano .field {
+  margin: 0;
+}
+
+.simular-opcoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.simular-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.simular-check input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.simular-check small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.simular-operadoras summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.simular-operadoras-lista {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin-top: 10px;
+}
+
+.simular-resultado {
+  display: grid;
+  gap: 14px;
+}
+
+.simular-ms {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.simular-acoes-aviso {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.simular-painel .notice {
+  margin-bottom: 14px;
+}
+
+.simular-tabela .rede-col-prestador {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  min-width: 15rem;
+}
+
+.simular-tabela thead .rede-col-prestador {
+  background: #fbfcfd;
+  z-index: 2;
+}
+
+.simular-tabela tr.simular-bloco-linha th {
+  text-align: left;
+  padding: 9px 10px;
+  background: #f2f5f9;
+  color: var(--grafite);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  position: sticky;
+  left: 0;
+}
+
+.simular-bloco-n {
+  margin-left: 8px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.simular-linha-nao-principal td.nm {
+  color: var(--muted);
+}
+
+.simular-pill {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.simular-pill--vert {
+  background: #e8f0fe;
+  color: #1a4fa3;
+}
+
+.simular-pill--muted {
+  background: #eef2f7;
+  color: var(--muted);
+}
+
+.simular-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.simular-legenda b {
+  color: var(--ink);
+  margin-right: 3px;
+}
+
+@media (max-width: 860px) {
+  .simular-busca {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .simular-modos {
+    grid-template-columns: 1fr;
+  }
+
+  .simular-plano {
+    grid-template-columns: 1fr;
+  }
 }

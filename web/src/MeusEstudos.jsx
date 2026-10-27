@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { criarEstudo, listarEstudos } from "./api";
+import NavegacaoFerramentas from "./NavegacaoFerramentas";
 
 function formatarData(iso) {
   if (!iso) return "—";
@@ -89,7 +90,7 @@ function avisosRotulosRepetidos(estudos) {
   return [...porClienteRotulo.values()].filter((x) => x.n > 1);
 }
 
-export default function MeusEstudos({ onContinuar }) {
+export default function MeusEstudos({ onContinuar, onSimularRede }) {
   const [estudos, setEstudos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
@@ -176,6 +177,13 @@ export default function MeusEstudos({ onContinuar }) {
   return (
     <div className="lista-shell">
       <aside className="lista-rail app-sidebar">
+        {onSimularRede && (
+          <NavegacaoFerramentas
+            ativo="estudos"
+            onMeusEstudos={() => {}}
+            onSimularRede={onSimularRede}
+          />
+        )}
         <div className="lista-busca">
           <span className="lista-busca-ic" aria-hidden="true">
             ⌕
