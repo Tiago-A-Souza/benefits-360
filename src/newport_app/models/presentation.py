@@ -188,6 +188,9 @@ class LinhaRedeApresentacao(BaseModel):
     bairro: str
     zona: str
     celulas: dict[str, str] = Field(default_factory=dict)
+    # Só a tela da etapa 5 usa estes dois; o documento exportado os ignora.
+    manual: bool = False
+    fora_criterio: bool = False
 
 
 class BlocoRedeApresentacao(BaseModel):

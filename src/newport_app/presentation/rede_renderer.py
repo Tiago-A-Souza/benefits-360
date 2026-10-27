@@ -16,6 +16,7 @@ from newport_app.presentation.rede_apresentacao import contagem_coberturas_bloco
 from newport_app.presentation.rede_avisos import AVISO_REDE_SECAO_SEM_LOCALIZACAO
 from newport_app.presentation.nome_plano_exibicao import nome_plano_documento
 from newport_app.presentation.rede_codigos import sigla_zona_capital
+from newport_app.presentation.rede_legenda import itens_legenda_extra
 from newport_app.presentation.rede_prestador_rotulo import rotulo_prestador_html
 
 _CAPITAIS_COM_ZONA = frozenset({"SP.SAO PAULO", "RJ.RIO DE JANEIRO"})
@@ -131,10 +132,14 @@ def _rodape_rede(doc: RedeApresentacaoDocumento) -> str:
         "pode aparecer vazia por limitação da base, não por falha do sistema.",
     ]
     lis = "".join(f"<li>{html.escape(t)}</li>" for t in itens)
+    extras = "".join(
+        f" · <b>{html.escape(cod)}</b> {html.escape(nome)}"
+        for cod, nome in itens_legenda_extra(doc)
+    )
     return (
         "<div class='rede-legenda'>"
         "<p><b>H</b> Hospital Geral · <b>HD</b> Hospital Dia · "
-        "<b>M</b> Maternidade · <b>PS</b> Pronto-socorro Geral</p>"
+        f"<b>M</b> Maternidade · <b>PS</b> Pronto-socorro Geral{extras}</p>"
         f"<div class='rede-pontos'><p><b>Pontos de atenção</b></p><ul>{lis}</ul></div>"
         "</div>"
     )

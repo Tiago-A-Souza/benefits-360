@@ -6,7 +6,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_serializer, model_validator
 
 RASCUNHO_VERSAO_ATUAL = "1.0"
 
@@ -142,15 +142,43 @@ class SelecaoApresentacaoRascunho(BaseModel):
     ordem: list[str] = Field(default_factory=list)
 
 
+class IncluidoRedeRascunho(BaseModel):
+    """Prestador incluído à mão numa seção (subgrupo) da etapa 5.
+
+    Identifica o prestador pela chave da base de rede (prestador, município,
+    bairro normalizado) — o mesmo trio de `_id_linha_rede`. É por estudo: nunca
+    grava no CSV de principais.
+    """
+
+    subgrupo_id: str
+    prestador: str
+    municipio: str
+    bairro: str = ""
+
+
 class SelecaoRedeRascunho(BaseModel):
     """Prestadores excluídos da aba Rede (etapa 5 — alternativa ao sandbox HTML).
 
     Grava **exclusões**, não inclusões: prestador novo na base entra marcado por
-    padrão (principal) até o corretor excluir.
+    padrão (principal) até o corretor excluir. As **inclusões manuais** (hospital
+    fora dos principais) são gravadas em `incluidos`, porque são escolha explícita.
     """
 
     excluidos: list[str] = Field(default_factory=list)
+    incluidos: list[IncluidoRedeRascunho] = Field(default_factory=list)
     revisada: bool = False
+
+    @model_serializer(mode="wrap")
+    def _omitir_incluidos_vazio(self, handler):
+        """Sem inclusões, o JSON é idêntico ao de antes do campo existir.
+
+        O rascunho inteiro entra no conteúdo canônico do snapshot: gravar
+        `"incluidos": []` mudaria o hash de todo estudo que já tem seleção.
+        """
+        dados = handler(self)
+        if not self.incluidos:
+            dados.pop("incluidos", None)
+        return dados
 
 
 class ConfirmacaoComparativoRascunho(BaseModel):

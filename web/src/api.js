@@ -187,6 +187,39 @@ export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
   return tratarResposta(res, "Não foi possível salvar a seleção da rede.");
 }
 
+/** Inclusão manual (etapa 5): a busca só lê; incluir/remover gravam em selecao_rede.incluidos. */
+export async function buscarRedeInclusao(estudoId, subgrupoId, termo) {
+  const p = new URLSearchParams({ subgrupo_id: subgrupoId, q: termo });
+  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/busca?${p}`);
+  return tratarResposta(res, "Não foi possível buscar na base de rede.");
+}
+
+function corpoInclusao(subgrupoId, item) {
+  return JSON.stringify({
+    subgrupo_id: subgrupoId,
+    prestador: item.prestador,
+    municipio: item.municipio,
+    bairro: item.bairro || "",
+  });
+}
+
+export async function incluirRedeManual(estudoId, subgrupoId, item) {
+  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: corpoInclusao(subgrupoId, item),
+  });
+  return tratarResposta(res, "Não foi possível incluir o hospital.");
+}
+
+export async function removerRedeManual(estudoId, subgrupoId, item) {
+  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos/remover`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: corpoInclusao(subgrupoId, item),
+  });
+  return tratarResposta(res, "Não foi possível remover a inclusão.");
+}
 export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
   const res = await fetch(`${API}/estudos/${estudoId}/comparativo/selecao-apresentacao`, {
     method: "PUT",

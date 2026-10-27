@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { obterRedeSelecao, salvarRedeSelecao } from "../api";
+import { obterRedeSelecao, removerRedeManual, salvarRedeSelecao } from "../api";
+import CelulaCobertura from "./CelulaCobertura.jsx";
+import InclusaoManual from "./InclusaoManual.jsx";
 import { tituloPasso } from "../fluxo/passos";
 import { filtrarLinhasRede } from "./redeSelecaoFiltros.js";
 
@@ -53,6 +55,7 @@ export default function RedeSelecaoPanel({
   const [filtroNome, setFiltroNome] = useState("");
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [removendo, setRemovendo] = useState(null);
 
   const excluidosRef = useRef(excluidos);
   const revisadaRef = useRef(revisada);
@@ -161,6 +164,25 @@ export default function RedeSelecaoPanel({
     });
   };
 
+  // Incluir/remover à mão grava na hora; só a tabela é recarregada — as marcações
+  // locais (excluídos, revisada) seguem como estão até avançar.
+  async function removerManual(sec, ln) {
+    setRemovendo(ln.linha_id);
+    setErro(null);
+    try {
+      const nova = await removerRedeManual(estudoId, sec.subgrupo_id, {
+        prestador: ln.prestador,
+        municipio: ln.municipio,
+        bairro: ln.bairro,
+      });
+      setDados(nova);
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setRemovendo(null);
+    }
+  }
+
   function limparFiltros() {
     setFiltroZona("");
     setFiltroMun("");
@@ -197,6 +219,9 @@ export default function RedeSelecaoPanel({
   }
 
   const aviso = dados?.aviso_sem_localizacao;
+  const temSecaoComBusca = (dados?.secoes || []).some(
+    (s) => s.subgrupo_id && !s.sem_localizacao
+  );
 
   return (
     <section className="etapa-fluxo rede-selecao-etapa">
@@ -208,7 +233,8 @@ export default function RedeSelecaoPanel({
           <h1>{rotulo}</h1>
           <p className="lead">
             Marque os hospitais que entram no documento. O padrão são os principais
-            da base; desmarque o que não deve aparecer para o cliente.
+            da base; desmarque o que não deve aparecer para o cliente. Para um hospital
+            fora dos principais, use a busca de cada plano.
           </p>
         </div>
         <div className="page-head-acoes">
@@ -237,7 +263,7 @@ export default function RedeSelecaoPanel({
 
       {erro && <p className="erro">{erro}</p>}
 
-      {!aviso && linhas.length > 0 && (
+      {!aviso && (linhas.length > 0 || temSecaoComBusca) && (
         <>
           <section className="panel panel-flat cmp-filtros">
             <div className="panel-head">
@@ -318,9 +344,11 @@ export default function RedeSelecaoPanel({
               return { bloco, linhasBloco };
             }).filter((x) => x.linhasBloco.length > 0);
 
-            if (!secaoTemLinha) return null;
-
             const idsSec = idsLinhasSecao(sec);
+            // Com filtro ativo, some a seção sem linha visível; seção sem nenhuma
+            // linha (ainda) continua aparecendo, para permitir a busca.
+            const aceitaInclusao = Boolean(sec.subgrupo_id) && !sec.sem_localizacao;
+            if (!secaoTemLinha && !(idsSec.length === 0 && aceitaInclusao)) return null;
             const incluidosSec = idsSec.filter((id) => !excluidos.has(id)).length;
             const todosIncluidosSec =
               idsSec.length > 0 && incluidosSec === idsSec.length;
@@ -341,6 +369,13 @@ export default function RedeSelecaoPanel({
                   </button>
                 </div>
                 <div className="panel-body">
+                  {aceitaInclusao && (
+                    <InclusaoManual
+                      estudoId={estudoId}
+                      secao={sec}
+                      onAtualizado={(nova) => setDados(nova)}
+                    />
+                  )}
                   {blocosRender.map(({ bloco, linhasBloco }) => (
                     <div className="rede-bloco-municipio" key={bloco.titulo}>
                       <div className="rede-bloco-titulo">{bloco.titulo}</div>
@@ -391,13 +426,34 @@ export default function RedeSelecaoPanel({
                                     {ln.bairro ? (
                                       <span className="bairro-rede">{ln.bairro}</span>
                                     ) : null}
+                                    {ln.manual && (
+                                      <span className="selos-linha">
+                                        <span className="selo selo--manual">Manual</span>
+                                        {ln.fora_criterio && (
+                                          <span
+                                            className="selo selo--fora"
+                                            title="Sem HGER, HD, PSGER ou MAT em nenhum plano"
+                                          >
+                                            Fora do critério padrão
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="secundario btn-compacto btn-remover-manual"
+                                          disabled={removendo === ln.linha_id}
+                                          onClick={() => removerManual(sec, ln)}
+                                        >
+                                          Remover
+                                        </button>
+                                      </span>
+                                    )}
                                   </td>
                                   {colunas.map((col) => {
                                     const cod = celulaCobertura(ln.celulas?.[col.chave]);
                                     const cls = cod ? "on" : "off";
                                     return (
                                       <td key={col.chave} className={`rede-col-plano ${cls}`}>
-                                        {cod || ""}
+                                        {cod ? <CelulaCobertura texto={cod} /> : ""}
                                       </td>
                                     );
                                   })}
@@ -420,7 +476,7 @@ export default function RedeSelecaoPanel({
         </>
       )}
 
-      {!aviso && linhas.length === 0 && (
+      {!aviso && linhas.length === 0 && !temSecaoComBusca && (
         <p className="muted">Nenhum prestador disponível para este estudo.</p>
       )}
     </section>

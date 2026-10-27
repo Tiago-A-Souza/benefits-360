@@ -15,7 +15,11 @@ from newport_app.rascunho.cenarios_sync import sincronizar_cenarios
 from newport_app.rascunho.selecao_grupo import sanear_selecao_por_grupo
 from newport_app.services.comparativo_confirmacao import sanitizar_confirmacao_comparativo
 from newport_app.services.comparativo_ui import sanitizar_selecao_apresentacao
-from newport_app.services.rede_selecao import sanitizar_selecao_rede
+from newport_app.presentation.rede_matriz_hospital import carregar_base_rede_hospital
+from newport_app.services.rede_selecao import (
+    descartar_incluidos_invalidos,
+    sanitizar_selecao_rede,
+)
 from newport_app.services.rede_selecao_ui import todos_ids_linha_rede
 from newport_app.repository.migration import migrar_estudos_db
 
@@ -26,6 +30,12 @@ def _sanitizar_rede_selecao_rascunho(rascunho: RascunhoEstudo) -> None:
     if not rascunho.cenarios:
         return
     try:
+        if rascunho.selecao_rede.incluidos:
+            # Inclusões manuais: validadas contra a base COMPLETA, e descartadas
+            # se o prestador já está na visão calculada (virou principal).
+            base = carregar_base_rede_hospital()
+            visao = todos_ids_linha_rede(rascunho, incluir_manuais=False)
+            descartar_incluidos_invalidos(rascunho, base.chaves_prestadores, visao)
         ids = todos_ids_linha_rede(rascunho)
     except Exception:
         return

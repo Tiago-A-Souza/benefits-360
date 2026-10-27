@@ -7548,3 +7548,119 @@ a.btn-link {
     grid-template-columns: 1fr;
   }
 }
+
+/* Etapa 5 — inclusão manual de hospital fora dos principais (só na tela). */
+.incl-manual {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--line, #c9ced6);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.015);
+}
+.incl-manual-ajuda {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+}
+.incl-manual-lista {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.incl-manual-item {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line, #d9dde3);
+  border-radius: 6px;
+  background: #fff;
+}
+.incl-manual-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.incl-manual-nome {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+.incl-manual-local {
+  font-size: 0.8rem;
+  color: var(--muted, #6b7280);
+}
+.incl-manual-selos,
+.selos-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+.selo {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.5;
+  background: #e8ecf2;
+  color: #374151;
+}
+.selo--manual {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.selo--fora {
+  background: #fef3c7;
+  color: #92400e;
+}
+.selo--aviso {
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+.selo--info {
+  background: #e8ecf2;
+  color: #374151;
+}
+.incl-manual-cobertura {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.incl-chip {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 7rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--line, #d9dde3);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--muted, #6b7280);
+}
+.incl-chip--on {
+  border-color: #86b997;
+  color: inherit;
+}
+.incl-chip-plano {
+  font-size: 0.68rem;
+  color: var(--muted, #6b7280);
+}
+.incl-chip-cod {
+  font-weight: 600;
+}
+/* Código cru da base (fora das siglas H, HD, M, PS): cinza itálico só na tela. */
+.cod-cru {
+  color: #6b7280;
+  font-style: italic;
+  font-weight: 400;
+}
+.rede-selecao-tabela .selos-linha {
+  margin: 0.25rem 0 0;
+}
+.btn-remover-manual {
+  padding: 0 0.5rem;
+  font-size: 0.7rem;
+}

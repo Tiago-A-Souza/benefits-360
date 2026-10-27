@@ -61,6 +61,8 @@ from newport_app.models.responses import (
     PendenciaItem,
     MatrizEstimativaResponse,
     ResumoPlanoAtualResponse,
+    BuscaInclusaoResponse,
+    IncluirManualRequest,
     RedeSelecaoResponse,
     SalvarSelecaoApresentacaoRequest,
     SalvarSelecaoApresentacaoResponse,
@@ -119,6 +121,12 @@ from newport_app.services.comparativo_ui import (
     SelecaoApresentacaoInvalidaError,
     resolver_propostas_apresentacao_snapshot,
     salvar_selecao_apresentacao,
+)
+from newport_app.services.rede_inclusao import (
+    InclusaoRedeInvalida,
+    buscar_para_inclusao,
+    incluir_manual,
+    remover_inclusao,
 )
 from newport_app.services.rede_selecao import salvar_selecao_rede
 from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui, todos_ids_linha_rede
@@ -1044,6 +1052,65 @@ def create_app(
             revisada=sel.revisada,
         )
 
+    @app.get(
+        "/api/estudos/{estudo_id}/rede-selecao/busca",
+        response_model=BuscaInclusaoResponse,
+    )
+    def buscar_rede_inclusao(
+        estudo_id: str, subgrupo_id: str, q: str = ""
+    ) -> BuscaInclusaoResponse:
+        """Busca na base inteira para inclusão manual. Somente leitura."""
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        try:
+            return buscar_para_inclusao(rascunho, subgrupo_id, q)
+        except InclusaoRedeInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except BaseRedeHospitalInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.post(
+        "/api/estudos/{estudo_id}/rede-selecao/incluidos",
+        response_model=RedeSelecaoResponse,
+    )
+    def incluir_rede_manual(
+        estudo_id: str, body: IncluirManualRequest
+    ) -> RedeSelecaoResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        try:
+            incluir_manual(
+                rascunho, body.subgrupo_id, body.prestador, body.municipio, body.bairro
+            )
+        except InclusaoRedeInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except BaseRedeHospitalInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+        service.salvar_rascunho(rascunho)
+        atualizado = repository.obter_rascunho(estudo_id)
+        return montar_rede_selecao_ui(atualizado)
+
+    @app.post(
+        "/api/estudos/{estudo_id}/rede-selecao/incluidos/remover",
+        response_model=RedeSelecaoResponse,
+    )
+    def remover_rede_manual(
+        estudo_id: str, body: IncluirManualRequest
+    ) -> RedeSelecaoResponse:
+        rascunho = repository.obter_rascunho(estudo_id)
+        if rascunho is None:
+            raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
+        if not remover_inclusao(
+            rascunho, body.subgrupo_id, body.prestador, body.municipio, body.bairro
+        ):
+            raise HTTPException(
+                status_code=404, detail="Inclusão manual não encontrada"
+            ) from None
+        service.salvar_rascunho(rascunho)
+        atualizado = repository.obter_rascunho(estudo_id)
+        return montar_rede_selecao_ui(atualizado)
     @app.get(
         "/api/estudos/{estudo_id}/selecao-planos-grupo",
         response_model=SelecaoPlanosGrupoResponse,

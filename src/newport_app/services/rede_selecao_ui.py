@@ -35,11 +35,18 @@ def _ids_cenarios_rede(rascunho: RascunhoEstudo) -> list[str]:
     return []
 
 
-def montar_rede_selecao_ui(rascunho: RascunhoEstudo) -> RedeSelecaoResponse:
+def montar_rede_selecao_ui(
+    rascunho: RascunhoEstudo, *, incluir_manuais: bool = True
+) -> RedeSelecaoResponse:
     excl = excluidos_rede(rascunho)
     sel = rascunho.selecao_rede
     propostas = _ids_cenarios_rede(rascunho)
-    doc = montar_rede_apresentacao(rascunho, propostas, formato=rascunho.formato)
+    doc = montar_rede_apresentacao(
+        rascunho,
+        propostas,
+        formato=rascunho.formato,
+        incluir_manuais=incluir_manuais,
+    )
     if doc is None:
         return RedeSelecaoResponse(
             revisada=bool(sel and sel.revisada),
@@ -70,12 +77,15 @@ def montar_rede_selecao_ui(rascunho: RascunhoEstudo) -> RedeSelecaoResponse:
                     ),
                     incluido=ln.linha_id not in excl,
                     celulas=dict(ln.celulas),
+                    manual=ln.manual,
+                    fora_criterio=ln.fora_criterio,
                 )
                 for ln in bloco.linhas
             ]
             blocos.append(BlocoRedeSelecaoItem(titulo=bloco.titulo, linhas=linhas))
         secoes.append(
             SecaoRedeSelecaoItem(
+                subgrupo_id=sec.subgrupo_id,
                 rotulo=sec.rotulo,
                 sem_localizacao=sec.sem_localizacao_beneficiarios,
                 colunas=colunas,
@@ -90,8 +100,11 @@ def montar_rede_selecao_ui(rascunho: RascunhoEstudo) -> RedeSelecaoResponse:
     )
 
 
-def todos_ids_linha_rede(rascunho: RascunhoEstudo) -> set[str]:
-    ui = montar_rede_selecao_ui(rascunho)
+def todos_ids_linha_rede(
+    rascunho: RascunhoEstudo, *, incluir_manuais: bool = True
+) -> set[str]:
+    """Ids da tabela. `incluir_manuais=False` = só a visão calculada dos principais."""
+    ui = montar_rede_selecao_ui(rascunho, incluir_manuais=incluir_manuais)
     ids: set[str] = set()
     for sec in ui.secoes:
         for bloco in sec.blocos:
