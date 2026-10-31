@@ -143,14 +143,14 @@ class SelecaoApresentacaoRascunho(BaseModel):
 
 
 class IncluidoRedeRascunho(BaseModel):
-    """Prestador incluído à mão numa seção (subgrupo) da etapa 5.
+    """Prestador incluído à mão no ESTUDO (etapa 5): entra na tabela de todas as seções.
 
     Identifica o prestador pela chave da base de rede (prestador, município,
-    bairro normalizado) — o mesmo trio de `_id_linha_rede`. É por estudo: nunca
-    grava no CSV de principais.
+    bairro normalizado) — o mesmo trio de `_id_linha_rede`. Não tem seção: o
+    `linha_id` de cada tabela é derivado do trio + subgrupo. Nunca grava no CSV
+    de principais.
     """
 
-    subgrupo_id: str
     prestador: str
     municipio: str
     bairro: str = ""

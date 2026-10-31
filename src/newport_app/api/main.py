@@ -1057,14 +1057,14 @@ def create_app(
         response_model=BuscaInclusaoResponse,
     )
     def buscar_rede_inclusao(
-        estudo_id: str, subgrupo_id: str, q: str = ""
+        estudo_id: str, q: str = ""
     ) -> BuscaInclusaoResponse:
         """Busca na base inteira para inclusão manual. Somente leitura."""
         rascunho = repository.obter_rascunho(estudo_id)
         if rascunho is None:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         try:
-            return buscar_para_inclusao(rascunho, subgrupo_id, q)
+            return buscar_para_inclusao(rascunho, q)
         except InclusaoRedeInvalida as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except BaseRedeHospitalInvalida as exc:
@@ -1081,9 +1081,7 @@ def create_app(
         if rascunho is None:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         try:
-            incluir_manual(
-                rascunho, body.subgrupo_id, body.prestador, body.municipio, body.bairro
-            )
+            incluir_manual(rascunho, body.prestador, body.municipio, body.bairro)
         except InclusaoRedeInvalida as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except BaseRedeHospitalInvalida as exc:
@@ -1102,9 +1100,7 @@ def create_app(
         rascunho = repository.obter_rascunho(estudo_id)
         if rascunho is None:
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
-        if not remover_inclusao(
-            rascunho, body.subgrupo_id, body.prestador, body.municipio, body.bairro
-        ):
+        if not remover_inclusao(rascunho, body.prestador, body.municipio, body.bairro):
             raise HTTPException(
                 status_code=404, detail="Inclusão manual não encontrada"
             ) from None

@@ -188,35 +188,34 @@ export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
 }
 
 /** Inclusão manual (etapa 5): a busca só lê; incluir/remover gravam em selecao_rede.incluidos. */
-export async function buscarRedeInclusao(estudoId, subgrupoId, termo) {
-  const p = new URLSearchParams({ subgrupo_id: subgrupoId, q: termo });
+export async function buscarRedeInclusao(estudoId, termo) {
+  const p = new URLSearchParams({ q: termo });
   const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/busca?${p}`);
   return tratarResposta(res, "Não foi possível buscar na base de rede.");
 }
 
-function corpoInclusao(subgrupoId, item) {
+function corpoInclusao(item) {
   return JSON.stringify({
-    subgrupo_id: subgrupoId,
     prestador: item.prestador,
     municipio: item.municipio,
     bairro: item.bairro || "",
   });
 }
 
-export async function incluirRedeManual(estudoId, subgrupoId, item) {
+export async function incluirRedeManual(estudoId, item) {
   const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: corpoInclusao(subgrupoId, item),
+    body: corpoInclusao(item),
   });
   return tratarResposta(res, "Não foi possível incluir o hospital.");
 }
 
-export async function removerRedeManual(estudoId, subgrupoId, item) {
+export async function removerRedeManual(estudoId, item) {
   const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos/remover`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: corpoInclusao(subgrupoId, item),
+    body: corpoInclusao(item),
   });
   return tratarResposta(res, "Não foi possível remover a inclusão.");
 }

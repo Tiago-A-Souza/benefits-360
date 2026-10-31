@@ -1661,7 +1661,27 @@ acrescenta um hospital fora dos principais (o cliente pediu aquele hospital).
   com `excluidos`.
 - Cache da base de rede reaproveitado (o da entrega 4); nenhum cache novo.
 
-Validação: pytest **1496 passed**, 16 skipped (master: 1459); vitest 147 passed;
+**Revisão do modelo (decidida com Leonardo; branch `etapa5-inclusao-campo-unico`)** —
+reverte partes do acima:
+
+- **Um campo só**, fora dos cards, valendo para o estudo. Os campos por seção saem.
+  O «Filtros» passa para dentro do card da tabela.
+- **Sem recusa por falta de cobertura.** O hospital vira linha e as colunas dizem
+  quem tem acesso, como nos principais. A busca avisa («Nenhum plano do estudo cobre
+  este hospital») mas não bloqueia.
+- **A linha incluída sobrevive à omissão** de prestador sem cobertura (tela e
+  documento): a regra existe para limpar linha automática, não a que o corretor pôs.
+- **`incluidos` é do estudo:** `{prestador, municipio, bairro}`, sem `subgrupo_id`.
+  Entra na tabela de todas as seções. Rascunho gravado com `subgrupo_id` continua
+  carregando (campo ignorado, duplicatas descartadas).
+- **Duplicata por seção:** o que já é principal numa seção não é duplicado nela;
+  entra só onde falta. Só é descartado dos `incluidos` quem virou principal em
+  TODAS as seções com tabela. Recusa «já está na tabela de todas as seções».
+- A busca mostra a cobertura em cada plano DISTINTO do estudo (contrato atual de
+  cada seção + propostas), não só os da seção.
+- Remover tira o hospital de todas as seções e limpa as exclusões das suas linhas.
+
+Validação da 1ª versão: pytest **1496 passed**, 16 skipped (master: 1459); vitest 147 passed;
 snapshots **108/108**; rascunhos do banco 110 carregam, 0 falha de carga.
 
 ---
