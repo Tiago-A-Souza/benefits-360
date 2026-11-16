@@ -10,6 +10,9 @@ Apresentacao-Template/
 # PDF de estudo real com nomes de beneficiários — não versionar
 docs/Estudo Saude*.pdf
 
+# Dados reais / gabaritos / prompt de auditoria piloto — NUNCA versionar
+docs/auditoria_newport/
+
 # Temporários de revisão / extração
 .tmp*/
 
