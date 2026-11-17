@@ -722,17 +722,24 @@ class Tela:
             Route("/api/eventos", self.eventos),
             Mount("/static", _ArquivosSemCache(directory=str(WEB)), name="static"),
         ]
-        anc = _origens_frame_ancestors(self.config_total())
+        cfg = self.config_total()
+        anc = _origens_frame_ancestors(cfg)
+        cors = _origens_permitidas(cfg)
         return Starlette(
             routes=rotas,
-            middleware=[Middleware(SoDaPropriaTela, porta=self.porta, frame_ancestors=anc)],
+            middleware=[Middleware(
+                SoDaPropriaTela,
+                porta=self.porta,
+                frame_ancestors=anc,
+                origens_permitidas=cors,
+            )],
             lifespan=ciclo,
         )
 
 
-def _origens_frame_ancestors(cfg: dict) -> list[str]:
-    """Origens externas permitidas em frame-ancestors (vêm do config, sem domínio fixo no código)."""
-    brutos = (cfg.get("tela") or {}).get("frame_ancestors") or []
+def _lista_origens_cfg(cfg: dict, chave: str) -> list[str]:
+    """Lê lista de origens do bloco tela.* (sem domínio fixo no código)."""
+    brutos = (cfg.get("tela") or {}).get(chave) or []
     if not isinstance(brutos, list):
         return []
     saida: list[str] = []
@@ -741,6 +748,16 @@ def _origens_frame_ancestors(cfg: dict) -> list[str]:
         if s and s not in saida:
             saida.append(s)
     return saida
+
+
+def _origens_frame_ancestors(cfg: dict) -> list[str]:
+    """Origens externas permitidas em frame-ancestors (vêm do config)."""
+    return _lista_origens_cfg(cfg, "frame_ancestors")
+
+
+def _origens_permitidas(cfg: dict) -> list[str]:
+    """Origens do Benefits que podem chamar a API (CORS) — tela.origens_permitidas no config."""
+    return _lista_origens_cfg(cfg, "origens_permitidas")
 
 
 def _cabecalhos_seguranca(frame_ancestors: list[str]) -> list[tuple[bytes, bytes]]:
@@ -763,21 +780,47 @@ def _cabecalhos_seguranca(frame_ancestors: list[str]) -> list[tuple[bytes, bytes
     ]
 
 
-class SoDaPropriaTela:
-    """Só a própria tela, aberta neste computador, conversa com o servidor.
+def _cabecalhos_cors(origem: str, *, preflight: bool = False, private_network: bool = False) -> list[tuple[bytes, bytes]]:
+    """CORS só para origem da allowlist. Private Network Access no preflight quando o Chrome pede."""
+    out: list[tuple[bytes, bytes]] = [
+        (b"access-control-allow-origin", origem.encode("ascii")),
+        (b"vary", b"Origin"),
+        (b"access-control-expose-headers", b"content-disposition, content-type"),
+    ]
+    if preflight:
+        out.extend([
+            (b"access-control-allow-methods", b"GET, HEAD, POST, PUT, DELETE, OPTIONS"),
+            (b"access-control-allow-headers", b"content-type, x-newport-tela"),
+            (b"access-control-max-age", b"600"),
+        ])
+        if private_network:
+            out.append((b"access-control-allow-private-network", b"true"))
+    return out
 
-    - Host tem que ser 127.0.0.1 ou localhost nesta porta (bloqueia "DNS rebinding": um site de fora
-      apontando um nome dele para 127.0.0.1 para ler cotações e PDFs).
-    - Todo pedido que muda algo precisa do cabeçalho X-Newport-Tela (um site de fora não consegue
-      mandá-lo) e, se vier com Origin, ela tem que ser a própria tela.
-    - frame-ancestors na CSP: 'self' mais as origens declaradas em tela.frame_ancestors (ex.: o Benefits).
-      Outros sites não embutem a tela.
+
+class SoDaPropriaTela:
+    """Só a própria tela (e o Benefits na allowlist) conversam com o servidor local.
+
+    - Host: 127.0.0.1 ou localhost nesta porta (bloqueia DNS rebinding).
+    - Mutações: exigem X-Newport-Tela: 1 e, se houver Origin, ela tem que ser a própria
+      tela OU uma origem em tela.origens_permitidas (Benefits). Site estranho → 403.
+    - CORS: só para origens_permitidas (inclui preflight e Private Network Access).
+    - frame-ancestors: CSP com allowlist (iframe); CORP same-origin por padrão, e
+      cross-origin só quando a Origin da allowlist chama a API (fetch/SSE do Benefits).
     """
 
-    def __init__(self, app, porta: int, frame_ancestors: list[str] | None = None):
+    def __init__(
+        self,
+        app,
+        porta: int,
+        frame_ancestors: list[str] | None = None,
+        origens_permitidas: list[str] | None = None,
+    ):
         self.app = app
         self.hosts = {f"127.0.0.1:{porta}", f"localhost:{porta}"}
-        self.permitidas = {f"http://{h}" for h in self.hosts}
+        self.proprias = {f"http://{h}" for h in self.hosts}
+        self.cors = set(origens_permitidas or [])
+        self.mutacao_ok = self.proprias | self.cors
         self._cabecalhos = _cabecalhos_seguranca(frame_ancestors or [])
 
     async def __call__(self, scope, receive, send):
@@ -788,15 +831,35 @@ class SoDaPropriaTela:
         if cab.get("host") not in self.hosts:
             await JSONResponse({"erro": "endereço não permitido"}, status_code=421)(scope, receive, send)
             return
+
+        origem = cab.get("origin")
+
+        if scope["method"] == "OPTIONS":
+            if not origem or origem not in self.cors:
+                await JSONResponse({"erro": "pedido recusado"}, status_code=403)(scope, receive, send)
+                return
+            pna = cab.get("access-control-request-private-network", "").lower() == "true"
+            heads = {
+                k.decode("ascii"): v.decode("ascii")
+                for k, v in _cabecalhos_cors(origem, preflight=True, private_network=pna)
+            }
+            await Response(status_code=204, headers=heads)(scope, receive, send)
+            return
+
         if scope["method"] not in ("GET", "HEAD"):
-            origem = cab.get("origin")
-            if cab.get("x-newport-tela") != "1" or (origem and origem not in self.permitidas):
+            if cab.get("x-newport-tela") != "1" or (origem and origem not in self.mutacao_ok):
                 await JSONResponse({"erro": "pedido recusado"}, status_code=403)(scope, receive, send)
                 return
 
         async def enviar(mensagem):
             if mensagem["type"] == "http.response.start":
-                mensagem["headers"] = list(mensagem.get("headers") or []) + self._cabecalhos
+                headers = list(mensagem.get("headers") or []) + list(self._cabecalhos)
+                if origem and origem in self.cors:
+                    # fetch/SSE do Benefits: CORP same-origin bloquearia a leitura cross-origin.
+                    headers = [(k, v) for k, v in headers if k != b"cross-origin-resource-policy"]
+                    headers.append((b"cross-origin-resource-policy", b"cross-origin"))
+                    headers.extend(_cabecalhos_cors(origem))
+                mensagem["headers"] = headers
             await send(mensagem)
 
         await self.app(scope, receive, enviar)

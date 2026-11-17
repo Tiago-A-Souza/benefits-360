@@ -18,6 +18,7 @@ import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
 import NavegacaoFerramentas from "./NavegacaoFerramentas";
 import SimularRede from "./simularRede/SimularRede";
 import CotacoesRpa from "./cotacoes/CotacoesRpa";
+import ProvaRpaDireto from "./cotacoes/ProvaRpaDireto";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
@@ -42,6 +43,10 @@ export default function App() {
   // Simular Rede é uma consulta avulsa: não cria nem altera estudo.
   const [simulando, setSimulando] = useState(false);
   const [cotacoesRpa, setCotacoesRpa] = useState(false);
+  const [provaRpa, setProvaRpa] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
+  });
   const [cestaGlobal, setCestaGlobal] = useState([]);
   const avancarEtapaRef = useRef(null);
   const registrarAvancoEtapa = useCallback((fn) => {
@@ -143,6 +148,21 @@ export default function App() {
   const nPlanosVigentes = ctxFluxo.rascunho?.subgrupos_atuais?.length || 0;
   const totalBaseComparacao = ctxFluxo.resumoPlanoAtual?.total_reajustado_reais;
   const legendaReajusteBase = textoReajusteContrato(ctxFluxo.resumoPlanoAtual);
+
+  if (provaRpa) {
+    return (
+      <div className="lista-shell">
+        <ProvaRpaDireto
+          onFechar={() => {
+            setProvaRpa(false);
+            const u = new URL(window.location.href);
+            u.searchParams.delete("prova-rpa");
+            window.history.replaceState({}, "", u.pathname + u.search);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (cotacoesRpa) {
     const emEstudo = tela === "fluxo" && estudoId;

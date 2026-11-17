@@ -3,13 +3,16 @@ from __future__ import annotations
 
 import urllib.request
 
-from app.servidor import _cabecalhos_seguranca, _origens_frame_ancestors
+from app.servidor import _cabecalhos_seguranca, _origens_frame_ancestors, _origens_permitidas
 
 
 def test_origens_vem_do_config():
     cfg = {"tela": {"frame_ancestors": ["http://localhost:5173", "http://app.newport.exemplo"]}}
     assert _origens_frame_ancestors(cfg) == ["http://localhost:5173", "http://app.newport.exemplo"]
     assert _origens_frame_ancestors({}) == []
+    assert _origens_permitidas({"tela": {"origens_permitidas": ["http://localhost:5173"]}}) == [
+        "http://localhost:5173"
+    ]
 
 
 def test_cabecalhos_sem_allowlist_usa_none():
