@@ -86,6 +86,16 @@ _TRADUCOES: dict[str, tuple[str, str, str]] = {
         "Propostas fora dos cenários",
         "Há propostas selecionadas na etapa Cotações que não entram em nenhum cenário.",
     ),
+    "APP-MAN-001": (
+        "bloqueio",
+        "Total impresso diverge do cálculo",
+        "O total digitado diverge demais do cálculo das faixas — revise tipo fiscal e base de IOF.",
+    ),
+    "APP-MAN-002": (
+        "alerta",
+        "Conferência de total impresso",
+        "Há divergência pequena ou totais marcados como ausentes no PDF.",
+    ),
 }
 
 
@@ -380,6 +390,52 @@ def pendencias_compilacao(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
 
     itens.extend(pendencias_divergencia_acomodacao(rascunho))
     itens.extend(pendencias_incompleto_acomodacao(rascunho))
+    itens.extend(pendencias_conferencia_manual(rascunho))
+    return itens
+
+
+def pendencias_conferencia_manual(rascunho: RascunhoEstudo) -> list[PendenciaItem]:
+    """Guardrails da entrada manual (totais impressos × faixas). Não altera o motor."""
+    from newport_app.rascunho.conferencia_manual import (
+        SeveridadeConferenciaManual,
+        conferir_totais_opcao_manual,
+    )
+
+    itens: list[PendenciaItem] = []
+    for op in rascunho.opcoes_proposta:
+        if op.extracao_id:
+            continue
+        res = conferir_totais_opcao_manual(op)
+        if res.severidade == SeveridadeConferenciaManual.OK:
+            continue
+        nome = op.plano_nome or op.operadora or op.id
+        if res.severidade == SeveridadeConferenciaManual.BLOQUEIO:
+            itens.append(
+                PendenciaItem(
+                    tipo="bloqueio",
+                    titulo=f"Total impresso diverge — {nome}",
+                    descricao=res.mensagem,
+                    acao_sugerida=(
+                        "Revise tipo fiscal e base de preço, ou marque "
+                        "«não consta no PDF» se o documento não traz total."
+                    ),
+                    codigo="APP-MAN-001",
+                    etapa=3,
+                    quantidade=1,
+                )
+            )
+        else:
+            itens.append(
+                PendenciaItem(
+                    tipo="alerta",
+                    titulo=f"Conferência de totais — {nome}",
+                    descricao=res.mensagem,
+                    acao_sugerida="Confira os valores digitados antes de calcular.",
+                    codigo="APP-MAN-002",
+                    etapa=3,
+                    quantidade=1,
+                )
+            )
     return itens
 
 

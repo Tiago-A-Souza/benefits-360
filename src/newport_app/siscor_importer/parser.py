@@ -52,8 +52,17 @@ from newport_app.siscor_importer.valor_fatura import FormatoEstudoSiscor, alerta
 from newport_app.siscor_importer.vinculo_familiar import resolver_vinculos_grupo_familiar
 
 
-def _erro_arquivo(codigo: str, mensagem: str) -> ErroArquivoSiscor:
-    return ErroArquivoSiscor(codigo=codigo, mensagem=mensagem)
+def _erro_arquivo(
+    codigo: str,
+    mensagem: str,
+    *,
+    colunas_faltantes: list[str] | None = None,
+) -> ErroArquivoSiscor:
+    return ErroArquivoSiscor(
+        codigo=codigo,
+        mensagem=mensagem,
+        colunas_faltantes=list(colunas_faltantes or []),
+    )
 
 
 def _alerta(
@@ -235,12 +244,17 @@ def parse_planilha_siscor(
 
         faltantes = [c for c in COLUNAS_OBRIGATORIAS if c not in indice_colunas]
         if faltantes:
+            lista = ", ".join(faltantes)
             return ResultadoParseSiscor(
                 sucesso=False,
                 erros_arquivo=[
                     _erro_arquivo(
                         "APP-SIS-F05",
-                        "A planilha não possui todas as colunas obrigatórias do layout piloto.",
+                        (
+                            "A planilha não possui todas as colunas obrigatórias "
+                            f"do layout piloto. Faltam: {lista}."
+                        ),
+                        colunas_faltantes=faltantes,
                     ),
                 ],
                 documento_hash_sha256=doc_hash,

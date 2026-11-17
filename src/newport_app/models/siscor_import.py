@@ -27,6 +27,7 @@ class DisponibilidadeColunasSiscor(BaseModel):
 class ErroArquivoSiscor(BaseModel):
     codigo: str
     mensagem: str
+    colunas_faltantes: list[str] = Field(default_factory=list)
 
 
 class AlertaLinhaSiscor(BaseModel):
