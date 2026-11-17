@@ -130,8 +130,10 @@ from newport_app.services.rede_inclusao import (
 )
 from newport_app.services.rede_selecao import salvar_selecao_rede
 from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui, todos_ids_linha_rede
+from newport_app.models.rpa_cotacoes import RpaCotacoesEstadoResponse
 from newport_app.models.simular_rede import ConsultaRedeResponse, OpcoesSimulacaoRede
 from newport_app.presentation import rede_consulta
+from newport_app.services import rpa_cotacoes as rpa_cotacoes_svc
 from newport_app.presentation.rede_matriz_hospital import BaseRedeHospitalInvalida
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
@@ -1017,6 +1019,11 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except BaseRedeHospitalInvalida as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.get("/api/rpa-cotacoes/estado", response_model=RpaCotacoesEstadoResponse)
+    def rpa_cotacoes_estado() -> RpaCotacoesEstadoResponse:
+        """O Benefits pergunta ao RPA local (urllib, sem CORS); não troca dados de estudo."""
+        return RpaCotacoesEstadoResponse(**rpa_cotacoes_svc.consultar_estado_tela_rpa())
 
     @app.get(
         "/api/estudos/{estudo_id}/rede-selecao",

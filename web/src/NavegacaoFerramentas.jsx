@@ -3,6 +3,7 @@ export default function NavegacaoFerramentas({
   ativo,
   onMeusEstudos,
   onSimularRede,
+  onCotacoes,
   onVoltarEstudo,
   rotuloEstudo,
 }) {
@@ -39,6 +40,18 @@ export default function NavegacaoFerramentas({
             Simular rede
           </button>
         </li>
+        {onCotacoes && (
+          <li>
+            <button
+              type="button"
+              aria-pressed={ativo === "cotacoes"}
+              aria-current={ativo === "cotacoes" ? "page" : undefined}
+              onClick={onCotacoes}
+            >
+              Cotações
+            </button>
+          </li>
+        )}
       </ul>
     </nav>
   );

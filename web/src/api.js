@@ -147,6 +147,12 @@ export async function obterRedeSelecao(estudoId) {
   return tratarResposta(res, "Não foi possível carregar a rede credenciada.");
 }
 
+/** RPA Cotações — estado da tela local (via API Benefits; urllib no servidor). */
+export async function obterEstadoRpaCotacoes() {
+  const res = await fetch(`${API}/rpa-cotacoes/estado`);
+  return tratarResposta(res, "Não foi possível consultar o robô de cotações.");
+}
+
 /** Simular Rede — consultas somente leitura, fora de qualquer estudo. */
 export async function obterOpcoesSimulacaoRede() {
   const res = await fetch(`${API}/simular-rede/opcoes`);

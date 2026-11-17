@@ -92,7 +92,7 @@ function TabelaResultado({ resp }) {
   );
 }
 
-export default function SimularRede({ onMeusEstudos, onVoltarEstudo, rotuloEstudo }) {
+export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, onVoltarEstudo, rotuloEstudo }) {
   const [opcoes, setOpcoes] = useState(null);
   const [erroOpcoes, setErroOpcoes] = useState(null);
 
@@ -211,7 +211,8 @@ export default function SimularRede({ onMeusEstudos, onVoltarEstudo, rotuloEstud
         <NavegacaoFerramentas
           ativo="simular"
           onMeusEstudos={onMeusEstudos}
-          onSimularRede={() => {}}
+          onSimularRede={onSimularRede || (() => {})}
+          onCotacoes={onCotacoes}
           onVoltarEstudo={onVoltarEstudo}
           rotuloEstudo={rotuloEstudo}
         />

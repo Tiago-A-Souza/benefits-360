@@ -13,6 +13,9 @@ geral:
 
 tela:
   porta: 8601
+  frame_ancestors:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
 
 teste:
   simulador: true   # a tela mostra "Simulador local"

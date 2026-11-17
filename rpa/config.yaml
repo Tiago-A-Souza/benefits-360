@@ -12,6 +12,10 @@ geral:
 
 tela:
   porta: 8600                  # endereço da tela: http://127.0.0.1:8600
+  # Origens do Benefits 360 que podem embutir esta tela (iframe). Outros sites ficam de fora (CSP).
+  frame_ancestors:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
 
 operadoras:
 
