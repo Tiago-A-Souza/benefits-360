@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newport Cotações</title>
+<link rel="icon" href="/static/icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/estilo.css">
+</head>
+<body>
+<div class="app">
+  <aside class="trilho">
+    <a class="marca" href="#/inicio" aria-label="Newport Cotações, início">
+      <span class="marca-nome">Newport</span>
+      <span class="marca-sub">Cotações</span>
+    </a>
+    <nav class="menu" aria-label="Principal">
+      <a href="#/inicio" data-rota="inicio">Início</a>
+      <a href="#/nova" data-rota="nova">Nova cotação</a>
+      <a href="#/cotacoes" data-rota="cotacoes">Cotações</a>
+      <a href="#/importar" data-rota="importar">Importar planilha</a>
+      <a href="#/robos" data-rota="robos">Robôs</a>
+      <a href="#/ajuda" data-rota="ajuda">Ajuda</a>
+    </nav>
+    <div class="trilho-rodape">
+      <div id="selo-simulador" class="selo-simulador" hidden>Simulador local</div>
+      <div id="conexoes" class="conexoes" aria-live="polite"></div>
+      <div id="versao-codigo" class="versao-codigo" aria-live="polite"></div>
+    </div>
+  </aside>
+  <div class="palco">
+    <div id="faixa-login" class="faixa-login" role="alert" hidden></div>
+    <div id="faixa-trabalho" class="faixa-trabalho" hidden></div>
+    <main id="conteudo" tabindex="-1"></main>
+  </div>
+</div>
+<div id="avisos" class="avisos" aria-live="polite"></div>
+<div id="modal" class="modal" hidden></div>
+<script src="/static/js/base.js"></script>
+<script src="/static/js/telas/inicio.js"></script>
+<script src="/static/js/telas/nova.js"></script>
+<script src="/static/js/telas/andamento.js"></script>
+<script src="/static/js/telas/cotacoes.js"></script>
+<script src="/static/js/telas/importar.js"></script>
+<script src="/static/js/telas/robos.js"></script>
+<script src="/static/js/telas/robo.js"></script>
+<script src="/static/js/telas/ajuda.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

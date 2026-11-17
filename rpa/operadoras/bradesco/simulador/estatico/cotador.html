@@ -1,0 +1,418 @@
+<main id="app"></main>
+<script>
+/*DADOS*/
+const FAIXAS = SIM.faixas;                     // [chave, rótulo novo, rótulo antigo]
+const EXATAS = {"0-18": "Indique as pessoas entre 00 a 18 anos", "59+": "Indique as pessoas com 59 anos ou mais"};
+const st = {
+  passo: "inicio", cnpj: "", empresa: null, categoria: "", vidas: {}, idades: {"0-18": [], "59+": []},
+  abertas: {"0-18": false, "59+": false},
+  contrato: {adesao: "Compulsória", cobertura: "Top", pagamento: "Faixa Etária", titulares: "Não", folha: false,
+             comissao: "", sucursal: "", corretor: ""},
+  grupo: {acomodacao: "Quarto", copart: ""}, abaConfig: "Contrato",
+  cards: [], dentais: [], pagina: 0, plano: "", dental: "",
+  comp: {aba: "Corretora", email: "", celular: "", posto: "", angariacao: "", corretagem: "", perfil: "Corretor",
+         cpf: "", nome: "", iemail: "", icelular: "", transferencia: "", ramo: ""},
+  erro: "",
+};
+
+function h(tag, attrs, ...filhos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "class") e.className = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const f of filhos.flat()) if (f !== null && f !== undefined && f !== false) e.append(f.nodeType ? f : String(f));
+  return e;
+}
+const fmtCnpj = (d) => d.replace(/\D/g, "").slice(0, 14).replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+  .replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2");
+const num = (v) => parseInt(String(v || "").replace(/\D/g, "") || "0", 10);
+function vidasDe(k) {
+  if (k in EXATAS) return st.abertas[k] ? st.idades[k].reduce((s, r) => s + num(r.qtd), 0) : 0;
+  return num(st.vidas[k]);
+}
+const total = () => FAIXAS.reduce((s, [k]) => s + vidasDe(k), 0);
+
+async function api(metodo, url, corpo) {
+  const r = await fetch(url, {method: metodo, headers: {"Content-Type": "application/json"},
+                              body: corpo ? JSON.stringify(corpo) : undefined});
+  if (r.status === 401) {
+    top.location.href = "/pnegocios2/wps/portal/portaldenegociosnovo/";
+    throw new Error("sessão");
+  }
+  return r.json();
+}
+
+function opcoes(valores, atual, aoEscolher, desabilitados) {
+  return h("div", {class: "opcoes"}, valores.map((v) => h("button", {type: "button", "aria-pressed": String(v === atual),
+    disabled: (desabilitados || []).includes(v), onclick: () => { aoEscolher(v); desenhar(); }}, v)));
+}
+// Como o portal real (07/11): escolhas são <button role="radio" aria-checked> num radiogroup
+function radios(valores, atual, aoEscolher, desabilitados) {
+  return h("div", {role: "radiogroup", class: "opcoes", tabindex: "0"}, valores.map((v) => h("div", {},
+    h("button", {class: "btn-rounded-transparent", role: "radio", "aria-checked": String(v === atual), tabindex: "-1",
+      disabled: (desabilitados || []).includes(v), onclick: () => { aoEscolher(v); desenhar(); }}, v))));
+}
+function campo(rotulo, ...conteudo) { return h("div", {class: "campo"}, h("div", {class: "topico"}, h("p", {}, rotulo)), ...conteudo); }
+
+// Lista "Selecione" como o ng-select do portal real: input role=combobox SEM nome, opções div.ng-option num painel
+function ngSelect(valor, lista, aoEscolher, {desabilitado = false} = {}) {
+  const painel = h("div", {class: "ng-dropdown-panel", hidden: true}, h("div", {role: "listbox", class: "ng-dropdown-panel-items"}));
+  const entrada = h("input", {role: "combobox", type: "text", autocomplete: "off", disabled: desabilitado, "aria-expanded": "false"});
+  const mostrar = (filtro) => {
+    const itens = painel.firstChild; itens.innerHTML = "";
+    const achados = lista.filter((o) => !filtro || o.toLowerCase().includes(filtro.toLowerCase()));
+    if (!achados.length) itens.append(h("div", {class: "ng-option ng-option-disabled"}, "Dados não encontrados"));
+    for (const op of achados) {
+      itens.append(h("div", {class: "ng-option", onmousedown: (ev) => { ev.preventDefault(); aoEscolher(op); desenhar(); }}, op));
+    }
+    painel.hidden = false; entrada.setAttribute("aria-expanded", "true");
+  };
+  entrada.addEventListener("click", () => mostrar(""));
+  entrada.addEventListener("input", () => mostrar(entrada.value));
+  entrada.addEventListener("blur", () => setTimeout(() => { painel.hidden = true; }, 150));
+  return h("div", {class: "ng-select" + (desabilitado ? " ng-select-disabled" : "")},
+    h("div", {class: "ng-select-container"},
+      valor ? h("div", {class: "ng-value"}, h("span", {class: "ng-value-label"}, valor)) : h("div", {class: "ng-placeholder"}, "Selecione"),
+      h("div", {class: "ng-input"}, entrada)),
+    painel);
+}
+
+function combo(rotulo, valor, lista, aoEscolher, {desabilitado = false, digitar = false} = {}) {
+  const ul = h("ul", {role: "listbox", hidden: true});
+  const entrada = h("input", {role: "combobox", "aria-label": rotulo, placeholder: "Selecione", value: valor || "",
+    readonly: !digitar, disabled: desabilitado, "aria-expanded": "false", autocomplete: "off"});
+  const mostrar = (filtro) => {
+    ul.innerHTML = "";
+    for (const op of lista.filter((o) => !filtro || o.toLowerCase().includes(filtro.toLowerCase()))) {
+      ul.append(h("li", {role: "option", onmousedown: (ev) => { ev.preventDefault(); aoEscolher(op); desenhar(); }}, op));
+    }
+    ul.hidden = false; entrada.setAttribute("aria-expanded", "true");
+  };
+  entrada.addEventListener("click", () => mostrar(digitar ? entrada.value : ""));
+  if (digitar) entrada.addEventListener("input", () => mostrar(entrada.value));
+  entrada.addEventListener("blur", () => setTimeout(() => { ul.hidden = true; }, 150));
+  return h("div", {class: "combo"}, entrada, ul);
+}
+
+function rodape(voltar, botao) {
+  return h("div", {class: "rodape"}, h("a", {href: "#", onclick: (e) => { e.preventDefault(); voltar && voltar(); desenhar(); }}, "‹ Voltar"),
+    st.erro ? h("div", {class: "erro", role: "alert"}, st.erro) : null, botao);
+}
+
+function cardPlano(classe, nome, preco, marcado, aoMarcar, ...corpo) {
+  return h("div", {class: `card ${classe}` + (marcado ? " card-selected" : "")},
+    h("div", {class: `${classe}__header`}, h("label", {class: "label-custom-radio"},
+      h("input", {type: "radio", name: "radioGroup-" + classe, class: "visually-hidden", checked: marcado, onchange: () => { aoMarcar(); desenhar(); }}),
+      h("img", {alt: marcado ? "Checked" : "Unchecked", src: "data:,"}),
+      h("h3", {class: `${classe}__titulo`}, nome + " ", preco ? h("p", {class: `${classe}__descricao`}, preco) : null))),
+    ...corpo);
+}
+
+/* ---------------------------------------------------------------- telas */
+const TELAS = {
+  inicio: () => [
+    h("p", {}, "Boas-vindas ao"), h("h1", {}, "Cotador de planos SPG"),
+    h("p", {}, "O novo cotador de planos SPG é a forma mais eficiente de simular, recomendar e cotar planos para seus clientes."),
+    h("p", {}, "Selecione um produto:"),
+    // Portal real 07/11: o produto é um card (não um <button>)
+    h("div", {class: "produto", onclick: () => { st.passo = "cnpj"; desenhar(); }}, h("span", {}, "Saúde e conjugado"),
+      h("p", {}, "Simule nossos planos de saúde, e caso deseje, conjugue com um plano dental.")),
+    h("div", {class: "produto"}, h("span", {}, "Dental")),
+    h("p", {}, "Acesse também:"), h("a", {href: "#"}, "Abrir simulações salvas"), " ", h("a", {href: "#"}, "Acompanhar processos"),
+  ],
+
+  cnpj: () => {
+    const consultar = h("button", {type: "button", class: "primario", disabled: st.cnpj.length !== 14, onclick: async () => {
+      const r = await api("GET", "/api/spg/empresa?cnpj=" + st.cnpj);
+      if (r.erro) { st.erro = r.erro; st.empresa = null; } else { st.erro = ""; st.empresa = r; }
+      desenhar();
+    }}, h("p", {}, "Consultar"));
+    const entrada = h("input", {"aria-label": "Digite CNPJ/CAEPF", placeholder: "Digite CNPJ/CAEPF", value: fmtCnpj(st.cnpj),
+      oninput: (e) => { e.target.value = fmtCnpj(e.target.value); st.cnpj = e.target.value.replace(/\D/g, ""); st.empresa = null;
+                        consultar.disabled = st.cnpj.length !== 14;
+                        document.getElementById("avancar").disabled = true; document.getElementById("razao").textContent = ""; }});
+    return [
+      h("h1", {}, "Qual o CNPJ ou CAEPF da empresa contratante?"),
+      h("label", {}, h("input", {type: "radio", name: "tipo", checked: true}), " CNPJ"),
+      h("label", {}, h("input", {type: "radio", name: "tipo"}), " CAEPF"), h("br"),
+      entrada, consultar,
+      h("div", {class: "caixa-empresa", id: "razao"}, st.empresa ? st.empresa.razao : ""),
+      rodape(() => { st.passo = "inicio"; }, h("button", {type: "button", class: "primario", id: "avancar", disabled: !st.empresa,
+        onclick: () => { st.erro = ""; st.passo = "grupos"; desenhar(); }}, "Avançar")),
+    ];
+  },
+
+  grupos: () => {
+    const faixas = h("div", {class: "input-vidas-container"}, FAIXAS.map(([k, rot]) => {
+      if (k in EXATAS) {
+        const aberta = st.abertas[k];
+        return h("a", {class: "btn-59mais" + (k === "0-18" ? " btn-00a18" : ""),
+            onclick: () => { if (!aberta) { st.abertas[k] = true; if (!st.idades[k].length) st.idades[k] = [{idade: "", qtd: ""}]; desenhar(); } }},
+          h("div", {class: "btn-59mais__label"}, " " + rot + " "),
+          aberta ? h("input", {type: "number", disabled: true, value: String(vidasDe(k)), "data-faixa": k})
+                 : h("img", {alt: "simbolo de adição", src: "data:,"}));
+      }
+      return h("div", {}, h("div", {class: "input-vidas-content"},
+        h("label", {class: "input-vidas-content__titulo"}, rot),
+        h("input", {type: "number", maxlength: "3", value: st.vidas[k] || "",
+          // Como no portal real: o número só conta depois de digitado (keyup), não com o valor colocado direto.
+          onkeyup: (e) => { st.vidas[k] = e.target.value; atualizarTotais(); }})));
+    }));
+    const secoes = Object.keys(EXATAS).filter((k) => st.abertas[k]).map((k) => {
+      const idades = k === "0-18" ? ["Menor de 1 ano", ...Array.from({length: 18}, (_, i) => String(i + 1))]
+                                  : Array.from({length: 42}, (_, i) => String(59 + i));
+      return h("div", {class: "faixa-etaria"}, h("div", {class: "topico"}, h("p", {}, EXATAS[k])),
+        st.idades[k].map((linha, i) => h("div", {class: "form-59mais"},
+          h("div", {}, h("label", {}, "Idade"), ngSelect(linha.idade, idades, (v) => { linha.idade = v; })),
+          h("div", {}, h("label", {}, "Quantidade"), h("input", {formcontrolname: "vidas", type: "text", maxlength: "3", value: linha.qtd,
+            onkeyup: (e) => { linha.qtd = e.target.value; atualizarTotais(); }})),
+          h("div", {}, h("label", {}, "Ações"), h("button", {class: "btn-delete-59mais", onclick: () => { st.idades[k].splice(i, 1); desenhar(); }},
+            h("img", {alt: "icone lixeira", src: "data:,"}))))),
+        h("div", {class: "btn-adicionar-pessoas"}, h("a", {onclick: () => { st.idades[k].push({idade: "", qtd: ""}); desenhar(); }},
+          "adicionar mais pessoas")));
+    });
+    const categorias = ["Sócios e Diretores", "Funcionários", "Estagiários", "Administradores", "Sócios, Diretores e Funcionários"];
+    return [
+      h("h2", {}, "Indique os grupos que vão aderir ao seguro"),
+      h("div", {class: "abas", role: "tablist"}, h("button", {type: "button", role: "tab", "aria-selected": "true"}, "Grupo 1")),
+      h("div", {role: "tabpanel"},
+        h("p", {}, "Pessoas no grupo"), h("div", {class: "contador__resultado--grupo", id: "pg"}, String(total())),
+        h("div", {class: "conteudo__categoria"}, h("div", {class: "topico"}, h("p", {}, "Selecione a categoria funcional do grupo")),
+          radios(categorias, st.categoria, (v) => { st.categoria = v; })),
+        h("div", {class: "topico"}, h("p", {}, "Informe a quantidade de pessoas em cada faixa etária")),
+        faixas, ...secoes),
+      h("div", {class: "contador"}, h("p", {}, "Pessoas no total"), h("div", {class: "contador__resultado--total", id: "pt"}, String(total()))),
+      rodape(() => { st.passo = "cnpj"; }, h("button", {type: "button", class: "primario", id: "avancar", onclick: (e) => {
+        const n = total();
+        const linhasOk = Object.keys(EXATAS).every((k) => !st.abertas[k] || st.idades[k].every((l) => l.idade && num(l.qtd) > 0));
+        if (!st.categoria) st.erro = "Selecione a categoria funcional do grupo.";
+        else if (!linhasOk) st.erro = "Informe a idade e a quantidade de cada pessoa.";
+        else if (n < 3 || n > 29) st.erro = "O SPG aceita de 3 a 29 pessoas.";
+        else { st.erro = ""; e.target.textContent = "Consultando"; setTimeout(() => { st.passo = "regiao"; desenhar(); }, 700); return; }
+        desenhar();
+      }}, "Avançar")),
+    ];
+  },
+
+  regiao: () => [
+    h("h3", {}, "Informações"), h("p", {}, "CNPJ/CAEPF ", h("span", {}, fmtCnpj(st.cnpj))),
+    h("p", {}, "Nome da Empresa ", h("span", {}, st.empresa.razao)),
+    h("h3", {}, "Região"), h("label", {}, "UF ", h("select", {disabled: true}, h("option", {}, st.empresa.uf))),
+    h("label", {}, " Cidade ", h("select", {disabled: true}, h("option", {}, st.empresa.cidade))),
+    h("div", {class: "regiao"}, h("b", {}, "Região Indicada: "), "São Paulo",
+      h("p", {}, "Cidades que contemplam a região:"), h("ul", {}, ["ARUJA", "BARUERI", "SAO PAULO"].map((c) => h("li", {}, c)))),
+    rodape(() => { st.passo = "grupos"; }, h("button", {type: "button", class: "primario",
+      onclick: () => { st.passo = "personalizar"; desenhar(); }}, "Avançar")),
+  ],
+
+  personalizar: () => [
+    h("button", {type: "button"}, "Voltar"),
+    h("p", {}, "Você pode personalizar ainda mais e ajudar seu cliente na escolha do melhor plano de saúde"),
+    h("p", {}, "O cliente possui algum plano de saúde, hospital de preferência ou um valor que deseja pagar?"),
+    h("label", {}, h("input", {type: "checkbox"}), " Não possui plano atualmente"),
+    h("div", {class: "btn-proximo"}, h("button", {type: "button", class: "btn-squared-transparent", onclick: () => { st.passo = "configuracao"; desenhar(); }},
+      h("span", {}, "Pular")),
+      h("button", {type: "button", class: "primario", disabled: true}, "Avançar")),
+  ],
+
+  configuracao: () => {
+    const c = st.contrato;
+    const contrato = [
+      h("h3", {}, "Contrato"),
+      campo("Modalidade de Adesão", radios(["Compulsória", "Opcional"], c.adesao, (v) => { c.adesao = v; })),
+      campo("Cobertura", radios(["Top", "Hospitalar"], c.cobertura, (v) => { c.cobertura = v; })),
+      campo("Modalidade de Pagamento", radios(["Faixa Etária", "Custo Médio"], c.pagamento, (v) => { c.pagamento = v; }, ["Custo Médio"])),
+      campo("Possui mais de 1 titular?", radios(["Sim", "Não"], c.titulares, (v) => { c.titulares = v; })),
+      h("h3", {}, "Condições Comerciais"),
+      campo("Desconto - Folha de Pagamento Bradesco", radios(["Aplicar"], c.folha ? "Aplicar" : "", () => { c.folha = !c.folha; })),
+      campo("Desconto de comissionamento", radios(["2,5%", "5%", "7,5%", "10%"], c.comissao, (v) => { c.comissao = c.comissao === v ? "" : v; })),
+      h("h3", {}, "Corretora"),
+      campo("Número da Sucursal", ngSelect(c.sucursal, SIM.sucursais.map(([n, t]) => `${n} - ${t}`), (v) => { c.sucursal = v; c.corretor = ""; })),
+      campo("Código do Corretor", ngSelect(c.corretor, [SIM.corretor.join(" - ")], (v) => { c.corretor = v; }, {desabilitado: !c.sucursal})),
+      campo("Agência Produtora", h("input", {disabled: true})),
+    ];
+    const g = st.grupo;
+    const grupo = [
+      h("h3", {}, "Grupo 1: ", h("span", {}, st.categoria)), h("p", {}, "Pessoas no grupo ", String(total())),
+      campo("Acomodação", radios(["Quarto", "Enfermaria"], g.acomodacao, (v) => { g.acomodacao = v; })),
+      campo("Coparticipação", radios(["Sim", "Não"], g.copart, (v) => { g.copart = v; })),
+      campo("Região tarifária", h("select", {disabled: true}, h("option", {}, "São Paulo"))),
+    ];
+    return [
+      h("h2", {}, "Configurações de Planos e Condições Comerciais"),
+      h("div", {class: "abas", role: "tablist"}, ["Contrato", "Grupo 1"].map((a) => h("button", {type: "button", role: "tab",
+        "aria-selected": String(st.abaConfig === a), onclick: () => { st.abaConfig = a; desenhar(); }},
+        a + " ", a === "Contrato" ? h("img", {alt: "icone", src: "data:,"}) : null))),
+      h("div", {role: "tabpanel"}, st.abaConfig === "Contrato" ? contrato : grupo),
+      h("p", {}, "Pessoas no total ", String(total())),
+      rodape(() => { st.passo = "personalizar"; }, h("button", {type: "button", class: "primario", onclick: async () => {
+        if (!c.sucursal || !c.corretor) st.erro = "Informe a sucursal e o código do corretor (aba Contrato).";
+        else if (!g.copart) st.erro = "Informe a coparticipação do Grupo 1.";
+        else {
+          st.erro = "";
+          const r = await api("POST", "/api/spg/calcular", {vidas: vidasObj(), acomodacao: g.acomodacao, copart: g.copart === "Sim"});
+          st.cards = r.cards; st.dentais = r.dentais; st.pagina = 0; st.plano = ""; st.dental = "Padrão Doc 1";   // vem marcado (real)
+          st.passo = "resultado";
+        }
+        desenhar();
+      }}, "Calcular")),
+    ];
+  },
+
+  resultado: () => {
+    const c = st.contrato;
+    const visiveis = st.cards.slice(st.pagina * 3, st.pagina * 3 + 3);
+    const ultima = Math.max(0, Math.ceil(st.cards.length / 3) - 1);
+    const dental = st.dentais.find((d) => d.nome === st.dental);
+    return [
+      h("h1", {}, "Recomendação de Planos"),
+      h("div", {class: "resumo"}, h("h2", {}, st.empresa.razao),
+        h("span", {}, "CNPJ/CAEPF: ", fmtCnpj(st.cnpj)), " ", h("span", {}, "Adesão: ", c.adesao), " ",
+        h("span", {}, "Cobertura: ", c.cobertura), " ", h("span", {}, "Modalidade de pgto: ", c.pagamento), " ",
+        h("span", {}, "Reembolso: Específico"), " ", h("span", {}, "Total de pessoas: ", String(total())),
+        h("p", {}, "Primeira parcela Escolha o plano de cada grupo para exibir o valor.")),
+      h("div", {class: "abas", role: "tablist"}, h("button", {type: "button", role: "tab", "aria-selected": "true"}, "Grupo 1")),
+      h("div", {class: "grupo"}, "Grupo 1 Categoria funcional: ", st.categoria, " Acomodação: ", st.grupo.acomodacao,
+        " Coparticipação: ", st.grupo.copart, " Região tarifária: São Paulo Pessoas no grupo: ", String(total()),
+        " Total deste grupo: ", dental && dental.preco ? dental.preco : "R$ 0,00"),
+      // Como o real: o cabeçalho tem as duas setas ("Arrow right" desabilitada no começo; "Arrow left" avança)
+      h("div", {class: "planos-recomendados"}, h("span", {}, "Grupo 1 - Saúde: "),
+        h("div", {class: "buttons"},
+          h("button", {disabled: st.pagina === 0, onclick: () => { st.pagina -= 1; desenhar(); }}, h("img", {alt: "Arrow right", src: "data:,"})),
+          h("button", {disabled: st.pagina >= ultima, onclick: () => { st.pagina += 1; desenhar(); }}, h("img", {alt: "Arrow left", src: "data:,"})))),
+      h("div", {class: "card-container"}, visiveis.map((card) => {
+        const tabela = h("div", {class: "faixas-card", hidden: true},
+          ["FAIXA", "Qtd", "Tabela", "Subtotal"].map((x) => h("p", {}, x)),
+          card.faixas.flatMap((linha) => linha.map((x) => h("p", {}, String(x)))));
+        return cardPlano("planos-saude", card.nome, card.preco, st.plano === card.id, () => { st.plano = card.id; },
+          h("div", {}, h("span", {}, "Benefícios"), h("button", {}, h("img", {alt: "Ações", src: "data:,"}))),
+          h("p", {}, h("span", {}, "Reembolso Completo ", card.reembolso ? h("strong", {}, `(${card.reembolso}x tabela)`) : null)),
+          h("p", {}, "Programa Meu Doutor"),
+          h("div", {}, h("span", {}, "Detalhes do plano"), h("button", {}, h("img", {alt: "Ações", src: "data:,"}))),
+          h("div", {class: "valores"}, h("span", {}, "Valores por faixa etária"),
+            h("button", {onclick: () => { tabela.hidden = !tabela.hidden; }}, h("img", {alt: "Ações", src: "data:,"}))),
+          tabela);
+      })),
+      h("div", {class: "planos-recomendados"}, h("span", {}, "Grupo 1 - Dental: "),
+        h("div", {class: "buttons"}, h("button", {}, h("img", {alt: "Arrow right", src: "data:,"})),
+          h("button", {disabled: true}, h("img", {alt: "Arrow left", src: "data:,"})))),
+      h("div", {class: "card-container"}, st.dentais.map((d) => cardPlano("planos-dental", d.nome, d.preco, st.dental === d.nome,
+        () => { st.dental = d.nome; }, h("p", {}, "Múltiplo de reembolso 1x")))),
+      h("p", {}, h("strong", {}, "Importante! Os valores informados nesta simulação são meramente indicativos"),
+        " e poderão ser ajustados após análise da seguradora. Clique em 'Iniciar cotação' e preencha as informações complementares para obter um número de processo/cotação com validade de 40 dias."),
+      h("div", {class: "rodape"}, h("button", {type: "button"}, "Alterar"), h("button", {type: "button"}, "Ações"),
+        st.erro ? h("div", {class: "erro", role: "alert"}, st.erro) : null,
+        h("button", {type: "button", class: "primario", onclick: () => {
+          if (!st.plano) { st.erro = "Escolha o plano de saúde do Grupo 1."; desenhar(); return; }
+          st.erro = ""; st.passo = "complementares"; desenhar();
+        }}, "Iniciar cotação")),
+    ];
+  },
+
+  complementares: () => {
+    const c = st.comp;
+    const [sucNum, sucNome] = st.contrato.sucursal.split(" - ");
+    const abas = {
+      // Como o portal real (07/11): campos sem nome acessível (formcontrolname), listas ng-select, escolhas em radio
+      "Corretora": [
+        h("h2", {}, "Corretora"), h("p", {}, "Informe a sucursal e o código da corretora."),
+        h("p", {}, "Sucursal"), h("input", {disabled: true, value: sucNum}), h("span", {}, sucNome),
+        h("p", {}, "Código da corretora"), h("input", {disabled: true, value: SIM.corretor[0]}), h("span", {}, SIM.corretor[1]),
+        h("p", {}, "Agência produtora"), h("input", {disabled: true}),
+        h("p", {}, "Posto de atendimento bancário (opcional)"),
+        h("input", {formcontrolname: "codigoPostoAtendimento", value: c.posto, oninput: (e) => { c.posto = e.target.value; }}),
+        h("p", {}, "E-mail da corretora (assinatura da proposta)"),
+        h("input", {type: "email", formcontrolname: "email", value: c.email, oninput: (e) => { c.email = e.target.value; }}),
+        h("p", {}, "Celular (opcional)"),
+        h("input", {type: "tel", formcontrolname: "celular", value: c.celular, oninput: (e) => { c.celular = e.target.value; }}),
+        h("h2", {}, "Comissionamento"),
+        campo("Angariação", ngSelect(c.angariacao, SIM.angariacoes, (v) => { c.angariacao = v; c.corretagem = ""; })),
+        campo("Corretagem", ngSelect(c.corretagem, SIM.corretagens, (v) => { c.corretagem = v; }, {desabilitado: !c.angariacao})),
+      ],
+      "Intermediário": [
+        h("h2", {}, "Intermediário"),
+        campo("Selecione o papel do intermediário", radios(["Corretor", "Produtor", "Angariador"], c.perfil, (v) => { c.perfil = v; })),
+        h("p", {}, "Dados do intermediário"),
+        h("div", {}, h("p", {}, "CPF"), h("input", {type: "text", formcontrolname: "cpfIntermediario", value: c.cpf,
+          oninput: (e) => { c.cpf = e.target.value; c.nome = ""; },
+          onblur: async () => { const r = await api("GET", "/api/spg/intermediario?cpf=" + c.cpf); c.nome = r.nome;
+                                document.getElementById("inome").textContent = r.nome || ""; }})),
+        h("div", {class: "cpf-nome"}, h("div", {formcontrolname: "nomeResponsavel", id: "inome"}, c.nome || " ")),
+        h("p", {}, "E-mail (opcional)"), h("input", {type: "email", formcontrolname: "emailIntermediario", value: c.iemail,
+          oninput: (e) => { c.iemail = e.target.value; }}),
+        h("p", {}, "Celular (opcional)"), h("input", {type: "text", formcontrolname: "celular", value: c.icelular,
+          oninput: (e) => { c.icelular = e.target.value; }}),
+      ],
+      "Transferência Bradesco": [
+        h("h2", {}, "Transferência Bradesco"),
+        campo("Transferência Bradesco ?", radios(["Sim", "Não"], c.transferencia, (v) => { c.transferencia = v; })),
+      ],
+      "Processo": [
+        h("h2", {}, "Processo"), h("p", {}, "Informe corretamente os dados do processo abaixo:"),
+        campo("Ramo de atividade da empresa contratante", ngSelect(c.ramo, SIM.ramos, (v) => { c.ramo = v; })),
+        campo("Natureza jurídica", h("p", {}, st.empresa.natureza), ngSelect(st.empresa.natureza, [st.empresa.natureza], () => {}, {desabilitado: true})),
+      ],
+    };
+    return [
+      h("h2", {}, "Dados complementares"),
+      h("p", {}, "Ao gerar o processo, o número de processo terá validade de 40 dias, e será necessário seguir todo o fluxo de análise previsto."),
+      h("div", {class: "abas", role: "tablist"}, Object.keys(abas).map((a) => h("button", {type: "button", role: "tab",
+        "aria-selected": String(c.aba === a), onclick: () => { c.aba = a; desenhar(); }}, a))),
+      h("div", {role: "tabpanel"}, abas[c.aba]),
+      rodape(() => { st.passo = "resultado"; }, h("button", {type: "button", class: "primario", onclick: gerarProcesso}, "Gerar processo")),
+    ];
+  },
+
+  gerando: () => [h("div", {class: "fundo"}, h("div", {class: "modal"}, "Gerando processo..."))],
+
+  processo_gerado: () => [h("div", {class: "fundo"}, h("div", {class: "modal", role: "dialog"},
+    // texto do portal real (10/11): o número aparece aqui, antes de a página do cálculo carregar
+    h("p", {}, `Processo ${st.processoGerado} gerado! Tipo de reembolso: Específico Você será redirecionado para as próximas etapas do Emissão Expressa SPG.`),
+    h("button", {type: "button", onclick: () => { st.passo = "emissao"; desenhar(); }}, "OK")))],
+
+  emissao: () => [h("iframe", {id: "emissao", title: "Emissão Expressa", src: st.iframe})],
+};
+
+function vidasObj() { return Object.fromEntries(FAIXAS.map(([k]) => [k, vidasDe(k)])); }
+
+async function gerarProcesso() {
+  const c = st.comp;
+  const faltam = [];
+  if (!/@/.test(c.email)) faltam.push("e-mail da corretora");
+  if (!c.angariacao || !c.corretagem) faltam.push("comissionamento");
+  if (!c.nome) faltam.push("CPF do intermediário");
+  if (!c.transferencia) faltam.push("transferência Bradesco");
+  if (!c.ramo) faltam.push("ramo de atividade");
+  if (faltam.length) { st.erro = "Preencha os campos obrigatórios: " + faltam.join(", ") + "."; desenhar(); return; }
+  st.erro = ""; st.passo = "gerando"; desenhar();
+  const k = st.contrato;
+  const r = await api("POST", "/api/spg/processo", {
+    cnpj: st.cnpj, vidas: vidasObj(), idades: st.idades, categoria: st.categoria,
+    contrato: {adesao: k.adesao, cobertura: k.cobertura, pagamento: k.pagamento, titulares: k.titulares, folha: k.folha, comissao: k.comissao},
+    cobertura: k.cobertura, sucursal: k.sucursal.split(" - ")[0], corretor: SIM.corretor[0],
+    acomodacao: st.grupo.acomodacao, copart: st.grupo.copart === "Sim", plano: st.plano, dental: st.dental,
+    email: c.email, celular: c.celular, angariacao: c.angariacao, corretagem: c.corretagem,
+    intermediario: {perfil: c.perfil, cpf: c.cpf, nome: c.nome, email: c.iemail, celular: c.icelular},
+    transferencia: c.transferencia, ramo: c.ramo});
+  st.iframe = `/EEEM-EmissaoExpressa/CalculoSPG.aspx?processo=${r.processo}&calculo=${r.calculo}&novo=1`;
+  st.processoGerado = r.processo;
+  st.passo = "processo_gerado"; desenhar();
+}
+
+function atualizarTotais() {
+  for (const id of ["pg", "pt"]) { const e = document.getElementById(id); if (e) e.textContent = String(total()); }
+  for (const [k] of FAIXAS) if (k in EXATAS && st.abertas[k]) {
+    const e = document.querySelector(`input[data-faixa="${k}"]`); if (e) e.value = String(vidasDe(k));
+  }
+}
+
+function desenhar() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  app.append(...TELAS[st.passo]());
+}
+desenhar();
+</script>

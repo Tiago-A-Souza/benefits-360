@@ -300,6 +300,35 @@ Testes que dependem de PDFs privados: `pytest -m "not private_corpus"`.
 
 Exemplos HTML de demonstração (modo autorizado): `python scripts/gerar_exemplos_html.py` → `.private/runtime/entregaveis/exemplos-2.8/` ou equivalente em demo.
 
+### RPA de Cotações (internalizado em `rpa/`)
+
+O robô de cotações (Python + Playwright, tela em **127.0.0.1:8600**) vive em `rpa/`, com **venv próprio** (`rpa/.venv`) — não misturar com o `.venv` do Benefits. Motivo: Playwright/Chromium, keyring Windows e app Starlette separados da API FastAPI 8002; fluxos de portal congelados.
+
+```powershell
+# uma vez
+cd rpa
+.\instalar.bat          # cria .venv, deps e Chromium
+# ou: python -m venv .venv; .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+#     .\.venv\Scripts\python.exe -m playwright install chromium
+
+# testes do RPA (na pasta rpa/)
+.\.venv\Scripts\python.exe -m pytest
+
+# tela no modo simulador (sem portal real); --porta 8600 porque o yaml de treino usa 8601
+.\.venv\Scripts\python.exe -m app --config config_simulador.yaml --porta 8600 --com-simulador --sem-navegador
+```
+
+**Subir Benefits + RPA juntos** (raiz do repositório):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\subir-benefits-e-rpa.ps1
+```
+
+- Benefits: http://127.0.0.1:8002  
+- RPA (simulador, sem portal real): http://127.0.0.1:8600  
+
+Ambientes separados: `.venv` (Benefits) e `rpa/.venv` (RPA + Playwright).  
+`rpa/saida/`, `rpa/saida_simulador/`, perfis de navegador, `*.db`, `*.log` e o venv do RPA **não entram no Git**. Credenciais só no cofre do Windows (`NewportCotacoes/<operadora>`).
 ---
 
 ## Leitura recomendada
@@ -317,5 +346,7 @@ Exemplos HTML de demonstração (modo autorizado): `python scripts/gerar_exemplo
 ---
 
 ## Licença e dados
+
+**Este repositório deve permanecer privado.** Em `rpa/config.yaml` há identificadores operacionais da Newport (ex.: `codigo_corretor`, `sucursal` Bradesco). Não publicar o Git como público.
 
 Somente dados **fictícios ou anonimizados** entram no Git. Não versionar CPF, endereço, telefone ou qualquer PII. Estudos reais e corpus de cotações ficam em `.private/` ou equivalente local.

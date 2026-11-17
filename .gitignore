@@ -95,3 +95,21 @@ htmlcov/
 web/node_modules/
 web/dist/
 calcular_response.json
+
+# ---------------------------------------------------------------------------
+# RPA Cotações (rpa/) — dados de cliente, sessão, banco e logs. NUNCA versionar.
+# ---------------------------------------------------------------------------
+rpa/saida/
+rpa/saida_simulador/
+rpa/.venv/
+rpa/**/perfil_navegador/
+rpa/**/*.db
+rpa/**/*.log
+rpa/cotacoes.xlsx
+# Credenciais nunca em arquivo; reforço contra vazamento acidental
+rpa/**/credentials*
+rpa/**/*credenciais*.json
+rpa/**/secrets*
+
+# Scripts temporarios de auditoria/debug na raiz de scripts/
+scripts/_*.py
