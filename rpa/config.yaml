@@ -16,6 +16,10 @@ tela:
   frame_ancestors:
     - http://localhost:5173
     - http://127.0.0.1:5173
+  # Origens do Benefits que podem chamar a API direto do navegador (CORS). Sem domínio fixo no código.
+  origens_permitidas:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
 
 operadoras:
 
