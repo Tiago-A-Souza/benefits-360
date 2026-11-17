@@ -90,7 +90,7 @@ function avisosRotulosRepetidos(estudos) {
   return [...porClienteRotulo.values()].filter((x) => x.n > 1);
 }
 
-export default function MeusEstudos({ onContinuar, onSimularRede }) {
+export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) {
   const [estudos, setEstudos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
@@ -177,11 +177,12 @@ export default function MeusEstudos({ onContinuar, onSimularRede }) {
   return (
     <div className="lista-shell">
       <aside className="lista-rail app-sidebar">
-        {onSimularRede && (
+        {(onSimularRede || onCotacoes) && (
           <NavegacaoFerramentas
             ativo="estudos"
             onMeusEstudos={() => {}}
             onSimularRede={onSimularRede}
+            onCotacoes={onCotacoes}
           />
         )}
         <div className="lista-busca">

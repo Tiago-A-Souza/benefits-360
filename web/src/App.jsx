@@ -17,6 +17,7 @@ import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
 import NavegacaoFerramentas from "./NavegacaoFerramentas";
 import SimularRede from "./simularRede/SimularRede";
+import CotacoesRpa from "./cotacoes/CotacoesRpa";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
 import { avisoAvancoCotacoesPendentes } from "./fluxo/cotacoesPendentes";
@@ -40,6 +41,7 @@ export default function App() {
   const [historicoAberto, setHistoricoAberto] = useState(false);
   // Simular Rede é uma consulta avulsa: não cria nem altera estudo.
   const [simulando, setSimulando] = useState(false);
+  const [cotacoesRpa, setCotacoesRpa] = useState(false);
   const [cestaGlobal, setCestaGlobal] = useState([]);
   const avancarEtapaRef = useRef(null);
   const registrarAvancoEtapa = useCallback((fn) => {
@@ -142,6 +144,27 @@ export default function App() {
   const totalBaseComparacao = ctxFluxo.resumoPlanoAtual?.total_reajustado_reais;
   const legendaReajusteBase = textoReajusteContrato(ctxFluxo.resumoPlanoAtual);
 
+  if (cotacoesRpa) {
+    const emEstudo = tela === "fluxo" && estudoId;
+    return (
+      <div className="app-shell">
+        <EstudoCabecalho resumo={null} />
+        <CotacoesRpa
+          onMeusEstudos={() => {
+            if (emEstudo) voltarLista();
+            setCotacoesRpa(false);
+          }}
+          onSimularRede={() => {
+            setCotacoesRpa(false);
+            setSimulando(true);
+          }}
+          onVoltarEstudo={emEstudo ? () => setCotacoesRpa(false) : undefined}
+          rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+        />
+      </div>
+    );
+  }
+
   if (simulando) {
     const emEstudo = tela === "fluxo" && estudoId;
     return (
@@ -151,6 +174,10 @@ export default function App() {
           onMeusEstudos={() => {
             if (emEstudo) voltarLista();
             setSimulando(false);
+          }}
+          onCotacoes={() => {
+            setSimulando(false);
+            setCotacoesRpa(true);
           }}
           onVoltarEstudo={emEstudo ? () => setSimulando(false) : undefined}
           rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
@@ -163,7 +190,11 @@ export default function App() {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} />
-        <MeusEstudos onContinuar={entrarEstudo} onSimularRede={() => setSimulando(true)} />
+        <MeusEstudos
+          onContinuar={entrarEstudo}
+          onSimularRede={() => setSimulando(true)}
+          onCotacoes={() => setCotacoesRpa(true)}
+        />
       </div>
     );
   }
@@ -249,6 +280,7 @@ export default function App() {
               ativo={null}
               onMeusEstudos={voltarLista}
               onSimularRede={() => setSimulando(true)}
+              onCotacoes={() => setCotacoesRpa(true)}
             />
           </div>
         </aside>

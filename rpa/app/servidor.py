@@ -722,7 +722,45 @@ class Tela:
             Route("/api/eventos", self.eventos),
             Mount("/static", _ArquivosSemCache(directory=str(WEB)), name="static"),
         ]
-        return Starlette(routes=rotas, middleware=[Middleware(SoDaPropriaTela, porta=self.porta)], lifespan=ciclo)
+        anc = _origens_frame_ancestors(self.config_total())
+        return Starlette(
+            routes=rotas,
+            middleware=[Middleware(SoDaPropriaTela, porta=self.porta, frame_ancestors=anc)],
+            lifespan=ciclo,
+        )
+
+
+def _origens_frame_ancestors(cfg: dict) -> list[str]:
+    """Origens externas permitidas em frame-ancestors (vêm do config, sem domínio fixo no código)."""
+    brutos = (cfg.get("tela") or {}).get("frame_ancestors") or []
+    if not isinstance(brutos, list):
+        return []
+    saida: list[str] = []
+    for item in brutos:
+        s = str(item).strip().rstrip("/")
+        if s and s not in saida:
+            saida.append(s)
+    return saida
+
+
+def _cabecalhos_seguranca(frame_ancestors: list[str]) -> list[tuple[bytes, bytes]]:
+    if frame_ancestors:
+        ancestros = " ".join(["'self'", *frame_ancestors])
+    else:
+        ancestros = "'none'"
+    csp = (
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+        f"font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; "
+        f"form-action 'none'; frame-ancestors {ancestros}"
+    )
+    # Com allowlist, só a CSP controla o iframe (X-Frame-Options: DENY bloquearia o Benefits).
+    return [
+        (b"content-security-policy", csp.encode("ascii")),
+        (b"x-content-type-options", b"nosniff"),
+        (b"referrer-policy", b"no-referrer"),
+        (b"cross-origin-opener-policy", b"same-origin"),
+        (b"cross-origin-resource-policy", b"same-origin"),
+    ]
 
 
 class SoDaPropriaTela:
@@ -732,25 +770,15 @@ class SoDaPropriaTela:
       apontando um nome dele para 127.0.0.1 para ler cotações e PDFs).
     - Todo pedido que muda algo precisa do cabeçalho X-Newport-Tela (um site de fora não consegue
       mandá-lo) e, se vier com Origin, ela tem que ser a própria tela.
-    - Nenhuma resposta pode ser aberta dentro de outra página (bloqueia "clickjacking": um site de fora
-      mostrando a tela por baixo de botões dele para fazer o corretor clicar em Gerar).
+    - frame-ancestors na CSP: 'self' mais as origens declaradas em tela.frame_ancestors (ex.: o Benefits).
+      Outros sites não embutem a tela.
     """
 
-    CABECALHOS = [
-        (b"x-frame-options", b"DENY"),
-        (b"content-security-policy", b"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-                                     b"font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; "
-                                     b"form-action 'none'; frame-ancestors 'none'"),
-        (b"x-content-type-options", b"nosniff"),
-        (b"referrer-policy", b"no-referrer"),
-        (b"cross-origin-opener-policy", b"same-origin"),
-        (b"cross-origin-resource-policy", b"same-origin"),
-    ]
-
-    def __init__(self, app, porta: int):
+    def __init__(self, app, porta: int, frame_ancestors: list[str] | None = None):
         self.app = app
         self.hosts = {f"127.0.0.1:{porta}", f"localhost:{porta}"}
         self.permitidas = {f"http://{h}" for h in self.hosts}
+        self._cabecalhos = _cabecalhos_seguranca(frame_ancestors or [])
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -768,7 +796,7 @@ class SoDaPropriaTela:
 
         async def enviar(mensagem):
             if mensagem["type"] == "http.response.start":
-                mensagem["headers"] = list(mensagem.get("headers") or []) + self.CABECALHOS
+                mensagem["headers"] = list(mensagem.get("headers") or []) + self._cabecalhos
             await send(mensagem)
 
         await self.app(scope, receive, enviar)

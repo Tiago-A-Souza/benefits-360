@@ -12,11 +12,14 @@ import re
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
 import zipfile
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 from openpyxl import load_workbook
@@ -42,6 +45,7 @@ def amb(tmp_path_factory):
     pasta = tmp_path_factory.mktemp("tela")
     sim = Simulador().iniciar()
     porta = _porta_livre()
+    porta_benefits = _porta_livre()
     (pasta / "config.yaml").write_text(f"""
 geral:
   pasta_saida: "saida"
@@ -50,6 +54,10 @@ geral:
   pausa_entre_pedidos_s: 0
 tela:
   porta: {porta}
+  frame_ancestors:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+    - http://127.0.0.1:{porta_benefits}
 teste:
   simulador: true
   cofre: memoria
@@ -88,8 +96,16 @@ operadoras:
     _guardar_login(f"http://127.0.0.1:{porta}")   # o login FALSO do simulador, no cofre de memória da tela
     with sync_playwright() as pw:
         navegador = pw.chromium.launch()
-        yield {"base": f"http://127.0.0.1:{porta}", "pasta": pasta, "cliente": cliente, "sim": sim,
-               "navegador": navegador, "origem": f"http://127.0.0.1:{porta}", "proc": proc}
+        yield {
+            "base": f"http://127.0.0.1:{porta}",
+            "pasta": pasta,
+            "cliente": cliente,
+            "sim": sim,
+            "navegador": navegador,
+            "origem": f"http://127.0.0.1:{porta}",
+            "benefits_shim": f"http://127.0.0.1:{porta_benefits}",
+            "proc": proc,
+        }
         navegador.close()
     proc.terminate()
     try:
@@ -174,8 +190,9 @@ def _grupo_planos(page, acomodacao: str):
 
 def _nova_cotacao(page, amb, cnpj: str, vidas: dict[str, int], planos: list[tuple[str, str]], apelido: str = "",
                   congenere: str | None = "NOTREDAME", idades: dict[str, str] | None = None, pasta: str = "") -> None:
-    page.goto(amb["base"] + "/#/nova")
-    expect(page.get_by_role("heading", name="Nova cotação")).to_be_visible()
+    if hasattr(page, "goto"):
+        page.goto(amb["base"] + "/#/nova")
+        expect(page.get_by_role("heading", name="Nova cotação")).to_be_visible()
     page.get_by_label("CNPJ").fill(cnpj)
     if apelido:
         page.get_by_label("Nome para achar depois").fill(apelido)
@@ -282,6 +299,81 @@ def test_corretor_ensaia_gera_e_baixa_os_pdfs_sem_reemitir(page, amb):
     # e "emitir de novo" só vale para emissão, com protocolos de verdade
     corpo = {"modo": "ensaio", "reemitir": ["1"], "itens": []}
     assert _pedir(amb, "POST", "/api/trabalhos", corpo, tela)[0] == 400
+
+
+@pytest.fixture()
+def page_iframe(amb, request):
+    """Tela do RPA dentro de um iframe (como o Benefits 360 embute na aba Cotações)."""
+    origem_benefits = amb["benefits_shim"]
+    html = (
+        f'<!DOCTYPE html><html><body style="margin:0">'
+        f'<iframe id="rpa" src="{amb["origem"]}/" '
+        f'style="width:1366px;height:900px;border:0"></iframe></body></html>'
+    )
+
+    class _PaginaBenefits(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path in ("/", "/index.html"):
+                corpo = html.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(corpo)))
+                self.end_headers()
+                self.wfile.write(corpo)
+            else:
+                self.send_error(404)
+
+        def log_message(self, *_args):
+            return
+
+    shim = urlparse(origem_benefits)
+    servidor = HTTPServer((shim.hostname or "127.0.0.1", shim.port or 80), _PaginaBenefits)
+    thread = threading.Thread(target=servidor.serve_forever, daemon=True)
+    thread.start()
+    ctx = amb["navegador"].new_context(viewport={"width": 1366, "height": 900}, accept_downloads=True, locale="pt-BR")
+    parent = ctx.new_page()
+    erros: list[str] = []
+    parent.on("pageerror", lambda e: erros.append(f"erro de script: {e}"))
+    parent.goto(f"{origem_benefits}/", wait_until="domcontentloaded")
+    frame = parent.frame_locator("#rpa")
+    parent.nome_teste = request.node.name
+    try:
+        yield parent, frame
+    finally:
+        servidor.shutdown()
+        ctx.close()
+    erros = [e for e in erros if e]
+    assert not erros, erros
+
+
+def test_iframe_ensaio_baixa_pdf_como_aba_direta(page, page_iframe, amb):
+    """Com frame-ancestors do Benefits, o PDF continua baixando de dentro do iframe."""
+    pasta = amb["cliente"] / "iframe_pdf"
+    pasta.mkdir(exist_ok=True)
+    _nova_cotacao(
+        page,
+        amb,
+        "55667788000186",
+        {"0 - 18": 1, "34 - 38": 2},
+        [("Especial Mais", "Apartamento")],
+        congenere=None,
+        idades={"0 - 18": "0"},
+        pasta=str(pasta),
+    )
+    page.get_by_role("button", name="Ensaiar sem emitir").click()
+    expect(page.get_by_role("heading", name="Ensaio concluído")).to_be_visible(timeout=LONGO)
+    page.get_by_role("button", name="Gerar as cotações").click()
+    _confirmar(page, "Gerar as cotações")
+    expect(page.get_by_role("heading", name="Pronto: 1 cotação emitida")).to_be_visible(timeout=LONGO)
+    nome_direto, _ = _baixar(page, lambda: page.get_by_role("button", name="Baixar PDF").first.click())
+    rota_emitida = page.url
+
+    parent, frame = page_iframe
+    parent.locator("#rpa").evaluate(f"(el) => {{ el.src = {json.dumps(rota_emitida)}; }}")
+    expect(frame.get_by_role("button", name="Baixar PDF").first).to_be_visible(timeout=15_000)
+    nome_iframe, dados = _baixar(parent, lambda: frame.get_by_role("button", name="Baixar PDF").first.click())
+    assert nome_iframe == nome_direto
+    assert nome_iframe.startswith("SULAMERICA ") and dados.startswith(b"%PDF")
 
 
 def test_com_e_sem_coparticipacao_gera_duas_e_mostra_juntas(page, amb):
@@ -594,10 +686,14 @@ def test_api_recusa_pedidos_que_nao_vem_da_tela(amb):
     assert not ajustes.exists() or "urls" not in ajustes.read_text(encoding="utf-8")
     # outro nome apontando para 127.0.0.1 (DNS rebinding) não lê nada
     assert _pedir(amb, "GET", "/api/cotacoes", cabecalhos={"Host": "site-qualquer.com"})[0] == 421
-    # nenhuma página da tela abre dentro de outro site (clickjacking)
+    # só o Benefits (frame_ancestors no config) pode embutir; site arbitrário não entra na allowlist
     with urllib.request.urlopen(amb["base"] + "/", timeout=10) as resp:
-        assert resp.headers["X-Frame-Options"] == "DENY"
-        assert "frame-ancestors 'none'" in resp.headers["Content-Security-Policy"]
+        csp = resp.headers["Content-Security-Policy"]
+        assert "frame-ancestors" in csp
+        assert "http://localhost:5173" in csp
+        assert "http://127.0.0.1:5173" in csp
+        assert "https://site-malicioso.exemplo" not in csp
+        assert resp.headers.get("X-Frame-Options") != "DENY"
 
 
 def test_linha_de_comando_nao_roda_enquanto_a_tela_esta_com_o_portal_aberto(amb, tmp_path):
