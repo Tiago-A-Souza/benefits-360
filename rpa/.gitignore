@@ -1,0 +1,34 @@
+# ambiente
+.venv/
+__pycache__/
+.pytest_cache/
+
+# saídas do robô: têm CNPJ de clientes, PDFs e a sessão do navegador (cookies). Nunca versionar.
+saida/
+saida_simulador/
+cotacoes.xlsx
+**/perfil_navegador/
+*.db
+*.log
+# Credenciais nunca em arquivo; reforço contra vazamento acidental
+**/credentials*
+**/*credenciais*.json
+**/secrets*
+
+# material da Bradesco com dados pessoais (vídeo e quadros do corretor). Nunca versionar.
+docs/videos/
+docs/bradesco_quadros/
+codegen/docs/videos/
+codegen/docs/bradesco_quadros/
+docs/vídeos/
+codegen/docs/vídeos/
+
+# material da Amil com dados pessoais (vídeo e quadros do corretor). Nunca versionar.
+docs/amil_quadros/
+codegen/docs/amil_quadros/
+codegen/docs/videos/AMIL.mp4
+codegen/docs/vídeos/AMIL.mp4
+*.mp4
+
+# Brand guide pesado � nao versionar (logo/fontes ficam)
+app/web/Marca/*.pdf

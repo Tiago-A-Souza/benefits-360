@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Cotador Saúde PME (simulador)</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;padding-bottom:80px;color:#222}
+header{text-align:center;padding:12px;border-bottom:1px solid #ddd;font-weight:bold;color:#0b2e59}
+main{max-width:1150px;margin:0 auto;padding:16px}
+.skeleton{height:22px;background:#eee;border-radius:6px;margin:10px 0}
+.estreito{max-width:440px;margin:0 auto}
+footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:10px 20px;background:#fff;border-top:1px solid #ddd}
+button{cursor:pointer}
+.primario{background:#e8651d;color:#fff;border:0;border-radius:20px;padding:10px 20px}
+.primario:disabled{opacity:.4;cursor:default}
+.ok::before,.check::before{content:"\2713  ";color:#0a0}
+.faixas{display:grid;grid-template-columns:repeat(5,72px);gap:12px}
+.faixa{display:flex;flex-direction:column}
+.faixa input{width:50px;text-align:center;padding:8px}
+.status{margin-top:14px;padding:10px;border-radius:6px;background:#f5a623;color:#fff}
+.status.pronto{background:#1e8e3e}
+.grade{display:flex;gap:16px;align-items:flex-start}
+.filtros{width:230px;border:1px solid #ddd;padding:12px}
+.lista{flex:1}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{border:1px solid #ddd;border-radius:8px;padding:12px}
+.card.sel{border-color:#e8651d;background:#fff4ee}
+.topo-card{display:flex;justify-content:space-between}
+.linha{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
+.modal>div{background:#fff;padding:20px;border-radius:8px;max-width:420px}
+.chip{display:inline-flex;gap:4px;background:#eee;border-radius:10px;padding:2px 8px;margin:2px}
+.banner{background:#1d4fa0;color:#fff;padding:8px;border-radius:6px;margin:8px 0}
+ul[role=listbox]{list-style:none;padding:0;margin:0;border:1px solid #ddd}
+li[role=option]{padding:6px;cursor:pointer}
+.banda{border:1px solid #f5c6b0;border-radius:6px;padding:8px;margin:6px 0}
+.pag{display:flex;gap:6px;justify-content:center;margin:12px}
+</style>
+</head>
+<body>
+<header>SulAmérica (simulador local)</header>
+<main id="app"></main>
+<footer id="rodape"></footer>
+<script>
+const PORTAL = "__PORTAL__";
+const TRAVAR_TROCA = __TRAVAR_TROCA__;     // teste (portal novo de 15/11): a 1ª troca para o Cuidado 360° muda a URL e deixa o corpo da tela anterior
+const TRAVA_COPART = __TRAVA_COPART__;   // teste: na cotação copiada, a coparticipação não muda
+const FAIXAS = ["0 - 18","19 - 23","24 - 28","29 - 33","34 - 38","39 - 43","44 - 48","49 - 53","54 - 58","59+"];
+const LIM = [[0,18],[19,23],[24,28],[29,33],[34,38],[39,43],[44,48],[49,53],[54,58],[59,130]];
+const AGRAVADAS = ["0 - 18","59+"];   // faixas que pedem idade exata (no vídeo: 0 - 18)
+const CONGENERES = ["AMIL","BRADESCO SAUDE","GOLDEN CROSS","NOTREDAME","OMINT","PORTO SEGURO","SULAMERICA","UNIMED"];
+const VENDEDORES = ["usuario teste","Maria Corretora"];
+// Valores por vida do Especial Mais (vídeo) e do Executivo R1 (vídeo, 6 primeiras faixas).
+const BASE = [521.90,652.37,808.94,897.92,960.78,1114.50,1332.27,1561.42,1858.87,3120.00];
+const EXEC_R1 = [981.00,1226.25,1520.54,1687.79,1805.94,2094.88,2504.66,2935.47,3494.68,5865.60];
+const PLANOS = [
+  ["Direto Nacional","Enfermaria",0.468],["Direto Nacional","Apartamento",0.519],
+  ["Clássico Vital","Enfermaria",0.603],["Especial Vital","Apartamento",0.659],
+  ["Clássico 100","Enfermaria",0.670],["Especial Vital R1","Apartamento",0.693],
+  ["Especial RC","Apartamento",0.732],["Especial 100 R1","Apartamento",0.770],
+  ["Especial Mais Vital","Apartamento",0.900],["Especial Mais","Apartamento",1.0],
+  ["Executivo R1","Apartamento",null],["Executivo R2","Apartamento",2.126],
+  ["Executivo R3","Apartamento",2.6],["Prestige","Apartamento",3.1]];
+const POR_PAGINA = 12;
+const $ = (id) => document.getElementById(id);
+const app = $("app"), rodape = $("rodape");
+
+function S(){ try { return JSON.parse(sessionStorage.getItem("cot")) || {}; } catch (e) { return {}; } }
+function salvar(s){ sessionStorage.setItem("cot", JSON.stringify(s)); }
+function ir(rota){
+  history.pushState({}, "", rota);
+  if (TRAVAR_TROCA && rota === "/cuidado-cross" && !sessionStorage.getItem("travou")) {
+    // como o portal real: URL nova, corpo velho e SEM nada pendente; o estado do assistente só existe na aba (F5 volta ao começo)
+    sessionStorage.setItem("travou", "1"); sessionStorage.removeItem("cot"); return;
+  }
+  render();
+}
+window.addEventListener("popstate", render);
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function reais(v){ const [i, d] = v.toFixed(2).split("."); return "R$ " + i.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + d; }
+function fmtCnpj(d){ d = (d || "").replace(/\D/g, "").slice(0, 14); let r = d.slice(0, 2);
+  if (d.length > 2) r += "." + d.slice(2, 5); if (d.length > 5) r += "." + d.slice(5, 8);
+  if (d.length > 8) r += "/" + d.slice(8, 12); if (d.length > 12) r += "-" + d.slice(12); return r; }
+function skeleton(ms, depois){ app.innerHTML = '<div class="skeleton"></div>'.repeat(5); rodape.innerHTML = ""; setTimeout(depois, ms); }
+function botoesRodape(esq, dir){
+  rodape.innerHTML = "";
+  const b1 = document.createElement("button"); b1.type = "button"; b1.textContent = esq.texto; b1.onclick = esq.acao; rodape.appendChild(b1);
+  const b2 = document.createElement("button"); b2.type = "button"; b2.textContent = dir.texto; b2.className = "primario";
+  b2.disabled = !dir.ok; b2.onclick = dir.acao; rodape.appendChild(b2);
+  return b2;
+}
+// Como no portal (04/11): "Sair da cotação" abre um modal com fundo escuro que cobre a tela inteira
+// (um clique fora do modal não chega aos botões de baixo).
+function sairCotacao(){
+  if ($("modalSair")) return;
+  const fundo = document.createElement("div");
+  fundo.setAttribute("data-slot", "dialog-overlay");
+  fundo.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50";
+  const caixa = document.createElement("div");
+  caixa.id = "modalSair"; caixa.setAttribute("role", "dialog"); caixa.setAttribute("aria-modal", "true");
+  caixa.setAttribute("aria-labelledby", "tituloSair");
+  caixa.style.cssText = "position:fixed;top:30%;left:50%;transform:translateX(-50%);background:#fff;padding:20px;z-index:51";
+  const soCancelar = __SO_CANCELAR__;   // teste: sem botão de confirmar, o robô não consegue sair
+  caixa.innerHTML = '<h2 id="tituloSair">Sair da cotação</h2><p>Deseja realmente sair da cotação?</p>'
+    + '<button type="button" id="naoSair">Cancelar</button>'
+    + (soCancelar ? '' : ' <button type="button" id="simSair">Sim, sair</button>');
+  document.body.append(fundo, caixa);
+  $("naoSair").onclick = () => { fundo.remove(); caixa.remove(); };
+  if (!soCancelar) $("simSair").onclick = () => { sessionStorage.removeItem("cot"); location.href = PORTAL + "__DESTINO_SAIR__"; };
+}
+function faixaDe(idade){ for (let i = 0; i < LIM.length; i++) if (idade >= LIM[i][0] && idade <= LIM[i][1]) return FAIXAS[i]; return null; }
+function total(s){ return FAIXAS.reduce((a, f) => a + ((s.vidas || {})[f] || 0), 0); }
+
+function render(){
+  if (TRAVAR_TROCA && location.pathname !== "/dados-empresa" && !S().cnpj) history.replaceState({}, "", "/dados-empresa");
+  const telas = {"/dados-empresa": dadosEmpresa, "/cuidado-cross": cuidado, "/congeneres": congeneres,
+    "/vidas-saude": vidas, "/distribuicao-agravadas": agravadas, "/precificacao-planos": precificacao,
+    "/comparacao-planos": comparacao, "/resumo-final": resumo};
+  (telas[location.pathname] || (() => { app.innerHTML = "<h1>Página não encontrada</h1>"; }))();
+}
+
+// ---------------------------------------------------------------- dados da empresa
+function dadosEmpresa(){
+  const q = new URLSearchParams(location.search);
+  if (q.get("novo")) { sessionStorage.removeItem("cot"); history.replaceState({}, "", "/dados-empresa"); }
+  if (q.get("copia")) {
+    app.innerHTML = '<div class="skeleton"></div>';
+    fetch("/api/cotacao/" + q.get("copia")).then(r => r.json()).then(c => {
+      const s = c.estado; s.copiaDe = q.get("copia"); salvar(s);
+      history.replaceState({}, "", "/dados-empresa"); dadosEmpresa();
+    });
+    return;
+  }
+  skeleton(1200, () => {
+    const s = S(); s.vendedor = s.vendedor || VENDEDORES[0]; salvar(s);
+    app.innerHTML = `<div class="estreito"><h1>Comece por aqui</h1>
+      <p><b>Selecione o responsável pela cotação, caso seja para outro usuário ou vendedor.</b></p>
+      <label for="vend">Vendedor:</label>
+      <div><input id="vend" role="combobox" aria-label="Vendedor" aria-expanded="false" value="${esc(s.vendedor)}">
+      <button type="button" aria-label="Limpar vendedor" id="limpaVend">×</button></div>
+      <ul role="listbox" id="listaVend" hidden></ul>
+      <h3>Dados do cliente</h3><p>Digite abaixo o CNPJ da empresa do seu cliente:</p>
+      <input id="cnpj" placeholder="Digite o CNPJ" value="${esc(fmtCnpj(s.cnpj))}" ${s.copiaDe ? "disabled" : ""}>
+      <div id="valid"></div><div id="empresa"></div></div>`;
+    const cont = botoesRodape({texto: "Sair da cotação", acao: sairCotacao},
+                              {texto: "Continuar", ok: !!s.empresa, acao: () => ir("/cuidado-cross")});
+    const vend = $("vend"), lista = $("listaVend");
+    vend.oninput = () => {
+      const t = vend.value.toLowerCase();
+      lista.innerHTML = VENDEDORES.filter(v => v.toLowerCase().includes(t)).map(v => `<li role="option">${esc(v)}</li>`).join("");
+      lista.hidden = !lista.innerHTML;
+      [...lista.children].forEach(li => li.onclick = () => {
+        vend.value = li.textContent; lista.hidden = true; const s2 = S(); s2.vendedor = li.textContent; salvar(s2); });
+    };
+    $("limpaVend").onclick = () => { vend.value = ""; vend.focus(); vend.oninput(); };
+    const mostrarEmpresa = (e, d) => {
+      $("valid").innerHTML = '<span class="ok">CNPJ válido</span>';
+      $("empresa").innerHTML = `<p><b>Dados da Empresa:</b></p><div><b>CNPJ</b><div>${fmtCnpj(d)}</div>
+        <b>Razão Social</b><div>${esc(e.razao)}</div><b>Endereço</b><div>${esc(e.endereco)}</div></div>`;
+      cont.disabled = false;
+    };
+    if (s.empresa) mostrarEmpresa(s.empresa, s.cnpj);
+    const campo = $("cnpj");
+    campo.oninput = () => {
+      const d = campo.value.replace(/\D/g, "").slice(0, 14);
+      campo.value = fmtCnpj(d);
+      $("valid").innerHTML = ""; $("empresa").innerHTML = ""; cont.disabled = true;
+      const s2 = S(); delete s2.empresa; s2.cnpj = d; salvar(s2);
+      if (d.length === 14) {
+        setTimeout(() => fetch("/api/empresa?cnpj=" + d).then(r => r.json()).then(e => {
+          if (!e.ok) { $("valid").innerHTML = "<span>CNPJ inválido</span>"; return; }
+          const s3 = S(); s3.empresa = e; s3.cnpj = d; salvar(s3); mostrarEmpresa(e, d);
+        }), 600);
+      }
+    };
+  });
+}
+
+// ---------------------------------------------------------------- Cuidado 360°
+function cuidado(){
+  skeleton(400, () => {
+    const s = S(); const sim = s.cuidado !== false;
+    app.innerHTML = `<div class="estreito"><h1>Deseja adicionar o Cuidado 360°?</h1>
+      <p>O Cuidado 360° é um benefício da SulAmérica onde você pode incluir Seguro Odontológico e Seguro de Vida sem custo adicional.</p>
+      <label><input type="radio" name="c360" value="sim" ${sim ? "checked" : ""}> Sim</label><br>
+      <label><input type="radio" name="c360" value="nao" ${sim ? "" : "checked"}> Não</label></div>`;
+    botoesRodape({texto: "Voltar", acao: () => ir("/dados-empresa")}, {texto: "Continuar", ok: true, acao: () => {
+      const escolha = document.querySelector("input[name=c360]:checked").value;
+      const s2 = S(); s2.cuidado = escolha === "sim"; salvar(s2);
+      if (escolha === "nao") return ir("/congeneres");
+      const m = document.createElement("div"); m.className = "modal";
+      m.innerHTML = `<div role="dialog"><h3>Confirmação</h3><p>Ao prosseguir, você concorda com os termos de aceite da
+        contratação do Cuidado 360° na sua proposta de cotação. Deseja prosseguir?</p>
+        <button type="button" id="cancelar">Cancelar</button> <button type="button" id="prosseguir" class="primario">Prosseguir</button></div>`;
+      document.body.appendChild(m);
+      $("cancelar").onclick = () => m.remove();
+      $("prosseguir").onclick = () => { m.remove(); ir("/congeneres"); };
+    }});
+  });
+}
+
+// ---------------------------------------------------------------- congênere
+function congeneres(){
+  skeleton(500, () => {
+    const s0 = S(); s0.congeneres = s0.congeneres || []; salvar(s0);
+    const desenhar = () => {
+      const s = S();
+      app.innerHTML = `<div class="estreito"><h1>De qual congênere (seguradora) essa empresa está vindo?</h1>
+        <p>Cotação para: <b>${esc((s.empresa || {}).razao || "")}</b></p>
+        <div class="linha"><span>Congênere de Saúde</span><span>${s.congeneres.length}/100</span></div>
+        <div id="campoCong">${s.congeneres.map(c => `<span class="chip"><span>${esc(c)}</span><button type="button"
+          aria-label="Remover ${esc(c)}" data-c="${esc(c)}">×</button></span>`).join("")}
+        <input id="busca" placeholder="Digite para buscar..." autocomplete="off"></div>
+        <ul role="listbox" id="sug" hidden></ul>
+        <label><input type="checkbox" id="novo" ${s.seguroNovo ? "checked" : ""}> Este é um seguro novo.</label></div>`;
+      const cont = botoesRodape({texto: "Voltar", acao: () => ir("/cuidado-cross")},
+        {texto: "Continuar", ok: s.congeneres.length > 0 || !!s.seguroNovo, acao: () => ir("/vidas-saude")});
+      const busca = $("busca"), sug = $("sug");
+      busca.oninput = () => {
+        const t = busca.value.trim().toUpperCase();
+        const ops = t ? CONGENERES.filter(c => c.includes(t) && !S().congeneres.includes(c)) : [];
+        sug.innerHTML = ops.map(c => `<li role="option">${esc(c)}</li>`).join(""); sug.hidden = !ops.length;
+        [...sug.children].forEach(li => li.onclick = () => { const s2 = S(); s2.congeneres.push(li.textContent); salvar(s2); desenhar(); });
+      };
+      document.querySelectorAll("#campoCong button").forEach(b => b.onclick = () => {
+        const s2 = S(); s2.congeneres = s2.congeneres.filter(c => c !== b.dataset.c); salvar(s2); desenhar(); });
+      $("novo").onchange = (e) => { const s2 = S(); s2.seguroNovo = e.target.checked; salvar(s2);
+        cont.disabled = !(s2.congeneres.length || s2.seguroNovo); };
+    };
+    desenhar();
+  });
+}
+
+// ---------------------------------------------------------------- distribuição de vidas
+function vidas(){
+  skeleton(500, () => {
+    const s = S(); s.vidas = s.vidas || {}; salvar(s);
+    app.innerHTML = `<div class="estreito"><h1>Distribua as vidas da empresa</h1>
+      <p>Insira a quantidade de vidas totais <b>entre 3 e 29</b> para realizar a cotação: *</p>
+      <div class="faixas">${FAIXAS.map(f => `<div class="faixa"><span>${f}</span><input inputmode="numeric" data-f="${f}"
+        placeholder="0" value="${s.vidas[f] ? s.vidas[f] : ""}"></div>`).join("")}</div>
+      <button type="button" id="limpar">Limpar distribuição</button><div id="status" class="status"></div></div>`;
+    const cont = botoesRodape({texto: "Voltar", acao: () => ir("/congeneres")}, {texto: "Continuar", ok: false, acao: () => {
+      const s2 = S(); ir(AGRAVADAS.some(f => (s2.vidas[f] || 0) > 0) ? "/distribuicao-agravadas" : "/precificacao-planos");
+    }});
+    const atualizar = () => {
+      const t = total(S()); const st = $("status");
+      if (t < 3) { st.className = "status"; st.textContent = `${t}/3 vidas (faltam ${3 - t})`; }
+      else if (t > 29) { st.className = "status"; st.textContent = "Máximo de 29 vidas"; }
+      else { st.className = "status pronto"; st.textContent = `${t} vidas distribuídas`; }
+      cont.disabled = !(t >= 3 && t <= 29);
+    };
+    document.querySelectorAll(".faixa input").forEach(inp => inp.oninput = () => {
+      inp.value = inp.value.replace(/\D/g, "");
+      const s2 = S(); s2.vidas[inp.dataset.f] = parseInt(inp.value || "0", 10); salvar(s2); atualizar();
+    });
+    $("limpar").onclick = () => { const s2 = S(); s2.vidas = {}; salvar(s2); vidas(); };
+    atualizar();
+  });
+}
+
+// ---------------------------------------------------------------- idades exatas
+function agravadas(){
+  skeleton(500, () => {
+    let qtd = 1;
+    const desenhar = () => {
+      const s = S(); s.idades = s.idades || [];
+      const bandas = AGRAVADAS.filter(f => (s.vidas[f] || 0) > 0);
+      const feitas = f => s.idades.filter(x => faixaDe(x.idade) === f).reduce((a, x) => a + x.qtd, 0);
+      app.innerHTML = `<div class="estreito"><h1>Especifique as idades para Saúde</h1>
+        <p>Adicione a idade de cada vida nas faixas indicadas: *</p>
+        <div id="bandas">${bandas.map(f => `<div class="banda"><div><b>${f}</b></div><div>${feitas(f)}/${s.vidas[f]}</div>
+          ${feitas(f) >= s.vidas[f] ? '<div class="ok">Completo</div>' : ""}</div>`).join("")}</div>
+        <div class="linha"><div><label for="idade">Idade</label><br><input id="idade" inputmode="numeric" placeholder="0"><br>
+          <span>Quantidade</span><br><button type="button" id="menos">−</button> <span id="qtd">1</span>
+          <button type="button" id="mais">+</button><br>
+          <button type="button" id="add" class="primario" disabled>+ Adicionar idade</button><div id="msg"></div></div>
+        <div><h4>Idades adicionadas</h4>${s.idades.length ? bandas.map(f => `<div><b>${f}</b> <span>${feitas(f)}/${s.vidas[f]}</span>
+          ${s.idades.filter(x => faixaDe(x.idade) === f).map(x => `<div class="linha"><span>${x.idade}</span><span>${x.qtd}</span></div>`).join("")}
+          </div>`).join("") : "<p>Nenhuma idade foi adicionada.</p>"}</div></div>`;
+      const completo = bandas.every(f => feitas(f) >= s.vidas[f]);
+      botoesRodape({texto: "Voltar", acao: () => ir("/vidas-saude")}, {texto: "Continuar", ok: completo, acao: () => ir("/precificacao-planos")});
+      const idade = $("idade"), add = $("add");
+      idade.oninput = () => { idade.value = idade.value.replace(/\D/g, ""); add.disabled = idade.value === ""; };
+      $("mais").onclick = () => { qtd++; $("qtd").textContent = qtd; };
+      $("menos").onclick = () => { qtd = Math.max(1, qtd - 1); $("qtd").textContent = qtd; };
+      add.onclick = () => {
+        const n = parseInt(idade.value, 10); const f = faixaDe(n);
+        if (!bandas.includes(f)) { $("msg").textContent = "Idade fora das faixas indicadas"; return; }
+        if (feitas(f) + qtd > s.vidas[f]) { $("msg").textContent = "Faixa completa"; return; }
+        const s2 = S(); s2.idades = s2.idades || []; const ja = s2.idades.find(x => x.idade === n);
+        if (ja) ja.qtd += qtd; else s2.idades.push({idade: n, qtd}); qtd = 1; salvar(s2); desenhar();
+      };
+    };
+    desenhar();
+  });
+}
+
+// ---------------------------------------------------------------- planos
+function variantes(s){
+  const v = [];
+  ["12", "24"].forEach(m => { if (s.filtros.vig[m]) ["sem", "com"].forEach(c => { if (s.filtros.copart[c]) v.push({vig: m, copart: c}); }); });
+  return v;
+}
+function precoVida(plano, i, s, va){
+  const base = plano[2] === null ? EXEC_R1[i] : BASE[i] * plano[2];
+  let mult = 1; if (va.vig === "12") mult *= 1.06; if (va.copart === "sem") mult *= 1.15;
+  if (s.filtros.tipo === "CBO") mult *= 0.97; if (s.filtros.tipo === "Flex") mult *= 1.04;
+  return Math.round(base * mult * 100) / 100;
+}
+function catalogo(s){
+  const itens = [];
+  variantes(s).forEach(va => PLANOS.forEach(p => {
+    const porVida = FAIXAS.map((f, i) => precoVida(p, i, s, va));
+    const tot = Math.round(FAIXAS.reduce((a, f, i) => a + porVida[i] * ((s.vidas || {})[f] || 0), 0) * 100) / 100;
+    itens.push({id: `${p[0]}|${p[1]}|${va.vig}|${va.copart}`, nome: p[0], acomod: p[1], vig: va.vig, copart: va.copart, porVida, total: tot});
+  }));
+  return itens.sort((a, b) => a.total - b.total);
+}
+function descricao(s, it){ return `557 - AHO - ${s.filtros.tipo} - ${it.vig} meses`; }
+function copartTexto(it){ return it.copart === "com" ? "Com coparticipação" : "Sem coparticipação"; }
+
+function precificacao(){
+  skeleton(800, () => {
+    const s = S();
+    s.filtros = s.filtros || {tipo: "Compulsória", vig: {"12": false, "24": true}, copart: {sem: false, com: true}};
+    s.selecionados = s.selecionados || []; salvar(s);
+    let pagina = 1;
+    app.innerHTML = `<div class="grade"><aside class="filtros"><div class="linha"><b>Filtros</b><button type="button">Limpar Filtros</button></div>
+      <p>Ordenar por</p><select aria-label="Ordenar por"><option>Menor valor</option></select>
+      <p>Produto Saúde PME</p><label><input type="radio" name="prod" checked> 557 - AHO</label>
+      <p>Tipo de Contratação</p>${["CBO", "Compulsória", "Flex"].map(t => `<label><input type="radio" name="tipo" value="${t}"
+        ${s.filtros.tipo === t ? "checked" : ""}> ${t}</label><br>`).join("")}
+      <p>Vigência Contratual</p>${["12", "24"].map(m => `<label><input type="checkbox" data-vig="${m}"
+        ${s.filtros.vig[m] ? "checked" : ""}> ${m} meses</label><br>`).join("")}
+      <p>Coparticipação</p><label><input type="checkbox" data-copart="sem" ${s.filtros.copart.sem ? "checked" : ""} ${s.copiaDe && TRAVA_COPART ? "disabled" : ""}> Sem coparticipação</label><br>
+      <label><input type="checkbox" data-copart="com" ${s.filtros.copart.com ? "checked" : ""} ${s.copiaDe && TRAVA_COPART ? "disabled" : ""}> Com coparticipação</label></aside>
+      <section class="lista"><div class="linha"><div><h2>Planos disponíveis</h2><span id="contador"></span></div>
+      <div><button type="button" id="desmarcar">Desmarcar todos</button> <button type="button">Redistribuir vidas</button>
+      <button type="button" id="sair">Sair da cotação</button></div></div>
+      <input placeholder="Buscar plano por nome..." style="width:100%">
+      <div class="banner">Atenção corretor, cotação válida apenas para hoje. Avance para gerar proposta comercial com validade de 45 dias.</div>
+      <div id="cards"></div><div id="pag" class="pag"></div></section></div>`;
+    const cont = botoesRodape({texto: "Voltar", acao: () => history.back()}, {texto: "Continuar", ok: false, acao: () => ir("/comparacao-planos")});
+    $("sair").onclick = sairCotacao;
+    const desenharLista = (comEsqueleto) => {
+      const pinta = () => {
+        const s = S(); const itens = catalogo(s); const paginas = Math.max(1, Math.ceil(itens.length / POR_PAGINA));
+        pagina = Math.min(pagina, paginas);
+        $("contador").textContent = `${itens.length} opções encontradas`;
+        if (!itens.length) { $("cards").innerHTML = "<p>Nenhum plano encontrado</p>"; $("pag").innerHTML = ""; }
+        else {
+          $("cards").innerHTML = '<div class="cards">' + itens.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA).map(it => {
+            const sel = s.selecionados.includes(it.id);
+            return `<div class="card ${sel ? "sel" : ""}"><div class="topo-card"><div><div><b>${esc(it.nome)}</b></div><div>${it.acomod}</div></div>
+              <button type="button" class="bolinha" aria-label="Selecionar plano" data-id="${esc(it.id)}"><span></span></button></div>
+              <div class="check">${descricao(s, it)}</div><div class="check">${copartTexto(it)}</div>
+              <div>${reais(it.total / Math.max(1, total(s)))} por vida / mês</div>
+              <div>Total estimado: ${reais(it.total)} / mês (${total(s)} vidas)</div>
+              <button type="button" data-id="${esc(it.id)}" class="${sel ? "primario" : ""}">${sel ? "Plano selecionado" : "Selecionar plano"}</button></div>`;
+          }).join("") + "</div>";
+          $("pag").innerHTML = paginas > 1 ? `<button type="button" data-p="${Math.max(1, pagina - 1)}" aria-label="Página anterior">‹</button>` +
+            Array.from({length: paginas}, (_, i) => `<button type="button" data-p="${i + 1}">${i + 1}</button>`).join("") +
+            `<button type="button" data-p="${Math.min(paginas, pagina + 1)}" aria-label="Próxima página">›</button>` : "";
+        }
+        document.querySelectorAll("#cards [data-id]").forEach(el => el.onclick = () => {
+          const s2 = S(); const id = el.dataset.id;
+          s2.selecionados = s2.selecionados.includes(id) ? s2.selecionados.filter(x => x !== id) : [...s2.selecionados, id];
+          salvar(s2); desenharLista(false);
+        });
+        document.querySelectorAll("#pag [data-p]").forEach(b => b.onclick = () => { pagina = parseInt(b.dataset.p, 10); desenharLista(true); });
+        const s3 = S(); cont.disabled = !s3.selecionados.length; $("desmarcar").disabled = !s3.selecionados.length;
+      };
+      if (comEsqueleto) { $("cards").innerHTML = '<div class="skeleton"></div>'.repeat(6); $("pag").innerHTML = ""; setTimeout(pinta, 700); }
+      else pinta();
+    };
+    document.querySelectorAll("input[name=tipo]").forEach(r => r.onchange = () => {
+      const s2 = S(); s2.filtros.tipo = r.value; salvar(s2); pagina = 1; desenharLista(true); });
+    document.querySelectorAll("input[data-vig]").forEach(c => c.onchange = () => {
+      const s2 = S(); s2.filtros.vig[c.dataset.vig] = c.checked; salvar(s2); pagina = 1; desenharLista(true); });
+    document.querySelectorAll("input[data-copart]").forEach(c => c.onchange = () => {
+      const s2 = S(); s2.filtros.copart[c.dataset.copart] = c.checked; salvar(s2); pagina = 1; desenharLista(true); });
+    $("desmarcar").onclick = () => { const s2 = S(); s2.selecionados = []; salvar(s2); desenharLista(false); };
+    desenharLista(false);
+  });
+}
+
+// ---------------------------------------------------------------- comparação
+// Como no portal (04/11): na primeira vez, um tour "Guia de navegação" abre por cima e bloqueia os cliques.
+function guiaDeNavegacao(){
+  if (sessionStorage.getItem("guiaVisto")) return;
+  const fundo = document.createElement("div");
+  fundo.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:60";
+  const guia = document.createElement("div");
+  guia.setAttribute("role", "dialog"); guia.setAttribute("aria-label", "Guia de navegação");
+  guia.style.cssText = "position:fixed;top:20%;left:50%;transform:translateX(-50%);background:#fff;padding:16px;z-index:61";
+  guia.innerHTML = '<span>1 de 9</span><h4>Comparação de Planos</h4><p>Nesta etapa você compara os planos selecionados.</p>'
+    + '<button type="button" id="pularGuia">Pular</button> <button type="button">Próximo</button>';
+  document.body.append(fundo, guia);
+  $("pularGuia").onclick = () => { sessionStorage.setItem("guiaVisto", "1"); fundo.remove(); guia.remove(); };
+}
+function comparacao(){
+  setTimeout(guiaDeNavegacao, 900);
+  skeleton(600, () => {
+    const s = S(); const itens = catalogo(s).filter(it => s.selecionados.includes(it.id));
+    app.innerHTML = `<div class="linha"><div><h1>Comparação de Planos</h1><p>Compare os valores e distribua as vidas entre os planos</p></div>
+      <div><button type="button">Redistribuir vidas</button> <button type="button" id="sair">Sair da cotação</button></div></div>
+      <div class="banner">Atenção corretor, cotação válida apenas para hoje.</div><div class="grade">` +
+      itens.map(it => `<div class="card sel" style="width:300px"><div><b>${esc(it.nome)}</b></div><div>${it.acomod}</div>
+        <div class="check">${descricao(s, it)}</div><div class="check">${copartTexto(it)}</div><div>${reais(it.total)} / mês</div>
+        <div class="linha"><div>Faixas</div><div>Qtd</div><div>Valores</div></div>` +
+        FAIXAS.map((f, i) => { const q = (s.vidas[f] || 0); return `<div class="linha"><div>${f}</div><div>${q}</div><div>${q ?
+          `<div><b>${reais(it.porVida[i] * q)}</b></div>` : ""}<div>${reais(it.porVida[i])} / vida</div></div></div>`; }).join("") +
+        `</div>`).join("") +
+      `<div class="card" style="width:300px"><button type="button" id="mais">+</button><p><b>Adicionar mais planos</b></p><p>Voltar para seleção</p></div></div>`;
+    $("sair").onclick = sairCotacao; $("mais").onclick = () => ir("/precificacao-planos");
+    botoesRodape({texto: "Voltar", acao: () => ir("/precificacao-planos")}, {texto: "Continuar", ok: itens.length > 0, acao: () => ir("/resumo-final")});
+  });
+}
+
+// ---------------------------------------------------------------- resumo e emissão
+function resumo(){
+  skeleton(600, () => {
+    const s = S(); const it = catalogo(s).filter(x => s.selecionados.includes(x.id))[0];
+    // IOF por vida, arredondado e somado (como o portal: 12,42 + 2 x 22,87 = 58,16 no vídeo)
+    const iof = Math.round(FAIXAS.reduce((a, f, i) => a + Math.round(it.porVida[i] * 0.0238 * 100) / 100 * ((s.vidas || {})[f] || 0), 0) * 100) / 100;
+    const tot = Math.round((it.total + iof) * 100) / 100;
+    const e = s.empresa || {};
+    app.innerHTML = `<div class="banner">Atenção corretor, cotação válida apenas para hoje.</div><div class="grade">
+      <div style="flex:1"><h2>Planos Saúde</h2><div class="card"><b>${esc(it.nome)}</b><div class="check">${descricao(s, it)}</div>
+        <div class="check">${copartTexto(it)}</div><div>Ver detalhes das vidas e valores</div></div></div>
+      <div style="flex:1"><h2>Resumo da Simulação</h2><p>Confirme as informações antes de prosseguir</p>
+        <div class="card"><b>Saúde + Vida</b><div class="linha"><span>Total sem IOF:</span><span>${reais(it.total)}</span></div>
+        <div class="linha"><span>Vida:</span><span>R$ 0</span></div><div class="linha"><span>IOF:</span><span>${reais(iof)}</span></div>
+        <div class="linha"><b>Total:</b><b>${reais(tot)}</b></div></div>
+        <div class="card"><b>Odonto</b><div class="linha"><span>Total sem IOF:</span><span>R$ 0</span></div>
+        <div class="linha"><span>IOF:</span><span>R$ 0</span></div><div class="linha"><b>Total:</b><b>R$ 0</b></div></div>
+        <h3>Informações do Solicitante</h3><div class="card"><div>Responsável pela cotação: ${esc(s.vendedor || "")}</div><div>EV: 0000000</div></div>
+        <h3>Informações da Empresa</h3><div class="card"><div>CNPJ: ${fmtCnpj(s.cnpj)}</div><div>Razão social: ${esc(e.razao || "")}</div>
+        <div>Município/UF: ${esc(e.municipio || "")}</div></div>
+        <h3>Características da Cotação</h3><div class="card"><div>Vidas: ${total(s)}</div><div>Produto: 557 - AHO</div>
+        <div>Tipo de contratação: ${s.filtros.tipo}</div><div>Vigência contratual: ${it.vig} meses</div>
+        <div>Operadora de origem / anterior: ${s.seguroNovo ? "SEGURO NOVO" : esc((s.congeneres || []).join(", "))}</div>
+        <div>Coparticipação: ${copartTexto(it)}</div></div></div></div>`;
+    botoesRodape({texto: "Voltar", acao: () => ir("/comparacao-planos")}, {texto: "Continuar", ok: true, acao: () => {
+      rodape.innerHTML = "";
+      fetch("/api/emitir", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({estado: S(),
+        resumo: {cnpj: s.cnpj, razao: e.razao || "", plano: it.nome, acomodacao: it.acomod, total: reais(it.total), iof: reais(iof)}})})
+        .then(r => r.json()).then(r => {
+          // como no portal real, este texto aparece SEM acento
+          app.innerHTML = "<h1>Cotacao enviada com sucesso!</h1><p>Sua cotacao foi registrada. Preparando proxima etapa...</p>";
+          setTimeout(() => { app.innerHTML = "<h1>Gerando proposta...</h1><p>Você será redirecionado em instantes.</p>"; }, 1500);
+          setTimeout(() => { sessionStorage.removeItem("cot");
+            location.href = `${PORTAL}/SaudeCotador/Simulador.aspx?Token=${r.token}&p=${r.protocolo}`; }, 4000);
+        });
+    }});
+  });
+}
+
+render();
+</script>
+</body>
+</html>

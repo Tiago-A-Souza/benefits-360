@@ -1,0 +1,168 @@
+# Configuração do Newport Cotações. NUNCA coloque senha, CPF ou token aqui: o login do portal fica no
+# cofre do Windows, guardado pelo corretor na engrenagem do robô (tela 1, Login).
+# A tela (menu Ajustes) grava os ajustes feitos por ela em saida/config_tela.json, por cima deste arquivo.
+
+geral:
+  pasta_saida: "saida"         # PDFs, registro anti-reemissão, sessão do navegador. Não compartilhar.
+  modo_visual: false           # true = mostra a janela do portal (só para calibrar; a tela: Robôs)
+  janela_escondida: headless   # sem janela: "headless" ou "fora_da_tela" (se o portal estranhar o headless)
+  lentidao_ms: 150             # pausa entre ações; aumente para depurar
+  mapear: false                # true = salva print + HTML + árvore de cada tela (calibragem)
+  pausa_entre_pedidos_s: 3
+
+tela:
+  porta: 8600                  # endereço da tela: http://127.0.0.1:8600
+
+operadoras:
+
+  sulamerica:
+    ativa: true
+    urls:
+      login: "https://os11.sulamerica.com.br/SaudeCotador/LoginGeral.aspx"
+
+    tempos:
+      timeout_padrao_ms: 30000     # espera máxima por elemento
+      timeout_login_ms: 60000      # espera pela resposta do portal depois do ENTRAR
+      timeout_codigo_ms: 300000    # tempo para o corretor digitar na tela o código de verificação
+      login_reentrada_ms: 60000    # "acesso ativo para esse CPF": espera isso e entra de novo...
+      login_liberacao_ms: 600000   # ...por até esse tempo no total; depois para e avisa
+      timeout_emissao_ms: 180000   # "Gerando proposta..." leva ~14 s no vídeo; margem larga
+      timeout_tela_ms: 150000      # espera máxima para uma tela carregar (15/11: o portal novo leva ~60 s em algumas trocas de tela)
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3        # fila vazia há 3 min: o robô sai do portal (libera o CPF) e fecha a janela
+
+    # Padrões da Newport para o robô (o que ele preenche no portal quando a cotação não diz outra
+    # coisa). Reproduzem o vídeo. Cada corretor muda os dele na tela, em Robôs > SulAmérica (a
+    # engrenagem): a tela grava por cima deste arquivo, e "Voltar aos padrões da Newport" volta a estes.
+    padroes:
+      cuidado_360: "sim"                # "sim" ou "nao"
+      tipo_contratacao: "compulsoria"   # "compulsoria", "cbo" ou "flex"
+      produto: "557 - AHO"              # filtro "Produto Saúde PME"; o vídeo só mostra este
+      vigencia_meses: "24"              # "12" ou "24"
+      coparticipacao: "as_duas"         # "com", "sem" ou "as_duas" (com e sem: 2 cotações por plano)
+      vendedor: ""                      # vazio = quem fez o login
+      planos_modo: "lista"              # "lista" (os de 'planos' já vêm marcados) ou "menor_preco"
+      planos: []                        # ex.: ["Especial Mais | Apartamento", "Executivo R1 | Apartamento"]
+
+    # Faixas em que o portal pede a idade de cada vida (no vídeo: 0 - 18).
+    faixas_idade_exata: ["0 - 18", "59+"]
+
+    # Quando o pedido diz "menor_preco" (sem número): quantos planos mais baratos cotar.
+    criterio_plano:
+      tipo: "menor_preco"
+      quantidade: 1
+
+    # Depois da última cotação de uma empresa. VALIDAR no portal.
+    navegacao:
+      proxima_empresa: "voltar_home"    # ou "nova_cotacao"
+
+    # PDF que não baixou depois de emitir: o robô NÃO reabre a página da emissão para tentar de novo
+    # (fica em "Conferir no portal", baixar à mão). Ligar só depois de confirmar no portal que reabrir
+    # aquela página não gera protocolo novo.
+    recuperar_pdf_automatico: false
+
+    # Conferências antes de emitir (o robô para se não bater).
+    conferencias:
+      aliquota_iof: "0.0238"       # 2,38%, calculado por vida (vídeo: 58,16 sobre 2.443,46)
+      tolerancia_reais: "0.05"
+
+    arquivos:
+      nome_pdf_arquivo: "SULAMERICA_{cnpj}_{protocolo}.pdf"   # arquivo morto, único
+      nome_pdf_destino: "SULAMERICA {plano_arquivo}.pdf"      # cópia na pasta do cliente
+      substituir_no_destino: true
+      # O corretor salvou "Executivo R1" como "SULAMERICA EXECUTIVO.pdf".
+      nomes_arquivo:
+        "Executivo R1": "EXECUTIVO"
+
+    # Nome usado na Newport -> nome exato da lista do portal.
+    # Só "NOTREDAME" foi visto no vídeo; os demais são exemplos a confirmar.
+    congeneres_de_para:
+      "NotreDame Intermédica": "NOTREDAME"
+      "Notre Dame": "NOTREDAME"
+      "Bradesco Saúde": "BRADESCO"      # no portal é "BRADESCO" (corretor, 06/11)
+      "Bradesco Saude": "BRADESCO"
+
+  bradesco:
+    ativa: true
+    urls:   # VALIDAR na calibragem
+      login: "https://wwwn.bradescoseguros.com.br/pnegocios2/wps/portal/portaldenegociosnovo/"
+      cotador: "https://wwwn.bradescoseguros.com.br/pnegocios/wps/myportal/portalnegocios/arealogada/saude/cotacoes/cotacao-spg"
+    # Só ensaio até a calibragem no portal real terminar: "Gerar processo" só quando o Tiago pedir.
+    # Com o ensaio conferido, troque para true (a Nova cotação passa a mostrar a Bradesco marcada).
+    emissao_liberada: true
+    # Modo de testes (Tiago, 10/11): cada pedido gera um processo novo, sem travar no registro anti-reemissão da
+    # empresa. Só na calibragem: troque para false (ou desligue em Robôs > Bradesco) antes do uso de verdade.
+    teste_repetir: true
+    tempos:
+      timeout_login_ms: 60000
+      timeout_tela_ms: 180000      # 15/11: a Cotação SPG levou 62 s para abrir (o portal ficou 71 s na busca de processos)
+      timeout_emissao_ms: 180000   # "Gerar processo" e "Calcular" do Alterar Cotação
+      timeout_download_ms: 120000  # janela "Imprimir" -> PDF
+      sair_do_portal_min: 3
+    # Padrões da Newport para o robô Bradesco = o que o corretor fez no vídeo (codegen/bradesco_mapa_video.md,
+    # Seções 5 e 6). Cada corretor muda os dele na engrenagem (Robôs > Bradesco).
+    padroes:
+      categoria: "Sócios e Diretores"
+      adesao: "compulsoria"          # ou "opcional"
+      cobertura: "top"               # ou "hospitalar"
+      mais_de_um_titular: "nao"
+      desconto_folha: "nao"
+      desconto_comissao: "nenhum"    # "2,5", "5", "7,5" ou "10"
+      sucursal: "978"                # 978 - SANTANA MERCADO
+      codigo_corretor: "438451"      # 438451 - NEWPORT CONSULTORIA E CORRETORA DE
+      acomodacao: "Quarto"
+      coparticipacao: "com"          # "com", "sem" ou "as_duas"
+      copart_percentual: "30%"
+      dental: "Sem plano dental"      # o portal pré-marca o Padrão Doc 1; o corretor do vídeo troca para este
+      identificador_com: "COM COPAY"  # digitado em "Identifique o cálculo" (sai no cabeçalho do PDF)
+      identificador_sem: "SEM COPAY"
+      email_corretora: ""            # obrigatório no portal: o corretor guarda na engrenagem
+      celular_corretora: ""
+      angariacao: "3 Primeiras Parcelas 100%"
+      corretagem: "2% vitalício a partir da 4ª parcela"
+      intermediario_papel: "corretor"
+      transferencia: "nao"
+      ramo: "OUTROS"
+    conferencias:
+      aliquota_iof: "0.0238"
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "BRADESCO_{cnpj}_{protocolo}_{plano_arquivo}.pdf"   # arquivo morto ({protocolo} = processo)
+      nome_pdf_destino: "BRADESCO {plano_arquivo}.pdf"                      # cópia na pasta do cliente
+      substituir_no_destino: true
+
+  amil:
+    ativa: true
+    urls:   # VALIDAR na calibragem
+      login: "https://vendas.amil.com.br/login"
+      home: "https://vendas.amil.com.br/"
+    # Liberada pelo Tiago em 12/11, depois do ensaio no portal real conferido (valores batendo até Revisar Cotação).
+    # "Concluir Cotação" só roda quando ele clica em Gerar; o ensaio continua parando em Revisar Cotação.
+    emissao_liberada: true
+    tempos:
+      timeout_login_ms: 60000
+      timeout_tela_ms: 60000
+      timeout_emissao_ms: 180000   # "Concluir Cotação" -> "PDF Gerado"
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3
+    # Padrões da Newport para o robô Amil = o que o corretor fez no vídeo (codegen/amil_mapa_video.md, Seção 7).
+    padroes:
+      coligacao: "nao"
+      corretor: "EDLAINE ABREU SOARES"
+      supervisor: ""                 # vazio = nenhum
+      dental_aderir: "sim"           # DENTAL BRONZE PJ PROMO marcado em Aderir
+    conferencias:
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "AMIL_{cnpj}_{protocolo}.pdf"      # arquivo morto ({protocolo} = COT)
+      nome_pdf_destino: "AMIL {plano_arquivo} {versao}.pdf"  # {versao} = nome curto da empresa
+      substituir_no_destino: true
+      nomes_arquivo:
+        "PLATINUM R1 COPART": "PLATINUM"
+        "AMIL BLACK I R1 COPART": "BLACK"
+        "AMIL S2500 R1 QP COPART": "S2500"
+
+seguranca:
+  # Arquivos do robô (PDFs em pdfs/, prints em mapa/, logs/) com mais de N dias são apagados ao abrir a
+  # tela e a cada execução. Nunca apaga estado.json, resultados.xlsx nem a pasta do cliente. 0 desliga.
+  retencao_dias: 90

@@ -1,0 +1,52 @@
+# Configuração para usar a tela e o robô contra os SIMULADORES locais (SulAmérica e Bradesco).
+# Saídas vão para saida_simulador/, separadas das reais.
+#   python -m operadoras.sulamerica.simulador        (sobe o simulador da SulAmérica)
+#   python -m operadoras.bradesco.simulador          (sobe o simulador da Bradesco)
+#   python -m operadoras.amil.simulador              (sobe o simulador da Amil)
+#   python -m app --config config_simulador.yaml     (abre a tela apontando para ele)
+
+geral:
+  pasta_saida: "saida_simulador"
+  modo_visual: false
+  lentidao_ms: 50
+  pausa_entre_pedidos_s: 1
+
+tela:
+  porta: 8601
+
+teste:
+  simulador: true   # a tela mostra "Simulador local"
+  cofre: memoria    # login de treino só na memória (o simulador só aceita o login falso dele)
+
+operadoras:
+  sulamerica:
+    urls:
+      login: "http://127.0.0.1:8765/SaudeCotador/LoginGeral.aspx"
+    tempos:
+      timeout_login_ms: 15000
+      timeout_tela_ms: 20000
+      timeout_emissao_ms: 30000
+    arquivos:
+      nomes_arquivo:
+        "Executivo R1": "EXECUTIVO"
+  bradesco:
+    urls:
+      login: "http://127.0.0.1:8775/pnegocios2/wps/portal/portaldenegociosnovo/"
+      cotador: "http://127.0.0.1:8775/pnegocios/wps/myportal/portalnegocios/arealogada/saude/cotacoes/cotacao-spg"
+    emissao_liberada: true     # no simulador pode "gerar processo" (nada sai de verdade)
+    tempos:
+      timeout_login_ms: 15000
+      timeout_tela_ms: 20000
+      timeout_emissao_ms: 30000
+    padroes:
+      email_corretora: "corretora.treino@simulador.local"
+
+  amil:
+    urls:
+      login: "http://127.0.0.1:8785/login"
+      home: "http://127.0.0.1:8785/"
+    emissao_liberada: true     # no simulador pode concluir cotação (nada sai de verdade)
+    tempos:
+      timeout_login_ms: 15000
+      timeout_tela_ms: 20000
+      timeout_emissao_ms: 30000
