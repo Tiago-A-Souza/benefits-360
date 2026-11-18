@@ -271,45 +271,64 @@ export function totalCotacoes(form, operadoras) {
 }
 
 /**
- * Valor do robô → centavos inteiros.
- * Não multiplica float (* 100) nem passa por texto "R$".
- * O RPA grava REAL (reais). Inteiro JSON = reais inteiros. `{ centavos }` ou
- * `comoCentavos` = já é centavo.
+ * Valor do robô → `{ ok, centavos }` ou `{ ok: false, erro }`.
+ * Não multiplica float (* 100) nem aceita texto "R$".
+ * O RPA grava REAL e o JSON da API serializa **número** (float), não string Decimal.
+ * Inteiro JSON = reais inteiros. `{ centavos }` / `comoCentavos` = já é centavo.
+ * Mais de duas casas (5.816, 0.1+0.2) → erro, nunca truncamento silencioso.
  */
 export function valorRoboParaCentavos(valor, { comoCentavos = false } = {}) {
-  if (valor === null || valor === undefined || valor === "") return null;
-  if (typeof valor === "object" && valor && Number.isInteger(valor.centavos)) {
-    return valor.centavos;
+  if (valor === null || valor === undefined) {
+    return { ok: false, erro: "valor ausente" };
+  }
+  if (typeof valor === "object") {
+    if (valor && Number.isInteger(valor.centavos)) return { ok: true, centavos: valor.centavos };
+    return { ok: false, erro: "objeto sem centavos inteiros" };
   }
   if (typeof valor === "number") {
-    if (!Number.isFinite(valor)) return null;
-    if (comoCentavos) return Number.isInteger(valor) ? valor : null;
-    if (Number.isInteger(valor)) return valor * 100;
-    const s = valor.toString();
-    if (/e/i.test(s)) return null;
-    const m = s.match(/^(-)?(\d+)\.(\d+)$/);
-    if (!m) return null;
-    const neg = m[1] ? -1 : 1;
-    const reais = parseInt(m[2], 10);
-    const cents = parseInt((m[3] + "00").slice(0, 2), 10);
-    return neg * (reais * 100 + cents);
+    if (!Number.isFinite(valor)) return { ok: false, erro: "número inválido" };
+    if (valor < 0) return { ok: false, erro: "valor negativo" };
+    if (comoCentavos) {
+      if (!Number.isInteger(valor)) return { ok: false, erro: "centavos devem ser inteiros" };
+      return { ok: true, centavos: valor };
+    }
+    if (Number.isInteger(valor)) return { ok: true, centavos: valor * 100 };
+    if (/e/i.test(valor.toString())) return { ok: false, erro: "notação científica" };
+    return partesDecimais(valor.toString());
   }
   if (typeof valor === "string") {
-    const m = valor.trim().match(/^(-)?(\d+)(?:[.,](\d{1,2}))?$/);
-    if (!m) return null;
-    const neg = m[1] ? -1 : 1;
-    const reais = parseInt(m[2], 10);
-    const cents = parseInt((m[3] || "00").padEnd(2, "0").slice(0, 2), 10);
-    return neg * (reais * 100 + cents);
+    const t = valor.trim();
+    if (!t) return { ok: false, erro: "valor ausente" };
+    if (/[R$\s]/.test(t) || (t.includes(".") && t.includes(","))) {
+      return { ok: false, erro: "não aceite texto monetário formatado" };
+    }
+    if (comoCentavos) {
+      if (!/^\d+$/.test(t)) return { ok: false, erro: "centavos devem ser inteiros" };
+      return { ok: true, centavos: parseInt(t, 10) };
+    }
+    const canon = t.includes(",") && !t.includes(".") ? t.replace(",", ".") : t;
+    return partesDecimais(canon);
   }
-  return null;
+  return { ok: false, erro: "tipo não suportado" };
 }
 
-/** Exibição a partir de centavos inteiros (money.js: trunc, sem float). */
+function partesDecimais(s) {
+  const m = s.match(/^(\d+)(?:\.(\d+))?$/);
+  if (!m) return { ok: false, erro: "formato decimal inválido" };
+  const frac = m[2] || "";
+  if (frac.length > 2 && !/^0+$/.test(frac.slice(2))) {
+    return { ok: false, erro: "mais de duas casas decimais" };
+  }
+  const reais = parseInt(m[1], 10);
+  const cents = parseInt((frac + "00").slice(0, 2), 10);
+  return { ok: true, centavos: reais * 100 + cents };
+}
+
+/** Exibição a partir de centavos inteiros. Ausente ou inválido → "—", nunca R$ 0,00. */
 export function formatarValorRobo(valor, opts = {}) {
-  const c = valorRoboParaCentavos(valor, opts);
-  if (c === null) return "—";
-  return formatarCentavos(c);
+  const r = valorRoboParaCentavos(valor, opts);
+  if (!r.ok) return "—";
+  return formatarCentavos(r.centavos);
 }
 
 function formatarCentavos(centavos) {

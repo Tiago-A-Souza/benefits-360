@@ -15,4 +15,11 @@ describe("nativaLigada", () => {
     vi.stubGlobal("window", { location: { search: "?cotacoes-nativa=1", hash: "" } });
     expect(nativaLigada()).toBe(true);
   });
+
+  it("hash #/nova sozinho não liga nativa (Benefits não usa hash)", () => {
+    vi.stubGlobal("window", { location: { search: "", hash: "#/nova" } });
+    expect(nativaLigada()).toBe(false);
+    vi.stubGlobal("window", { location: { search: "", hash: "#/andamento/12" } });
+    expect(nativaLigada()).toBe(false);
+  });
 });

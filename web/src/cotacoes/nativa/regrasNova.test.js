@@ -114,23 +114,55 @@ describe("regrasNova — formulário a partir da API", () => {
 });
 
 describe("regrasNova — dinheiro", () => {
-  it("converte REAL do robô para centavos inteiros sem * 100 em float", () => {
-    expect(valorRoboParaCentavos(100)).toBe(10000);
-    expect(valorRoboParaCentavos(1234.56)).toBe(123456);
-    expect(valorRoboParaCentavos("1234.56")).toBe(123456);
-    expect(valorRoboParaCentavos(null)).toBe(null);
+  it("não perde centavo nos casos clássicos de REAL", () => {
+    expect(valorRoboParaCentavos(58.16)).toEqual({ ok: true, centavos: 5816 });
+    expect(valorRoboParaCentavos(58.15)).toEqual({ ok: true, centavos: 5815 });
+    expect(valorRoboParaCentavos(1234.5)).toEqual({ ok: true, centavos: 123450 });
+    expect(valorRoboParaCentavos(0.07)).toEqual({ ok: true, centavos: 7 });
+    expect(valorRoboParaCentavos(52190.0)).toEqual({ ok: true, centavos: 5219000 });
+    expect(valorRoboParaCentavos("52190.00")).toEqual({ ok: true, centavos: 5219000 });
+    expect(valorRoboParaCentavos("58.16")).toEqual({ ok: true, centavos: 5816 });
+    expect(valorRoboParaCentavos("0.07")).toEqual({ ok: true, centavos: 7 });
+    expect(formatarValorRobo(58.16)).toBe("R$\u00a058,16");
+    expect(formatarValorRobo(58.15)).toBe("R$\u00a058,15");
+    expect(formatarValorRobo(1234.5)).toBe("R$\u00a01.234,50");
+    expect(formatarValorRobo(0.07)).toBe("R$\u00a00,07");
+    expect(formatarValorRobo(52190.0)).toBe("R$\u00a052.190,00");
+  });
+
+  it("recusa 0.1+0.2 (lixo de float) e 5.816 (3 casas / R$ 5.816 ambíguo)", () => {
+    const soma = 0.1 + 0.2;
+    expect(soma).not.toBe(0.3);
+    expect(valorRoboParaCentavos(soma)).toMatchObject({ ok: false, erro: "mais de duas casas decimais" });
+    expect(formatarValorRobo(soma)).toBe("—");
+    expect(valorRoboParaCentavos(5.816)).toMatchObject({ ok: false, erro: "mais de duas casas decimais" });
+    expect(valorRoboParaCentavos("5.816")).toMatchObject({ ok: false, erro: "mais de duas casas decimais" });
+    expect(valorRoboParaCentavos("5,816")).toMatchObject({ ok: false });
+    expect(formatarValorRobo(5.816)).toBe("—");
+    expect(formatarValorRobo(5.816)).not.toContain("5.816");
+    expect(formatarValorRobo(5.816)).not.toBe("R$\u00a058,16");
+    expect(formatarValorRobo(5.816)).not.toBe("R$\u00a05,81");
+    expect(formatarValorRobo(5.816)).not.toBe("R$\u00a05.816,00");
+  });
+
+  it("string, número e nulo têm erro claro, nunca zero silencioso", () => {
+    expect(valorRoboParaCentavos(null)).toEqual({ ok: false, erro: "valor ausente" });
+    expect(valorRoboParaCentavos(undefined)).toEqual({ ok: false, erro: "valor ausente" });
+    expect(valorRoboParaCentavos("")).toEqual({ ok: false, erro: "valor ausente" });
+    expect(valorRoboParaCentavos("R$ 58,16")).toMatchObject({ ok: false, erro: "não aceite texto monetário formatado" });
+    expect(valorRoboParaCentavos("abc")).toMatchObject({ ok: false });
+    expect(valorRoboParaCentavos({ total: 10 })).toMatchObject({ ok: false, erro: "objeto sem centavos inteiros" });
+    expect(formatarValorRobo(null)).toBe("—");
+    expect(formatarValorRobo("R$ 58,16")).toBe("—");
+    expect(formatarValorRobo(null)).not.toBe("R$\u00a00,00");
+    expect(valorRoboParaCentavos("1234.56")).toEqual({ ok: true, centavos: 123456 });
+    expect(valorRoboParaCentavos(100)).toEqual({ ok: true, centavos: 10000 });
   });
 
   it("centavos explícitos continuam inteiros", () => {
-    expect(valorRoboParaCentavos(123456, { comoCentavos: true })).toBe(123456);
-    expect(valorRoboParaCentavos({ centavos: 50 })).toBe(50);
-  });
-
-  it("formata a partir dos centavos, sem float", () => {
-    expect(formatarValorRobo("1234.56")).toBe("R$\u00a01.234,56");
-    expect(formatarValorRobo(100)).toBe("R$\u00a0100,00");
+    expect(valorRoboParaCentavos(123456, { comoCentavos: true })).toEqual({ ok: true, centavos: 123456 });
+    expect(valorRoboParaCentavos({ centavos: 50 })).toEqual({ ok: true, centavos: 50 });
     expect(formatarValorRobo({ centavos: 50 })).toBe("R$\u00a00,50");
-    expect(formatarValorRobo(null)).toBe("—");
   });
 });
 
