@@ -13,6 +13,7 @@ from newport_app.models.snapshot import (
     EntregavelApresentacao,
     SnapshotCalculo,
 )
+from newport_app.auth.contexto import id_dono, params_visivel
 from newport_app.repository.migration import migrar_estudos_db
 
 
@@ -31,17 +32,17 @@ class SnapshotRepository:
             conn.execute(
                 """
                 UPDATE snapshots SET estado='superado', superado_em=?
-                WHERE estudo_id=? AND estado='candidato'
+                WHERE estudo_id=? AND estado='candidato' AND (usuario_id = ? OR ? = 1)
                 """,
-                (datetime.now(timezone.utc).isoformat(), snap.estudo_id),
+                (datetime.now(timezone.utc).isoformat(), snap.estudo_id, *params_visivel()),
             )
             conn.execute(
                 """
                 INSERT INTO snapshots (
                     id, estudo_id, estado, hash_sha256, payload,
                     compiler_versao, motor_versao, policy_set_versao,
-                    snapshot_versao, tem_bloqueio, criado_em, superado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    snapshot_versao, tem_bloqueio, criado_em, superado_em, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     snap.id,
@@ -56,13 +57,15 @@ class SnapshotRepository:
                     1 if snap.tem_bloqueio else 0,
                     snap.criado_em.isoformat(),
                     snap.superado_em.isoformat() if snap.superado_em else None,
+                    id_dono(),
                 ),
             )
 
     def obter_snapshot(self, snapshot_id: str) -> SnapshotCalculo | None:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT * FROM snapshots WHERE id=?", (snapshot_id,)
+                "SELECT * FROM snapshots WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (snapshot_id, *params_visivel()),
             ).fetchone()
         if row is None:
             return None
@@ -73,10 +76,10 @@ class SnapshotRepository:
             row = conn.execute(
                 """
                 SELECT * FROM snapshots
-                WHERE estudo_id=? AND estado='candidato'
+                WHERE estudo_id=? AND estado='candidato' AND (usuario_id = ? OR ? = 1)
                 ORDER BY criado_em DESC LIMIT 1
                 """,
-                (estudo_id,),
+                (estudo_id, *params_visivel()),
             ).fetchone()
         return self._row_snapshot(row) if row else None
 
@@ -93,17 +96,18 @@ class SnapshotRepository:
                 SELECT s.* FROM snapshots s
                 JOIN aprovacoes a ON a.snapshot_id = s.id
                 WHERE s.estudo_id=? AND s.estado='aprovado' AND a.invalidada_em IS NULL
+                  AND (s.usuario_id = ? OR ? = 1)
                 ORDER BY a.aprovado_em DESC, s.id DESC LIMIT 1
                 """,
-                (estudo_id,),
+                (estudo_id, *params_visivel()),
             ).fetchone()
         return self._row_snapshot(row) if row else None
 
     def listar_snapshots(self, estudo_id: str) -> list[SnapshotCalculo]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM snapshots WHERE estudo_id=? ORDER BY criado_em DESC",
-                (estudo_id,),
+                "SELECT * FROM snapshots WHERE estudo_id=? AND (usuario_id = ? OR ? = 1) ORDER BY criado_em DESC",
+                (estudo_id, *params_visivel()),
             ).fetchall()
         return [self._row_snapshot(r) for r in rows]
 
@@ -114,8 +118,9 @@ class SnapshotRepository:
                 SELECT COUNT(*) FROM aprovacoes a
                 JOIN snapshots s ON s.id = a.snapshot_id
                 WHERE s.estudo_id=? AND s.estado='aprovado' AND a.invalidada_em IS NULL
+                  AND (s.usuario_id = ? OR ? = 1)
                 """,
-                (estudo_id,),
+                (estudo_id, *params_visivel()),
             ).fetchone()
         return int(row[0]) if row else 0
 
@@ -125,10 +130,10 @@ class SnapshotRepository:
                 """
                 SELECT a.* FROM aprovacoes a
                 JOIN snapshots s ON s.id = a.snapshot_id
-                WHERE s.estudo_id=?
+                WHERE s.estudo_id=? AND (s.usuario_id = ? OR ? = 1)
                 ORDER BY a.aprovado_em DESC
                 """,
-                (estudo_id,),
+                (estudo_id, *params_visivel()),
             ).fetchall()
         return [self._row_aprovacao(r) for r in rows]
 
@@ -140,12 +145,12 @@ class SnapshotRepository:
                 """
                 SELECT a.snapshot_id FROM aprovacoes a
                 JOIN snapshots s ON s.id = a.snapshot_id
-                WHERE s.estudo_id=?
+                WHERE s.estudo_id=? AND (s.usuario_id = ? OR ? = 1)
                   AND (s.estado='superado' OR a.invalidada_em IS NOT NULL)
                 ORDER BY COALESCE(a.invalidada_em, s.superado_em, a.aprovado_em) DESC
                 LIMIT 1
                 """,
-                (estudo_id,),
+                (estudo_id, *params_visivel()),
             ).fetchone()
         if row is None:
             return None
@@ -165,12 +170,12 @@ class SnapshotRepository:
         """Tira de vigor aprovações vivas do estudo, sem apagar o registro histórico."""
         agora = datetime.now(timezone.utc).isoformat()
         with self._connect() as conn:
-            params: list[str] = [agora, motivo, estudo_id]
+            params: list = [agora, motivo, estudo_id, *params_visivel(), *params_visivel()]
             sql = """
                 UPDATE aprovacoes SET invalidada_em=?, invalidada_motivo=?
                 WHERE snapshot_id IN (
-                    SELECT id FROM snapshots WHERE estudo_id=? AND estado='aprovado'
-                ) AND invalidada_em IS NULL
+                    SELECT id FROM snapshots WHERE estudo_id=? AND estado='aprovado' AND (usuario_id = ? OR ? = 1)
+                ) AND invalidada_em IS NULL AND (usuario_id = ? OR ? = 1)
             """
             if exceto_snapshot_id:
                 sql += " AND snapshot_id != ?"
@@ -178,9 +183,9 @@ class SnapshotRepository:
             conn.execute(sql, params)
             sql_snap = """
                 UPDATE snapshots SET estado='superado', superado_em=?
-                WHERE estudo_id=? AND estado='aprovado'
+                WHERE estudo_id=? AND estado='aprovado' AND (usuario_id = ? OR ? = 1)
             """
-            params_snap: list[str] = [agora, estudo_id]
+            params_snap: list = [agora, estudo_id, *params_visivel()]
             if exceto_snapshot_id:
                 sql_snap += " AND id != ?"
                 params_snap.append(exceto_snapshot_id)
@@ -189,14 +194,14 @@ class SnapshotRepository:
                 conn.execute(
                     """
                     UPDATE entregaveis SET invalidado=1
-                    WHERE estudo_id=? AND snapshot_id != ?
+                    WHERE estudo_id=? AND snapshot_id != ? AND (usuario_id = ? OR ? = 1)
                     """,
-                    (estudo_id, exceto_snapshot_id),
+                    (estudo_id, exceto_snapshot_id, *params_visivel()),
                 )
             else:
                 conn.execute(
-                    "UPDATE entregaveis SET invalidado=1 WHERE estudo_id=?",
-                    (estudo_id,),
+                    "UPDATE entregaveis SET invalidado=1 WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)",
+                    (estudo_id, *params_visivel()),
                 )
 
     def marcar_superado(self, snapshot_id: str) -> None:
@@ -204,16 +209,16 @@ class SnapshotRepository:
             conn.execute(
                 """
                 UPDATE snapshots SET estado='superado', superado_em=?
-                WHERE id=?
+                WHERE id=? AND (usuario_id = ? OR ? = 1)
                 """,
-                (datetime.now(timezone.utc).isoformat(), snapshot_id),
+                (datetime.now(timezone.utc).isoformat(), snapshot_id, *params_visivel()),
             )
 
     def marcar_aprovado(self, snapshot_id: str) -> None:
         with self._connect() as conn:
             conn.execute(
-                "UPDATE snapshots SET estado='aprovado' WHERE id=?",
-                (snapshot_id,),
+                "UPDATE snapshots SET estado='aprovado' WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (snapshot_id, *params_visivel()),
             )
 
     def salvar_aprovacao(self, aprov: AprovacaoSnapshot) -> None:
@@ -222,8 +227,9 @@ class SnapshotRepository:
                 """
                 INSERT INTO aprovacoes (
                     id, snapshot_id, revisor_nome, aprovado_em,
-                    justificativa, auto_aprovacao, invalidada_em, invalidada_motivo
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    justificativa, auto_aprovacao, invalidada_em, invalidada_motivo,
+                    usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     aprov.id,
@@ -234,13 +240,15 @@ class SnapshotRepository:
                     1 if aprov.auto_aprovacao else 0,
                     aprov.invalidada_em.isoformat() if aprov.invalidada_em else None,
                     aprov.invalidada_motivo,
+                    id_dono(),
                 ),
             )
 
     def obter_aprovacao(self, snapshot_id: str) -> AprovacaoSnapshot | None:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT * FROM aprovacoes WHERE snapshot_id=?", (snapshot_id,)
+                "SELECT * FROM aprovacoes WHERE snapshot_id=? AND (usuario_id = ? OR ? = 1)",
+                (snapshot_id, *params_visivel()),
             ).fetchone()
         if row is None:
             return None
@@ -267,21 +275,21 @@ class SnapshotRepository:
                 """
                 UPDATE aprovacoes SET invalidada_em=?, invalidada_motivo=?
                 WHERE snapshot_id IN (
-                    SELECT id FROM snapshots WHERE estudo_id=?
-                ) AND invalidada_em IS NULL
+                    SELECT id FROM snapshots WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)
+                ) AND invalidada_em IS NULL AND (usuario_id = ? OR ? = 1)
                 """,
-                (agora, motivo, estudo_id),
+                (agora, motivo, estudo_id, *params_visivel(), *params_visivel()),
             )
             conn.execute(
                 """
                 UPDATE snapshots SET estado='superado', superado_em=?
-                WHERE estudo_id=? AND estado IN ('candidato', 'aprovado')
+                WHERE estudo_id=? AND estado IN ('candidato', 'aprovado') AND (usuario_id = ? OR ? = 1)
                 """,
-                (agora, estudo_id),
+                (agora, estudo_id, *params_visivel()),
             )
             conn.execute(
-                "UPDATE entregaveis SET invalidado=1 WHERE estudo_id=?",
-                (estudo_id,),
+                "UPDATE entregaveis SET invalidado=1 WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)",
+                (estudo_id, *params_visivel()),
             )
 
     def salvar_entregavel(self, ent: EntregavelApresentacao) -> None:
@@ -291,8 +299,8 @@ class SnapshotRepository:
                 INSERT INTO entregaveis (
                     id, estudo_id, snapshot_id, aprovacao_id, modo,
                     propostas_selecionadas, renderer_versao, hash_conteudo,
-                    caminho_arquivo, invalidado, gerado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    caminho_arquivo, invalidado, gerado_em, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ent.id,
@@ -306,14 +314,15 @@ class SnapshotRepository:
                     ent.caminho_arquivo,
                     1 if ent.invalidado else 0,
                     ent.gerado_em.isoformat(),
+                    id_dono(),
                 ),
             )
 
     def listar_entregaveis(self, estudo_id: str) -> list[EntregavelApresentacao]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM entregaveis WHERE estudo_id=? ORDER BY gerado_em DESC",
-                (estudo_id,),
+                "SELECT * FROM entregaveis WHERE estudo_id=? AND (usuario_id = ? OR ? = 1) ORDER BY gerado_em DESC",
+                (estudo_id, *params_visivel()),
             ).fetchall()
         return [self._row_entregavel(r) for r in rows]
 

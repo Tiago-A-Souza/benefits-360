@@ -687,7 +687,8 @@
       "extracao_id": null,
       "extracao_opcao_id": null,
       "validade_oficial": null,
-      "observacoes": null
+      "observacoes": null,
+      "totais_impressos_nao_constam": false
     }
   ],
   "regimes_copart": [

@@ -1,6 +1,22 @@
+import {
+  avisarNaoAutorizado,
+  obterAccessToken,
+  sairSessao,
+} from "./login/sessao";
+
 const API = "/api";
-// TODO(fase 3B): anexar Authorization: Bearer <access_token> do Supabase em cada pedido.
-// O backend ainda não valida o token.
+
+async function apiFetch(url, options = {}) {
+  const headers = new Headers(options.headers || undefined);
+  const token = await obterAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await globalThis.fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    void sairSessao();
+    avisarNaoAutorizado();
+  }
+  return res;
+}
 
 function montarErroApi(res, body, mensagemPadrao) {
   const detail = body?.detail;
@@ -67,7 +83,7 @@ export function mensagemErroOperador(err, mensagemPadrao) {
 
 export async function registrarDiagnostico({ estudoId, etapa, evento, detalhe } = {}) {
   try {
-    await fetch(`${API}/diagnostico`, {
+    await apiFetch(`${API}/diagnostico`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -83,23 +99,23 @@ export async function registrarDiagnostico({ estudoId, etapa, evento, detalhe } 
 }
 
 export async function obterConfig() {
-  const res = await fetch(`${API}/config`);
+  const res = await apiFetch(`${API}/config`);
   if (!res.ok) throw new Error("Não foi possível carregar a configuração.");
   return res.json();
 }
 
 export async function obterEstudo(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}`);
   return tratarResposta(res, "Não foi possível carregar o estudo.");
 }
 
 export async function obterRascunho(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/rascunho`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/rascunho`);
   return tratarResposta(res, "Não foi possível carregar o rascunho.");
 }
 
 export async function salvarRascunho(estudoId, rascunho) {
-  const res = await fetch(`${API}/estudos/${estudoId}`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rascunho),
@@ -108,19 +124,19 @@ export async function salvarRascunho(estudoId, rascunho) {
 }
 
 export async function excluirOpcaoPropostaManual(estudoId, opcaoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/opcoes-proposta/${opcaoId}`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/opcoes-proposta/${opcaoId}`, {
     method: "DELETE",
   });
   return tratarResposta(res, "Não foi possível excluir a cotação.");
 }
 
 export async function obterPendencias(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/pendencias`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/pendencias`);
   return tratarResposta(res, "Não foi possível verificar pendências.");
 }
 
 export async function calcularEstudo(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/calcular`, { method: "POST" });
+  const res = await apiFetch(`${API}/estudos/${estudoId}/calcular`, { method: "POST" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     if (body.detail?.erros) {
@@ -136,7 +152,7 @@ export async function calcularEstudo(estudoId) {
 export async function confirmarComparativo(estudoId, hashComparativo, opcaoIds) {
   const body = { opcao_ids: opcaoIds };
   if (hashComparativo) body.hash_comparativo = hashComparativo;
-  const res = await fetch(`${API}/estudos/${estudoId}/comparativo/confirmar`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/comparativo/confirmar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -145,19 +161,19 @@ export async function confirmarComparativo(estudoId, hashComparativo, opcaoIds) 
 }
 
 export async function obterRedeSelecao(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/rede-selecao`);
   return tratarResposta(res, "Não foi possível carregar a rede credenciada.");
 }
 
 /** RPA Cotações — estado da tela local (via API Benefits; urllib no servidor). */
 export async function obterEstadoRpaCotacoes() {
-  const res = await fetch(`${API}/rpa-cotacoes/estado`);
+  const res = await apiFetch(`${API}/rpa-cotacoes/estado`);
   return tratarResposta(res, "Não foi possível consultar o robô de cotações.");
 }
 
 /** Simular Rede — consultas somente leitura, fora de qualquer estudo. */
 export async function obterOpcoesSimulacaoRede() {
-  const res = await fetch(`${API}/simular-rede/opcoes`);
+  const res = await apiFetch(`${API}/simular-rede/opcoes`);
   return tratarResposta(res, "Não foi possível carregar a base de rede.");
 }
 
@@ -175,19 +191,19 @@ export async function consultarRedePorHospital({ termo, operadoras = [], ...filt
   const p = paramsSimulacao(filtros);
   p.append("q", termo);
   operadoras.forEach((o) => p.append("operadoras", o));
-  const res = await fetch(`${API}/simular-rede/por-hospital?${p}`);
+  const res = await apiFetch(`${API}/simular-rede/por-hospital?${p}`);
   return tratarResposta(res, "Não foi possível consultar a rede por hospital.");
 }
 
 export async function consultarRedePorPlano({ plano, ...filtros }) {
   const p = paramsSimulacao(filtros);
   p.set("plano", plano);
-  const res = await fetch(`${API}/simular-rede/por-plano?${p}`);
+  const res = await apiFetch(`${API}/simular-rede/por-plano?${p}`);
   return tratarResposta(res, "Não foi possível consultar a rede por plano.");
 }
 
 export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
-  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/rede-selecao`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ excluidos, revisada }),
@@ -198,7 +214,7 @@ export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
 /** Inclusão manual (etapa 5): a busca só lê; incluir/remover gravam em selecao_rede.incluidos. */
 export async function buscarRedeInclusao(estudoId, termo) {
   const p = new URLSearchParams({ q: termo });
-  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/busca?${p}`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/rede-selecao/busca?${p}`);
   return tratarResposta(res, "Não foi possível buscar na base de rede.");
 }
 
@@ -211,7 +227,7 @@ function corpoInclusao(item) {
 }
 
 export async function incluirRedeManual(estudoId, item) {
-  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: corpoInclusao(item),
@@ -220,7 +236,7 @@ export async function incluirRedeManual(estudoId, item) {
 }
 
 export async function removerRedeManual(estudoId, item) {
-  const res = await fetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos/remover`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/rede-selecao/incluidos/remover`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: corpoInclusao(item),
@@ -228,7 +244,7 @@ export async function removerRedeManual(estudoId, item) {
   return tratarResposta(res, "Não foi possível remover a inclusão.");
 }
 export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
-  const res = await fetch(`${API}/estudos/${estudoId}/comparativo/selecao-apresentacao`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/comparativo/selecao-apresentacao`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ opcao_ids: opcaoIds }),
@@ -237,12 +253,12 @@ export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
 }
 
 export async function listarEstudos() {
-  const res = await fetch(`${API}/estudos`);
+  const res = await apiFetch(`${API}/estudos`);
   return tratarResposta(res, "Não foi possível listar estudos.");
 }
 
 export async function criarEstudo({ titulo, nome_empresa, id, formato } = {}) {
-  const res = await fetch(`${API}/estudos`, {
+  const res = await apiFetch(`${API}/estudos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -263,7 +279,7 @@ export async function importarSiscor(estudoId, arquivo, { modo, titulo } = {}) {
   if (titulo) params.set("titulo", titulo);
   const qs = params.toString();
   const url = `${API}/estudos/${estudoId}/importar-siscor${qs ? `?${qs}` : ""}`;
-  const res = await fetch(url, { method: "POST", body: form });
+  const res = await apiFetch(url, { method: "POST", body: form });
   if (res.status === 409) {
     const body = await res.json();
     const err = new Error(body.detail?.mensagem || "Reimportação requer decisão.");
@@ -281,12 +297,12 @@ export async function importarSiscor(estudoId, arquivo, { modo, titulo } = {}) {
 }
 
 export async function obterConferenciaSiscor(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/conferencia-siscor`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/conferencia-siscor`);
   return tratarResposta(res, "Não foi possível carregar a conferência.");
 }
 
 export async function confirmarLoteSiscor(estudoId) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/conferencia-siscor/confirmar-lote`,
     { method: "POST" }
   );
@@ -294,7 +310,7 @@ export async function confirmarLoteSiscor(estudoId) {
 }
 
 export async function atualizarLinhaSiscor(estudoId, linhaId, patch) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/conferencia-siscor/linhas/${linhaId}`,
     {
       method: "PATCH",
@@ -306,19 +322,19 @@ export async function atualizarLinhaSiscor(estudoId, linhaId, patch) {
 }
 
 export async function obterResumoPlanoAtual(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/resumo-plano-atual`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/resumo-plano-atual`);
   return tratarResposta(res, "Não foi possível carregar o resumo do plano atual.");
 }
 
 export async function obterMatrizEstimativa(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/estimativa-opcao-subgrupo`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/estimativa-opcao-subgrupo`);
   return tratarResposta(res, "Não foi possível carregar a estimativa por plano vigente.");
 }
 
 export async function obterSugestaoReajustePme(estudoId, dataReferenciaIdade) {
   const params = new URLSearchParams();
   params.set("data_referencia_idade", dataReferenciaIdade || "");
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/sugestao-reajuste-pme?${params.toString()}`
   );
   return tratarResposta(res, "Não foi possível carregar a sugestão de reajuste.");
@@ -327,7 +343,7 @@ export async function obterSugestaoReajustePme(estudoId, dataReferenciaIdade) {
 export async function importarCotacaoPdf(estudoId, arquivo) {
   const form = new FormData();
   form.append("arquivo", arquivo);
-  const res = await fetch(`${API}/estudos/${estudoId}/importar-cotacao-pdf`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/importar-cotacao-pdf`, {
     method: "POST",
     body: form,
   });
@@ -335,17 +351,17 @@ export async function importarCotacaoPdf(estudoId, arquivo) {
 }
 
 export async function listarExtracoesCotacao(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/extracao-cotacao`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/extracao-cotacao`);
   return tratarResposta(res, "Não foi possível listar extrações.");
 }
 
 export async function obterExtracaoCotacao(estudoId, extracaoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}`);
   return tratarResposta(res, "Não foi possível carregar a extração.");
 }
 
 export async function estimarPropostasExtracao(estudoId, extracaoId, quantidadesPorFaixa) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/estimar`,
     {
       method: "POST",
@@ -357,7 +373,7 @@ export async function estimarPropostasExtracao(estudoId, extracaoId, quantidades
 }
 
 export async function atualizarCampoExtracao(estudoId, extracaoId, campoId, patch) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/campos/${campoId}`,
     {
       method: "PATCH",
@@ -369,7 +385,7 @@ export async function atualizarCampoExtracao(estudoId, extracaoId, campoId, patc
 }
 
 export async function excluirOpcaoExtracao(estudoId, extracaoId, opcaoId) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/opcoes/${opcaoId}/excluir`,
     { method: "POST" }
   );
@@ -379,7 +395,7 @@ export async function excluirOpcaoExtracao(estudoId, extracaoId, opcaoId) {
 export async function selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, selecionada) {
   let res;
   try {
-    res = await fetch(
+    res = await apiFetch(
       `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/opcoes/${opcaoId}/selecionar`,
       {
         method: "POST",
@@ -396,7 +412,7 @@ export async function selecionarOpcaoExtracao(estudoId, extracaoId, opcaoId, sel
 }
 
 export async function obterSelecaoPorGrupo(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/selecao-planos-grupo`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/selecao-planos-grupo`);
   return tratarResposta(res, "Não foi possível carregar a seleção por grupo.");
 }
 
@@ -404,7 +420,7 @@ export async function salvarSelecaoPorGrupo(
   estudoId,
   { subgrupoId, opcaoIds, confirmarRemocoes = false }
 ) {
-  const res = await fetch(`${API}/estudos/${estudoId}/selecao-planos-grupo`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/selecao-planos-grupo`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -429,7 +445,7 @@ export async function salvarSelecaoPorGrupo(
 }
 
 export async function confirmarLoteExtracao(estudoId, extracaoId) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/confirmar-lote`,
     { method: "POST" }
   );
@@ -441,7 +457,7 @@ export async function aplicarExtracaoCotacao(
   extracaoId,
   { confirmarRemocoes = false, subgrupoId = null } = {}
 ) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/aplicar`,
     {
       method: "POST",
@@ -472,7 +488,7 @@ export async function aplicarExtracaoCotacao(
 }
 
 export async function removerExtracaoCotacao(estudoId, extracaoId) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}`,
     { method: "DELETE" }
   );
@@ -480,7 +496,7 @@ export async function removerExtracaoCotacao(estudoId, extracaoId) {
 }
 
 export async function descartarExtracaoCotacao(estudoId, extracaoId, motivo) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/descartar`,
     {
       method: "POST",
@@ -492,7 +508,7 @@ export async function descartarExtracaoCotacao(estudoId, extracaoId, motivo) {
 }
 
 export async function reverterDescarteExtracaoCotacao(estudoId, extracaoId) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/extracao-cotacao/${extracaoId}/reverter-descarte`,
     { method: "POST" }
   );
@@ -505,7 +521,7 @@ export function urlPdfCotacao(estudoId, documentoId) {
 
 /** Carrega o PDF como blob URL — renderiza inline sem popup de download. */
 export async function carregarPdfCotacaoBlob(estudoId, documentoId) {
-  const res = await fetch(urlPdfCotacao(estudoId, documentoId));
+  const res = await apiFetch(urlPdfCotacao(estudoId, documentoId));
   if (!res.ok) {
     let detalhe = "Não foi possível carregar o PDF.";
     try {
@@ -521,6 +537,27 @@ export async function carregarPdfCotacaoBlob(estudoId, documentoId) {
   return URL.createObjectURL(blob);
 }
 
+export async function abrirEntregavelHtml(estudoId, entregavelId) {
+  const res = await apiFetch(
+    `${API}/estudos/${estudoId}/entregaveis/${entregavelId}/html`
+  );
+  if (!res.ok) {
+    let detalhe = "Não foi possível abrir o HTML.";
+    try {
+      const body = await res.json();
+      if (typeof body.detail === "string") detalhe = body.detail;
+    } catch {
+      /* resposta não-JSON */
+    }
+    throw new Error(detalhe);
+  }
+  const blob = await res.blob();
+  if (!blob.size) throw new Error("O arquivo HTML está vazio ou indisponível.");
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener,noreferrer");
+  return url;
+}
+
 export function abrirPdfCotacao(estudoId, documentoId) {
   carregarPdfCotacaoBlob(estudoId, documentoId)
     .then((blobUrl) => {
@@ -532,22 +569,22 @@ export function abrirPdfCotacao(estudoId, documentoId) {
 }
 
 export async function gerarSnapshot(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/snapshot`, { method: "POST" });
+  const res = await apiFetch(`${API}/estudos/${estudoId}/snapshot`, { method: "POST" });
   return tratarResposta(res, "Não foi possível gerar o snapshot.");
 }
 
 export async function listarSnapshots(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/snapshots`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/snapshots`);
   return tratarResposta(res, "Não foi possível listar snapshots.");
 }
 
 export async function obterSnapshot(estudoId, snapshotId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}`);
   return tratarResposta(res, "Não foi possível carregar o snapshot.");
 }
 
 export async function obterComparativoSnapshot(estudoId, snapshotId) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/snapshots/${snapshotId}/comparativo`
   );
   return tratarResposta(
@@ -557,7 +594,7 @@ export async function obterComparativoSnapshot(estudoId, snapshotId) {
 }
 
 export async function aprovarSnapshot(estudoId, snapshotId, body) {
-  const res = await fetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}/aprovar`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/snapshots/${snapshotId}/aprovar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -566,13 +603,13 @@ export async function aprovarSnapshot(estudoId, snapshotId, body) {
 }
 
 export async function obterSnapshotAprovado(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/snapshot-aprovado`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/snapshot-aprovado`);
   if (!res.ok) throw new Error("Não foi possível verificar aprovação.");
   return res.json();
 }
 
 export async function previewApresentacao(estudoId, snapshotId, body) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/snapshots/${snapshotId}/apresentacao/preview`,
     {
       method: "POST",
@@ -584,7 +621,7 @@ export async function previewApresentacao(estudoId, snapshotId, body) {
 }
 
 export async function gerarApresentacaoHtml(estudoId, snapshotId, body) {
-  const res = await fetch(
+  const res = await apiFetch(
     `${API}/estudos/${estudoId}/snapshots/${snapshotId}/apresentacao/gerar`,
     {
       method: "POST",
@@ -596,17 +633,17 @@ export async function gerarApresentacaoHtml(estudoId, snapshotId, body) {
 }
 
 export async function obterHistoricoEstudo(estudoId) {
-  const res = await fetch(`${API}/estudos/${estudoId}/historico`);
+  const res = await apiFetch(`${API}/estudos/${estudoId}/historico`);
   return tratarResposta(res, "Não foi possível carregar o histórico.");
 }
 
 export async function listarClientes() {
-  const res = await fetch(`${API}/clientes`);
+  const res = await apiFetch(`${API}/clientes`);
   return tratarResposta(res, "Não foi possível listar clientes.");
 }
 
 export async function criarCliente(nome) {
-  const res = await fetch(`${API}/clientes`, {
+  const res = await apiFetch(`${API}/clientes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nome }),
@@ -615,12 +652,12 @@ export async function criarCliente(nome) {
 }
 
 export async function listarCiclosCliente(clienteId) {
-  const res = await fetch(`${API}/clientes/${clienteId}/ciclos`);
+  const res = await apiFetch(`${API}/clientes/${clienteId}/ciclos`);
   return tratarResposta(res, "Não foi possível listar ciclos.");
 }
 
 export async function vincularEstudoCliente(estudoId, body) {
-  const res = await fetch(`${API}/estudos/${estudoId}/historico/vincular`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/historico/vincular`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -629,7 +666,7 @@ export async function vincularEstudoCliente(estudoId, body) {
 }
 
 export async function confirmarVinculo(estudoId, body) {
-  const res = await fetch(`${API}/estudos/${estudoId}/historico/vinculos/confirmar`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/historico/vinculos/confirmar`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -638,7 +675,7 @@ export async function confirmarVinculo(estudoId, body) {
 }
 
 export async function confirmarVinculoLote(estudoId, body) {
-  const res = await fetch(`${API}/estudos/${estudoId}/historico/vinculos/confirmar-lote`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/historico/vinculos/confirmar-lote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -647,7 +684,7 @@ export async function confirmarVinculoLote(estudoId, body) {
 }
 
 export async function registrarPlanoContratado(estudoId, body) {
-  const res = await fetch(`${API}/estudos/${estudoId}/plano-contratado`, {
+  const res = await apiFetch(`${API}/estudos/${estudoId}/plano-contratado`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -105,6 +105,21 @@ function sessaoUsavel(session) {
   return session;
 }
 
+export const EVENTO_NAO_AUTORIZADO = "benefits:nao-autorizado";
+
+export function avisarNaoAutorizado() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(EVENTO_NAO_AUTORIZADO));
+}
+
+export async function obterAccessToken() {
+  if (!supabaseConfigurado()) return null;
+  const cliente = obterCliente();
+  if (!cliente) return null;
+  const { data } = await cliente.auth.getSession();
+  return data?.session?.access_token || null;
+}
+
 export async function obterSessao() {
   if (!supabaseConfigurado()) {
     return sessaoAtiva() ? { demo: true } : null;

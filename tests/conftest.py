@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import os
+
+# pytest herda o ambiente do operador. Fora da 3B, a suíte corre em demo
+# (middleware com usuário fixo "demo") para não exigir JWT em cada cliente.
+# BENEFITS_DONO_LEGADO_ID vazio impede o .env.local de marcar fixtures com o
+# UUID real — a variável continua só no backend local, nunca nos testes.
+os.environ["NEWPORT_MODO"] = "demo"
+os.environ["BENEFITS_DONO_LEGADO_ID"] = ""
+
 import json
 from datetime import date
 from pathlib import Path
