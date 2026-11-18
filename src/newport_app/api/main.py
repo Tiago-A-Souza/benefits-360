@@ -12,6 +12,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from newport_app.api.middleware import ModoRealLocalMiddleware
+from newport_app.auth.jwt_supabase import ValidadorJwtSupabase, configurar_validador
+from newport_app.auth.middleware import AuthSupabaseMiddleware
+from newport_app.auth.startup import exigir_auth_configurada
+from newport_app.config.env import carregar_env_local
 from newport_app.api.validation_handlers import resposta_validacao_sanitizada
 from newport_app.config.paths import (
     caminho_banco_cotacoes,
@@ -240,6 +244,17 @@ def create_app(
     *,
     seed_demos: bool | None = None,
 ) -> FastAPI:
+    carregar_env_local()
+    exigir_auth_configurada()
+    if modo_execucao() != ModoExecucao.DEMO:
+        import os
+
+        configurar_validador(
+            ValidadorJwtSupabase(
+                supabase_url=(os.environ.get("SUPABASE_URL") or "").strip(),
+                jwt_secret=(os.environ.get("SUPABASE_JWT_SECRET") or "").strip() or None,
+            )
+        )
     if seed_demos is None:
         seed_demos = modo_execucao() == ModoExecucao.DEMO
 
@@ -297,6 +312,7 @@ def create_app(
     async def validacao_sanitizada(_request, exc: RequestValidationError):
         return resposta_validacao_sanitizada(exc)
 
+    app.add_middleware(AuthSupabaseMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -309,6 +325,10 @@ def create_app(
         allow_headers=["*"],
     )
     app.add_middleware(ModoRealLocalMiddleware)
+
+    @app.get("/api/saude")
+    def saude() -> dict[str, bool]:
+        return {"ok": True}
 
     @app.get("/api/config")
     def obter_config() -> dict[str, str | int]:
