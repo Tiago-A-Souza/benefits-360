@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import LogoOperadora from "./LogoOperadora";
+import { attrsCartaoOperadora } from "./operadoras";
 import { chamarRpa } from "../rpaClient";
 import { useConfirmacao } from "./Confirmacao";
 import {
@@ -139,13 +141,20 @@ export default function ConfigRobo({
   const n = mudancas.length;
   const dPadrao = diffsPadrao.length;
   const valorDe = (k) => valorDeConfig(k, campos, rascunho, pares);
+  const marca = attrsCartaoOperadora(opId, false);
 
   return (
     <div>
       {modal}
-      <div className="nativa-robo-cabeca" style={{ "--cor-op": dados.cor }}>
+      <div
+        className={`nativa-robo-cabeca ${marca.className}`}
+        style={marca.style}
+        data-cor-op={marca["data-cor-op"]}
+      >
         <div>
-          <h1>Robô da {dados.nome}</h1>
+          <h1>
+            <LogoOperadora operadora={opId} tamanho="md" /> Robô da {dados.nome}
+          </h1>
           <p className="muted">
             {dados.produto}. O robô usa estas escolhas em todas as suas cotações, até você mudar de novo. Para uma
             cotação só, use “Mudar só nesta cotação” na Nova cotação.
@@ -157,7 +166,11 @@ export default function ConfigRobo({
         </span>
       </div>
 
-      <section className="cartao nativa-operadora" style={{ "--cor-op": op.cor || dados.cor }}>
+      <section
+        className={`cartao nativa-operadora ${marca.className}`}
+        style={marca.style}
+        data-cor-op={marca["data-cor-op"]}
+      >
         <p className="nativa-robo-resumo">
           <strong>Hoje o robô cota assim: </strong>
           {resumoDoRobo(op, (k) => valorDe(`padroes.${k}`), { produto: valorDe("padroes.produto") })}.

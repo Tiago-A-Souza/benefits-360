@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { chamarRpa } from "../rpaClient";
 import CartaoLogin from "./CartaoLogin";
+import LogoOperadora from "./LogoOperadora";
+import { attrsCartaoOperadora } from "./operadoras";
 import { acaoLoginDoCartao } from "./regrasConexao";
 import { CONEXAO, resumoDoRobo } from "./regrasNova";
 
@@ -58,11 +60,19 @@ export default function Conexoes({
           const st = conexao[op.id] || op.conexao || "desconectado";
           const acao = acaoLoginDoCartao(op, st, { atual: trabalhoAtual, naFila });
           const padrao = (c) => (op.campos.find((x) => x.chave === c) || {}).padrao;
+          const marca = attrsCartaoOperadora(op.id, aberto === op.id);
           return (
-            <article key={op.id} className="nativa-robo-cartao cartao" style={{ "--cor-op": op.cor }}>
-              <div className="nativa-robo-topo">
+            <article
+              key={op.id}
+              className={`nativa-robo-cartao cartao ${marca.className}`}
+              style={marca.style}
+              data-cor-op={marca["data-cor-op"]}
+            >
+              <div className="nativa-robo-topo nativa-op-cabeca">
                 <div>
-                  <h2>{op.nome}</h2>
+                  <h2>
+                    <LogoOperadora operadora={op.id} tamanho="md" />
+                  </h2>
                   <div className="muted">{op.produto}</div>
                 </div>
                 <button

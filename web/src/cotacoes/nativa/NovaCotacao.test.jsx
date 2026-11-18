@@ -30,6 +30,11 @@ describe("NovaCotacao — markup a partir da API", () => {
     expect(html).toContain("Mudar só nesta cotação");
     expect(html).toContain("SULAMERICA");
     expect(html).not.toContain("Newport");
+    expect(html).toContain("nativa-op-cartao");
+    expect(html).toContain('data-cor-op="#F08810"');
+    expect(html).toContain("--cor-op:#F08810");
+    expect(html).toContain('alt="SulAmérica"');
+    expect(html).not.toContain("nativa-logo-op-selo");
   });
 
   it("lista empresas recentes e o atalho cotar de novo", () => {

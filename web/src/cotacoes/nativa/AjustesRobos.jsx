@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { chamarRpa } from "../rpaClient";
+import LogoOperadora from "./LogoOperadora";
+import { attrsCartaoOperadora } from "./operadoras";
 import { CONEXAO, resumoDoRobo } from "./regrasNova";
 
 export default function AjustesRobos({
@@ -52,11 +54,19 @@ export default function AjustesRobos({
           const st = conexao[op.id] || op.conexao || "desconectado";
           const padrao = (c) => (op.campos.find((x) => x.chave === c) || {}).padrao;
           const login = op.login || {};
+          const marca = attrsCartaoOperadora(op.id, false);
           return (
-            <article key={op.id} className="nativa-robo-cartao cartao" style={{ "--cor-op": op.cor }}>
-              <div className="nativa-robo-topo">
+            <article
+              key={op.id}
+              className={`nativa-robo-cartao cartao ${marca.className}`}
+              style={marca.style}
+              data-cor-op={marca["data-cor-op"]}
+            >
+              <div className="nativa-robo-topo nativa-op-cabeca">
                 <div>
-                  <h2>{op.nome}</h2>
+                  <h2>
+                    <LogoOperadora operadora={op.id} tamanho="md" />
+                  </h2>
                   <div className="muted">{op.produto}</div>
                 </div>
                 <button
