@@ -58,6 +58,10 @@ tela:
     - http://localhost:5173
     - http://127.0.0.1:5173
     - http://127.0.0.1:{porta_benefits}
+  origens_permitidas:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+    - http://127.0.0.1:{porta_benefits}
 teste:
   simulador: true
   cofre: memoria
@@ -672,6 +676,9 @@ def test_api_recusa_pedidos_que_nao_vem_da_tela(amb):
     assert _pedir(amb, "POST", "/api/trabalhos", corpo)[0] == 403                     # sem o cabeçalho da tela
     assert _pedir(amb, "POST", "/api/trabalhos", corpo,
                   {"X-Newport-Tela": "1", "Origin": "https://site-qualquer.com"})[0] == 403   # outro site
+    # Benefits na allowlist pode mutar (com o cabeçalho); sem itens → 400, não 403
+    assert _pedir(amb, "POST", "/api/trabalhos", corpo,
+                  {"X-Newport-Tela": "1", "Origin": "http://127.0.0.1:5173"})[0] == 400
     assert _pedir(amb, "POST", "/api/trabalhos", {"modo": "emitir", "itens": []}, tela)[0] == 400   # sem confirmar
     assert _pedir(amb, "GET", "/api/cotacoes/999999/pdf")[0] == 404
     status, r = _pedir(amb, "PUT", "/api/robos/sulamerica",
