@@ -2,10 +2,14 @@
 # A única interface é http://localhost:5173 (aba Cotações). A 8600 é só API.
 # Uso (na raiz do repositorio):
 #   powershell -ExecutionPolicy Bypass -File .\scripts\subir-benefits-e-rpa.ps1
+#   powershell -ExecutionPolicy Bypass -File .\scripts\subir-benefits-e-rpa.ps1 -ComSimulador
 #   powershell -ExecutionPolicy Bypass -File .\scripts\subir-benefits-e-rpa.ps1 -SemSimulador
+# Padrão: robô REAL (config.yaml). Simulador só com -ComSimulador.
+# -SemSimulador continua aceito e também sobe o robô real.
 # Ctrl+C neste script encerra só o que ESTE script subiu (não derruba um robô que já estava na 8600).
 
 param(
+    [switch]$ComSimulador,
     [switch]$SemSimulador
 )
 
@@ -102,8 +106,9 @@ if ($acao8002 -eq "subir") {
     Write-Host "Benefits API ja estava em http://127.0.0.1:8002"
 }
 
-$rpaArgs = @("-m", "app", "--porta", "8600", "--sem-navegador")
-if (-not $SemSimulador) {
+# Simulador só se pediram -ComSimulador e não pediram -SemSimulador (alias do real).
+$usarSimulador = $ComSimulador -and -not $SemSimulador
+if ($usarSimulador) {
     $rpaArgs = @(
         "-m", "app",
         "--config", "config_simulador.yaml",
@@ -111,16 +116,20 @@ if (-not $SemSimulador) {
         "--com-simulador",
         "--sem-navegador"
     )
+    $rpaModo = "SIMULADOR"
+    $rpaMsg = "SIMULADOR -> http://127.0.0.1:8600  (config_simulador.yaml; so API; use a aba Cotacoes no Benefits)"
+} else {
+    $rpaArgs = @("-m", "app", "--porta", "8600", "--sem-navegador")
+    $rpaModo = "ROB" + [char]0x00D4 + " REAL"
+    $rpaMsg = $rpaModo + " -> http://127.0.0.1:8600  (config.yaml; so API; use a aba Cotacoes no Benefits)"
 }
 
 $acao8600 = Resolve-Porta 8600 "rpa"
 if ($acao8600 -eq "subir") {
-    if ($SemSimulador) {
-        Write-Host "Motor do robo (config.yaml) -> http://127.0.0.1:8600  (so API; use a aba Cotacoes no Benefits)"
-    } else {
-        Write-Host "Motor do robo (simulador) -> http://127.0.0.1:8600  (so API; use a aba Cotacoes no Benefits)"
-    }
+    Write-Host $rpaMsg
     $jobs += Start-Process -PassThru -NoNewWindow -WorkingDirectory (Join-Path $raiz "rpa") -FilePath $pyRpa -ArgumentList $rpaArgs
+} else {
+    Write-Host ("Robo ja estava na 8600. Este script teria subido: {0}" -f $rpaModo)
 }
 
 $acao5173 = Resolve-Porta 5173 "vite"
