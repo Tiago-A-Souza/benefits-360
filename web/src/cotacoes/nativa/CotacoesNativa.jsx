@@ -111,6 +111,9 @@ export default function CotacoesNativa({
       if (ev.tipo === "cotacao" || (ev.tipo === "trabalho" && ev.status !== "rodando")) {
         setReloadLista((n) => n + 1);
       }
+      if (ev.tipo === "parando") {
+        setTrabalhoAtual((t) => (t && t.id === ev.trabalho ? { ...t, parando: true } : t));
+      }
       if (ev.tipo === "trabalho") {
         if (ev.status === "rodando") {
           setTrabalhoAtual({ id: ev.trabalho, titulo: ev.titulo, modo: ev.modo });
