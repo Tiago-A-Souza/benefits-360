@@ -53,7 +53,6 @@ function hashAtual() {
 export default function CotacoesNativa({
   onMeusEstudos,
   onSimularRede,
-  onCotacoesIframe,
   onVoltarEstudo,
   rotuloEstudo,
 }) {
@@ -215,16 +214,6 @@ export default function CotacoesNativa({
     setAviso({ texto, tipo: tipo || "info" });
   }
 
-  function irIframe() {
-    if (typeof window !== "undefined") {
-      const u = new URL(window.location.href);
-      u.searchParams.set("cotacoes-iframe", "1");
-      u.hash = "";
-      window.history.replaceState({}, "", u);
-    }
-    onCotacoesIframe?.();
-  }
-
   const noAndamentoDeste = tela === "andamento" && trabalhoAtual && Number(id) === Number(trabalhoAtual.id);
   const ativoMenu =
     tela === "nova" || tela === "andamento"
@@ -293,16 +282,11 @@ export default function CotacoesNativa({
               </ul>
             </>
           ) : null}
-          <p className="muted nativa-flag-hint">
-            {TELAS_ROBO_NAO_PORTADAS.length
-              ? "Telas ainda não portadas abrem o robô local em outra aba. "
-              : null}
-            Para comparar com o iframe antigo:{" "}
-            <button type="button" className="link" onClick={irIframe}>
-              ?cotacoes-iframe=1
-            </button>
-            .
-          </p>
+          {TELAS_ROBO_NAO_PORTADAS.length ? (
+            <p className="muted nativa-flag-hint">
+              Telas ainda não portadas abrem o robô local em outra aba.
+            </p>
+          ) : null}
         </nav>
       </aside>
 
@@ -432,7 +416,7 @@ export default function CotacoesNativa({
             urlRobo={urlRobo}
             cnpjInicial={cnpj}
             onEnfileirado={(tid) => ir(`#/andamento/${tid}`)}
-            onIrIframeCotacoes={irIframe}
+            onIrIframeCotacoes={() => ir("#/cotacoes")}
             onCotarEmpresa={(cnpjEmp) => ir(`#/nova?cnpj=${cnpjEmp}`)}
             onConfigurar={(opId) => ir(`#/robo/${opId}`)}
             aviso={mostrarAviso}
@@ -446,7 +430,7 @@ export default function CotacoesNativa({
             conexaoExterna={conexao}
             onNovoTrabalho={(tid) => ir(`#/andamento/${tid}`)}
             onNova={(cnpjNovo) => ir(cnpjNovo ? `#/nova?cnpj=${cnpjNovo}` : "#/nova")}
-            onIrIframeCotacoes={irIframe}
+            onIrIframeCotacoes={() => ir("#/cotacoes")}
             onIrLogin={(opId) => ir(`#/conexoes?op=${opId}`)}
             urlRobo={urlRobo}
             aviso={mostrarAviso}

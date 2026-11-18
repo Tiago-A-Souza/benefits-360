@@ -658,16 +658,18 @@ def test_codigo_de_verificacao_pedido_pela_tela(page, amb):
 
 
 def test_a_tela_nunca_roda_javascript_velho(amb):
-    """05/11: o Chrome guardava o JavaScript antigo (até depois do F5). A página aponta para os arquivos com a
-    versão do servidor no endereço, e os arquivos vão sem cache (sempre conferidos com o servidor)."""
+    """A UI velha não é mais servida: `/` e `/static/...` apontam para o Benefits (5173)."""
+    aviso = "Use o Benefits (http://localhost:5173), aba Cotações."
     with urllib.request.urlopen(amb["base"] + "/", timeout=10) as r:
         html = r.read().decode("utf-8")
         assert r.headers.get("Cache-Control") == "no-cache"
-    versao = _pedir(amb, "GET", "/api/estado")[1]["versao"]
-    assert f'src="/static/js/telas/nova.js?v={versao}"' in html
-    assert f'href="/static/css/estilo.css?v={versao}"' in html
-    with urllib.request.urlopen(amb["base"] + f"/static/js/telas/nova.js?v={versao}", timeout=10) as r:
+        assert aviso in html
+        assert "js/telas/nova.js" not in html
+    with urllib.request.urlopen(amb["base"] + "/static/js/telas/nova.js", timeout=10) as r:
         assert r.status == 200 and r.headers.get("Cache-Control") == "no-cache"
+        assert aviso in r.read().decode("utf-8")
+    status, estado = _pedir(amb, "GET", "/api/estado")
+    assert status == 200 and "versao" in estado
 
 
 def test_api_recusa_pedidos_que_nao_vem_da_tela(amb):

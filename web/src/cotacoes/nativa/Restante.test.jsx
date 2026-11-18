@@ -164,7 +164,7 @@ describe("Início, Ajuda, Importar, Ajustes", () => {
     expect(shell).toContain("#/importar");
     expect(shell).toContain("#/robos");
     expect(shell).toContain("#/ajuda");
-    expect(shell).toContain("?cotacoes-iframe=1");
+    expect(shell).not.toContain("?cotacoes-iframe=1");
   });
 });
 
