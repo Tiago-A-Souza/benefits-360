@@ -1,4 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./supabase", () => ({
+  supabaseConfigurado: () => false,
+  obterCliente: () => null,
+  urlSupabase: () => "",
+}));
+
 import {
   CHAVE_SESSAO,
   entrar,
