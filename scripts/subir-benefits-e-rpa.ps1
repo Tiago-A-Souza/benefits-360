@@ -11,6 +11,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
+# Login real (JWT) e dados em .private/runtime. O Python ainda lê C:\np\.env.local
+# (SUPABASE_URL, BENEFITS_DONO_LEGADO_ID). Demo: $env:NEWPORT_MODO='demo' antes de chamar.
+if (-not $env:NEWPORT_MODO) {
+    $env:NEWPORT_MODO = "real"
+}
 $pyBenefits = Join-Path $raiz ".venv\Scripts\python.exe"
 $pyRpa = Join-Path $raiz "rpa\.venv\Scripts\python.exe"
 $npm = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
@@ -89,7 +94,7 @@ $jobs = @()
 
 $acao8002 = Resolve-Porta 8002 "api"
 if ($acao8002 -eq "subir") {
-    Write-Host "Benefits API -> http://127.0.0.1:8002"
+    Write-Host ("Benefits API -> http://127.0.0.1:8002  (NEWPORT_MODO={0})" -f $env:NEWPORT_MODO)
     $jobs += Start-Process -PassThru -NoNewWindow -WorkingDirectory $raiz -FilePath $pyBenefits -ArgumentList @(
         "-m", "uvicorn", "newport_app.api.main:app", "--host", "127.0.0.1", "--port", "8002"
     )

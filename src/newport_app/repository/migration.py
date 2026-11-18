@@ -777,13 +777,19 @@ def _migrar_3b_usuario(conn: sqlite3.Connection, *, db_path: Path) -> None:
     if ja is not None:
         aplicar_coluna_usuario(conn, TABELAS_POR_USUARIO)
         return
-    if db_path.is_file():
-        backup_banco(db_path)
+    destino = backup_banco(db_path) if db_path.is_file() else None
     aplicar_coluna_usuario(conn, TABELAS_POR_USUARIO)
     conn.execute(
         "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
         ("3.1.0", datetime.now(timezone.utc).isoformat()),
     )
+    if destino is not None:
+        print(
+            f"Migração 3.1.0: usuario_id aplicado; backup em {destino}",
+            flush=True,
+        )
+    else:
+        print("Migração 3.1.0: usuario_id aplicado (banco novo, sem backup).", flush=True)
 
 
 def migrar_banco_cotacoes(db_path: Path) -> None:
