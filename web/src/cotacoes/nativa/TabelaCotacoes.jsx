@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { baixarUrlRpa, chamarRpa } from "../rpaClient";
+import LogoOperadora from "./LogoOperadora";
 import {
   FAIXAS as FAIXAS_CENSO,
   STATUS_COTACAO,
@@ -84,10 +85,15 @@ function Linha({
           </td>
         ) : null}
         <td>
-          <div className="nativa-empresa-nome">{c.plano || "—"}</div>
-          <div className="muted">
-            {c.acomodacao || ""}
-            {c.versao ? <span className={`nativa-versao nativa-versao--${c.versao}`}>{versaoTxt}</span> : null}
+          <div className="nativa-plano-com-op">
+            <LogoOperadora operadora={c.operadora} tamanho="sm" />
+            <div>
+              <div className="nativa-empresa-nome">{c.plano || "—"}</div>
+              <div className="muted">
+                {c.acomodacao || ""}
+                {c.versao ? <span className={`nativa-versao nativa-versao--${c.versao}`}>{versaoTxt}</span> : null}
+              </div>
+            </div>
           </div>
         </td>
         <td className="right num">

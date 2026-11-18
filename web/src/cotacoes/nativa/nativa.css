@@ -161,6 +161,17 @@
   border-left: 4px solid var(--cor-op, var(--navy));
 }
 
+.nativa-op-cartao {
+  border: 1px solid var(--cor-op-suave, var(--line));
+  border-left: 3px solid var(--cor-op, var(--navy));
+  background: var(--surface);
+}
+
+.nativa-op-cartao--ativo {
+  border-color: var(--cor-op, var(--navy));
+  box-shadow: 0 0 0 1px var(--cor-op-suave, transparent);
+}
+
 .nativa-operadora-cabeca {
   display: flex;
   justify-content: space-between;
@@ -174,6 +185,15 @@
   font-size: 1.2rem;
   font-weight: 600;
   color: var(--navy);
+}
+
+.nativa-operadora-nome .nativa-logo-op,
+.nativa-robo-topo h2,
+.nativa-robo-cabeca h1,
+.nativa-painel-robo h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .nativa-operadora-lado {
@@ -696,6 +716,13 @@
   border-left: 4px solid var(--cor-op, var(--navy));
 }
 
+.nativa-robo-cartao.nativa-op-cartao,
+.nativa-operadora.nativa-op-cartao,
+.nativa-robo-cabeca.nativa-op-cartao,
+.nativa-painel-robo.nativa-op-cartao {
+  border-left-width: 3px;
+}
+
 .nativa-robo-topo {
   display: flex;
   justify-content: space-between;
@@ -888,6 +915,17 @@
   margin-bottom: 1rem;
   border-left: 4px solid var(--cor-op, var(--navy));
   padding-left: 0.85rem;
+}
+
+.nativa-plano-com-op {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.nativa-plano-com-op .nativa-logo-op {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
 }
 
 .nativa-tabela-edicao .campo {

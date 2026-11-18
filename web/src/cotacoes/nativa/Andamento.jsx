@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { baixarUrlRpa, chamarRpa, ouvirEventosRpa } from "../rpaClient";
 import { useConfirmacao } from "./Confirmacao";
+import LogoOperadora from "./LogoOperadora";
+import { classeCartaoOperadora, estiloMarcaOperadora } from "./operadoras";
 import TabelaCotacoes from "./TabelaCotacoes";
 import {
   CONFIRMACOES_REPETIR,
@@ -392,8 +394,14 @@ export default function Andamento({
         </div>
       </header>
 
-      <section className="cartao nativa-painel-robo" aria-live="polite">
-        <h2>{tituloPainel}</h2>
+      <section
+        className={`cartao nativa-painel-robo ${classeCartaoOperadora(t.status === "rodando")}`}
+        style={op ? estiloMarcaOperadora(op.id) : undefined}
+        aria-live="polite"
+      >
+        <h2>
+          {op ? <LogoOperadora operadora={op.id} tamanho="md" /> : null} {tituloPainel}
+        </h2>
         {t.status === "erro" ? <div className="nativa-problemas">{t.mensagem || "erro sem descrição"}</div> : null}
         <p className="muted">{linhaPainel}</p>
         {t.status === "rodando" && t.tipo === "cotar" && op ? <EtapasPilulas op={op} etapa={etapa} /> : null}

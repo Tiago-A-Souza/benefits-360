@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { chamarRpa, RpaClienteErro } from "../rpaClient";
 import { useConfirmacao } from "./Confirmacao";
+import LogoOperadora from "./LogoOperadora";
+import { classeCartaoOperadora, estiloMarcaOperadora } from "./operadoras";
 import {
   CONEXAO,
   FAIXAS,
@@ -120,11 +122,15 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
   }
 
   return (
-    <section className="cartao nativa-operadora" style={{ "--cor-op": op.cor }} aria-labelledby={`t-${op.id}`}>
+    <section
+      className={`cartao nativa-operadora ${classeCartaoOperadora(o.ativa)}`}
+      style={estiloMarcaOperadora(op.id)}
+      aria-labelledby={`t-${op.id}`}
+    >
       <div className="nativa-operadora-cabeca">
         <div>
           <div className="nativa-operadora-nome" id={`t-${op.id}`}>
-            {op.nome}
+            <LogoOperadora operadora={op.id} tamanho="lg" mostrarNome />
           </div>
           <div className="muted">{op.produto}</div>
         </div>

@@ -8,6 +8,8 @@ import {
   resumoImportacao,
   textoPlanosImport,
 } from "./regrasRestante";
+import LogoOperadora from "./LogoOperadora";
+import { estiloMarcaOperadora } from "./operadoras";
 import { formatarCnpj, plural } from "./regrasNova";
 
 export default function ImportarPlanilha({ operadoras, aviso, onEnfileirado }) {
@@ -122,9 +124,10 @@ export default function ImportarPlanilha({ operadoras, aviso, onEnfileirado }) {
                   type="button"
                   className="secundario"
                   aria-pressed={o.id === opId}
+                  style={estiloMarcaOperadora(o.id)}
                   onClick={() => escolherOp(o.id)}
                 >
-                  {o.nome}
+                  <LogoOperadora operadora={o.id} tamanho="sm" mostrarNome />
                 </button>
               ))}
             </div>
