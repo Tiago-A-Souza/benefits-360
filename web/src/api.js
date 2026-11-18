@@ -1,4 +1,6 @@
 const API = "/api";
+// TODO(fase 3B): anexar Authorization: Bearer <access_token> do Supabase em cada pedido.
+// O backend ainda não valida o token.
 
 function montarErroApi(res, body, mensagemPadrao) {
   const detail = body?.detail;
