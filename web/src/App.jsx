@@ -18,6 +18,8 @@ import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
 import NavegacaoFerramentas from "./NavegacaoFerramentas";
 import SimularRede from "./simularRede/SimularRede";
 import CotacoesRpa from "./cotacoes/CotacoesRpa";
+import CotacoesNativa from "./cotacoes/nativa/CotacoesNativa";
+import { nativaLigada } from "./cotacoes/nativa/regrasNova";
 import ProvaRpaDireto from "./cotacoes/ProvaRpaDireto";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
@@ -47,6 +49,7 @@ export default function App() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
   });
+  const [cotacoesNativa, setCotacoesNativa] = useState(() => nativaLigada());
   const [cestaGlobal, setCestaGlobal] = useState([]);
   const avancarEtapaRef = useRef(null);
   const registrarAvancoEtapa = useCallback((fn) => {
@@ -159,6 +162,31 @@ export default function App() {
             u.searchParams.delete("prova-rpa");
             window.history.replaceState({}, "", u.pathname + u.search);
           }}
+        />
+      </div>
+    );
+  }
+
+  if (cotacoesNativa) {
+    const emEstudo = tela === "fluxo" && estudoId;
+    return (
+      <div className="app-shell">
+        <EstudoCabecalho resumo={null} />
+        <CotacoesNativa
+          onMeusEstudos={() => {
+            if (emEstudo) voltarLista();
+            setCotacoesNativa(false);
+          }}
+          onSimularRede={() => {
+            setCotacoesNativa(false);
+            setSimulando(true);
+          }}
+          onCotacoesIframe={() => {
+            setCotacoesNativa(false);
+            setCotacoesRpa(true);
+          }}
+          onVoltarEstudo={emEstudo ? () => setCotacoesNativa(false) : undefined}
+          rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
         />
       </div>
     );
