@@ -5,15 +5,15 @@ import { estadoInicial, montarItens, problemasLocais } from "./regrasNova";
 
 /**
  * Ponta a ponta contra o robô em modo simulador (HTTP real em :8600, sem mock).
- * Exige `estado.simulador === true`. Pula se o robô não estiver no ar.
- * Login de treino do simulador SulAmérica (não é PII).
+ *
+ * Cofre: NÃO grava, NÃO lê senha, NÃO apaga. O serviço Windows do corretor é
+ * `NewportCotacoes/<op>` (keyring). O simulador (`config_simulador.yaml`:
+ * `teste.cofre: memoria`) usa `CofreMemoria` — mesmo nome só como chave de
+ * dicionário no processo, nunca o Gerenciador de Credenciais. Este teste
+ * recusa gravar ou apagar login via HTTP: o cliente não escolhe o serviço,
+ * então um POST no robô errado sobrescreveria o login real. Sem login já
+ * guardado no cofre de memória do processo, o caso é skip.
  */
-const LOGIN_TREINO = {
-  cpf: "52998224725",
-  email: "corretor.treino@simulador.local",
-  senha: "Treino#Falsa-26",
-};
-
 async function json(metodo, caminho, corpo) {
   const init = { method: metodo, headers: {} };
   if (metodo !== "GET") init.headers["X-Newport-Tela"] = "1";
@@ -55,9 +55,6 @@ describe("e2e robô simulador (HTTP real)", () => {
       const sul = (ops || []).find((o) => o.id === "sulamerica");
       expect(sul, "SulAmérica precisa estar ativa no robô").toBeTruthy();
 
-      const login = await json("POST", "/api/credenciais/sulamerica", LOGIN_TREINO);
-      expect(login.ok, JSON.stringify(login.dados)).toBe(true);
-
       const form = estadoInicial(ops);
       form.cnpj = CNPJ_OK;
       form.apelido = "E2E nativa";
@@ -80,6 +77,10 @@ describe("e2e robô simulador (HTTP real)", () => {
       expect(validar.dados.cotacoes).toBeGreaterThan(0);
 
       const criado = await json("POST", "/api/trabalhos", { modo: "ensaio", itens });
+      if (!criado.ok && criado.status === 409) {
+        skip("robô sem login no cofre de memória; este teste não grava credencial");
+        return;
+      }
       expect(criado.ok, JSON.stringify(criado.dados)).toBe(true);
       expect(criado.dados.id).toBeGreaterThan(0);
       const tid = criado.dados.id;

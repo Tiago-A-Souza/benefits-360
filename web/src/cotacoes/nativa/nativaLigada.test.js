@@ -11,6 +11,10 @@ describe("nativaLigada", () => {
     expect(nativaLigada()).toBe(false);
   });
 
+  it("flag Vite deste build não liga nativa", () => {
+    expect(import.meta.env.VITE_COTACOES_NATIVA).not.toBe("1");
+  });
+
   it("ligada com ?cotacoes-nativa=1", () => {
     vi.stubGlobal("window", { location: { search: "?cotacoes-nativa=1", hash: "" } });
     expect(nativaLigada()).toBe(true);
