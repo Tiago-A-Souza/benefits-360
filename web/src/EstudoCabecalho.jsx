@@ -1,4 +1,4 @@
-export default function EstudoCabecalho({ resumo, onTrocarEstudo, onHistorico }) {
+export default function EstudoCabecalho({ resumo, onTrocarEstudo, onHistorico, onSair }) {
   return (
     <header className="topbar">
       <div className="topbar-slot topbar-slot--start">
@@ -23,16 +23,23 @@ export default function EstudoCabecalho({ resumo, onTrocarEstudo, onHistorico })
       <p className="system-title">Estudo Saúde</p>
 
       <div className="topbar-slot topbar-slot--end">
-        {resumo && (
-          <div className="top-actions">
-            <button type="button" className="secundario btn-compacto hide-mobile" onClick={onHistorico}>
-              Histórico
+        <div className="top-actions">
+          {resumo && (
+            <>
+              <button type="button" className="secundario btn-compacto hide-mobile" onClick={onHistorico}>
+                Histórico
+              </button>
+              <button type="button" className="secundario btn-compacto" onClick={onTrocarEstudo}>
+                Trocar estudo
+              </button>
+            </>
+          )}
+          {onSair && (
+            <button type="button" className="secundario btn-compacto" onClick={onSair}>
+              Sair
             </button>
-            <button type="button" className="secundario btn-compacto" onClick={onTrocarEstudo}>
-              Trocar estudo
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );

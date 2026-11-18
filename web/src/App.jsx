@@ -28,6 +28,8 @@ import { linhaEstadoPasso } from "./fluxo/linhasEstado";
 import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaClicavel } from "./fluxo/avancoEtapa";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
+import TelaLogin from "./login/TelaLogin";
+import { entrarDemo, sessaoAtiva, sairSessao } from "./login/sessao";
 
 export default function App() {
   const [tela, setTela] = useState("lista");
@@ -50,6 +52,7 @@ export default function App() {
     return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
   });
   const [cotacoesNativa, setCotacoesNativa] = useState(() => nativaLigada());
+  const [logado, setLogado] = useState(() => sessaoAtiva());
 
   function abrirCotacoes() {
     if (iframeCotacoes()) {
@@ -162,6 +165,22 @@ export default function App() {
   const totalBaseComparacao = ctxFluxo.resumoPlanoAtual?.total_reajustado_reais;
   const legendaReajusteBase = textoReajusteContrato(ctxFluxo.resumoPlanoAtual);
 
+  const sair = useCallback(() => {
+    sairSessao();
+    setLogado(false);
+  }, []);
+
+  if (!logado) {
+    return (
+      <TelaLogin
+        onEntrar={() => {
+          entrarDemo();
+          setLogado(true);
+        }}
+      />
+    );
+  }
+
   if (provaRpa) {
     return (
       <div className="lista-shell">
@@ -181,7 +200,7 @@ export default function App() {
     const emEstudo = tela === "fluxo" && estudoId;
     return (
       <div className="app-shell">
-        <EstudoCabecalho resumo={null} />
+        <EstudoCabecalho resumo={null} onSair={sair} />
         <CotacoesNativa
           onMeusEstudos={() => {
             if (emEstudo) voltarLista();
@@ -211,7 +230,7 @@ export default function App() {
     const emEstudo = tela === "fluxo" && estudoId;
     return (
       <div className="app-shell">
-        <EstudoCabecalho resumo={null} />
+        <EstudoCabecalho resumo={null} onSair={sair} />
         <CotacoesRpa
           onMeusEstudos={() => {
             if (emEstudo) voltarLista();
@@ -232,7 +251,7 @@ export default function App() {
     const emEstudo = tela === "fluxo" && estudoId;
     return (
       <div className="app-shell">
-        <EstudoCabecalho resumo={null} />
+        <EstudoCabecalho resumo={null} onSair={sair} />
         <SimularRede
           onMeusEstudos={() => {
             if (emEstudo) voltarLista();
@@ -252,7 +271,7 @@ export default function App() {
   if (tela === "lista") {
     return (
       <div className="app-shell">
-        <EstudoCabecalho resumo={null} />
+        <EstudoCabecalho resumo={null} onSair={sair} />
         <MeusEstudos
           onContinuar={entrarEstudo}
           onSimularRede={() => setSimulando(true)}
@@ -268,6 +287,7 @@ export default function App() {
         resumo={resumo}
         onTrocarEstudo={voltarLista}
         onHistorico={() => setHistoricoAberto((v) => !v)}
+        onSair={sair}
       />
 
       <div className="app-body">
