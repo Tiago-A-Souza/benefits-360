@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -37,11 +38,48 @@ class ErroLogin(ErroFluxo):
 
 
 class Parado(Exception):
-    """O corretor pediu para parar. Só é levantada em ponto seguro (nunca no meio de uma emissão)."""
+    """O corretor pediu para parar. Levantada na hora, inclusive no meio da espera de uma tela.
+    Não é levantada entre gravar `emitindo` e ler o protocolo (`sem_parar`)."""
 
     def __init__(self, etapa: str = ""):
         super().__init__("parado a pedido do corretor")
         self.etapa = etapa
+
+
+_parar = threading.local()
+
+
+def ligar_parar(pedir) -> None:
+    """Na thread do robô: as esperas passam a levantar Parado se pedir() for verdadeiro."""
+    _parar.pedir = pedir
+    if not hasattr(_parar, "bloquear"):
+        _parar.bloquear = 0
+
+
+def desligar_parar() -> None:
+    _parar.pedir = None
+    _parar.bloquear = 0
+
+
+def conferir_parar(etapa: str = "") -> None:
+    """Levanta Parado na hora se o corretor pediu para parar. Não faz nada na janela emitindo→protocolo
+    (`sem_parar`) nem se ninguém ligou o pedido."""
+    if getattr(_parar, "bloquear", 0):
+        return
+    pedir = getattr(_parar, "pedir", None)
+    if pedir and pedir():
+        raise Parado(etapa)
+
+
+class sem_parar:
+    """Não levanta Parado: entre gravar `emitindo` e ler o protocolo."""
+
+    def __enter__(self):
+        _parar.bloquear = getattr(_parar, "bloquear", 0) + 1
+        return self
+
+    def __exit__(self, *exc):
+        _parar.bloquear = max(0, getattr(_parar, "bloquear", 0) - 1)
 
 
 # 15/11, 3 robôs juntos: a SulAmérica ficou com a tela trocada (URL e título novos) mas o corpo da anterior e a captura em
@@ -58,6 +96,7 @@ ARGS_SEM_PAUSA = [
     "--disable-renderer-backgrounding",
     "--disable-background-timer-throttling",
     "--disable-ipc-flooding-protection",
+    "--disable-notifications",
 ]
 
 
@@ -158,7 +197,11 @@ def _sem_guardar_formularios(perfil: Path) -> None:
         prefs = {}
     prefs["credentials_enable_service"] = False
     prefs["credentials_enable_autosignin"] = False
-    prefs.setdefault("profile", {})["password_manager_enabled"] = False
+    perfil_prefs = prefs.setdefault("profile", {})
+    perfil_prefs["password_manager_enabled"] = False
+    # 2 = bloquear. Sem isso o Chrome cobre o portal com "o site quer mostrar notificações" e o robô
+    # não consegue clicar (Bradesco, Seguros Friday, 18/11).
+    perfil_prefs.setdefault("default_content_setting_values", {})["notifications"] = 2
     prefs.setdefault("autofill", {}).update(enabled=False, profile_enabled=False, credit_card_enabled=False)
     arquivo.parent.mkdir(parents=True, exist_ok=True)
     arquivo.write_text(json.dumps(prefs), encoding="utf-8")
@@ -314,6 +357,7 @@ def esperar_visivel(loc: Locator, timeout_ms: int, descricao: str, etapa: str = 
             achados = []
         if achados:
             return achados[0]
+        conferir_parar(etapa)
         time.sleep(0.2)
     raise ErroFluxo(f"não encontrei '{descricao}' na tela em {timeout_ms // 1000}s", etapa)
 
@@ -336,14 +380,29 @@ def esperar_sumir(page: Page, localizador, timeout_ms: int = 30000) -> None:
         estavel = estavel + 1 if n == 0 else 0
         if estavel >= 2:
             return
+        conferir_parar()
         time.sleep(0.25)
 
 
 def esperar_sair_da_rota(page: Page, pedaco_url: str, timeout_ms: int, etapa: str, motivo: str) -> None:
     pedaco = pedaco_url.lower()
-    try:
-        page.wait_for_url(lambda u: pedaco not in u.lower(), timeout=timeout_ms, wait_until="commit")
-    except PWTimeout:
-        raise ErroFluxo(
-            f"{motivo}: a tela {etapa} não avançou em {timeout_ms // 1000}s "
-            "(campo obrigatório faltando ou mensagem de erro na tela?)", etapa)
+    fim = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < fim:
+        try:
+            if pedaco not in (page.url or "").lower():
+                return
+        except Exception:  # noqa: BLE001  (página navegando ou fechada)
+            pass
+        conferir_parar(etapa)
+        restante = max(50, int((fim - time.monotonic()) * 1000))
+        try:
+            page.wait_for_url(lambda u: pedaco not in str(u).lower(), timeout=min(250, restante),
+                              wait_until="commit")
+            return
+        except PWTimeout:
+            pass
+        except Exception:  # noqa: BLE001  (página fechada no meio da espera)
+            conferir_parar(etapa)
+    raise ErroFluxo(
+        f"{motivo}: a tela {etapa} não avançou em {timeout_ms // 1000}s "
+        "(campo obrigatório faltando ou mensagem de erro na tela?)", etapa)

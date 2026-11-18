@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 
 from nucleo.credenciais import cofre as cofre_da_config, lembrar_segredos, mensagem_login, ocultar
-from nucleo.navegador import ErroLogin, Parado, esperar_visivel, visiveis
+from nucleo.navegador import ErroLogin, Parado, conferir_parar, esperar_visivel, visiveis
 from nucleo.texto import so_digitos
 
 from . import seletores as sel
@@ -110,6 +110,7 @@ def _esperar_ate(condicao, segundos: float) -> bool:
                 return True
         except Exception:  # noqa: BLE001
             pass
+        conferir_parar("login")
         time.sleep(0.25)
     return False
 

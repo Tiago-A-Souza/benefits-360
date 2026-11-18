@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import time
 
-from nucleo.navegador import ErroFluxo, visiveis
+from nucleo.navegador import ErroFluxo, conferir_parar, visiveis
 from nucleo.texto import norm, rx
 
 from . import seletores as sel
@@ -73,6 +73,7 @@ def quadro_com(page, padrao: re.Pattern, timeout_ms: int, descricao: str, etapa:
                 return lugar
         if login_na_tela(page):
             raise SessaoCaiu("o portal pediu o login de novo (a sessão acabou)", etapa)
+        conferir_parar(etapa)
         time.sleep(0.25)
     raise ErroFluxo(f"não encontrei '{descricao}' na tela em {timeout_ms // 1000}s. Tela: {descrever(page)}", etapa)
 
@@ -114,6 +115,7 @@ def escolher(lugar, rotulo: str, opcao: str, etapa: str, timeout_ms: int = 10000
                 return False
             botoes[0].click()
             return True
+        conferir_parar(etapa)
         time.sleep(0.2)
     raise ErroFluxo(f"não encontrei a opção '{opcao}' em '{rotulo}'", etapa)
 

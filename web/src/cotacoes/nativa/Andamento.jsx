@@ -47,6 +47,7 @@ export default function Andamento({
   const [etapa, setEtapa] = useState(null);
   const [pedidoAtual, setPedidoAtual] = useState(null);
   const [conexao, setConexao] = useState(conexaoExterna);
+  const [parando, setParando] = useState(false);
   const tRef = useRef(null);
   const timer = useRef(null);
   const [confirmar, modal] = useConfirmacao();
@@ -65,9 +66,13 @@ export default function Andamento({
     setT(null);
     setEtapa(null);
     setPedidoAtual(null);
+    setParando(false);
     chamarRpa("GET", `/api/trabalhos/${trabalhoId}`)
       .then((d) => {
-        if (vivo) setT(d);
+        if (vivo) {
+          setT(d);
+          if (d.parando) setParando(true);
+        }
       })
       .catch(() => {
         if (vivo) setFalhou(true);
@@ -83,6 +88,8 @@ export default function Andamento({
       try {
         const novo = await chamarRpa("GET", `/api/trabalhos/${trabalhoId}`);
         setT((ant) => Object.assign(novo, { eventos: (ant && ant.eventos) || novo.eventos || [] }));
+        if (novo.parando) setParando(true);
+        if (novo.status && novo.status !== "rodando") setParando(false);
       } catch {
         /* a próxima atualização tenta de novo */
       }
@@ -94,6 +101,10 @@ export default function Andamento({
       const tid = Number(trabalhoId);
       if (ev.tipo === "conexao") {
         setConexao((c) => ({ ...c, [ev.operadora]: ev.status }));
+        return;
+      }
+      if (ev.tipo === "parando" && Number(ev.trabalho) === tid) {
+        setParando(true);
         return;
       }
       if (ev.trabalho !== tid) return;
@@ -112,7 +123,10 @@ export default function Andamento({
         });
       } else if (ev.tipo === "trabalho") {
         setT((ant) => (ant ? { ...ant, status: ev.status, mensagem: ev.mensagem || ant.mensagem } : ant));
-        if (ev.status !== "rodando") setEtapa(null);
+        if (ev.status !== "rodando") {
+          setEtapa(null);
+          setParando(false);
+        }
         recarregar();
       } else if (ev.tipo === "cotacao") recarregar();
       else if (["login_entrando", "login_aguardando", "login_ok", "codigo_necessario", "login_problema"].includes(ev.tipo)) {
@@ -142,14 +156,18 @@ export default function Andamento({
   async function parar() {
     const atual = tRef.current;
     if (!atual) return;
+    if (parando) {
+      aviso?.("O robô ainda está soltando esta tela. Espere um instante — o pedido de parada já foi enviado.", "info");
+      return;
+    }
     const naFila = atual.status === "na_fila";
     const ok = await confirmar({
       titulo: naFila ? "Tirar este pedido da fila?" : "Parar o robô?",
       texto: naFila
         ? ["O robô não vai começar este pedido."]
         : [
-            "O robô para na próxima troca de tela e não emite mais nada.",
-            "Se uma cotação já estiver sendo emitida, ela termina antes, com o PDF.",
+            "O robô para agora, nesta tela. Não espera a próxima tela e não emite mais nada.",
+            "Se o clique de emitir já foi dado, o robô ainda lê o protocolo dessa cotação.",
           ],
       ok: naFila ? "Tirar da fila" : "Parar o robô",
       principal: false,
@@ -158,7 +176,10 @@ export default function Andamento({
     try {
       const r = await chamarRpa("POST", `/api/trabalhos/${atual.id}/parar`);
       if (!r.ok) aviso?.("Este pedido já terminou ou já começou: veja a situação abaixo.", "erro");
-      else aviso?.(naFila ? "Pedido tirado da fila." : "Pedido de parada enviado. O robô para na próxima tela.");
+      else {
+        if (!naFila) setParando(true);
+        aviso?.(naFila ? "Pedido tirado da fila." : "Parando agora. O robô solta esta tela e não emite mais nada.");
+      }
     } catch (e) {
       aviso?.(e.message, "erro");
     }
@@ -213,7 +234,10 @@ export default function Andamento({
   } else if (t.status === "rodando") {
     tituloPainel = "O robô está no portal";
     linhaPainel = "Abrindo o portal";
-    if (conexaoOp === "aguardando_codigo") {
+    if (parando) {
+      tituloPainel = "Parando agora";
+      linhaPainel = "O robô está saindo desta tela. A janela do portal fica aberta.";
+    } else if (conexaoOp === "aguardando_codigo") {
       tituloPainel = "Esperando o código de verificação";
       linhaPainel = "Digite na faixa do topo o código que o portal mandou para o seu celular/e-mail.";
     } else if (conexaoOp === "aguardando_portal") {
@@ -236,8 +260,8 @@ export default function Andamento({
       linhaPainel = `Tela ${nomeTela}${pedidoAtual && t.total_pedidos > 1 ? `, empresa ${pedidoAtual}` : ""}`;
     }
     botoes.push(
-      <button key="parar" type="button" className="nativa-perigo" onClick={parar}>
-        Parar o robô
+      <button key="parar" type="button" className="nativa-perigo" onClick={parar} disabled={parando}>
+        {parando ? "Parando…" : "Parar o robô"}
       </button>,
     );
   } else if (t.tipo === "conectar") {

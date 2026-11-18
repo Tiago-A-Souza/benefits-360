@@ -20,7 +20,7 @@ em `CLAUDE.md`.
 | Só linha de comando e planilha | **Tela do corretor** no navegador: Nova cotação, andamento ao vivo, lista de cotações com o PDF a um clique, importação de planilha, ajustes e ajuda |
 | Uma operadora, código num pacote só | `nucleo/` (o que serve para qualquer operadora) + `operadoras/<operadora>/` (o robô de cada portal) + uma interface comum. A tela mostra sozinha toda operadora registrada |
 | PDF só na pasta do cliente e no arquivo morto | Também baixável pela tela, um a um ou vários num .zip, com o nome de sempre |
-| Para parar, fechar a janela | Botão **Parar o robô**: para na próxima troca de tela, nunca no meio de uma emissão; **Continuar de onde parou** termina o resto sem repetir |
+| Para parar, fechar a janela | Botão **Parar o robô**: para agora, nesta tela (não espera a próxima); nunca entre gravar emitindo e ler o protocolo; **Continuar de onde parou** termina o resto sem repetir |
 | Mesmo plano em Enfermaria e Apartamento gerava o mesmo nome de PDF (um substituía o outro) | A acomodação entra no nome quando o plano existe nas duas (`SULAMERICA DIRETO NACIONAL ENFERMARIA.pdf`) |
 | Pendência (`VERIFICAR`) só pela linha de comando (`--liberar`) | Resolvida na tela: "Não saiu: liberar" ou "Saiu: já tenho o PDF" (este mantém o bloqueio de reemissão) |
 | Retenção de 90 dias anotada, mas manual | Automática: PDFs, prints e logs do robô com mais de `seguranca.retencao_dias` são apagados ao abrir. A pasta do cliente nunca é tocada |
@@ -229,9 +229,10 @@ IOF). Com mais de um PDF, **Baixar os N PDFs (.zip)**. No fim:
 | Parado (você clicou em Parar) | **Continuar de onde parou** |
 | O robô parou (erro) | Tentar de novo |
 
-**Parar o robô:** o robô para na próxima troca de tela. Se uma cotação já estiver sendo emitida, ela
-termina antes, com o PDF. As que não começaram ficam como "Parada", e "Continuar de onde parou" emite
-só essas.
+**Parar o robô:** o robô para agora, nesta tela — inclusive se estiver esperando a tela seguinte,
+que às vezes nunca chega. Se o clique de emitir já foi dado, ele ainda lê o protocolo dessa cotação
+(não para entre gravar `emitindo` e o número). As que não começaram ficam como "Parada", e
+"Continuar de onde parou" emite só essas.
 
 **Com e sem coparticipação (padrão da Newport):** para cada plano a Newport sempre pega a cotação com e
 a sem coparticipação. O portal não faz as duas numa cotação só, então o robô faz duas, cada uma com o

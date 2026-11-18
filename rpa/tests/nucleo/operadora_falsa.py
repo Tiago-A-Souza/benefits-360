@@ -79,7 +79,7 @@ class OperadoraFalsa(Operadora):
         fim = time.monotonic() + pedido.espera_s
         while time.monotonic() < fim:          # "portal" lento ou travado
             if sessao.parar and sessao.parar():
-                raise Parado("inicio")          # Parar: só entre "telas"
+                raise Parado("inicio")          # Parar: na hora, inclusive com o "portal" travado
             time.sleep(0.05)
         for alvo in pedido.planos:
             sessao.resultados.plano(ResultadoPlano(

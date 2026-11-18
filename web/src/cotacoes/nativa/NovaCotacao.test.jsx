@@ -103,6 +103,19 @@ describe("FaixaProblemaLogin e FaixaTrabalho", () => {
     expect(html).toContain("Especial Mais");
     expect(html).toContain("Acompanhar");
   });
+
+  it("mostra parando quando o corretor já pediu para parar", () => {
+    const html = renderToStaticMarkup(
+      <FaixaTrabalho
+        trabalho={{ id: 7, parando: true }}
+        etapa={{ operadora: "sulamerica", etapa: "vidas", plano: "Especial Mais | Apartamento" }}
+        operadoras={OPERADORAS}
+        onAcompanhar={() => {}}
+      />,
+    );
+    expect(html).toContain("Parando o robô");
+    expect(html).not.toContain("Robô trabalhando");
+  });
 });
 
 describe("TabelaCotacoes", () => {

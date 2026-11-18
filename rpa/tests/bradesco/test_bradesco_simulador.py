@@ -539,3 +539,83 @@ def test_selects_do_alterar_cotacao_do_portal_real_pelo_name_e_nao_pela_tabela_e
     # "--" é a opção sem coparticipação do formulário real
     assert ex.copart_do_texto("--") == "sem" and ex.copart_do_texto("30%") == "com"
 
+
+def test_fechar_avisos_tira_seguros_friday_mesmo_sem_classe_in():
+    """Portal real 18/11: o cartaz da Seguros Friday às vezes abre sem a classe Bootstrap `in`. O robô tem que
+    tirá-lo mesmo assim, senão o clique em Cotação SPG nunca chega e o Parar também trava."""
+    from playwright.sync_api import sync_playwright
+
+    from operadoras.bradesco.etapas import fechar_avisos
+
+    html = """
+    <div class="modal fade pn-modal modal-aviso" role="dialog" style="display:block">
+      <button type="button" class="close" aria-label="Close"><i class="icon-nav-fechar"></i></button>
+      <p>A Seguros Friday 2026 começou!</p>
+      <p>Não quero mais visualizar esta mensagem.</p>
+    </div>
+    <p id="atrás">Cotação SPG</p>
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page()
+        page.set_content(html)
+        assert page.get_by_text("Seguros Friday").is_visible()
+        fechar_avisos(page)
+        assert page.get_by_text("Seguros Friday").first.is_visible() is False
+        assert page.get_by_text("Cotação SPG").is_visible()
+        nav.close()
+
+
+def test_fechar_avisos_tira_cartaz_friday_so_com_imagem_ainda_escondido():
+    """Portal real 18/11 00:46: o cartaz é uma <img> (sem 'Friday' no innerText) e o Bootstrap só chama
+    .modal('show') no window.load. Se o robô exigir visível, o modal nasce depois e cobre o Painel Saúde."""
+    from playwright.sync_api import sync_playwright
+
+    from operadoras.bradesco.etapas import fechar_avisos
+
+    html = """
+    <div class="modal fade pn-modal modal-aviso" id="modal-comunicacao-x" role="dialog">
+      <button type="button" class="close" aria-label="Close" data-analytics-label="Seguros Friday 2026 | Fechar">
+        <i class="icon-nav-fechar"></i>
+      </button>
+      <a data-analytics-label="Seguros Friday 2026"><img src="about:blank" alt=""></a>
+      <label>Não quero mais visualizar esta mensagem.
+        <input id="checkbox-view" class="checkbox-view" type="checkbox">
+      </label>
+    </div>
+    <p id="atrás">Acesso rápido</p>
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page()
+        page.set_content(html)
+        assert page.locator("#modal-comunicacao-x").count() == 1
+        fechar_avisos(page)
+        assert page.locator("#modal-comunicacao-x").first.is_visible() is False
+        nav.close()
+
+
+def test_abrir_cotacao_spg_pelo_submenu_quando_acesso_rapido_esta_vazio():
+    """Portal real 15/11 e 18/11: Acesso rápido vazio. O subnav é <div openmenuoptions>Cotações</div> (CSS uppercase)."""
+    from playwright.sync_api import sync_playwright
+
+    from operadoras.bradesco.etapas import _abrir_cotacao_spg
+
+    html = """
+    <p>Favorite um menu para exibir aqui</p>
+    <bspn-fed-sub-menus-out>
+      <div openmenuoptions="" onclick="document.getElementById('spg').hidden=false">
+        <span>Cotações</span>
+      </div>
+      <a id="spg" href="/saude/cotacoes/cotacao-spg" hidden
+         onclick="event.preventDefault(); this.dataset.aberto='1'">Cotação SPG</a>
+    </bspn-fed-sub-menus-out>
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page()
+        page.set_content(html)
+        _abrir_cotacao_spg(page, 5)
+        assert page.locator("#spg").get_attribute("data-aberto") == "1"
+        nav.close()
+
