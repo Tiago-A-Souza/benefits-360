@@ -4,6 +4,7 @@ import {
   gerarApresentacaoHtml,
   obterSnapshot,
   obterSnapshotAprovado,
+  abrirEntregavelHtml,
 } from "../api";
 
 export function formatarDataAprovacao(iso) {
@@ -314,14 +315,17 @@ export function ExportarHtmlApresentacao({
             {entregavel.aviso_dados_pessoais && (
               <p className="aviso">{entregavel.aviso_dados_pessoais}</p>
             )}
-            <a
+            <button
+              type="button"
               className="gov-exportar-abrir"
-              href={`/api/estudos/${estudoId}/entregaveis/${entregavel.entregavel_id}/html`}
-              target="_blank"
-              rel="noreferrer"
+              onClick={() => {
+                abrirEntregavelHtml(estudoId, entregavel.entregavel_id).catch((e) =>
+                  onErro?.(e.message)
+                );
+              }}
             >
               Abrir / baixar HTML
-            </a>
+            </button>
           </div>
         )}
       </div>

@@ -29,7 +29,12 @@ import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaClicavel } from "./fluxo/avancoEtapa";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 import TelaLogin from "./login/TelaLogin";
-import { obterSessao, ouvirSessao, sairSessao } from "./login/sessao";
+import {
+  EVENTO_NAO_AUTORIZADO,
+  obterSessao,
+  ouvirSessao,
+  sairSessao,
+} from "./login/sessao";
 
 export default function App() {
   const [tela, setTela] = useState("lista");
@@ -175,9 +180,16 @@ export default function App() {
         setSessaoPronta(true);
       });
     const parar = ouvirSessao((s) => setLogado(Boolean(s)));
+    function aoNaoAutorizado() {
+      void sairSessao().then(() => {
+        if (vivo) setLogado(false);
+      });
+    }
+    window.addEventListener(EVENTO_NAO_AUTORIZADO, aoNaoAutorizado);
     return () => {
       vivo = false;
       parar();
+      window.removeEventListener(EVENTO_NAO_AUTORIZADO, aoNaoAutorizado);
     };
   }, []);
 
