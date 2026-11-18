@@ -103,7 +103,7 @@ function CampoOperadora({ campo, valor, opId, onChange }) {
   );
 }
 
-function PainelOperadora({ op, o, conexao, urlRobo, soUma, onPatch }) {
+function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
   const padraoDe = (chaveCampo) => {
     const c = op.campos.find((x) => x.chave === chaveCampo);
     return c && c.padrao !== undefined && c.padrao !== null ? String(c.padrao) : "";
@@ -133,16 +133,15 @@ function PainelOperadora({ op, o, conexao, urlRobo, soUma, onPatch }) {
             <span className={`nativa-ponto nativa-ponto--${conexao}`} />
             {CONEXAO[conexao] || conexao}
           </div>
-          <a
+          <button
+            type="button"
             className="nativa-engrenagem"
-            href={`${urlRobo}/#/robo/${op.id}`}
-            target="_blank"
-            rel="noreferrer"
-            title="Abre a configuração completa do robô (telas do portal) em outra aba"
-            aria-label={`Configurar o robô da ${op.nome} (abre o robô local em outra aba)`}
+            title="Configurar o robô"
+            aria-label={`Configurar o robô da ${op.nome}`}
+            onClick={() => onConfigurar?.(op.id)}
           >
             ⚙
-          </a>
+          </button>
           {!soUma ? (
             <Chave
               rotulo="Cotar nesta operadora"
@@ -191,9 +190,9 @@ function PainelOperadora({ op, o, conexao, urlRobo, soUma, onPatch }) {
                     Voltar à configuração do robô
                   </button>
                 ) : null}
-                <a className="link" href={`${urlRobo}/#/robo/${op.id}`} target="_blank" rel="noreferrer">
+                <button type="button" className="link" onClick={() => onConfigurar?.(op.id)}>
                   Configurar o robô
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -304,6 +303,7 @@ export default function NovaCotacao({
   onEnfileirado,
   onIrIframeCotacoes,
   onCotarEmpresa,
+  onConfigurar,
   empresasRecentes: empresasProp,
   aviso,
 }) {
@@ -701,9 +701,9 @@ export default function NovaCotacao({
             op={op}
             o={form.ops[op.id]}
             conexao={conexao[op.id] || "desconectado"}
-            urlRobo={urlRobo}
             soUma={soUma}
             onPatch={(p) => patchOp(op.id, p)}
+            onConfigurar={onConfigurar}
           />
         ) : null,
       )}

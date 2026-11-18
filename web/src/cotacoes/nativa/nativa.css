@@ -218,6 +218,11 @@
   text-decoration: none;
   font-size: 1.1rem;
   padding: 0.2rem 0.4rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  min-height: 0;
 }
 
 .nativa-chave {
@@ -765,6 +770,138 @@
   text-decoration: underline;
 }
 
+.nativa-colunas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nativa-tarefas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.nativa-tarefa {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.nativa-tarefa--destaque {
+  border-color: var(--navy);
+  background: var(--blue-50);
+}
+
+.nativa-passos-ajuda {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.nativa-passos-ajuda li {
+  margin: 0.55rem 0;
+}
+
+.nativa-perguntas details {
+  border-top: 1px solid var(--line);
+  padding: 0.55rem 0;
+}
+
+.nativa-perguntas summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.nativa-soltar {
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface-2);
+}
+
+.nativa-soltar--sobre {
+  border-color: var(--navy);
+  background: var(--blue-50);
+}
+
+.nativa-modelo-linha {
+  margin-top: 12px;
+}
+
+.nativa-trilha {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  counter-reset: passo;
+}
+
+.nativa-passo-robo {
+  border-top: 1px solid var(--line);
+  padding: 1rem 0;
+  counter-increment: passo;
+}
+
+.nativa-passo-cabeca h2 {
+  margin: 0;
+}
+
+.nativa-passo-cabeca h2::before {
+  content: counter(passo) ". ";
+  color: var(--muted);
+}
+
+.nativa-faixas-escolha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.nativa-faixa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.nativa-nota-padrao {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.nativa-login-nesta-tela {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+}
+
+.nativa-robo-cabeca {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--cor-op, var(--navy));
+  padding-left: 0.85rem;
+}
+
+.nativa-tabela-edicao .campo {
+  width: 100%;
+}
+
 @media (max-width: 860px) {
   .nativa-form-linha,
   .nativa-idade-linha {
@@ -772,5 +909,8 @@
   }
   .nativa-censo {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .nativa-colunas {
+    grid-template-columns: 1fr;
   }
 }

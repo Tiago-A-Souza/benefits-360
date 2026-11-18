@@ -14,6 +14,7 @@ export default function Conexoes({
   trabalhoAtual,
   naFila = [],
   opLoginInicial = null,
+  onConfigurar,
 }) {
   const [aberto, setAberto] = useState(opLoginInicial);
 
@@ -50,7 +51,7 @@ export default function Conexoes({
       <h1>Conexões</h1>
       <p className="muted">
         Status de cada operadora e o login do portal, guardado no cofre deste computador. A configuração
-        completa do robô (o que ele preenche em cada tela) abre no robô local, em outra aba.
+        completa do robô (o que ele preenche em cada tela) fica em Ajustes dos robôs.
       </p>
       <div className="nativa-robos">
         {(operadoras || []).map((op) => {
@@ -64,16 +65,15 @@ export default function Conexoes({
                   <h2>{op.nome}</h2>
                   <div className="muted">{op.produto}</div>
                 </div>
-                <a
+                <button
+                  type="button"
                   className="nativa-engrenagem"
-                  href={`${urlRobo}/#/robo/${op.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Abre a configuração completa do robô (telas do portal) em outra aba"
-                  aria-label={`Configurar o robô da ${op.nome} (abre o robô local em outra aba)`}
+                  title="Configurar o robô"
+                  aria-label={`Configurar o robô da ${op.nome}`}
+                  onClick={() => onConfigurar?.(op.id)}
                 >
                   ⚙
-                </a>
+                </button>
               </div>
               <p className="muted">{resumoDoRobo(op, padrao, { produto: op.produto_portal })}.</p>
               <div className="nativa-robo-pe">
@@ -103,14 +103,13 @@ export default function Conexoes({
                       {acao.rotulo}
                     </button>
                   ) : null}
-                  <a
+                  <button
+                    type="button"
                     className="secundario btn-compacto"
-                    href={`${urlRobo}/#/robo/${op.id}`}
-                    target="_blank"
-                    rel="noreferrer"
+                    onClick={() => onConfigurar?.(op.id)}
                   >
-                    Configurar no robô
-                  </a>
+                    Configurar
+                  </button>
                 </div>
               </div>
               {aberto === op.id ? (

@@ -34,4 +34,11 @@ describe("nativaLigada e iframeCotacoes", () => {
     vi.stubGlobal("window", { location: { search: "", hash: "#/conexoes?op=sulamerica" } });
     expect(nativaLigada()).toBe(true);
   });
+
+  it("hashes das telas restantes ligam nativa", () => {
+    for (const h of ["#/inicio", "#/ajuda", "#/importar", "#/robos", "#/robo/sulamerica"]) {
+      vi.stubGlobal("window", { location: { search: "", hash: h } });
+      expect(nativaLigada()).toBe(true);
+    }
+  });
 });

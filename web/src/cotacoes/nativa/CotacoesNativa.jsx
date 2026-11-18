@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import NavegacaoFerramentas from "../../NavegacaoFerramentas";
 import { chamarRpa, ouvirEventosRpa, urlBaseRpa } from "../rpaClient";
+import Ajuda from "./Ajuda";
 import Andamento from "./Andamento";
+import AjustesRobos from "./AjustesRobos";
 import BannerPendencias from "./BannerPendencias";
+import ConfigRobo from "./ConfigRobo";
 import Conexoes from "./Conexoes";
+import { useConfirmacao } from "./Confirmacao";
 import FaixaCodigo from "./FaixaCodigo";
 import FaixaProblemaLogin from "./FaixaProblemaLogin";
 import FaixaTrabalho from "./FaixaTrabalho";
+import ImportarPlanilha from "./ImportarPlanilha";
+import Inicio from "./Inicio";
 import ListaCotacoes from "./ListaCotacoes";
 import NovaCotacao from "./NovaCotacao";
 import { TELAS_ROBO_NAO_PORTADAS } from "./regrasNova";
@@ -20,6 +26,15 @@ function lerHash() {
   if (mAnd) return { tela: "andamento", id: Number(mAnd[1]), cnpj: null, op: null };
   if (h.startsWith("#/conexoes")) return { tela: "conexoes", id: null, cnpj: null, op: qs.get("op") };
   if (h.startsWith("#/cotacoes")) return { tela: "cotacoes", id: null, cnpj: null, op: null };
+  if (h.startsWith("#/inicio")) return { tela: "inicio", id: null, cnpj: null, op: null };
+  if (h.startsWith("#/ajuda")) return { tela: "ajuda", id: null, cnpj: null, op: null };
+  if (h.startsWith("#/importar")) return { tela: "importar", id: null, cnpj: null, op: null };
+  if (h.startsWith("#/robos")) return { tela: "robos", id: null, cnpj: null, op: null };
+  const mRobo = h.match(/^#\/robo\/([^/?]+)/);
+  if (mRobo) {
+    if (qs.get("login")) return { tela: "conexoes", id: null, cnpj: null, op: mRobo[1] };
+    return { tela: "robo", id: null, cnpj: null, op: mRobo[1] };
+  }
   const mNova = h.match(/^#\/nova(?:\?(.*))?/);
   if (mNova) {
     const q = mNova[1] ? new URLSearchParams(mNova[1]) : new URLSearchParams();
@@ -28,6 +43,11 @@ function lerHash() {
     return { tela: "nova", id: null, cnpj: q.get("cnpj") || cnpjQuery, op: null };
   }
   return { tela: "cotacoes", id: null, cnpj: null, op: null };
+}
+
+function hashAtual() {
+  if (typeof window === "undefined") return "#/cotacoes";
+  return window.location.hash || "#/cotacoes";
 }
 
 export default function CotacoesNativa({
@@ -49,22 +69,79 @@ export default function CotacoesNativa({
   const [naFila, setNaFila] = useState([]);
   const [reloadOps, setReloadOps] = useState(0);
   const [reloadLista, setReloadLista] = useState(0);
+  const [simulador, setSimulador] = useState(false);
+  const [retencaoDias, setRetencaoDias] = useState(90);
   const urlRobo = urlBaseRpa();
+  const [confirmar, modal] = useConfirmacao();
+  const sujoRef = useRef(() => "");
+  const hashMostrado = useRef(hashAtual());
 
-  const ir = useCallback((hash) => {
+  const marcarSujo = useCallback((fn) => {
+    sujoRef.current = typeof fn === "function" ? fn : () => "";
+  }, []);
+
+  const aplicarHash = useCallback((hash) => {
     if (typeof window !== "undefined") {
       const u = new URL(window.location.href);
       u.hash = hash.startsWith("#") ? hash.slice(1) : hash;
       window.history.replaceState({}, "", u);
+      hashMostrado.current = u.hash.startsWith("#") ? u.hash : `#${u.hash}`;
     }
     setRota(lerHash());
   }, []);
 
+  const ir = useCallback(
+    async (hash) => {
+      const msg = sujoRef.current?.() || "";
+      if (msg) {
+        const ok = await confirmar({
+          titulo: "Sair sem salvar?",
+          texto: [msg],
+          ok: "Sair sem salvar",
+          cancelar: "Continuar aqui",
+          principal: false,
+        });
+        if (!ok) return;
+        sujoRef.current = () => "";
+      }
+      aplicarHash(hash);
+    },
+    [aplicarHash, confirmar],
+  );
+
   useEffect(() => {
-    const onHash = () => setRota(lerHash());
+    const onHash = async () => {
+      const destino = hashAtual();
+      if (destino === hashMostrado.current) {
+        setRota(lerHash());
+        return;
+      }
+      const msg = sujoRef.current?.() || "";
+      if (!msg) {
+        hashMostrado.current = destino;
+        setRota(lerHash());
+        return;
+      }
+      if (typeof window !== "undefined") {
+        const u = new URL(window.location.href);
+        u.hash = hashMostrado.current.startsWith("#") ? hashMostrado.current.slice(1) : hashMostrado.current;
+        window.history.replaceState({}, "", u);
+      }
+      const ok = await confirmar({
+        titulo: "Sair sem salvar?",
+        texto: [msg],
+        ok: "Sair sem salvar",
+        cancelar: "Continuar aqui",
+        principal: false,
+      });
+      if (ok) {
+        sujoRef.current = () => "";
+        aplicarHash(destino);
+      }
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
+  }, [aplicarHash, confirmar]);
 
   useEffect(() => {
     let vivo = true;
@@ -74,6 +151,8 @@ export default function CotacoesNativa({
         if (!vivo) return;
         setOperadoras(d);
         setIndisponiveis((estado && estado.operadoras_indisponiveis) || []);
+        setSimulador(!!(estado && estado.simulador));
+        if (estado && estado.retencao_dias) setRetencaoDias(estado.retencao_dias);
         const cx = {};
         for (const o of d || []) cx[o.id] = o.conexao || "desconectado";
         setConexao((c) => ({ ...cx, ...c }));
@@ -108,7 +187,7 @@ export default function CotacoesNativa({
         setProblemaLogin((p) => (p && p.operadora === ev.operadora ? null : p));
       }
       if (ev.tipo === "etapa") setUltimaEtapa(ev);
-      if (ev.tipo === "cotacao" || (ev.tipo === "trabalho" && ev.status !== "rodando")) {
+      if (ev.tipo === "cotacao" || ev.tipo === "conexao" || (ev.tipo === "trabalho" && ev.status !== "rodando")) {
         setReloadLista((n) => n + 1);
       }
       if (ev.tipo === "parando") {
@@ -148,10 +227,33 @@ export default function CotacoesNativa({
 
   const noAndamentoDeste = tela === "andamento" && trabalhoAtual && Number(id) === Number(trabalhoAtual.id);
   const ativoMenu =
-    tela === "nova" || tela === "andamento" ? "nova" : tela === "conexoes" ? "conexoes" : "cotacoes";
+    tela === "nova" || tela === "andamento"
+      ? "nova"
+      : tela === "conexoes"
+        ? "conexoes"
+        : tela === "inicio"
+          ? "inicio"
+          : tela === "ajuda"
+            ? "ajuda"
+            : tela === "importar"
+              ? "importar"
+              : tela === "robos" || tela === "robo"
+                ? "robos"
+                : "cotacoes";
+
+  const itensMenu = [
+    { id: "inicio", rotulo: "Início", hash: "#/inicio" },
+    { id: "nova", rotulo: "Nova cotação", hash: "#/nova" },
+    { id: "cotacoes", rotulo: "Cotações", hash: "#/cotacoes" },
+    { id: "importar", rotulo: "Importar planilha", hash: "#/importar" },
+    { id: "conexoes", rotulo: "Conexões", hash: "#/conexoes" },
+    { id: "robos", rotulo: "Ajustes dos robôs", hash: "#/robos" },
+    { id: "ajuda", rotulo: "Ajuda", hash: "#/ajuda" },
+  ];
 
   return (
     <div className="lista-shell nativa-shell">
+      {modal}
       <aside className="lista-rail app-sidebar">
         <NavegacaoFerramentas
           ativo="cotacoes"
@@ -164,34 +266,38 @@ export default function CotacoesNativa({
         <nav className="nav-ferramentas nativa-subnav" aria-label="Cotações">
           <p className="lista-rail-lb">Cotações</p>
           <ul className="lista-filtros">
-            <li>
-              <button type="button" aria-pressed={ativoMenu === "nova"} onClick={() => ir("#/nova")}>
-                Nova cotação
-              </button>
-            </li>
-            <li>
-              <button type="button" aria-pressed={ativoMenu === "cotacoes"} onClick={() => ir("#/cotacoes")}>
-                Cotações
-              </button>
-            </li>
-            <li>
-              <button type="button" aria-pressed={ativoMenu === "conexoes"} onClick={() => ir("#/conexoes")}>
-                Conexões
-              </button>
-            </li>
-          </ul>
-          <p className="lista-rail-lb">No robô local</p>
-          <ul className="lista-filtros">
-            {TELAS_ROBO_NAO_PORTADAS.map((t) => (
-              <li key={t.hash}>
-                <a href={`${urlRobo}/${t.hash}`} target="_blank" rel="noreferrer" title={`Abre ${t.rotulo} no robô (127.0.0.1:8600) em outra aba`}>
-                  {t.rotulo}
-                </a>
+            {itensMenu.map((item) => (
+              <li key={item.id}>
+                <button type="button" aria-pressed={ativoMenu === item.id} onClick={() => ir(item.hash)}>
+                  {item.rotulo}
+                </button>
               </li>
             ))}
           </ul>
+          {TELAS_ROBO_NAO_PORTADAS.length ? (
+            <>
+              <p className="lista-rail-lb">No robô local</p>
+              <ul className="lista-filtros">
+                {TELAS_ROBO_NAO_PORTADAS.map((t) => (
+                  <li key={t.hash}>
+                    <a
+                      href={`${urlRobo}/${t.hash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`Abre ${t.rotulo} no robô (127.0.0.1:8600) em outra aba`}
+                    >
+                      {t.rotulo}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
           <p className="muted nativa-flag-hint">
-            Telas ainda não portadas abrem o robô local em outra aba. Para comparar com o iframe antigo:{" "}
+            {TELAS_ROBO_NAO_PORTADAS.length
+              ? "Telas ainda não portadas abrem o robô local em outra aba. "
+              : null}
+            Para comparar com o iframe antigo:{" "}
             <button type="button" className="link" onClick={irIframe}>
               ?cotacoes-iframe=1
             </button>
@@ -244,6 +350,56 @@ export default function CotacoesNativa({
 
         {operadoras && tela === "nova" ? <BannerPendencias aviso={mostrarAviso} recarregarSinal={reloadLista} /> : null}
 
+        {operadoras && tela === "inicio" ? (
+          <Inicio
+            operadoras={operadoras}
+            trabalhoAtual={trabalhoAtual}
+            aviso={mostrarAviso}
+            onAcompanhar={(tid) => ir(`#/andamento/${tid}`)}
+            onCotacoes={() => ir("#/cotacoes")}
+            onNova={() => ir("#/nova")}
+            onImportar={() => ir("#/importar")}
+            onLogin={(opId) => ir(`#/conexoes?op=${opId}`)}
+            onCotarEmpresa={(cnpjEmp) => ir(`#/nova?cnpj=${cnpjEmp}`)}
+            recarregarSinal={reloadLista}
+          />
+        ) : null}
+
+        {operadoras && tela === "ajuda" ? (
+          <Ajuda operadoras={operadoras} retencaoDias={retencaoDias} simulador={simulador} />
+        ) : null}
+
+        {operadoras && tela === "importar" ? (
+          <ImportarPlanilha
+            operadoras={operadoras}
+            aviso={mostrarAviso}
+            onEnfileirado={(tid) => ir(`#/andamento/${tid}`)}
+          />
+        ) : null}
+
+        {operadoras && tela === "robos" ? (
+          <AjustesRobos
+            operadoras={operadoras}
+            indisponiveis={indisponiveis}
+            conexao={conexao}
+            aviso={mostrarAviso}
+            onConfigurar={(opId) => ir(`#/robo/${opId}`)}
+            onLogin={(opId) => ir(`#/conexoes?op=${opId}`)}
+          />
+        ) : null}
+
+        {operadoras && tela === "robo" && op ? (
+          <ConfigRobo
+            opId={op}
+            operadoras={operadoras}
+            conexao={conexao}
+            aviso={mostrarAviso}
+            onVoltar={() => ir("#/robos")}
+            onLogin={(opId) => ir(`#/conexoes?op=${opId}`)}
+            onSujo={marcarSujo}
+          />
+        ) : null}
+
         {operadoras && tela === "cotacoes" ? (
           <ListaCotacoes
             operadoras={operadoras}
@@ -265,6 +421,7 @@ export default function CotacoesNativa({
             trabalhoAtual={trabalhoAtual}
             naFila={naFila}
             opLoginInicial={op}
+            onConfigurar={(opId) => ir(`#/robo/${opId}`)}
           />
         ) : null}
 
@@ -277,6 +434,7 @@ export default function CotacoesNativa({
             onEnfileirado={(tid) => ir(`#/andamento/${tid}`)}
             onIrIframeCotacoes={irIframe}
             onCotarEmpresa={(cnpjEmp) => ir(`#/nova?cnpj=${cnpjEmp}`)}
+            onConfigurar={(opId) => ir(`#/robo/${opId}`)}
             aviso={mostrarAviso}
           />
         ) : null}
