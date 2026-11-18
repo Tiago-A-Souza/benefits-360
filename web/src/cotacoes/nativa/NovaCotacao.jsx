@@ -138,8 +138,8 @@ function PainelOperadora({ op, o, conexao, urlRobo, soUma, onPatch }) {
             href={`${urlRobo}/#/robo/${op.id}`}
             target="_blank"
             rel="noreferrer"
-            title="Configurar o robô"
-            aria-label={`Configurar o robô da ${op.nome}`}
+            title="Abre a configuração completa do robô (telas do portal) em outra aba"
+            aria-label={`Configurar o robô da ${op.nome} (abre o robô local em outra aba)`}
           >
             ⚙
           </a>

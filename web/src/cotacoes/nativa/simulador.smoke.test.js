@@ -35,5 +35,10 @@ describe("fumaça HTTP no robô (8600, sem mock)", () => {
     const v = await validar.json();
     expect(v).toHaveProperty("ok");
     expect(v).toHaveProperty("cotacoes");
+    const lista = await fetch(`${RPA_URL_PADRAO}/api/cotacoes?status=OK`);
+    expect(lista.ok).toBe(true);
+    expect(Array.isArray(await lista.json())).toBe(true);
+    const pend = await fetch(`${RPA_URL_PADRAO}/api/pendencias`);
+    expect(pend.ok).toBe(true);
   });
 });

@@ -50,6 +50,15 @@ export function digitos(t) {
   return String(t || "").replace(/\D/g, "");
 }
 
+export function formatarCpf(t) {
+  const d = digitos(t).slice(0, 11);
+  let r = d.slice(0, 3);
+  if (d.length > 3) r += "." + d.slice(3, 6);
+  if (d.length > 6) r += "." + d.slice(6, 9);
+  if (d.length > 9) r += "-" + d.slice(9);
+  return r;
+}
+
 export function formatarCnpj(t) {
   const d = digitos(t).slice(0, 14);
   let r = d.slice(0, 2);
@@ -58,6 +67,22 @@ export function formatarCnpj(t) {
   if (d.length > 8) r += "/" + d.slice(8, 12);
   if (d.length > 12) r += "-" + d.slice(12);
   return r;
+}
+
+export function formatarCpfOuCnpj(t) {
+  const d = digitos(t);
+  return d.length > 11 ? formatarCnpj(d) : formatarCpf(d);
+}
+
+export function cpfValido(t) {
+  const d = digitos(t);
+  if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+  for (const n of [9, 10]) {
+    let soma = 0;
+    for (let i = 0; i < n; i++) soma += Number(d[i]) * (n + 1 - i);
+    if ((soma * 10 % 11) % 10 !== Number(d[n])) return false;
+  }
+  return true;
 }
 
 export function cnpjValido(t) {
@@ -348,7 +373,7 @@ export const TEXTO_PENDENCIA = {
 };
 
 export function tituloProblemaLogin(opNome, motivo) {
-  if (motivo === "sem_credenciais") return `Cadastre o login da ${opNome} na engrenagem do robô`;
+  if (motivo === "sem_credenciais") return `Cadastre o login da ${opNome} em Conexões`;
   if (motivo === "recusadas") return `O portal da ${opNome} recusou o login guardado`;
   if (motivo === "senha_comprida") return "A senha guardada é maior do que o portal aceita";
   return `O robô não conseguiu entrar no portal da ${opNome}`;
@@ -420,18 +445,46 @@ export function quando(iso) {
   return `${d.toLocaleDateString("pt-BR")} às ${hora}`;
 }
 
+/** Volta ao iframe antigo do RPA (comparar / reverter). */
+export function iframeCotacoes() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("cotacoes-iframe") === "1";
+}
+
+/**
+ * Abrir a casca nativa no carregamento.
+ * Padrão da aba Cotações = nativa. `?cotacoes-iframe=1` vence.
+ */
 export function nativaLigada() {
   if (typeof window === "undefined") return false;
+  if (iframeCotacoes()) return false;
   const q = new URLSearchParams(window.location.search);
   if (q.get("cotacoes-nativa") === "1") return true;
-  try {
-    if (import.meta.env.VITE_COTACOES_NATIVA !== "1") return false;
-  } catch {
-    return false;
-  }
   const h = window.location.hash || "";
-  return h.startsWith("#/nova") || h.startsWith("#/andamento/");
+  return h.startsWith("#/nova") || h.startsWith("#/andamento/") || h.startsWith("#/cotacoes") || h.startsWith("#/conexoes");
 }
+
+export const FILTROS_LISTA = [
+  ["OK", "Emitidas"],
+  ["ERRO,VERIFICAR,PARADO", "Não emitidas"],
+  ["ENSAIO_OK", "Ensaios"],
+  ["", "Tudo"],
+];
+
+export function formatarDataLista(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === new Date().toDateString()) return `hoje, ${hora}`;
+  return `${d.toLocaleDateString("pt-BR")} ${hora}`;
+}
+
+export const TELAS_ROBO_NAO_PORTADAS = [
+  { hash: "#/inicio", rotulo: "Início" },
+  { hash: "#/importar", rotulo: "Importar planilha" },
+  { hash: "#/robos", rotulo: "Ajustes dos robôs" },
+  { hash: "#/ajuda", rotulo: "Ajuda" },
+];
 
 /**
  * Confirmações humanas da Nova cotação (ensaio / emitir / já emitidas).

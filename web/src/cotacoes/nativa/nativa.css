@@ -665,6 +665,106 @@
   clip: rect(0 0 0 0);
 }
 
+.nativa-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.nativa-filtros .campo {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+}
+
+.nativa-filtros-espaco {
+  flex: 1;
+}
+
+.nativa-vazio {
+  padding: 1.5rem 0;
+}
+
+.nativa-sem-quebra {
+  white-space: nowrap;
+}
+
+.nativa-robos {
+  display: grid;
+  gap: 1rem;
+}
+
+.nativa-robo-cartao {
+  border-left: 4px solid var(--cor-op, var(--navy));
+}
+
+.nativa-robo-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.nativa-robo-topo h2 {
+  margin: 0;
+}
+
+.nativa-robo-pe {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.nativa-robo-indisponivel {
+  opacity: 0.75;
+}
+
+.nativa-conexao-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.nativa-login-portal {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.nativa-login-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.nativa-login-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.nativa-login-estado--erro {
+  color: var(--red);
+}
+
+.nativa-subnav a {
+  display: block;
+  padding: 0.35rem 0.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.nativa-subnav a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 860px) {
   .nativa-form-linha,
   .nativa-idade-linha {

@@ -87,7 +87,7 @@ describe("FaixaProblemaLogin e FaixaTrabalho", () => {
       />,
     );
     expect(html).toContain("Cadastre o login da SulAmérica");
-    expect(html).toContain("Abrir a engrenagem");
+    expect(html).toContain("Abrir o login");
   });
 
   it("mostra acompanhar quando o robô está em outro pedido", () => {

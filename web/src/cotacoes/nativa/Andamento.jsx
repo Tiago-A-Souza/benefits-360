@@ -38,6 +38,7 @@ export default function Andamento({
   onNovoTrabalho,
   onNova,
   onIrIframeCotacoes,
+  onIrLogin,
   urlRobo,
   aviso,
 }) {
@@ -222,7 +223,7 @@ export default function Andamento({
         "O portal ainda tem uma sessão aberta para este login (outro navegador ou uma janela fechada). O robô entra de novo sozinho em instantes; não precisa fazer nada.";
     } else if (conexaoOp === "entrando") {
       tituloPainel = "Entrando no portal";
-      linhaPainel = `O robô entra sozinho na ${op.nome}, com o login guardado na engrenagem.`;
+      linhaPainel = `O robô entra sozinho na ${op.nome}, com o login guardado em Conexões.`;
     } else if (etapa) {
       const nomeTela = nomeEtapa(operadoras, etapa.operadora, etapa.etapa);
       if (etapa.plano) {
@@ -253,15 +254,9 @@ export default function Andamento({
       );
     } else if (op) {
       botoes.push(
-        <a
-          key="eng"
-          className="secundario"
-          href={`${urlRobo || ""}/#/robo/${op.id}?login=1`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Abrir a engrenagem
-        </a>,
+        <button key="eng" type="button" className="secundario" onClick={() => onIrLogin?.(op.id)}>
+          Abrir o login
+        </button>,
       );
     }
   } else if (t.status === "concluido") {

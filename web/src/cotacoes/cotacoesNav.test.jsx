@@ -38,10 +38,12 @@ describe("navegação — Cotações (RPA)", () => {
     expect(html).toContain("Cotações");
   });
 
-  it("sem a flag, o menu Cotações do App continua no iframe (CotacoesRpa)", () => {
+  it("menu Cotações abre a nativa; iframe só com ?cotacoes-iframe=1", () => {
     const app = readFileSync(join(raiz, "App.jsx"), "utf8");
-    expect(app).toContain("onCotacoes={() => setCotacoesRpa(true)}");
+    expect(app).toContain("abrirCotacoes()");
+    expect(app).toContain("iframeCotacoes()");
     expect(app).toContain("nativaLigada()");
+    expect(app).not.toContain("onCotacoes={() => setCotacoesRpa(true)}");
     const iframe = readFileSync(join(raiz, "cotacoes", "CotacoesRpa.jsx"), "utf8");
     expect(iframe).toContain("<iframe");
     expect(iframe).toContain("Newport Cotações (RPA)");
