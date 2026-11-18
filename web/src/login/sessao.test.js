@@ -16,7 +16,7 @@ vi.mock("./supabase.js", () => ({
   obterCliente: () => ({ auth }),
 }));
 
-import { criarConta, entrar } from "./sessao.js";
+import { criarConta, entrar, obterAccessToken } from "./sessao.js";
 
 describe("sessao.js com Supabase simulado", () => {
   beforeEach(() => {
@@ -60,6 +60,13 @@ describe("sessao.js com Supabase simulado", () => {
     const r = await entrar("corretor@corretora.com.br", "senha1234");
     expect(r.ok).toBe(false);
     expect(r.erro).toBe("Confirme o e-mail antes de entrar.");
+  });
+
+  it("obterAccessToken devolve o JWT da sessão", async () => {
+    auth.getSession.mockResolvedValue({
+      data: { session: { access_token: "jwt-de-teste" } },
+    });
+    await expect(obterAccessToken()).resolves.toBe("jwt-de-teste");
   });
 
   it("criar conta", async () => {
