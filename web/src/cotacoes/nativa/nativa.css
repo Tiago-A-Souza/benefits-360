@@ -1,0 +1,676 @@
+/* Nova cotação + Andamento nativos: tokens do Benefits (Inter/Fraunces, navy). Sem identidade Newport. */
+
+.nativa-shell {
+  --nativa-accent: var(--navy);
+}
+
+.nativa-main {
+  position: relative;
+  padding-bottom: 7.5rem;
+}
+
+.nativa-main h1 {
+  font-family: var(--font-system);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--navy);
+}
+
+.nativa-main h2 {
+  font-family: var(--font-system);
+  font-size: 1.15rem;
+  margin: 0 0 0.35rem;
+  color: var(--navy);
+}
+
+.nativa-flag-hint {
+  font-size: 0.78rem;
+  padding: 0 0.75rem 1rem;
+  line-height: 1.35;
+}
+
+.nativa-subnav {
+  margin-top: 1rem;
+}
+
+.nativa-form-linha {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+  margin: 0.85rem 0;
+}
+
+.nativa-rotulo,
+.nativa-form-linha > label {
+  font-weight: 600;
+  color: var(--ink);
+  padding-top: 0.45rem;
+}
+
+.nativa-ajuda {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+
+.nativa-campo-grupo {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.nativa-campo-grupo .campo,
+.nativa-campo-grupo input {
+  flex: 1;
+}
+
+.campo.invalido {
+  border-color: var(--red) !important;
+  background: var(--red-50);
+}
+
+.nativa-censo {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.nativa-faixa-col {
+  text-align: center;
+}
+
+.nativa-faixa-qtd {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.nativa-faixa-qtd.zero {
+  color: var(--muted-2);
+}
+
+.nativa-faixa-barra-area {
+  height: 72px;
+  background: var(--surface-3);
+  border-radius: 8px 8px 4px 4px;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  overflow: hidden;
+  margin: 0.25rem 0;
+  border: 1px solid var(--line);
+}
+
+.nativa-faixa-barra {
+  width: 100%;
+  background: var(--navy);
+  min-height: 0;
+  transition: height 0.12s ease;
+}
+
+.nativa-faixa-rotulo {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.nativa-exata {
+  color: var(--amber);
+}
+
+.nativa-passo {
+  display: flex;
+  justify-content: center;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+}
+
+.nativa-passo button {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  box-shadow: none;
+}
+
+.nativa-censo-total {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.nativa-censo-total .fora {
+  color: var(--red);
+}
+
+.nativa-idades {
+  margin-top: 1rem;
+}
+
+.nativa-idade-linha {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  gap: 0.75rem;
+  margin: 0.6rem 0;
+}
+
+.nativa-operadora {
+  border-left: 4px solid var(--cor-op, var(--navy));
+}
+
+.nativa-operadora-cabeca {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.nativa-operadora-nome {
+  font-family: var(--font-system);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.nativa-operadora-lado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.nativa-conexao {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.nativa-ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  display: inline-block;
+}
+
+.nativa-ponto--conectado,
+.nativa-ponto--ocupado {
+  background: var(--green);
+}
+
+.nativa-ponto--aguardando_codigo,
+.nativa-ponto--aguardando_portal,
+.nativa-ponto--entrando,
+.nativa-ponto--abrindo {
+  background: var(--amber);
+}
+
+.nativa-ponto--saindo {
+  background: var(--blue);
+}
+
+.nativa-engrenagem {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 1.1rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.nativa-chave {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nativa-chave input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.nativa-chave-trilho {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.nativa-chave-trilho::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow);
+  transition: transform 0.12s ease;
+}
+
+.nativa-chave input:checked + .nativa-chave-trilho {
+  background: var(--navy);
+}
+
+.nativa-chave input:checked + .nativa-chave-trilho::after {
+  transform: translateX(16px);
+}
+
+.nativa-segmentos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.nativa-segmentos button[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+
+.nativa-frase-robo {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  line-height: 1.45;
+}
+
+.nativa-selo-mudado {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--amber);
+  background: var(--amber-50);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+}
+
+.nativa-acoes-frase {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.nativa-planos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.nativa-planos h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.nativa-plano-item {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.nativa-plano-item.marcado {
+  background: var(--blue-50);
+}
+
+.nativa-menor-preco {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.nativa-problemas {
+  background: var(--red-50);
+  border: 1px solid #efc9cd;
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  margin-top: 1rem;
+  color: var(--ink);
+}
+
+.nativa-problemas ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.nativa-barra-acao {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 0.85rem 1.1rem;
+  margin-top: 1rem;
+  z-index: 5;
+}
+
+.nativa-resumo {
+  font-weight: 650;
+  color: var(--navy);
+}
+
+.nativa-acoes,
+.nativa-acoes-robo,
+.nativa-acoes-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.nativa-perigo {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.nativa-perigo:hover {
+  background: #a82f39;
+  border-color: #a82f39;
+}
+
+.nativa-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 31, 54, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  padding: 1rem;
+}
+
+.nativa-modal-caixa {
+  max-width: 32rem;
+  width: 100%;
+  margin: 0;
+}
+
+.nativa-modal-caixa h2 {
+  margin-top: 0;
+}
+
+.nativa-modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.nativa-empresas {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.nativa-empresas li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.nativa-empresas li:last-child {
+  border-bottom: none;
+}
+
+.nativa-pendencias h2 {
+  margin-bottom: 0.25rem;
+}
+
+.nativa-pend-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.nativa-pend-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.nativa-faixa-problema,
+.nativa-faixa-trabalho {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border-radius: var(--radius);
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.nativa-faixa-problema {
+  background: var(--red-50);
+  border: 1px solid #efc9cd;
+}
+
+.nativa-faixa-trabalho {
+  background: var(--blue-50);
+  border: 1px solid #c5d9f5;
+}
+
+.nativa-faixa-codigo {
+  background: var(--amber-50);
+  border: 1px solid #f1d7ab;
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.nativa-faixa-acoes {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.nativa-faixa-acoes input {
+  width: 8rem;
+  margin-top: 0;
+}
+
+.nativa-toast {
+  background: var(--green-50);
+  border: 1px solid #b7e0cc;
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.nativa-toast--erro {
+  background: var(--red-50);
+  border-color: #efc9cd;
+}
+
+.nativa-etapas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+
+.nativa-etapas li {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.nativa-etapas li.feita {
+  background: var(--green-50);
+  color: var(--green);
+  border-color: #b7e0cc;
+}
+
+.nativa-etapas li.atual {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+
+.nativa-painel-cabeca {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.nativa-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.nativa-tabela th,
+.nativa-tabela td {
+  text-align: left;
+  padding: 0.5rem 0.45rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.nativa-tabela th {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.nativa-mesmo-plano td {
+  border-top: none;
+  padding-top: 0.15rem;
+}
+
+.nativa-empresa-nome {
+  font-weight: 650;
+}
+
+.nativa-selo {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  background: var(--surface-3);
+}
+
+.nativa-selo--OK,
+.nativa-selo--ENSAIO_OK {
+  background: var(--green-50);
+  color: var(--green);
+}
+
+.nativa-selo--ERRO,
+.nativa-selo--PARADO {
+  background: var(--red-50);
+  color: var(--red);
+}
+
+.nativa-selo--VERIFICAR {
+  background: var(--amber-50);
+  color: var(--amber);
+}
+
+.nativa-selo--PULADO {
+  background: var(--blue-50);
+  color: var(--blue-2);
+}
+
+.nativa-motivo td {
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.nativa-faixas-detalhe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.nativa-versao {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.nativa-registro {
+  max-height: 240px;
+  overflow: auto;
+  font-size: 0.85rem;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.nativa-registro p {
+  margin: 0.2rem 0;
+}
+
+.nativa-warning {
+  color: var(--amber);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (max-width: 860px) {
+  .nativa-form-linha,
+  .nativa-idade-linha {
+    grid-template-columns: 1fr;
+  }
+  .nativa-censo {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
