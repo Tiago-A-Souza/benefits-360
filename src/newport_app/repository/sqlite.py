@@ -21,6 +21,7 @@ from newport_app.services.rede_selecao import (
     sanitizar_selecao_rede,
 )
 from newport_app.services.rede_selecao_ui import todos_ids_linha_rede
+from newport_app.auth.contexto import id_dono, params_visivel
 from newport_app.repository.migration import migrar_estudos_db
 
 
@@ -55,7 +56,8 @@ class SQLiteStudyRepository:
     def obter_rascunho(self, estudo_id: str) -> RascunhoEstudo | None:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT payload FROM rascunhos WHERE id = ?", (estudo_id,)
+                "SELECT payload FROM rascunhos WHERE id = ? AND (usuario_id = ? OR ? = 1)",
+                (estudo_id, *params_visivel()),
             ).fetchone()
         if row is None:
             return None
@@ -92,14 +94,15 @@ class SQLiteStudyRepository:
         conn.execute(
             """
             INSERT INTO rascunhos (
-                id, payload, rascunho_versao, policy_set_versao, atualizado_em
+                id, payload, rascunho_versao, policy_set_versao, atualizado_em, usuario_id
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 payload = excluded.payload,
                 rascunho_versao = excluded.rascunho_versao,
                 policy_set_versao = excluded.policy_set_versao,
                 atualizado_em = excluded.atualizado_em
+            WHERE rascunhos.usuario_id = excluded.usuario_id OR ? = 1
             """,
             (
                 rascunho.id,
@@ -107,6 +110,8 @@ class SQLiteStudyRepository:
                 rascunho.rascunho_versao,
                 rascunho.policy_set_versao,
                 agora,
+                id_dono(),
+                params_visivel()[1],
             ),
         )
 
@@ -116,12 +121,16 @@ class SQLiteStudyRepository:
 
     def listar_ids(self) -> list[str]:
         with self._connect() as conn:
-            rows = conn.execute("SELECT id FROM rascunhos ORDER BY id").fetchall()
+            rows = conn.execute(
+                "SELECT id FROM rascunhos WHERE (usuario_id = ? OR ? = 1) ORDER BY id",
+                params_visivel(),
+            ).fetchall()
         return [str(r["id"]) for r in rows]
 
     def listar_metadados(self) -> list[tuple[str, str | None]]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT id, atualizado_em FROM rascunhos ORDER BY atualizado_em DESC"
+                "SELECT id, atualizado_em FROM rascunhos WHERE (usuario_id = ? OR ? = 1) ORDER BY atualizado_em DESC",
+                params_visivel(),
             ).fetchall()
         return [(str(r["id"]), r["atualizado_em"]) for r in rows]

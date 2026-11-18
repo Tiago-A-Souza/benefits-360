@@ -24,6 +24,7 @@ from newport_app.models.historico import (
     SugestaoVinculoBeneficiario,
     VincularEstudoRequest,
 )
+from newport_app.auth.contexto import id_dono, params_visivel
 from newport_app.repository.migration import migrar_estudos_db
 from newport_motor.faixa import faixa_em
 
@@ -49,14 +50,17 @@ class HistoricoRepository:
         cliente = Cliente(id=str(uuid.uuid4()), nome=nome.strip(), criado_em=agora)
         with self._connect() as conn:
             conn.execute(
-                "INSERT INTO clientes (id, nome, criado_em) VALUES (?, ?, ?)",
-                (cliente.id, cliente.nome, agora.isoformat()),
+                "INSERT INTO clientes (id, nome, criado_em, usuario_id) VALUES (?, ?, ?, ?)",
+                (cliente.id, cliente.nome, agora.isoformat(), id_dono()),
             )
         return cliente
 
     def listar_clientes(self) -> list[Cliente]:
         with self._connect() as conn:
-            rows = conn.execute("SELECT * FROM clientes ORDER BY nome").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM clientes WHERE (usuario_id = ? OR ? = 1) ORDER BY nome",
+                params_visivel(),
+            ).fetchall()
         return [
             Cliente(
                 id=r["id"],
@@ -87,8 +91,8 @@ class HistoricoRepository:
             conn.execute(
                 """
                 INSERT INTO ciclos_renovacao (
-                    id, cliente_id, numero, vigencia_inicio, vigencia_fim, criado_em
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    id, cliente_id, numero, vigencia_inicio, vigencia_fim, criado_em, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ciclo.id,
@@ -97,6 +101,7 @@ class HistoricoRepository:
                     ciclo.vigencia_inicio.isoformat() if ciclo.vigencia_inicio else None,
                     ciclo.vigencia_fim.isoformat() if ciclo.vigencia_fim else None,
                     agora.isoformat(),
+                    id_dono(),
                 ),
             )
         return ciclo
@@ -104,8 +109,8 @@ class HistoricoRepository:
     def listar_ciclos(self, cliente_id: str) -> list[CicloRenovacao]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM ciclos_renovacao WHERE cliente_id=? ORDER BY numero DESC",
-                (cliente_id,),
+                "SELECT * FROM ciclos_renovacao WHERE cliente_id=? AND (usuario_id = ? OR ? = 1) ORDER BY numero DESC",
+                (cliente_id, *params_visivel()),
             ).fetchall()
         return [
             CicloRenovacao(
@@ -126,19 +131,20 @@ class HistoricoRepository:
             ciclo_id = req.ciclo_id
             if req.criar_ciclo:
                 ultimo = conn.execute(
-                    "SELECT MAX(numero) AS n FROM ciclos_renovacao WHERE cliente_id=?",
-                    (req.cliente_id,),
+                    "SELECT MAX(numero) AS n FROM ciclos_renovacao WHERE cliente_id=? AND (usuario_id = ? OR ? = 1)",
+                    (req.cliente_id, *params_visivel()),
                 ).fetchone()
                 numero = req.ciclo_numero or int(ultimo["n"] or 0) + 1
                 ciclo = self.criar_ciclo(req.cliente_id, numero)
                 ciclo_id = ciclo.id
             conn.execute(
-                "UPDATE estudos_meta SET cliente_id=?, ciclo_id=?, atualizado_em=? WHERE id=?",
+                "UPDATE estudos_meta SET cliente_id=?, ciclo_id=?, atualizado_em=? WHERE id=? AND (usuario_id = ? OR ? = 1)",
                 (
                     req.cliente_id,
                     ciclo_id,
                     datetime.now(timezone.utc).isoformat(),
                     estudo_id,
+                    *params_visivel(),
                 ),
             )
         meta = self.obter_estudo_meta(estudo_id)
@@ -148,7 +154,10 @@ class HistoricoRepository:
 
     def obter_estudo_meta(self, estudo_id: str) -> EstudoMeta | None:
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM estudos_meta WHERE id=?", (estudo_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM estudos_meta WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (estudo_id, *params_visivel()),
+            ).fetchone()
         if row is None:
             return None
         return self._row_estudo_meta(row)
@@ -176,9 +185,9 @@ class HistoricoRepository:
             row = conn.execute(
                 """
                 SELECT * FROM posicao_cadastral_versao
-                WHERE estudo_id=? AND importacao_id=?
+                WHERE estudo_id=? AND importacao_id=? AND (usuario_id = ? OR ? = 1)
                 """,
-                (estudo_id, importacao_id),
+                (estudo_id, importacao_id, *params_visivel()),
             ).fetchone()
         if row is None:
             return None
@@ -187,8 +196,8 @@ class HistoricoRepository:
     def contar_posicoes(self, estudo_id: str) -> int:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT COUNT(*) AS n FROM posicao_cadastral_versao WHERE estudo_id=?",
-                (estudo_id,),
+                "SELECT COUNT(*) AS n FROM posicao_cadastral_versao WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)",
+                (estudo_id, *params_visivel()),
             ).fetchone()
         return int(row["n"])
 
@@ -198,14 +207,14 @@ class HistoricoRepository:
                 row = conn.execute(
                     """
                     SELECT COUNT(*) AS n FROM beneficiario_participacao
-                    WHERE estudo_id=? AND posicao_versao_id=?
+                    WHERE estudo_id=? AND posicao_versao_id=? AND (usuario_id = ? OR ? = 1)
                     """,
-                    (estudo_id, posicao_id),
+                    (estudo_id, posicao_id, *params_visivel()),
                 ).fetchone()
             else:
                 row = conn.execute(
-                    "SELECT COUNT(*) AS n FROM beneficiario_participacao WHERE estudo_id=?",
-                    (estudo_id,),
+                    "SELECT COUNT(*) AS n FROM beneficiario_participacao WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)",
+                    (estudo_id, *params_visivel()),
                 ).fetchone()
         return int(row["n"])
 
@@ -242,9 +251,9 @@ class HistoricoRepository:
             existente = conn.execute(
                 """
                 SELECT * FROM posicao_cadastral_versao
-                WHERE estudo_id=? AND importacao_id=?
+                WHERE estudo_id=? AND importacao_id=? AND (usuario_id = ? OR ? = 1)
                 """,
-                (rascunho.id, importacao_id),
+                (rascunho.id, importacao_id, *params_visivel()),
             ).fetchone()
             if existente is not None:
                 return self._row_posicao(existente)
@@ -252,8 +261,8 @@ class HistoricoRepository:
         agora = datetime.now(timezone.utc)
         self.sincronizar_estudo_meta_conn(conn, rascunho, agora)
         ultima = conn.execute(
-            "SELECT MAX(versao) AS v FROM posicao_cadastral_versao WHERE estudo_id=?",
-            (rascunho.id,),
+            "SELECT MAX(versao) AS v FROM posicao_cadastral_versao WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)",
+            (rascunho.id, *params_visivel()),
         ).fetchone()
         versao = int(ultima["v"] or 0) + 1
         pos_id = str(uuid.uuid4())
@@ -261,8 +270,8 @@ class HistoricoRepository:
             """
             INSERT INTO posicao_cadastral_versao (
                 id, estudo_id, versao, origem, documento_hash,
-                importador_versao, importacao_id, criado_em
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                importador_versao, importacao_id, criado_em, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 pos_id,
@@ -273,10 +282,12 @@ class HistoricoRepository:
                 importador_versao,
                 importacao_id,
                 agora.isoformat(),
+                id_dono(),
             ),
         )
         meta = conn.execute(
-            "SELECT cliente_id FROM estudos_meta WHERE id=?", (rascunho.id,)
+            "SELECT cliente_id FROM estudos_meta WHERE id=? AND (usuario_id = ? OR ? = 1)",
+            (rascunho.id, *params_visivel()),
         ).fetchone()
         cliente_id = meta["cliente_id"] if meta else None
 
@@ -295,8 +306,8 @@ class HistoricoRepository:
                     id, estudo_id, posicao_versao_id, beneficiario_id,
                     vida_rascunho_id, nome, nascimento, parentesco, sexo, status,
                     subgrupo_id, plano_nome, faixa, valor_centavos,
-                    sugestao_vinculo, vinculo_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    sugestao_vinculo, vinculo_status, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     participacao_id,
@@ -315,6 +326,7 @@ class HistoricoRepository:
                     valor,
                     sugestao,
                     "pendente",
+                    id_dono(),
                 ),
             )
             if cliente_id:
@@ -345,7 +357,8 @@ class HistoricoRepository:
         agora: datetime,
     ) -> EstudoMeta:
         row = conn.execute(
-            "SELECT * FROM estudos_meta WHERE id = ?", (rascunho.id,)
+            "SELECT * FROM estudos_meta WHERE id = ? AND (usuario_id = ? OR ? = 1)",
+            (rascunho.id, *params_visivel()),
         ).fetchone()
         cliente_nome = rascunho.empresa_cliente.nome if rascunho.empresa_cliente else None
         if row is None:
@@ -361,8 +374,8 @@ class HistoricoRepository:
                 """
                 INSERT INTO estudos_meta (
                     id, titulo, formato, cliente_nome, ciclo_numero,
-                    estado_workflow, criado_em, atualizado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    estado_workflow, criado_em, atualizado_em, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     meta.id,
@@ -373,6 +386,7 @@ class HistoricoRepository:
                     meta.estado_workflow,
                     meta.criado_em.isoformat(),
                     meta.atualizado_em.isoformat(),
+                    id_dono(),
                 ),
             )
             if cliente_nome:
@@ -381,14 +395,17 @@ class HistoricoRepository:
         conn.execute(
             """
             UPDATE estudos_meta SET titulo=?, cliente_nome=?, atualizado_em=?
-            WHERE id=?
+            WHERE id=? AND (usuario_id = ? OR ? = 1)
             """,
-            (rascunho.titulo, cliente_nome, agora.isoformat(), rascunho.id),
+            (rascunho.titulo, cliente_nome, agora.isoformat(), rascunho.id, *params_visivel()),
         )
         if cliente_nome and not row["cliente_id"]:
             self._garantir_cliente_por_nome(conn, rascunho.id, cliente_nome, agora)
         return self._row_estudo_meta(
-            conn.execute("SELECT * FROM estudos_meta WHERE id=?", (rascunho.id,)).fetchone()
+            conn.execute(
+                "SELECT * FROM estudos_meta WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (rascunho.id, *params_visivel()),
+            ).fetchone()
         )
 
     def sincronizar_estudo_meta(self, rascunho: RascunhoEstudo) -> EstudoMeta:
@@ -403,18 +420,21 @@ class HistoricoRepository:
         nome: str,
         agora: datetime,
     ) -> None:
-        row = conn.execute("SELECT id FROM clientes WHERE nome=?", (nome,)).fetchone()
+        row = conn.execute(
+            "SELECT id FROM clientes WHERE nome=? AND (usuario_id = ? OR ? = 1)",
+            (nome, *params_visivel()),
+        ).fetchone()
         if row:
             cliente_id = row["id"]
         else:
             cliente_id = str(uuid.uuid4())
             conn.execute(
-                "INSERT INTO clientes (id, nome, criado_em) VALUES (?, ?, ?)",
-                (cliente_id, nome, agora.isoformat()),
+                "INSERT INTO clientes (id, nome, criado_em, usuario_id) VALUES (?, ?, ?, ?)",
+                (cliente_id, nome, agora.isoformat(), id_dono()),
             )
         ciclo_row = conn.execute(
-            "SELECT id FROM ciclos_renovacao WHERE cliente_id=? ORDER BY numero DESC LIMIT 1",
-            (cliente_id,),
+            "SELECT id FROM ciclos_renovacao WHERE cliente_id=? AND (usuario_id = ? OR ? = 1) ORDER BY numero DESC LIMIT 1",
+            (cliente_id, *params_visivel()),
         ).fetchone()
         if ciclo_row:
             ciclo_id = ciclo_row["id"]
@@ -422,14 +442,14 @@ class HistoricoRepository:
             ciclo_id = str(uuid.uuid4())
             conn.execute(
                 """
-                INSERT INTO ciclos_renovacao (id, cliente_id, numero, criado_em)
-                VALUES (?, ?, 1, ?)
+                INSERT INTO ciclos_renovacao (id, cliente_id, numero, criado_em, usuario_id)
+                VALUES (?, ?, 1, ?, ?)
                 """,
-                (ciclo_id, cliente_id, agora.isoformat()),
+                (ciclo_id, cliente_id, agora.isoformat(), id_dono()),
             )
         conn.execute(
-            "UPDATE estudos_meta SET cliente_id=?, ciclo_id=? WHERE id=?",
-            (cliente_id, ciclo_id, estudo_id),
+            "UPDATE estudos_meta SET cliente_id=?, ciclo_id=? WHERE id=? AND (usuario_id = ? OR ? = 1)",
+            (cliente_id, ciclo_id, estudo_id, *params_visivel()),
         )
 
     def _faixa_valor_vida(self, rascunho: RascunhoEstudo, vida_id: str) -> tuple[int | None, int | None]:
@@ -460,30 +480,31 @@ class HistoricoRepository:
             """
             SELECT id FROM beneficiarios
             WHERE cliente_id=? AND nome=? AND nascimento=?
-            AND (parentesco IS ? OR parentesco=?)
+            AND (parentesco IS ? OR parentesco=?) AND (usuario_id = ? OR ? = 1)
             """,
-            (cliente_id, nome, nascimento.isoformat(), parentesco, parentesco),
+            (cliente_id, nome, nascimento.isoformat(), parentesco, parentesco, *params_visivel()),
         ).fetchone()
         if candidato is None:
             return
         conn.execute(
             """
             UPDATE beneficiario_participacao SET sugestao_vinculo=?
-            WHERE id=?
+            WHERE id=? AND (usuario_id = ? OR ? = 1)
             """,
-            (f"sug-{candidato['id']}", participacao_id),
+            (f"sug-{candidato['id']}", participacao_id, *params_visivel()),
         )
 
     def confirmar_vinculo(self, req: ConfirmarVinculoRequest) -> BeneficiarioParticipacao:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT * FROM beneficiario_participacao WHERE id=?",
-                (req.participacao_id,),
+                "SELECT * FROM beneficiario_participacao WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (req.participacao_id, *params_visivel()),
             ).fetchone()
             if row is None:
                 raise ValueError("Participação não encontrada.")
             meta = conn.execute(
-                "SELECT cliente_id FROM estudos_meta WHERE id=?", (row["estudo_id"],)
+                "SELECT cliente_id FROM estudos_meta WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (row["estudo_id"], *params_visivel()),
             ).fetchone()
             cliente_id = meta["cliente_id"] if meta else None
             if req.acao == "novo":
@@ -494,8 +515,8 @@ class HistoricoRepository:
                 conn.execute(
                     """
                     INSERT INTO beneficiarios (
-                        id, cliente_id, nome, nascimento, parentesco, criado_em
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        id, cliente_id, nome, nascimento, parentesco, criado_em, usuario_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         benef_id,
@@ -504,15 +525,16 @@ class HistoricoRepository:
                         row["nascimento"],
                         row["parentesco"],
                         agora,
+                        id_dono(),
                     ),
                 )
                 conn.execute(
                     """
                     UPDATE beneficiario_participacao
                     SET beneficiario_id=?, vinculo_status='novo'
-                    WHERE id=?
+                    WHERE id=? AND (usuario_id = ? OR ? = 1)
                     """,
-                    (benef_id, req.participacao_id),
+                    (benef_id, req.participacao_id, *params_visivel()),
                 )
             elif req.acao == "confirmar":
                 if not req.beneficiario_id:
@@ -521,22 +543,22 @@ class HistoricoRepository:
                     """
                     UPDATE beneficiario_participacao
                     SET beneficiario_id=?, vinculo_status='confirmado'
-                    WHERE id=?
+                    WHERE id=? AND (usuario_id = ? OR ? = 1)
                     """,
-                    (req.beneficiario_id, req.participacao_id),
+                    (req.beneficiario_id, req.participacao_id, *params_visivel()),
                 )
             elif req.acao == "rejeitar":
                 conn.execute(
                     """
                     UPDATE beneficiario_participacao
                     SET beneficiario_id=NULL, vinculo_status='rejeitado'
-                    WHERE id=?
+                    WHERE id=? AND (usuario_id = ? OR ? = 1)
                     """,
-                    (req.participacao_id,),
+                    (req.participacao_id, *params_visivel()),
                 )
             updated = conn.execute(
-                "SELECT * FROM beneficiario_participacao WHERE id=?",
-                (req.participacao_id,),
+                "SELECT * FROM beneficiario_participacao WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (req.participacao_id, *params_visivel()),
             ).fetchone()
         return self._row_participacao(updated)
 
@@ -545,7 +567,8 @@ class HistoricoRepository:
         with self._connect() as conn:
             for pid in participacao_ids:
                 row = conn.execute(
-                    "SELECT * FROM beneficiario_participacao WHERE id=?", (pid,)
+                    "SELECT * FROM beneficiario_participacao WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                    (pid, *params_visivel()),
                 ).fetchone()
                 if row is None or not row["sugestao_vinculo"]:
                     continue
@@ -556,9 +579,9 @@ class HistoricoRepository:
                     """
                     UPDATE beneficiario_participacao
                     SET beneficiario_id=?, vinculo_status='confirmado'
-                    WHERE id=?
+                    WHERE id=? AND (usuario_id = ? OR ? = 1)
                     """,
-                    (benef_id, pid),
+                    (benef_id, pid, *params_visivel()),
                 )
                 confirmados += 1
         return confirmados
@@ -568,9 +591,9 @@ class HistoricoRepository:
             rows = conn.execute(
                 """
                 SELECT * FROM posicao_cadastral_versao
-                WHERE estudo_id=? ORDER BY versao DESC
+                WHERE estudo_id=? AND (usuario_id = ? OR ? = 1) ORDER BY versao DESC
                 """,
-                (estudo_id,),
+                (estudo_id, *params_visivel()),
             ).fetchall()
         return [self._row_posicao(r) for r in rows]
 
@@ -582,19 +605,19 @@ class HistoricoRepository:
                 rows = conn.execute(
                     """
                     SELECT * FROM beneficiario_participacao
-                    WHERE estudo_id=? AND posicao_versao_id=?
+                    WHERE estudo_id=? AND posicao_versao_id=? AND (usuario_id = ? OR ? = 1)
                     ORDER BY nome
                     """,
-                    (estudo_id, posicao_versao_id),
+                    (estudo_id, posicao_versao_id, *params_visivel()),
                 ).fetchall()
             else:
                 rows = conn.execute(
                     """
                     SELECT * FROM beneficiario_participacao
-                    WHERE estudo_id=?
+                    WHERE estudo_id=? AND (usuario_id = ? OR ? = 1)
                     ORDER BY nome
                     """,
-                    (estudo_id,),
+                    (estudo_id, *params_visivel()),
                 ).fetchall()
         return [self._row_participacao(r) for r in rows]
 
@@ -649,19 +672,20 @@ class HistoricoRepository:
                     SELECT p.* FROM planos_contratados p
                     JOIN estudos_meta e ON e.id = p.estudo_id
                     WHERE e.cliente_id=? AND p.estudo_id != ?
+                      AND (p.usuario_id = ? OR ? = 1) AND (e.usuario_id = ? OR ? = 1)
                     ORDER BY p.criado_em DESC LIMIT 1
                     """,
-                    (cliente_id, excluir_estudo),
+                    (cliente_id, excluir_estudo, *params_visivel(), *params_visivel()),
                 ).fetchone()
             else:
                 row = conn.execute(
                     """
                     SELECT p.* FROM planos_contratados p
                     JOIN estudos_meta e ON e.id = p.estudo_id
-                    WHERE e.cliente_id=?
+                    WHERE e.cliente_id=? AND (p.usuario_id = ? OR ? = 1) AND (e.usuario_id = ? OR ? = 1)
                     ORDER BY p.criado_em DESC LIMIT 1
                     """,
-                    (cliente_id,),
+                    (cliente_id, *params_visivel(), *params_visivel()),
                 ).fetchone()
         return self._row_plano(row) if row else None
 
@@ -715,8 +739,8 @@ class HistoricoRepository:
                     vigencia_inicio, vigencia_fim, acomodacao, modalidade,
                     regime_copart, copart_percentual, premio_centavos, iof_centavos,
                     total_recorrente_centavos, tabela_json, documento_origem_id,
-                    criado_em, criado_por
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    criado_em, criado_por, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     registro.id,
@@ -738,6 +762,7 @@ class HistoricoRepository:
                     registro.documento_origem_id,
                     registro.criado_em.isoformat(),
                     registro.criado_por,
+                    id_dono(),
                 ),
             )
         self.registrar_auditoria(
@@ -753,8 +778,8 @@ class HistoricoRepository:
     def listar_planos_contratados(self, estudo_id: str) -> list[PlanoContratadoVersao]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT * FROM planos_contratados WHERE estudo_id=? ORDER BY criado_em DESC",
-                (estudo_id,),
+                "SELECT * FROM planos_contratados WHERE estudo_id=? AND (usuario_id = ? OR ? = 1) ORDER BY criado_em DESC",
+                (estudo_id, *params_visivel()),
             ).fetchall()
         return [self._row_plano(r) for r in rows]
 
@@ -772,8 +797,8 @@ class HistoricoRepository:
             conn.execute(
                 """
                 INSERT INTO auditoria (
-                    id, estudo_id, entidade, entidade_id, acao, detalhe, criado_em, criado_por
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    id, estudo_id, entidade, entidade_id, acao, detalhe, criado_em, criado_por, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     str(uuid.uuid4()),
@@ -784,14 +809,15 @@ class HistoricoRepository:
                     detalhe,
                     datetime.now(timezone.utc).isoformat(),
                     criado_por,
+                    id_dono(),
                 ),
             )
 
     def atualizar_estado_workflow(self, estudo_id: str, estado: str) -> None:
         with self._connect() as conn:
             conn.execute(
-                "UPDATE estudos_meta SET estado_workflow=?, atualizado_em=? WHERE id=?",
-                (estado, datetime.now(timezone.utc).isoformat(), estudo_id),
+                "UPDATE estudos_meta SET estado_workflow=?, atualizado_em=? WHERE id=? AND (usuario_id = ? OR ? = 1)",
+                (estado, datetime.now(timezone.utc).isoformat(), estudo_id, *params_visivel()),
             )
 
     def _row_estudo_meta(self, row: sqlite3.Row) -> EstudoMeta:

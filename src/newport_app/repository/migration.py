@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sqlite3
 import uuid
@@ -192,6 +193,7 @@ def migrar_estudos_db(db_path: Path) -> None:
         _migrar_284(conn)
         _migrar_285(conn)
         _migrar_301(conn, db_path=db_path)
+        _migrar_3b_usuario(conn, db_path=db_path)
 
 
 def _participacao_precisa_correcao(conn: sqlite3.Connection) -> bool:
@@ -707,3 +709,90 @@ def _ensure_column(conn: sqlite3.Connection, tabela: str, coluna: str, definicao
     cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})").fetchall()}
     if coluna not in cols:
         conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {definicao}")
+
+
+TABELAS_POR_USUARIO = (
+    "estudos_meta",
+    "rascunhos",
+    "posicao_cadastral_versao",
+    "beneficiario_participacao",
+    "beneficiarios",
+    "clientes",
+    "ciclos_renovacao",
+    "planos_contratados",
+    "snapshots",
+    "aprovacoes",
+    "entregaveis",
+    "auditoria",
+)
+
+TABELAS_POR_USUARIO_COTACOES = ("extracoes_cotacao",)
+TABELAS_POR_USUARIO_IMPORTACOES = ("importacoes_siscor",)
+
+
+def valor_backfill_usuario() -> str | None:
+    """Dono dos registros antigos. Só lê BENEFITS_DONO_LEGADO_ID do ambiente.
+
+    Fora do demo, se a variável não estiver definida, os legados ficam com
+    usuario_id NULL e invisíveis para todos até ela ser definida.
+    No demo, o backfill usa o usuário fixo 'demo'.
+    """
+    legado = (os.environ.get("BENEFITS_DONO_LEGADO_ID") or "").strip()
+    if legado:
+        return legado
+    from newport_app.config.runtime import ModoExecucao, modo_execucao
+
+    if modo_execucao() == ModoExecucao.DEMO:
+        return "demo"
+    return None
+
+
+def aplicar_coluna_usuario(conn: sqlite3.Connection, tabelas: tuple[str, ...]) -> None:
+    existentes = {
+        r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    for tabela in tabelas:
+        if tabela not in existentes:
+            continue
+        _ensure_column(conn, tabela, "usuario_id", "TEXT")
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS idx_{tabela}_usuario_id ON {tabela}(usuario_id)"
+        )
+    dono = valor_backfill_usuario()
+    if not dono:
+        return
+    for tabela in tabelas:
+        if tabela not in existentes:
+            continue
+        conn.execute(
+            f"UPDATE {tabela} SET usuario_id = ? WHERE usuario_id IS NULL",
+            (dono,),
+        )
+
+
+def _migrar_3b_usuario(conn: sqlite3.Connection, *, db_path: Path) -> None:
+    ja = conn.execute(
+        "SELECT versao FROM schema_migrations WHERE versao = ?", ("3.1.0",)
+    ).fetchone()
+    if ja is not None:
+        aplicar_coluna_usuario(conn, TABELAS_POR_USUARIO)
+        return
+    if db_path.is_file():
+        backup_banco(db_path)
+    aplicar_coluna_usuario(conn, TABELAS_POR_USUARIO)
+    conn.execute(
+        "INSERT INTO schema_migrations (versao, aplicada_em) VALUES (?, ?)",
+        ("3.1.0", datetime.now(timezone.utc).isoformat()),
+    )
+
+
+def migrar_banco_cotacoes(db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as conn:
+        aplicar_coluna_usuario(conn, TABELAS_POR_USUARIO_COTACOES)
+
+
+def migrar_banco_importacoes(db_path: Path) -> None:
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as conn:
+        aplicar_coluna_usuario(conn, TABELAS_POR_USUARIO_IMPORTACOES)
