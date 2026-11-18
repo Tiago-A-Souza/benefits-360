@@ -12,6 +12,7 @@ import {
   problemasLocais,
   resumoDoRobo,
   totalVidas,
+  valorRoboParaCentavos,
 } from "./regrasNova";
 
 describe("regrasNova — CNPJ e vidas", () => {
@@ -113,15 +114,23 @@ describe("regrasNova — formulário a partir da API", () => {
 });
 
 describe("regrasNova — dinheiro", () => {
-  it("formata reais do robô sem float", () => {
-    expect(formatarValorRobo("1234.56")).toBe("R$\u00a01.234,56");
-    expect(formatarValorRobo(100)).toBe("R$\u00a0100,00");
-    expect(formatarValorRobo(null)).toBe("—");
+  it("converte REAL do robô para centavos inteiros sem * 100 em float", () => {
+    expect(valorRoboParaCentavos(100)).toBe(10000);
+    expect(valorRoboParaCentavos(1234.56)).toBe(123456);
+    expect(valorRoboParaCentavos("1234.56")).toBe(123456);
+    expect(valorRoboParaCentavos(null)).toBe(null);
   });
 
-  it("formata centavos inteiros sem float", () => {
-    expect(formatarValorRobo(123456, { comoCentavos: true })).toBe("R$\u00a01.234,56");
+  it("centavos explícitos continuam inteiros", () => {
+    expect(valorRoboParaCentavos(123456, { comoCentavos: true })).toBe(123456);
+    expect(valorRoboParaCentavos({ centavos: 50 })).toBe(50);
+  });
+
+  it("formata a partir dos centavos, sem float", () => {
+    expect(formatarValorRobo("1234.56")).toBe("R$\u00a01.234,56");
+    expect(formatarValorRobo(100)).toBe("R$\u00a0100,00");
     expect(formatarValorRobo({ centavos: 50 })).toBe("R$\u00a00,50");
+    expect(formatarValorRobo(null)).toBe("—");
   });
 });
 

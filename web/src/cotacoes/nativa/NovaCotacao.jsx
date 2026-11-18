@@ -303,6 +303,8 @@ export default function NovaCotacao({
   cnpjInicial,
   onEnfileirado,
   onIrIframeCotacoes,
+  onCotarEmpresa,
+  empresasRecentes: empresasProp,
   aviso,
 }) {
   const [form, setForm] = useState(() => estadoInicial(operadoras));
@@ -310,11 +312,26 @@ export default function NovaCotacao({
   const [carregado, setCarregado] = useState(null);
   const [problemas, setProblemas] = useState([]);
   const [enviando, setEnviando] = useState(false);
+  const [empresas, setEmpresas] = useState(empresasProp || []);
   const [confirmar, modal] = useConfirmacao();
 
   useEffect(() => {
     setForm(estadoInicial(operadoras));
   }, [operadoras]);
+
+  useEffect(() => {
+    if (empresasProp) {
+      setEmpresas(empresasProp);
+      return;
+    }
+    let vivo = true;
+    chamarRpa("GET", "/api/empresas")
+      .then((d) => vivo && setEmpresas(Array.isArray(d) ? d : []))
+      .catch(() => vivo && setEmpresas([]));
+    return () => {
+      vivo = false;
+    };
+  }, [empresasProp]);
 
   useEffect(() => {
     if (!cnpjInicial) return;
@@ -464,6 +481,36 @@ export default function NovaCotacao({
         </p>
       ) : null}
 
+      <section className="cartao" aria-labelledby="t-empresas-recentes">
+        <h2 id="t-empresas-recentes">Empresas recentes</h2>
+        {empresas.length ? (
+          <ul className="nativa-empresas">
+            {empresas.slice(0, 6).map((e) => (
+              <li key={e.cnpj}>
+                <div>
+                  <div className="nativa-empresa-nome">{e.apelido || e.razao_social || formatarCnpj(e.cnpj)}</div>
+                  <div className="muted num">
+                    {e.apelido && e.razao_social ? `${e.razao_social}, ` : ""}
+                    {formatarCnpj(e.cnpj)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="secundario btn-compacto"
+                  onClick={() => (onCotarEmpresa ? onCotarEmpresa(digitos(e.cnpj)) : aoMudarCnpj(e.cnpj))}
+                >
+                  Cotar de novo
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">
+            As empresas que você cotar aparecem aqui, para repetir a cotação com os mesmos dados.
+          </p>
+        )}
+      </section>
+
       <section className="cartao" aria-labelledby="t-empresa">
         <h2 id="t-empresa">Empresa</h2>
         <p className="muted">O robô busca a razão social no portal pelo CNPJ.</p>
@@ -475,10 +522,18 @@ export default function NovaCotacao({
               className={`campo${form.cnpj.length === 14 && !cnpjValido(form.cnpj) ? " invalido" : ""}`}
               inputMode="numeric"
               autoComplete="off"
+              list="nativa-empresas-cnpj"
               placeholder="00.000.000/0000-00"
               value={formatarCnpj(form.cnpj)}
               onChange={(e) => aoMudarCnpj(e.target.value)}
             />
+            <datalist id="nativa-empresas-cnpj">
+              {empresas.map((e) => (
+                <option key={e.cnpj} value={formatarCnpj(e.cnpj)}>
+                  {e.apelido || e.razao_social || formatarCnpj(e.cnpj)}
+                </option>
+              ))}
+            </datalist>
             <div className={`nativa-ajuda${cnpjAjuda?.tipo === "erro" ? " erro" : ""}`}>
               {cnpjAjuda?.tipo === "erro" ? cnpjAjuda.texto : null}
               {cnpjAjuda?.tipo === "info" ? (

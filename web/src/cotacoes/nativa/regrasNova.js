@@ -271,29 +271,45 @@ export function totalCotacoes(form, operadoras) {
 }
 
 /**
- * Exibição de valor do robô.
- * - Se vier centavos inteiros (`comoCentavos`), usa money.js (sem float).
- * - O RPA atual devolve REAL (reais) em JSON: formata o texto decimal sem somar/multiplicar.
+ * Valor do robô → centavos inteiros.
+ * Não multiplica float (* 100) nem passa por texto "R$".
+ * O RPA grava REAL (reais). Inteiro JSON = reais inteiros. `{ centavos }` ou
+ * `comoCentavos` = já é centavo.
  */
-export function formatarValorRobo(valor, { comoCentavos = false } = {}) {
-  if (valor === null || valor === undefined || valor === "") return "—";
-  if (comoCentavos || (typeof valor === "object" && valor && "centavos" in valor)) {
-    const c = typeof valor === "object" ? valor.centavos : valor;
-    if (!Number.isInteger(c)) return "—";
-    return formatarCentavos(c);
+export function valorRoboParaCentavos(valor, { comoCentavos = false } = {}) {
+  if (valor === null || valor === undefined || valor === "") return null;
+  if (typeof valor === "object" && valor && Number.isInteger(valor.centavos)) {
+    return valor.centavos;
   }
-  const s = typeof valor === "number" && Number.isInteger(valor) ? String(valor) : String(valor);
-  const m = s.match(/^(-)?(\d+)(?:\.(\d+))?$/);
-  if (!m) return "—";
-  const neg = m[1] ? "-" : "";
-  const inteiro = agruparMilhares(m[2]);
-  const frac = (m[3] || "00").padEnd(2, "0").slice(0, 2);
-  return `${neg}R$\u00a0${inteiro},${frac}`;
+  if (typeof valor === "number") {
+    if (!Number.isFinite(valor)) return null;
+    if (comoCentavos) return Number.isInteger(valor) ? valor : null;
+    if (Number.isInteger(valor)) return valor * 100;
+    const s = valor.toString();
+    if (/e/i.test(s)) return null;
+    const m = s.match(/^(-)?(\d+)\.(\d+)$/);
+    if (!m) return null;
+    const neg = m[1] ? -1 : 1;
+    const reais = parseInt(m[2], 10);
+    const cents = parseInt((m[3] + "00").slice(0, 2), 10);
+    return neg * (reais * 100 + cents);
+  }
+  if (typeof valor === "string") {
+    const m = valor.trim().match(/^(-)?(\d+)(?:[.,](\d{1,2}))?$/);
+    if (!m) return null;
+    const neg = m[1] ? -1 : 1;
+    const reais = parseInt(m[2], 10);
+    const cents = parseInt((m[3] || "00").padEnd(2, "0").slice(0, 2), 10);
+    return neg * (reais * 100 + cents);
+  }
+  return null;
 }
 
-function agruparMilhares(digitosInt) {
-  const n = digitosInt.replace(/^0+(?=\d)/, "") || "0";
-  return n.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+/** Exibição a partir de centavos inteiros (money.js: trunc, sem float). */
+export function formatarValorRobo(valor, opts = {}) {
+  const c = valorRoboParaCentavos(valor, opts);
+  if (c === null) return "—";
+  return formatarCentavos(c);
 }
 
 function formatarCentavos(centavos) {
@@ -303,6 +319,20 @@ function formatarCentavos(centavos) {
   const cents = v % 100;
   const inteiro = String(reais).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `${neg ? "-" : ""}R$\u00a0${inteiro},${String(cents).padStart(2, "0")}`;
+}
+
+export const TEXTO_PENDENCIA = {
+  emitindo:
+    "O robô clicou em emitir e não viu o protocolo. Entre no portal, em Cotações emitidas, e veja se esta cotação saiu.",
+  emitida: "Saiu no portal, mas o PDF não veio. O robô tenta baixar de novo na próxima vez que você gerar cotações.",
+  pdf_manual: "Saiu no portal, mas o robô não conseguiu baixar o PDF. Baixe à mão no portal, em Cotações emitidas.",
+};
+
+export function tituloProblemaLogin(opNome, motivo) {
+  if (motivo === "sem_credenciais") return `Cadastre o login da ${opNome} na engrenagem do robô`;
+  if (motivo === "recusadas") return `O portal da ${opNome} recusou o login guardado`;
+  if (motivo === "senha_comprida") return "A senha guardada é maior do que o portal aceita";
+  return `O robô não conseguiu entrar no portal da ${opNome}`;
 }
 
 export function agruparVersoes(lista, operadoras) {

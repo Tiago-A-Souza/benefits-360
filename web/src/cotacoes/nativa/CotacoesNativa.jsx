@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import NavegacaoFerramentas from "../../NavegacaoFerramentas";
 import { chamarRpa, ouvirEventosRpa, urlBaseRpa } from "../rpaClient";
 import Andamento from "./Andamento";
+import BannerPendencias from "./BannerPendencias";
 import FaixaCodigo from "./FaixaCodigo";
+import FaixaProblemaLogin from "./FaixaProblemaLogin";
+import FaixaTrabalho from "./FaixaTrabalho";
 import NovaCotacao from "./NovaCotacao";
 import "./nativa.css";
 
@@ -30,6 +33,10 @@ export default function CotacoesNativa({
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [conexao, setConexao] = useState({});
+  const [problemaLogin, setProblemaLogin] = useState(null);
+  const [trabalhoAtual, setTrabalhoAtual] = useState(null);
+  const [ultimaEtapa, setUltimaEtapa] = useState(null);
+  const [reloadOps, setReloadOps] = useState(0);
   const urlRobo = urlBaseRpa();
 
   const ir = useCallback((hash) => {
@@ -49,6 +56,7 @@ export default function CotacoesNativa({
 
   useEffect(() => {
     let vivo = true;
+    setErro(null);
     chamarRpa("GET", "/api/operadoras")
       .then((d) => {
         if (!vivo) return;
@@ -61,7 +69,7 @@ export default function CotacoesNativa({
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [reloadOps]);
 
   useEffect(() => {
     const { fechar } = ouvirEventosRpa((ev) => {
@@ -70,6 +78,25 @@ export default function CotacoesNativa({
       }
       if (ev.tipo === "codigo_necessario") {
         setConexao((c) => ({ ...c, [ev.operadora]: "aguardando_codigo" }));
+      }
+      if (ev.tipo === "login_problema") {
+        setProblemaLogin({
+          operadora: ev.operadora,
+          motivo: ev.motivo,
+          mensagem: ev.mensagem,
+        });
+      }
+      if (ev.tipo === "login_ok") {
+        setProblemaLogin((p) => (p && p.operadora === ev.operadora ? null : p));
+      }
+      if (ev.tipo === "etapa") setUltimaEtapa(ev);
+      if (ev.tipo === "trabalho") {
+        if (ev.status === "rodando") {
+          setTrabalhoAtual({ id: ev.trabalho, titulo: ev.titulo, modo: ev.modo });
+        }
+        if (["concluido", "erro", "cancelado", "interrompido"].includes(ev.status)) {
+          setTrabalhoAtual((t) => (t && t.id === ev.trabalho ? null : t));
+        }
       }
     });
     return () => fechar();
@@ -84,6 +111,8 @@ export default function CotacoesNativa({
   function mostrarAviso(texto, tipo) {
     setAviso({ texto, tipo: tipo || "info" });
   }
+
+  const noAndamentoDeste = tela === "andamento" && trabalhoAtual && Number(id) === Number(trabalhoAtual.id);
 
   return (
     <div className="lista-shell nativa-shell">
@@ -106,14 +135,31 @@ export default function CotacoesNativa({
             </li>
           </ul>
           <p className="muted nativa-flag-hint">
-            Fora do menu. Flag <code>VITE_COTACOES_NATIVA</code> ou <code>?cotacoes-nativa=1</code>. A aba
-            Cotações continua no iframe.
+            Fora do menu. Abra <code>?cotacoes-nativa=1</code> (ou flag <code>VITE_COTACOES_NATIVA=1</code> com{" "}
+            <code>#/nova</code>). A aba Cotações continua no iframe.
           </p>
         </nav>
       </aside>
 
       <main className="lista-main nativa-main">
-        <FaixaCodigo conexao={conexao} operadoras={operadoras || []} aviso={mostrarAviso} />
+        {problemaLogin ? (
+          <FaixaProblemaLogin
+            problema={problemaLogin}
+            operadoras={operadoras || []}
+            urlRobo={urlRobo}
+            onFechar={() => setProblemaLogin(null)}
+          />
+        ) : (
+          <FaixaCodigo conexao={conexao} operadoras={operadoras || []} aviso={mostrarAviso} />
+        )}
+        {!noAndamentoDeste ? (
+          <FaixaTrabalho
+            trabalho={trabalhoAtual}
+            etapa={ultimaEtapa}
+            operadoras={operadoras || []}
+            onAcompanhar={(tid) => ir(`#/andamento/${tid}`)}
+          />
+        ) : null}
         {aviso ? (
           <div className={`nativa-toast${aviso.tipo === "erro" ? " nativa-toast--erro" : ""}`} role="status">
             {aviso.texto}
@@ -126,10 +172,15 @@ export default function CotacoesNativa({
               <strong>O robô de cotações não está ligado</strong> em <code>{urlRobo}</code>.
             </p>
             <p className="erro">{erro}</p>
+            <button type="button" className="secundario" onClick={() => setReloadOps((n) => n + 1)}>
+              Tentar de novo
+            </button>
           </div>
         ) : null}
 
         {!operadoras && !erro ? <p className="lista-carregando">Carregando operadoras do robô…</p> : null}
+
+        {operadoras ? <BannerPendencias aviso={mostrarAviso} /> : null}
 
         {operadoras && tela === "nova" ? (
           <NovaCotacao
@@ -139,6 +190,7 @@ export default function CotacoesNativa({
             cnpjInicial={cnpj}
             onEnfileirado={(tid) => ir(`#/andamento/${tid}`)}
             onIrIframeCotacoes={onCotacoesIframe}
+            onCotarEmpresa={(cnpjEmp) => ir(`#/nova?cnpj=${cnpjEmp}`)}
             aviso={mostrarAviso}
           />
         ) : null}

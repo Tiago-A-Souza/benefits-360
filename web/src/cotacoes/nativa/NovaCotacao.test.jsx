@@ -4,6 +4,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import NovaCotacao from "./NovaCotacao.jsx";
 import Confirmacao from "./Confirmacao.jsx";
 import FaixaCodigo from "./FaixaCodigo.jsx";
+import FaixaProblemaLogin from "./FaixaProblemaLogin.jsx";
+import FaixaTrabalho from "./FaixaTrabalho.jsx";
 import TabelaCotacoes from "./TabelaCotacoes.jsx";
 import Andamento from "./Andamento.jsx";
 import { CNPJ_OK, OPERADORAS } from "./fixtureOperadoras";
@@ -28,6 +30,20 @@ describe("NovaCotacao — markup a partir da API", () => {
     expect(html).toContain("Mudar só nesta cotação");
     expect(html).toContain("SULAMERICA");
     expect(html).not.toContain("Newport");
+  });
+
+  it("lista empresas recentes e o atalho cotar de novo", () => {
+    const html = renderToStaticMarkup(
+      <NovaCotacao
+        operadoras={OPERADORAS}
+        urlRobo="http://127.0.0.1:8600"
+        empresasRecentes={[{ cnpj: CNPJ_OK, apelido: "Padaria do Centro", razao_social: "Padaria Centro Ltda" }]}
+      />,
+    );
+    expect(html).toContain("Empresas recentes");
+    expect(html).toContain("Padaria do Centro");
+    expect(html).toContain("Cotar de novo");
+    expect(html).toContain("nativa-empresas-cnpj");
   });
 });
 
@@ -57,6 +73,35 @@ describe("FaixaCodigo", () => {
       <FaixaCodigo conexao={{ sulamerica: "conectado" }} operadoras={OPERADORAS} />,
     );
     expect(html).toBe("");
+  });
+});
+
+describe("FaixaProblemaLogin e FaixaTrabalho", () => {
+  it("mostra cadastro de login e o atalho da engrenagem", () => {
+    const html = renderToStaticMarkup(
+      <FaixaProblemaLogin
+        problema={{ operadora: "sulamerica", motivo: "sem_credenciais" }}
+        operadoras={OPERADORAS}
+        urlRobo="http://127.0.0.1:8600"
+        onFechar={() => {}}
+      />,
+    );
+    expect(html).toContain("Cadastre o login da SulAmérica");
+    expect(html).toContain("Abrir a engrenagem");
+  });
+
+  it("mostra acompanhar quando o robô está em outro pedido", () => {
+    const html = renderToStaticMarkup(
+      <FaixaTrabalho
+        trabalho={{ id: 7 }}
+        etapa={{ operadora: "sulamerica", etapa: "vidas", plano: "Especial Mais | Apartamento" }}
+        operadoras={OPERADORAS}
+        onAcompanhar={() => {}}
+      />,
+    );
+    expect(html).toContain("Robô trabalhando");
+    expect(html).toContain("Especial Mais");
+    expect(html).toContain("Acompanhar");
   });
 });
 
