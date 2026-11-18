@@ -6,7 +6,7 @@ import time
 
 from playwright.sync_api import Page
 
-from nucleo.navegador import ErroFluxo, esperar_sumir, esperar_visivel, visiveis
+from nucleo.navegador import ErroFluxo, conferir_parar, esperar_sumir, esperar_visivel, visiveis
 
 from . import seletores as sel
 
@@ -72,6 +72,7 @@ def _esperar_titulo_ou_reinicio(page: Page, titulo, etapa: str, timeout_ms: int)
             return
         if rota and rota not in sel.caminho(page) and visiveis(page.get_by_text(sel.TITULOS["dados_empresa"])):
             raise TelaReiniciou(etapa)
+        conferir_parar(etapa)
         time.sleep(0.5)
     raise ErroFluxo(f"não encontrei 'título da tela {etapa}' na tela em {timeout_ms // 1000}s", etapa)
 

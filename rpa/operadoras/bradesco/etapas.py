@@ -21,7 +21,7 @@ from pathlib import Path
 from nucleo.credenciais import cofre as cofre_da_config
 from nucleo.estado import Estado
 from nucleo.modelo import ROTULOS, PlanoAlvo, PlanoVisto, ResultadoPlano
-from nucleo.navegador import ErroDados, ErroFluxo, ErroLogin, esperar_visivel, visiveis
+from nucleo.navegador import ErroDados, ErroFluxo, ErroLogin, conferir_parar, esperar_visivel, ligar_parar, visiveis
 from nucleo.saidas import copiar_para_destino, nome_pdf_arquivo, nome_pdf_destino
 from nucleo.texto import formatar_cnpj, norm, rx, so_digitos
 
@@ -49,6 +49,9 @@ class Sessao:
     pedir_codigo: object = None
     reemitir: set = field(default_factory=set)
     lugar: object = None           # onde está a tela do cotador: a página ou o quadro (iframe) dela
+
+    def __post_init__(self) -> None:
+        ligar_parar(self.pediu_parar)
 
     def onde(self):
         """A página ou o quadro (iframe) da tela atual do cotador. Portal real 07/11: o cotador fica em iframes
@@ -192,6 +195,7 @@ def _esperar_ate(condicao, segundos: float) -> bool:
                 return True
         except Exception:  # noqa: BLE001
             pass
+        conferir_parar()
         time.sleep(0.25)
     return False
 
@@ -208,14 +212,139 @@ def _cotador_aberto(s: Sessao):
     return None
 
 
-def fechar_avisos(page) -> None:
-    """Fecha os avisos do portal que cobrem a tela (ex.: o modal de campanha "Seguros Friday", 07/11)."""
+# Tira o cartaz de campanha do DOM (Seguros Friday). O clique no X às vezes não chega: o Chrome põe
+# "mostrar notificações" por cima, ou o Bootstrap não esconde o modal. Sem isto o locator handler do
+# Playwright fica em loop e o Parar também não vale.
+# Portal real 18/11: o cartaz é uma <img> (innerText sem "Friday") e o Bootstrap só chama .modal('show')
+# no window.load — se o robô esperar visível, o modal nasce DEPOIS da primeira limpeza. Tira o
+# .modal-aviso mesmo escondido e grava o cookie para não reabrir.
+_JS_TIRAR_CAMPANHA = """() => {
+  try {
+    const cb = document.querySelector('.modal-aviso #checkbox-view, #checkbox-view');
+    if (cb && !cb.checked) {
+      cb.checked = true;
+      cb.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+  } catch (e) {}
+  try { document.cookie = 'exibirModalComunicacao=false; path=/; max-age=2592000'; } catch (e) {}
+  const alvos = document.querySelectorAll('.modal-aviso, [id^="modal-comunicacao"]');
+  for (const el of alvos) {
+    try { if (window.jQuery) window.jQuery(el).modal('hide'); } catch (e) {}
+    el.classList.remove('in', 'show');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+  }
+  document.querySelectorAll('.modal-backdrop').forEach(e => e.remove());
+  document.body.classList.remove('modal-open');
+}"""
+
+
+def fechar_avisos(page, so_se_aberto: bool = False) -> None:
+    """Fecha os avisos do portal que cobrem a tela (ex.: o modal de campanha "Seguros Friday").
+
+    `so_se_aberto=True` não mexe no DOM se o cartaz não está na frente: o Angular recria o
+    `.modal-aviso`, e remover o nó a cada 250 ms derrubava a página (18/11, Chrome fechou sozinho)."""
+    conferir_parar("portal")
+    if so_se_aberto:
+        try:
+            if not visiveis(sel.aviso_do_portal(page)):
+                return
+        except Exception:  # noqa: BLE001
+            return
     try:
         for fechar in visiveis(sel.aviso_do_portal_fechar(page))[:3]:
-            fechar.click(timeout=3000)
-            time.sleep(0.3)
+            try:
+                fechar.click(timeout=800, force=True)
+            except Exception:  # noqa: BLE001  (o overlay do Chrome intercepta o clique)
+                pass
+            time.sleep(0.15)
     except Exception:  # noqa: BLE001
         pass
+    try:
+        page.evaluate(_JS_TIRAR_CAMPANHA)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        if visiveis(sel.aviso_do_portal(page)):
+            page.keyboard.press("Escape")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _pagina_fechou(erro: BaseException) -> bool:
+    return "has been closed" in str(erro).lower() or "target page" in str(erro).lower()
+
+
+def _abrir_cotacao_spg(page, tempo: float, log=None, url_cotador: str = "") -> None:
+    """Painel Saúde → Cotação SPG. No RPAV3 de 15/11 o atalho do Acesso rápido existia; neste login os
+    4 slots estão vazios e o submenu Angular (`bspn-fed-sub-menus-out`) fica sem itens. Depois de alguns
+    segundos sem menu, abre a Cotação SPG pelo endereço da área logada (em 07/11 o deep link sem sessão
+    dava 403; aqui a sessão já está em /saude/)."""
+    fechar_avisos(page)
+    fim = time.monotonic() + tempo
+    comeco = time.monotonic()
+    proximo_menu = 0.0
+    proximo_aviso = 0.0
+    tentou_endereco = False
+    while time.monotonic() < fim:
+        conferir_parar("portal")
+        try:
+            fechar_avisos(page, so_se_aberto=True)
+            if sel.ROTA_COTADOR in sel.caminho(page) and not _erro_403(page):
+                return
+            if _erro_403(page):
+                if log:
+                    log.warning("Painel Saúde: a Cotação SPG pelo endereço deu 403; volto ao Painel Saúde.")
+                page.go_back()
+                tentou_endereco = True
+                time.sleep(0.5)
+                continue
+            links = visiveis(sel.link_cotacao_spg(page))
+            if links:
+                if log:
+                    log.info("Painel Saúde: abrindo Cotação SPG.")
+                links[0].click()
+                return
+            n_href = 0
+            try:
+                n_href = page.locator("a[href*='/cotacoes/cotacao-spg']").count()
+            except Exception:  # noqa: BLE001
+                n_href = 0
+            if time.monotonic() >= proximo_menu:
+                menus = visiveis(sel.menu_cotacoes(page))
+                if menus:
+                    if log:
+                        log.info("Painel Saúde: menu Cotações.")
+                    try:
+                        menus[0].hover(timeout=1500)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    try:
+                        menus[0].click(timeout=1500)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    proximo_menu = time.monotonic() + 2.5
+                elif (not tentou_endereco and url_cotador and time.monotonic() - comeco >= 6
+                      and sel.ROTA_AREA_LOGADA in sel.caminho(page)):
+                    tentou_endereco = True
+                    if log:
+                        log.info("Painel Saúde: o submenu Cotações não montou; abrindo a Cotação SPG pelo endereço.")
+                    page.goto(url_cotador, wait_until="domcontentloaded")
+                    continue
+                elif log and time.monotonic() >= proximo_aviso:
+                    n_menu = page.locator("[openmenuoptions]").count()
+                    log.info(f"Painel Saúde: esperando Cotações (atalho={n_href}, itens de menu={n_menu}).")
+                    proximo_aviso = time.monotonic() + 8
+        except SessaoCaiu:
+            raise
+        except Exception as e:  # noqa: BLE001
+            if _pagina_fechou(e):
+                raise SessaoCaiu("a janela do portal foi fechada", "portal") from None
+            raise
+        time.sleep(0.25)
+    raise ErroFluxo(
+        f"não encontrei 'Cotação SPG' (Acesso rápido nem o menu Cotações) na tela em {int(tempo)}s",
+        "portal")
 
 
 def _erro_403(page) -> bool:
@@ -241,9 +370,10 @@ def _vigiar_avisos(page) -> None:
 
 
 def ir_ao_cotador(s: Sessao, a: Andamento) -> None:
-    """Portal real 07/11: menu SAÚDE -> Acesso rápido "Cotação SPG" (Conferir). A página da Cotação SPG abre a área
-    de trabalho antiga num iframe (EEEM, "Acompanhamento de Processos"); o cotador novo sai de Ações -> "Iniciar
-    Nova Cotação SPG" e abre em outro iframe ("Cotador de planos SPG", como no vídeo)."""
+    """Portal real: menu SAÚDE -> submenu COTAÇÕES -> Cotação SPG (vídeo [03]). O card do Acesso rápido
+    ("Conferir") é atalho só se o corretor tiver favoritado — neste login não está. A página da Cotação SPG
+    abre a área de trabalho antiga num iframe (EEEM); o cotador novo sai de Ações -> "Iniciar Nova Cotação
+    SPG" e abre em outro iframe ("Cotador de planos SPG")."""
     from .telas import lugares
     _aviso_etapa(s, a, "portal")
     if login_na_tela(s.page) or not logado(s.page):
@@ -272,8 +402,7 @@ def ir_ao_cotador(s: Sessao, a: Andamento) -> None:
             esperar_visivel(sel.menu_saude(page), int(tempo * 1000), "menu SAÚDE", "portal").click()
             fechar_avisos(page)
             _mapa(s, "saude")
-            esperar_visivel(sel.link_cotacao_spg(page), int(tempo * 1000), "Cotação SPG (Acesso rápido)",
-                            "portal").click()
+            _abrir_cotacao_spg(page, tempo, s.log, s.cfg.get("urls", {}).get("cotador", ""))
             break
         except ErroFluxo:
             if login_na_tela(s.page):
@@ -283,6 +412,8 @@ def ir_ao_cotador(s: Sessao, a: Andamento) -> None:
     fim = time.monotonic() + tempo
     clicou = False
     while time.monotonic() < fim:
+        conferir_parar("portal")
+        fechar_avisos(s.page, so_se_aberto=True)
         lugar = _cotador_aberto(s)
         if lugar is not None:
             break
@@ -1284,6 +1415,7 @@ def imprimir_pdf(s: Sessao, lugar, cnpj: str, processo: str, plano: str) -> Path
     janela = None
     fim = time.monotonic() + int(s.cfg["execucao"].get("timeout_download_ms", 120000)) / 1000
     while time.monotonic() < fim and janela is None:
+        conferir_parar("calculo")
         novas = [p for p in s.contexto.pages if p not in antes and not p.is_closed()]
         if novas:
             janela = novas[-1]

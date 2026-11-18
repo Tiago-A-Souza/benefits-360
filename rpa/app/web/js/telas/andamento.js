@@ -37,11 +37,15 @@
 
   async function parar(t) {
     const naFila = t.status === "na_fila";
+    if (t.parando && !naFila) {
+      NP.aviso("O robô ainda está soltando esta tela. Espere um instante — o pedido de parada já foi enviado.");
+      return;
+    }
     const ok = await NP.confirmar({
       titulo: naFila ? "Tirar este pedido da fila?" : "Parar o robô?",
       texto: naFila ? ["O robô não vai começar este pedido."]
-        : ["O robô para na próxima troca de tela e não emite mais nada.",
-          "Se uma cotação já estiver sendo emitida, ela termina antes, com o PDF."],
+        : ["O robô para agora, nesta tela. Não espera a próxima tela e não emite mais nada.",
+          "Se o clique de emitir já foi dado, o robô ainda lê o protocolo dessa cotação."],
       ok: naFila ? "Tirar da fila" : "Parar o robô",
       principal: false,
     });
@@ -49,7 +53,10 @@
     try {
       const r = await NP.api("POST", `/api/trabalhos/${t.id}/parar`);
       if (!r.ok) NP.aviso("Este pedido já terminou ou já começou: veja a situação abaixo.", { tipo: "erro" });
-      else NP.aviso(naFila ? "Pedido tirado da fila." : "Pedido de parada enviado. O robô para na próxima tela.");
+      else {
+        if (!naFila) t.parando = true;
+        NP.aviso(naFila ? "Pedido tirado da fila." : "Parando agora. O robô solta esta tela e não emite mais nada.");
+      }
     } catch (e) { NP.aviso(e.message, { tipo: "erro" }); }
   }
 
@@ -116,7 +123,10 @@
         const conexao = op ? (robo.conexao || {})[op.id] : "";
         let titulo = "O robô está no portal";
         let linha = "Abrindo o portal";
-        if (conexao === "aguardando_codigo") {
+        if (t.parando) {
+          titulo = "Parando agora";
+          linha = "O robô está saindo desta tela. A janela do portal fica aberta.";
+        } else if (conexao === "aguardando_codigo") {
           titulo = "Esperando o código de verificação";
           linha = "Digite na faixa do topo o código que o portal mandou para o seu celular/e-mail.";
         } else if (conexao === "aguardando_portal") {
@@ -144,7 +154,8 @@
           t.tipo === "cotar" && op ? etapasEmPilulas(op) : null,
           t.tipo === "cotar" && t.total_cotacoes > 1
             ? el("p", { class: "discreto pequeno" }, `${feitas} de ${fmt.plural(t.total_cotacoes, "cotação pronta", "cotações prontas")}`) : null);
-        NP.anexar(botoes, el("button", { class: "botao botao-perigo", type: "button", onclick: () => parar(t) }, "Parar o robô"));
+        NP.anexar(botoes, el("button", { class: "botao botao-perigo", type: "button",
+          disabled: t.parando || null, onclick: () => parar(t) }, t.parando ? "Parando…" : "Parar o robô"));
       } else if (t.tipo === "conectar") {
         const ok = t.status === "concluido";
         NP.anexar(painelRobo, el("h2", { class: "secao" }, ok ? `Login ok na ${op ? op.nome : "operadora"}` : "O login não deu certo"),
@@ -250,6 +261,7 @@
 
     const desligar = NP.ouvir((ev) => {
       if (ev.tipo === "conexao") { desenharRobo(); return; }
+      if (ev.tipo === "parando" && ev.trabalho === tid) { t.parando = true; desenharRobo(); return; }
       if (ev.trabalho !== tid) return;
       if (ev.tipo === "etapa") { etapa = ev; desenharRobo(); }
       else if (ev.tipo === "pedido") { pedidoAtual = ev.pedido; desenharRobo(); }
@@ -263,7 +275,7 @@
       } else if (ev.tipo === "trabalho") {
         t.status = ev.status;
         if (ev.mensagem) t.mensagem = ev.mensagem;
-        if (ev.status !== "rodando") etapa = null;
+        if (ev.status !== "rodando") { etapa = null; t.parando = false; }
         desenharRobo();
         recarregar();
       } else if (ev.tipo === "cotacao") recarregar();

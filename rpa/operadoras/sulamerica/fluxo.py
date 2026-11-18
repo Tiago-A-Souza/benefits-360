@@ -7,6 +7,7 @@ tratados naturalmente.
 from __future__ import annotations
 
 import time
+from contextlib import nullcontext
 
 from playwright.sync_api import Error as PWError
 
@@ -17,7 +18,7 @@ from .login import entrar, tela_modulos_visivel
 from .telas import TelaReiniciou
 from nucleo.modelo import PlanoAlvo, ResultadoPlano
 from nucleo.credenciais import ocultar
-from nucleo.navegador import ErroDados, ErroFluxo, ErroLogin, Parado, visiveis
+from nucleo.navegador import ErroDados, ErroFluxo, ErroLogin, Parado, conferir_parar, sem_parar, visiveis
 
 ETAPAS = {
     "modulos": et.tela_modulos,
@@ -37,6 +38,7 @@ ETAPAS = {
 def identificar_etapa(s: Sessao) -> str:
     fim = time.monotonic() + s.t("timeout_tela_ms") / 1000
     while time.monotonic() < fim:
+        conferir_parar("desconhecida")
         caminho = sel.caminho(s.page)      # só o caminho: "?volta=.../LoginGeral.aspx" não confunde
         if sel.ROTA_EMITIDA in caminho:
             # 15/11: depois de "Sair da cotação" o portal novo mostra "Selecione um módulo" na MESMA URL da cotação emitida
@@ -155,9 +157,11 @@ def processar_pedido(s: Sessao, pedido) -> None:
     try:
         garantir_inicio(s)
         while not a.terminou:
-            etapa = identificar_etapa(s)
-            # Ponto seguro para parar: entre uma tela e outra, nunca com emissão em andamento
-            # (na tela "emitida" o protocolo já existe: o robô termina de baixar o PDF antes).
+            proteger = sem_parar() if a.aguardando_emissao else nullcontext()
+            with proteger:
+                etapa = identificar_etapa(s)
+            # Parar vale nesta tela, na hora (inclusive se a espera da tela seguinte nunca acabar).
+            # Com emissão em andamento o protocolo ainda não foi lido: não para.
             if s.pediu_parar() and etapa != "emitida" and not a.aguardando_emissao:
                 raise Parado(etapa)
             s.aviso("etapa", etapa="modulos" if etapa == "painel" else etapa, pedido=pedido.id,
@@ -168,7 +172,8 @@ def processar_pedido(s: Sessao, pedido) -> None:
             if etapa == "login":
                 # Com emissão em andamento o login não pode ser interrompido: o robô precisa voltar
                 # para ler o protocolo da cotação que talvez já tenha saído.
-                entrar(s, pode_parar=not a.aguardando_emissao, insistir=False)
+                with sem_parar() if a.aguardando_emissao else nullcontext():
+                    entrar(s, pode_parar=not a.aguardando_emissao, insistir=False)
                 continue
             try:
                 ETAPAS[etapa](s, a)

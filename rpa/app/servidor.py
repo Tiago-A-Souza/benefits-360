@@ -395,6 +395,7 @@ class Tela:
         t["operadoras"] = sorted({it.get("operadora") for it in t.pop("itens", []) if it.get("operadora")})
         t["eventos"] = self.banco.eventos(tid)
         t["cotacoes"] = self._com_pdf(self.banco.cotacoes(trabalho=tid))
+        t["parando"] = tid in set(self.robo.ids_parando())
         return JSONResponse(t)
 
     async def cotacoes(self, request: Request):

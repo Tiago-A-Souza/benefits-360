@@ -102,9 +102,20 @@ def menu_saude(lugar) -> Locator:                       # OK no portal 07/11
     return lugar.get_by_text(re.compile(r"^\s*SA[ÚU]DE\s*$"))
 
 
-def link_cotacao_spg(lugar) -> Locator:                 # OK no portal 07/11
-    # Acesso rápido do Painel Saúde: o card "Cotação SPG" com o link "Conferir" (href .../saude/cotacoes/cotacao-spg).
-    return lugar.locator("a[href*='/cotacoes/cotacao-spg']")
+def menu_cotacoes(lugar) -> Locator:                    # vídeo [03] e portal 15/11: subnav do Painel Saúde
+    # Texto no HTML: "Cotações" (CSS uppercase faz parecer COTAÇÕES). É um <div openmenuoptions>, não um <a>.
+    # Sem o Acesso rápido favoritado, este é o caminho que o RPAV3 usava depois do atalho.
+    item = lugar.locator("[openmenuoptions]").filter(has_text=re.compile(r"cota[cç][oõ]es", re.I))
+    texto = lugar.get_by_text(re.compile(r"^\s*Cota[cç][oõ]es\s*$", re.I))
+    return item.or_(texto)
+
+
+def link_cotacao_spg(lugar) -> Locator:                 # OK no portal 07/11; 18/11 também pelo texto do submenu
+    # Acesso rápido: o card "Cotação SPG" com o link "Conferir" (href .../saude/cotacoes/cotacao-spg).
+    # Submenu COTAÇÕES: o próprio item "Cotação SPG" é o <a> (vídeo [03]).
+    href = lugar.locator("a[href*='/cotacoes/cotacao-spg']")
+    texto = lugar.get_by_role("link", name=re.compile(r"cota[cç][aã]o\s+spg", re.I))
+    return href.or_(texto)
 
 
 # Na página da Cotação SPG o portal abre a área de trabalho antiga num iframe (wwws.../EEEM-EmissaoExpressa,
@@ -113,13 +124,18 @@ LINK_NOVA_COTACAO_SPG = "a[href*='iniciarNovaCotacao']"
 TEXTO_ERRO_403 = rx("AuthorizationFailed")     # 07/11: a Cotação SPG aberta direto pelo endereço
 
 
-def aviso_do_portal(lugar) -> Locator:                  # OK no portal 07/11: modal de campanha ("Seguros Friday")
-    # A página tem 7 div.modal.pn-modal escondidos; o aberto ganha a classe "in" (Bootstrap).
-    return lugar.locator("div.modal.pn-modal.in[role=dialog]")
+def aviso_do_portal(lugar) -> Locator:
+    """Modal de campanha ("Seguros Friday") que está na frente da tela. O locator_handler só pode
+    ver o visível: um `.modal-aviso` escondido no DOM fazia o Playwright reentrar no handler."""
+    aberto = lugar.locator("div.modal.pn-modal.in[role=dialog], div.modal.pn-modal.show[role=dialog]")
+    aviso = lugar.locator("div.modal.pn-modal.modal-aviso").filter(visible=True)
+    return aberto.or_(aviso)
 
 
-def aviso_do_portal_fechar(lugar) -> Locator:           # OK no portal 07/11 (button.close aria-label="Close")
-    return aviso_do_portal(lugar).locator("button.close, button[aria-label='Close']")
+def aviso_do_portal_fechar(lugar) -> Locator:           # portal 07/11 e 18/11: close / btn-close / ícone fechar
+    return aviso_do_portal(lugar).locator(
+        "button.close, button.btn-close, button[aria-label='Close' i], button[aria-label='Fechar' i], "
+        ".icon-nav-fechar")
 
 
 def menu_usuario(lugar) -> Locator:                     # OK no portal 07/11: o nome da corretora no topo

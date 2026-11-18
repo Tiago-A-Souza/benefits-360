@@ -25,7 +25,7 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from nucleo.modelo import ROTULOS, PlanoAlvo, PlanoVisto, ResultadoPlano
-from nucleo.navegador import ErroDados, ErroFluxo, Parado, esperar_visivel, visiveis
+from nucleo.navegador import ErroDados, ErroFluxo, Parado, conferir_parar, esperar_visivel, ligar_parar, visiveis
 from nucleo.saidas import copiar_para_destino, nome_pdf_arquivo, nome_pdf_destino
 from nucleo.texto import formatar_cnpj, norm, rx, so_digitos
 
@@ -51,6 +51,9 @@ class Sessao:
     parar: object = None
     pedir_codigo: object = None
     reemitir: set = field(default_factory=set)
+
+    def __post_init__(self) -> None:
+        ligar_parar(self.pediu_parar)
 
     def aviso(self, tipo: str, **dados) -> None:
         if self.avisar:
@@ -174,6 +177,7 @@ def _esperar_tela(s: Sessao, condicao, descricao: str, etapa: str, segundos: flo
             pass
         if login_na_tela(s.page):
             raise SessaoCaiu("o portal pediu o login de novo (a sessão acabou)", etapa)
+        conferir_parar(etapa)
         time.sleep(0.25)
     raise ErroFluxo(f"não encontrei '{descricao}' na tela em {int((segundos if segundos is not None else s.t('timeout_tela_ms') / 1000))}s",
                     etapa)

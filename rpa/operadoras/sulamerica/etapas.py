@@ -13,8 +13,8 @@ from decimal import Decimal
 from pathlib import Path
 
 from nucleo.modelo import CHAVE_POR_ROTULO, ROTULOS, PlanoAlvo, ResultadoPlano
-from nucleo.navegador import (ErroDados, ErroFluxo, ErroLogin, clicar_texto, esperar_sair_da_rota,
-                              esperar_visivel, visiveis)
+from nucleo.navegador import (ErroDados, ErroFluxo, ErroLogin, clicar_texto, conferir_parar,
+                              esperar_sair_da_rota, esperar_visivel, ligar_parar, sem_parar, visiveis)
 from nucleo.saidas import copiar_para_destino, nome_pdf_arquivo, nome_pdf_destino
 from nucleo.texto import formatar_cnpj, norm, so_digitos
 
@@ -42,6 +42,9 @@ class Sessao:
     # Protocolos que o corretor pediu na tela para emitir de novo ("Emitir de novo mesmo assim"). Cada um
     # vale uma vez: sai do conjunto quando o robô grava "emitindo" da nova emissão.
     reemitir: set = field(default_factory=set)
+
+    def __post_init__(self) -> None:
+        ligar_parar(self.pediu_parar)
 
     def aviso(self, tipo: str, **dados) -> None:
         if self.avisar:
@@ -120,6 +123,7 @@ def _continuar(s: Sessao, etapa: str, esperar_saida: bool = True, timeout_ms: in
     botao = esperar_visivel(sel.botao_continuar(page), 15000, "botão Continuar", etapa)
     fim = time.monotonic() + 15
     while not botao.is_enabled():
+        conferir_parar(etapa)
         if time.monotonic() > fim:
             s.mapa.registrar(page, f"{etapa}_continuar_desabilitado", forcar=True)
             raise ErroFluxo("o botão Continuar continua desabilitado (falta preencher algo?)", etapa)
@@ -127,6 +131,11 @@ def _continuar(s: Sessao, etapa: str, esperar_saida: bool = True, timeout_ms: in
     fechar_guia(page)       # o tour "Guia de navegação" cobre o Continuar
     if antes_do_clique:
         antes_do_clique()   # ex.: gravar "emitindo" no registro imediatamente antes do clique
+        with sem_parar():
+            botao.click()
+            if esperar_saida:
+                esperar_sair_da_rota(page, _rota(etapa), timeout_ms or s.t("timeout_tela_ms"), etapa, "Continuar")
+        return
     botao.click()
     if esperar_saida:
         esperar_sair_da_rota(page, _rota(etapa), timeout_ms or s.t("timeout_tela_ms"), etapa, "Continuar")
@@ -205,6 +214,7 @@ def _esperar_cotador(s: Sessao, botao: str, etapa: str) -> None:
         if visiveis(sel.login_campo_cpf(s.page)):
             s.log.info("A sessão do portal tinha acabado: o portal pediu o login de novo.")
             return      # o fluxo identifica a tela de login e entra (o portal volta para o cotador depois)
+        conferir_parar(etapa)
         time.sleep(0.25)
     raise ErroFluxo(f"clicar em '{botao}' não abriu o cotador", etapa)
 
@@ -733,6 +743,7 @@ def _esperar_conteudo(s: Sessao, etapa: str, pronto, descricao: str) -> str:
             texto, falhas = "", falhas + 1
         if pronto(texto) or time.monotonic() - inicio >= limite:
             break
+        conferir_parar(etapa)
         time.sleep(0.5)
     espera = time.monotonic() - inicio
     if espera >= 2:
@@ -819,19 +830,20 @@ def emitida(s: Sessao, a: Andamento) -> None:
         s.log.warning("Tela de cotação emitida sem emissão em andamento neste pedido; voltando ao início.")
         voltar_ao_inicio(s)
         return
-    esperar_visivel(page.get_by_text(sel.TEXTO_EMITIDA), s.t("timeout_tela_ms"),
-                    "COTAÇÃO EMITIDA COM SUCESSO", etapa)
-    texto = esperar_visivel(page.get_by_text(sel.TEXTO_PROTOCOLO), 15000, "Protocolo Saúde", etapa).inner_text()
-    protocolo = ex.ler_protocolo(texto) or ex.ler_protocolo(page.locator("body").inner_text())
-    if not protocolo:
-        raise ErroFluxo("não consegui ler o número do protocolo", etapa)
-    chave = s.estado.chave(p, a.plano_tela.nome, a.plano_tela.acomodacao)
-    nome_destino = nome_pdf_destino(s.cfg, p.cnpj, protocolo, a.plano_tela.nome,
-                                    a.plano_tela.acomodacao if _acomodacao_no_nome(a) else "",
-                                    versao=versao_no_nome(a))
-    s.estado.registrar(chave, p, a.plano_tela.nome, a.plano_tela.acomodacao, "emitida",
-                       protocolo=protocolo, url_emissao=page.url, nome_destino=nome_destino)
-    a.aguardando_emissao = False
+    with sem_parar():
+        esperar_visivel(page.get_by_text(sel.TEXTO_EMITIDA), s.t("timeout_tela_ms"),
+                        "COTAÇÃO EMITIDA COM SUCESSO", etapa)
+        texto = esperar_visivel(page.get_by_text(sel.TEXTO_PROTOCOLO), 15000, "Protocolo Saúde", etapa).inner_text()
+        protocolo = ex.ler_protocolo(texto) or ex.ler_protocolo(page.locator("body").inner_text())
+        if not protocolo:
+            raise ErroFluxo("não consegui ler o número do protocolo", etapa)
+        chave = s.estado.chave(p, a.plano_tela.nome, a.plano_tela.acomodacao)
+        nome_destino = nome_pdf_destino(s.cfg, p.cnpj, protocolo, a.plano_tela.nome,
+                                        a.plano_tela.acomodacao if _acomodacao_no_nome(a) else "",
+                                        versao=versao_no_nome(a))
+        s.estado.registrar(chave, p, a.plano_tela.nome, a.plano_tela.acomodacao, "emitida",
+                           protocolo=protocolo, url_emissao=page.url, nome_destino=nome_destino)
+        a.aguardando_emissao = False
     r = a.resultado
     r.protocolo = protocolo
     r.pdf_nome = nome_destino
@@ -985,6 +997,7 @@ def _esperar_comeco(s: Sessao) -> bool:
                 if login:
                     s.log.warning("Depois de voltar ao início o portal mostrou o login.")
                 return True
+        conferir_parar()
         time.sleep(0.3)
     return False
 
@@ -1020,6 +1033,7 @@ def _esperar_ate(condicao, segundos: float) -> bool:
                 return True
         except Exception:  # noqa: BLE001  (página navegando)
             pass
+        conferir_parar()
         time.sleep(0.2)
     return False
 

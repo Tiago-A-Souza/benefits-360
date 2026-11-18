@@ -106,7 +106,18 @@ class Trabalhador(threading.Thread):
 
     def cancelar(self, tid: int) -> bool:
         achou = [r.cancelar(tid) for r in self._todos()]     # todas as operadoras do pedido
+        if any(achou):
+            self.bus.publicar({"tipo": "parando", "trabalho": tid})
         return any(achou)
+
+    def ids_parando(self) -> list[int]:
+        """Trabalhos cujo corretor já clicou em Parar, mas o robô ainda não soltou a tela."""
+        ids = []
+        for r in self._todos():
+            with r._mutex:
+                if r.atual and r._cancelar.is_set():
+                    ids.append(r.atual["id"])
+        return ids
 
     def receber_codigo(self, op_id: str, codigo: str) -> bool:
         """Código de verificação digitado na tela. False se o robô não está esperando um."""
@@ -155,7 +166,8 @@ class Trabalhador(threading.Thread):
         atual = ({k: rodando[0].get(k) for k in ("id", "tipo", "modo", "titulo")} if rodando else None)
         ids_rodando = {t.get("id") for t in rodando}
         na_fila = [tid for tid in dict.fromkeys(t for r in robos for t in r.lista_da_fila()) if tid not in ids_rodando]
-        return {"conexao": dict(self.conexao), "atual": atual, "ultima_etapa": self.ultima_etapa, "na_fila": na_fila}
+        return {"conexao": dict(self.conexao), "atual": atual, "ultima_etapa": self.ultima_etapa,
+                "na_fila": na_fila, "parando": self.ids_parando()}
 
     def run(self) -> None:
         self._encerrar.wait()

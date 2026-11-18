@@ -195,3 +195,47 @@ def test_mapa_de_erro_lista_as_requisicoes_pendentes_sem_a_query(tmp_path):
     assert "requisições pendentes: 1" in texto and f"127.0.0.1:{porta}/api/preco" in texto
     assert "SEGREDO123" not in texto and "token=" not in texto
     assert "visibilidade: visible" in texto
+
+
+def test_esperar_visivel_para_na_hora_quando_a_tela_nao_avanca():
+    """Parar não espera a próxima tela: se o título nunca vem, a espera cai no mesmo instante."""
+    import time
+
+    from nucleo.navegador import (ErroFluxo, Parado, desligar_parar, esperar_sair_da_rota,
+                                  esperar_visivel, ligar_parar, sem_parar)
+
+    class Loc:
+        def count(self):
+            return 0
+
+        def nth(self, i):
+            return self
+
+        def is_visible(self):
+            return False
+
+    class Pagina:
+        url = "https://exemplo/planos"
+
+        def wait_for_url(self, *a, **k):
+            raise TimeoutError("ainda na mesma rota")
+
+    ligar_parar(lambda: True)
+    try:
+        t0 = time.monotonic()
+        with pytest.raises(Parado) as e:
+            esperar_visivel(Loc(), 30_000, "título da tela", "planos")
+        assert time.monotonic() - t0 < 1.5 and e.value.etapa == "planos"
+
+        t0 = time.monotonic()
+        with pytest.raises(Parado):
+            esperar_sair_da_rota(Pagina(), "/planos", 30_000, "planos", "Continuar")
+        assert time.monotonic() - t0 < 1.5
+
+        with sem_parar():
+            t0 = time.monotonic()
+            with pytest.raises(ErroFluxo):
+                esperar_visivel(Loc(), 400, "título", "emitida")
+            assert time.monotonic() - t0 >= 0.3
+    finally:
+        desligar_parar()

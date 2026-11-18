@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import time
 
-from nucleo.navegador import ErroFluxo, visiveis
+from nucleo.navegador import ErroFluxo, conferir_parar, visiveis
 from nucleo.texto import norm
 
 from . import seletores as sel
@@ -52,6 +52,7 @@ def esperar_ate(condicao, segundos: float, intervalo: float = 0.25) -> bool:
                 return True
         except Exception:  # noqa: BLE001  (tela mudando)
             pass
+        conferir_parar()
         time.sleep(intervalo)
     try:
         return bool(condicao())
