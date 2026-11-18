@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { mensagemCamposLogin } from "./sessao";
+import {
+  criarConta,
+  entrar,
+  mensagemCamposCriarConta,
+  mensagemCamposLogin,
+  recuperarSenha,
+} from "./sessao";
 import "./TelaLogin.css";
 
 function MarcaFundo() {
@@ -30,31 +36,92 @@ function MarcaFundo() {
   );
 }
 
-const AVISO_FASE3 = "Disponível quando o login for ativado";
+function Olho({ aberto }) {
+  return aberto ? (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#526277" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 6.2A10.6 10.6 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3 3.7M6.4 7.6A17 17 0 0 0 2.5 12S6 18 12 18a10 10 0 0 0 4-.8" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  ) : (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#526277" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
 
 export default function TelaLogin({ onEntrar }) {
+  const [modo, setModo] = useState("entrar");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [confirmar, setConfirmar] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [manter, setManter] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const [enviando, setEnviando] = useState(false);
 
-  function enviar(ev) {
+  const criando = modo === "criar";
+
+  function irModo(proximo) {
+    setModo(proximo);
+    setErro("");
+    setAviso("");
+    setSenha("");
+    setConfirmar("");
+  }
+
+  async function enviar(ev) {
     ev.preventDefault();
     setAviso("");
-    const msg = mensagemCamposLogin(email, senha);
+    const msg = criando
+      ? mensagemCamposCriarConta(email, senha, confirmar)
+      : mensagemCamposLogin(email, senha);
     if (msg) {
       setErro(msg);
       return;
     }
     setErro("");
-    onEntrar();
+    setEnviando(true);
+    try {
+      if (criando) {
+        const r = await criarConta(email, senha, confirmar);
+        if (!r.ok) {
+          setErro(r.erro);
+          return;
+        }
+        setAviso(r.aviso);
+        setModo("entrar");
+        setSenha("");
+        setConfirmar("");
+        return;
+      }
+      const r = await entrar(email, senha);
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      onEntrar?.();
+    } finally {
+      setEnviando(false);
+    }
   }
 
-  function avisoFase3() {
+  async function esqueciSenha() {
     setErro("");
-    setAviso(AVISO_FASE3);
+    setAviso("");
+    setEnviando(true);
+    try {
+      const r = await recuperarSenha(email);
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      setAviso(r.aviso);
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -65,7 +132,22 @@ export default function TelaLogin({ onEntrar }) {
             <img src="/login-assets/turya-logo-recortado.png" alt="Turya" />
           </div>
           <nav className="tela-login-nav" aria-label="Principal">
-            <span className="tela-login-nav-item">ENTRAR</span>
+            <button
+              type="button"
+              className={`tela-login-nav-item${criando ? " is-off" : ""}`}
+              aria-pressed={!criando}
+              onClick={() => irModo("entrar")}
+            >
+              ENTRAR
+            </button>
+            <button
+              type="button"
+              className={`tela-login-nav-item${criando ? "" : " is-off"}`}
+              aria-pressed={criando}
+              onClick={() => irModo("criar")}
+            >
+              CRIAR CONTA
+            </button>
           </nav>
         </div>
       </header>
@@ -101,8 +183,12 @@ export default function TelaLogin({ onEntrar }) {
 
           <form className="tela-login-cartao" onSubmit={enviar} noValidate>
             <div className="tela-login-cartao-topo">
-              <h2>Acesse sua conta</h2>
-              <p>Use o e-mail e a senha da sua corretora.</p>
+              <h2>{criando ? "Crie sua conta" : "Acesse sua conta"}</h2>
+              <p>
+                {criando
+                  ? "Use o e-mail da corretora. Depois confirme o e-mail para entrar."
+                  : "Use o e-mail e a senha da sua corretora."}
+              </p>
             </div>
 
             <div className="tela-login-campo">
@@ -125,8 +211,8 @@ export default function TelaLogin({ onEntrar }) {
                   id="login-senha"
                   name="senha"
                   type={mostrarSenha ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder="Digite sua senha"
+                  autoComplete={criando ? "new-password" : "current-password"}
+                  placeholder={criando ? "Mínimo de 8 caracteres" : "Digite sua senha"}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                 />
@@ -136,36 +222,40 @@ export default function TelaLogin({ onEntrar }) {
                   aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
                   onClick={() => setMostrarSenha((v) => !v)}
                 >
-                  {mostrarSenha ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#526277" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M3 3l18 18" />
-                      <path d="M10.6 6.2A10.6 10.6 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3 3.7M6.4 7.6A17 17 0 0 0 2.5 12S6 18 12 18a10 10 0 0 0 4-.8" />
-                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-                    </svg>
-                  ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#526277" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
+                  <Olho aberto={mostrarSenha} />
                 </button>
               </div>
             </div>
 
-            <div className="tela-login-acoes">
-              <div className="tela-login-manter">
+            {criando ? (
+              <div className="tela-login-campo">
+                <label htmlFor="login-confirmar">Confirmar senha</label>
                 <input
-                  id="login-manter"
-                  type="checkbox"
-                  checked={manter}
-                  onChange={(e) => setManter(e.target.checked)}
+                  id="login-confirmar"
+                  name="confirmar"
+                  type={mostrarSenha ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="Repita a senha"
+                  value={confirmar}
+                  onChange={(e) => setConfirmar(e.target.value)}
                 />
-                <label htmlFor="login-manter">Manter conectado</label>
               </div>
-              <button type="button" className="tela-login-link" onClick={avisoFase3}>
-                Esqueci minha senha
-              </button>
-            </div>
+            ) : (
+              <div className="tela-login-acoes">
+                <div className="tela-login-manter">
+                  <input
+                    id="login-manter"
+                    type="checkbox"
+                    checked={manter}
+                    onChange={(e) => setManter(e.target.checked)}
+                  />
+                  <label htmlFor="login-manter">Manter conectado</label>
+                </div>
+                <button type="button" className="tela-login-link" onClick={esqueciSenha} disabled={enviando}>
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
 
             {erro ? (
               <p className="tela-login-erro" role="alert">
@@ -178,16 +268,28 @@ export default function TelaLogin({ onEntrar }) {
               </p>
             ) : null}
 
-            <button type="submit" className="tela-login-entrar">
-              Entrar
+            <button type="submit" className="tela-login-entrar" disabled={enviando}>
+              {criando ? "Criar conta" : "Entrar"}
             </button>
 
             <div className="tela-login-rodape-cartao">
-              Primeiro acesso ou sem e-mail cadastrado?{" "}
-              <button type="button" className="tela-login-link" onClick={avisoFase3}>
-                Fale com o administrador
-              </button>
-              .
+              {criando ? (
+                <>
+                  Já tem conta?{" "}
+                  <button type="button" className="tela-login-link" onClick={() => irModo("entrar")}>
+                    Entrar
+                  </button>
+                  . Depois de confirmar o e-mail, você entra direto no sistema.
+                </>
+              ) : (
+                <>
+                  Ainda não tem conta?{" "}
+                  <button type="button" className="tela-login-link" onClick={() => irModo("criar")}>
+                    Criar conta
+                  </button>
+                  . Confirme o e-mail que enviamos e acesse na hora — não precisa de aprovação.
+                </>
+              )}
             </div>
           </form>
         </div>

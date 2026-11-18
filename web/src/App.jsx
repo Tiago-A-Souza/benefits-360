@@ -29,7 +29,7 @@ import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaClicavel } from "./fluxo/avancoEtapa";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 import TelaLogin from "./login/TelaLogin";
-import { entrarDemo, sessaoAtiva, sairSessao } from "./login/sessao";
+import { obterSessao, ouvirSessao, sairSessao } from "./login/sessao";
 
 export default function App() {
   const [tela, setTela] = useState("lista");
@@ -52,7 +52,8 @@ export default function App() {
     return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
   });
   const [cotacoesNativa, setCotacoesNativa] = useState(() => nativaLigada());
-  const [logado, setLogado] = useState(() => sessaoAtiva());
+  const [logado, setLogado] = useState(false);
+  const [sessaoPronta, setSessaoPronta] = useState(false);
 
   function abrirCotacoes() {
     setCotacoesRpa(false);
@@ -160,20 +161,36 @@ export default function App() {
   const totalBaseComparacao = ctxFluxo.resumoPlanoAtual?.total_reajustado_reais;
   const legendaReajusteBase = textoReajusteContrato(ctxFluxo.resumoPlanoAtual);
 
-  const sair = useCallback(() => {
-    sairSessao();
-    setLogado(false);
+  useEffect(() => {
+    let vivo = true;
+    obterSessao()
+      .then((s) => {
+        if (!vivo) return;
+        setLogado(Boolean(s));
+        setSessaoPronta(true);
+      })
+      .catch(() => {
+        if (!vivo) return;
+        setLogado(false);
+        setSessaoPronta(true);
+      });
+    const parar = ouvirSessao((s) => setLogado(Boolean(s)));
+    return () => {
+      vivo = false;
+      parar();
+    };
   }, []);
 
+  const sair = useCallback(() => {
+    void sairSessao().then(() => setLogado(false));
+  }, []);
+
+  if (!sessaoPronta) {
+    return <div className="app-shell" />;
+  }
+
   if (!logado) {
-    return (
-      <TelaLogin
-        onEntrar={() => {
-          entrarDemo();
-          setLogado(true);
-        }}
-      />
-    );
+    return <TelaLogin onEntrar={() => setLogado(true)} />;
   }
 
   if (provaRpa) {

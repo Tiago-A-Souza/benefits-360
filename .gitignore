@@ -74,6 +74,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+web/.env.local
 
 # ---------------------------------------------------------------------------
 # Configurações locais de IDE / editor
