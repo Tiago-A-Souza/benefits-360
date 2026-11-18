@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LogoOperadora from "./LogoOperadora";
-import { classeCartaoOperadora, estiloMarcaOperadora } from "./operadoras";
+import { attrsCartaoOperadora } from "./operadoras";
 import { chamarRpa } from "../rpaClient";
 import { useConfirmacao } from "./Confirmacao";
 import {
@@ -141,13 +141,15 @@ export default function ConfigRobo({
   const n = mudancas.length;
   const dPadrao = diffsPadrao.length;
   const valorDe = (k) => valorDeConfig(k, campos, rascunho, pares);
+  const marca = attrsCartaoOperadora(opId, false);
 
   return (
     <div>
       {modal}
       <div
-        className={`nativa-robo-cabeca ${classeCartaoOperadora(false)}`}
-        style={estiloMarcaOperadora(opId)}
+        className={`nativa-robo-cabeca ${marca.className}`}
+        style={marca.style}
+        data-cor-op={marca["data-cor-op"]}
       >
         <div>
           <h1>
@@ -165,8 +167,9 @@ export default function ConfigRobo({
       </div>
 
       <section
-        className={`cartao nativa-operadora ${classeCartaoOperadora(false)}`}
-        style={estiloMarcaOperadora(opId)}
+        className={`cartao nativa-operadora ${marca.className}`}
+        style={marca.style}
+        data-cor-op={marca["data-cor-op"]}
       >
         <p className="nativa-robo-resumo">
           <strong>Hoje o robô cota assim: </strong>

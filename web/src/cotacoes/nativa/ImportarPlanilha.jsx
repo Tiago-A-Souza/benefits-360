@@ -9,7 +9,7 @@ import {
   textoPlanosImport,
 } from "./regrasRestante";
 import LogoOperadora from "./LogoOperadora";
-import { estiloMarcaOperadora } from "./operadoras";
+import { attrsCartaoOperadora } from "./operadoras";
 import { formatarCnpj, plural } from "./regrasNova";
 
 export default function ImportarPlanilha({ operadoras, aviso, onEnfileirado }) {
@@ -117,19 +117,24 @@ export default function ImportarPlanilha({ operadoras, aviso, onEnfileirado }) {
         {ops.length ? (
           <div className="nativa-form-linha">
             <div className="nativa-rotulo">Operadora</div>
-            <div className="nativa-segmentos" role="group" aria-label="Operadora">
-              {ops.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className="secundario"
-                  aria-pressed={o.id === opId}
-                  style={estiloMarcaOperadora(o.id)}
-                  onClick={() => escolherOp(o.id)}
-                >
-                  <LogoOperadora operadora={o.id} tamanho="sm" mostrarNome />
-                </button>
-              ))}
+            <div className="nativa-op-escolhas" role="group" aria-label="Operadora">
+              {ops.map((o) => {
+                const marca = attrsCartaoOperadora(o.id, o.id === opId);
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className={marca.className}
+                    aria-pressed={o.id === opId}
+                    title={o.nome}
+                    style={marca.style}
+                    data-cor-op={marca["data-cor-op"]}
+                    onClick={() => escolherOp(o.id)}
+                  >
+                    <LogoOperadora operadora={o.id} tamanho="md" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}

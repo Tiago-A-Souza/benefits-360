@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { chamarRpa, RpaClienteErro } from "../rpaClient";
 import { useConfirmacao } from "./Confirmacao";
 import LogoOperadora from "./LogoOperadora";
-import { classeCartaoOperadora, estiloMarcaOperadora } from "./operadoras";
+import { attrsCartaoOperadora } from "./operadoras";
 import {
   CONEXAO,
   FAIXAS,
@@ -121,16 +121,18 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
     onPatch({ campos: { ...o.campos, [chave]: valor } });
   }
 
+  const marca = attrsCartaoOperadora(op.id, o.ativa);
   return (
     <section
-      className={`cartao nativa-operadora ${classeCartaoOperadora(o.ativa)}`}
-      style={estiloMarcaOperadora(op.id)}
+      className={`cartao nativa-operadora ${marca.className}`}
+      style={marca.style}
+      data-cor-op={marca["data-cor-op"]}
       aria-labelledby={`t-${op.id}`}
     >
-      <div className="nativa-operadora-cabeca">
+      <div className="nativa-operadora-cabeca nativa-op-cabeca">
         <div>
           <div className="nativa-operadora-nome" id={`t-${op.id}`}>
-            <LogoOperadora operadora={op.id} tamanho="lg" mostrarNome />
+            <LogoOperadora operadora={op.id} tamanho="md" />
           </div>
           <div className="muted">{op.produto}</div>
         </div>

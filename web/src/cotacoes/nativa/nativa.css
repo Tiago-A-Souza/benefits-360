@@ -161,15 +161,62 @@
   border-left: 4px solid var(--cor-op, var(--navy));
 }
 
-.nativa-op-cartao {
+/* Especificidade 0,3,0: vence .cartao { border: 1px solid var(--line) } (0,1,0),
+   que zerava a faixa/borda da marca por shorthand. */
+.nativa-shell .cartao.nativa-op-cartao,
+.nativa-shell button.nativa-op-cartao,
+.nativa-shell .nativa-robo-cabeca.nativa-op-cartao {
   border: 1px solid var(--cor-op-suave, var(--line));
-  border-left: 3px solid var(--cor-op, var(--navy));
+  border-left: 4px solid var(--cor-op, var(--navy));
   background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
 }
 
-.nativa-op-cartao--ativo {
+.nativa-shell .cartao.nativa-op-cartao.nativa-op-cartao--ativo,
+.nativa-shell button.nativa-op-cartao.nativa-op-cartao--ativo {
+  border: 2px solid var(--cor-op, var(--navy));
+  border-left: 4px solid var(--cor-op, var(--navy));
+  box-shadow: none;
+}
+
+.nativa-shell button.nativa-op-cartao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 48px;
+  height: auto;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.nativa-shell button.nativa-op-cartao:hover {
+  background: var(--cor-op-cabeca, var(--surface));
+  color: var(--ink);
   border-color: var(--cor-op, var(--navy));
-  box-shadow: 0 0 0 1px var(--cor-op-suave, transparent);
+  border-left-color: var(--cor-op, var(--navy));
+}
+
+.nativa-op-escolhas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.nativa-shell .cartao.nativa-op-cartao > .nativa-op-cabeca {
+  background: var(--cor-op-cabeca, transparent);
+  margin: -1.25rem -1.25rem 0.85rem;
+  padding: 1rem 1.25rem 0.85rem;
+  border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+}
+
+.nativa-shell .nativa-robo-cabeca.nativa-op-cartao {
+  background: var(--cor-op-cabeca, transparent);
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  box-shadow: none;
 }
 
 .nativa-operadora-cabeca {
@@ -716,13 +763,6 @@
   border-left: 4px solid var(--cor-op, var(--navy));
 }
 
-.nativa-robo-cartao.nativa-op-cartao,
-.nativa-operadora.nativa-op-cartao,
-.nativa-robo-cabeca.nativa-op-cartao,
-.nativa-painel-robo.nativa-op-cartao {
-  border-left-width: 3px;
-}
-
 .nativa-robo-topo {
   display: flex;
   justify-content: space-between;
@@ -913,8 +953,6 @@
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
-  border-left: 4px solid var(--cor-op, var(--navy));
-  padding-left: 0.85rem;
 }
 
 .nativa-plano-com-op {

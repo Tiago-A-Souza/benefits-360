@@ -5,6 +5,7 @@ import ListaCotacoes from "./ListaCotacoes.jsx";
 import TabelaCotacoes from "./TabelaCotacoes.jsx";
 import Conexoes from "./Conexoes.jsx";
 import { OPERADORAS } from "./fixtureOperadoras";
+import { MARCA_OPERADORAS } from "./operadoras";
 import { FILTROS_LISTA, formatarValorRobo } from "./regrasNova";
 
 globalThis.React = React;
@@ -73,5 +74,26 @@ describe("ListaCotacoes e Conexões", () => {
     expect(html).toContain("Configurar");
     expect(html).not.toContain("http://127.0.0.1:8600/#/robo/sulamerica");
     expect(html).not.toContain("Newport");
+  });
+
+  it("cartão de conexão recebe a cor da marca no estilo e no data-cor-op", () => {
+    const html = renderToStaticMarkup(
+      <Conexoes
+        operadoras={OPERADORAS}
+        conexao={{ sulamerica: "desconectado" }}
+        urlRobo="http://127.0.0.1:8600"
+      />,
+    );
+    const cor = MARCA_OPERADORAS.sulamerica.cor;
+    expect(html).toContain("nativa-op-cartao");
+    expect(html).toContain(`data-cor-op="${cor}"`);
+    expect(html).toContain(`--cor-op:${cor}`);
+    expect(html).toContain("--cor-op-suave:");
+    expect(html).toContain("--cor-op-cabeca:");
+    expect(html).toContain("/operadoras/sulamerica.png");
+    expect(html).toContain('alt="SulAmérica"');
+    expect(html).toContain('title="SulAmérica"');
+    expect(html).toContain("nativa-op-cabeca");
+    expect(html).not.toContain("nativa-logo-op-selo");
   });
 });

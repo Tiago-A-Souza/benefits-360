@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { baixarUrlRpa, chamarRpa, ouvirEventosRpa } from "../rpaClient";
 import { useConfirmacao } from "./Confirmacao";
 import LogoOperadora from "./LogoOperadora";
-import { classeCartaoOperadora, estiloMarcaOperadora } from "./operadoras";
+import { attrsCartaoOperadora } from "./operadoras";
 import TabelaCotacoes from "./TabelaCotacoes";
 import {
   CONFIRMACOES_REPETIR,
@@ -383,6 +383,7 @@ export default function Andamento({
   const comPdf = (t.cotacoes || []).filter((c) => c.tem_pdf);
   const varias = new Set((t.cotacoes || []).map((c) => c.cnpj)).size > 1 || t.total_pedidos > 1;
   const eventos = (t.eventos || []).filter((e) => e.texto);
+  const marca = op ? attrsCartaoOperadora(op.id, t.status === "rodando") : null;
 
   return (
     <div className="nativa-andamento">
@@ -395,13 +396,16 @@ export default function Andamento({
       </header>
 
       <section
-        className={`cartao nativa-painel-robo ${classeCartaoOperadora(t.status === "rodando")}`}
-        style={op ? estiloMarcaOperadora(op.id) : undefined}
+        className={`cartao nativa-painel-robo ${marca ? marca.className : ""}`}
+        style={marca ? marca.style : undefined}
+        data-cor-op={marca ? marca["data-cor-op"] : undefined}
         aria-live="polite"
       >
-        <h2>
-          {op ? <LogoOperadora operadora={op.id} tamanho="md" /> : null} {tituloPainel}
-        </h2>
+        <div className="nativa-op-cabeca">
+          <h2>
+            {op ? <LogoOperadora operadora={op.id} tamanho="md" /> : null} {tituloPainel}
+          </h2>
+        </div>
         {t.status === "erro" ? <div className="nativa-problemas">{t.mensagem || "erro sem descrição"}</div> : null}
         <p className="muted">{linhaPainel}</p>
         {t.status === "rodando" && t.tipo === "cotar" && op ? <EtapasPilulas op={op} etapa={etapa} /> : null}

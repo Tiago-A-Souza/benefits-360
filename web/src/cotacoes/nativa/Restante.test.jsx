@@ -105,6 +105,9 @@ describe("Início, Ajuda, Importar, Ajustes", () => {
     expect(html).toContain("Baixar a planilha modelo");
     expect(html).toContain("como_preencher");
     expect(html).not.toContain("Newport");
+    expect(html).toContain("nativa-op-cartao");
+    expect(html).toContain('data-cor-op="#F08810"');
+    expect(html).toContain("--cor-op:#F08810");
   });
 
   it("Ajustes lista cartões e painel geral, sem cartão de senha", () => {
@@ -123,6 +126,8 @@ describe("Início, Ajuda, Importar, Ajustes", () => {
     expect(html).toContain("Pasta do robô");
     expect(html).toContain("Indisponível");
     expect(html).toContain("não carregou");
+    expect(html).toContain("nativa-op-cartao");
+    expect(html).toContain('data-cor-op="#F08810"');
     expect(html).not.toContain("type=\"password\"");
     expect(html).not.toContain("127.0.0.1:8600/#/robo");
   });

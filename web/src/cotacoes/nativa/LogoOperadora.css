@@ -1,45 +1,46 @@
 .nativa-logo-op {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  height: var(--logo-h, 28px);
+  width: 140px;
+  max-width: 140px;
   vertical-align: middle;
-  color: var(--ink);
+}
+
+.nativa-logo-op--sm {
+  width: 100px;
+  max-width: 100px;
 }
 
 .nativa-logo-op img {
   display: block;
-  height: var(--logo-h, 28px);
   width: auto;
-  max-width: 9rem;
+  height: auto;
+  max-height: var(--logo-h, 28px);
+  max-width: 140px;
   object-fit: contain;
   object-position: left center;
-  flex-shrink: 0;
 }
 
-.nativa-logo-op-nome {
-  font-weight: 650;
-  color: var(--navy);
-  white-space: nowrap;
-}
-
-.nativa-logo-op--lg .nativa-logo-op-nome {
-  font-family: var(--font-system);
-  font-size: 1.2rem;
-  font-weight: 600;
+.nativa-logo-op--sm img {
+  max-width: 100px;
 }
 
 .nativa-logo-op-selo {
   display: inline-flex;
   align-items: center;
-  height: var(--logo-h, 28px);
-  padding: 0 0.55rem;
+  max-width: 100%;
+  padding: 0.15rem 0.45rem;
   border-radius: 6px;
-  border: 1px solid var(--cor-op, var(--navy));
-  background: var(--cor-op-suave, var(--surface-2));
+  background: var(--cor-op-suave, var(--line));
   color: var(--cor-op, var(--navy));
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   letter-spacing: 0.02em;
+  line-height: 1.2;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
