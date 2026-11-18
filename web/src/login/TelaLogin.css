@@ -61,23 +61,39 @@
   gap: 8px;
 }
 
-.tela-login-nav-item {
+.tela-login button.tela-login-nav-item,
+.tela-login button.tela-login-nav-item:hover,
+.tela-login button.tela-login-nav-item:focus,
+.tela-login button.tela-login-nav-item:active {
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  justify-content: center;
   box-sizing: border-box;
+  min-height: 0;
+  height: 100%;
+  min-width: 9.5rem;
+  margin: 0;
+  padding: 0 16px;
   border: none;
-  border-top: 4px solid #f26a21;
+  border-radius: 0;
+  border-top: 4px solid transparent;
   background: transparent;
+  box-shadow: none;
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.8px;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.tela-login-nav-item.is-off {
+.tela-login button.tela-login-nav-item[aria-pressed="true"] {
+  border-top-color: #f26a21;
+  color: #ffffff;
+}
+
+.tela-login button.tela-login-nav-item.is-off {
   border-top-color: transparent;
   color: rgba(255, 255, 255, 0.55);
 }
