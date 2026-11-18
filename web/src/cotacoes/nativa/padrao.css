@@ -1,0 +1,201 @@
+/* Controles da Cotações nativa = os mesmos tokens das telas originais (styles.css).
+   Sem identidade nova. Não há <Botao>/<Campo> compartilhado; estas classes
+   espelham button / .secundario / .btn-compacto / input[type=text] / .cmp-seg. */
+
+.nativa-shell .campo,
+.nativa-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="range"]),
+.nativa-shell select,
+.nativa-shell textarea {
+  width: 100%;
+  padding: 9px 10px;
+  margin-top: 0.25rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  min-height: 38px;
+  color: var(--ink);
+  font: inherit;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nativa-shell textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.nativa-shell select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 3px), calc(100% - 9px) calc(50% - 3px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.6rem;
+}
+
+.nativa-shell .campo::placeholder,
+.nativa-shell input::placeholder,
+.nativa-shell textarea::placeholder {
+  color: var(--muted-2);
+}
+
+.nativa-shell .campo:hover,
+.nativa-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):hover,
+.nativa-shell select:hover,
+.nativa-shell textarea:hover {
+  border-color: #aeb9c6;
+}
+
+.nativa-shell .campo:focus-visible,
+.nativa-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus-visible,
+.nativa-shell select:focus-visible,
+.nativa-shell textarea:focus-visible {
+  border-color: var(--blue);
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.nativa-shell .nativa-chave input,
+.nativa-shell .visually-hidden {
+  width: 1px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  appearance: auto;
+}
+
+/* Botões: 3 tamanhos (normal 36, compacto 34, ícone 28). Variantes: padrão azul, .secundario, .nativa-perigo. */
+.nativa-shell button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1.2;
+  min-height: 36px;
+  border-radius: 9px;
+}
+
+.nativa-shell button.secundario {
+  margin-right: 0;
+}
+
+.nativa-shell .btn-compacto {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 0.875rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nativa-shell .nativa-passo button {
+  min-height: 28px;
+  min-width: 28px;
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  box-shadow: none;
+}
+
+.nativa-shell button.link,
+.nativa-shell .nativa-engrenagem {
+  display: inline;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  white-space: nowrap;
+  background: none;
+}
+
+.nativa-shell button.link:hover,
+.nativa-shell .nativa-engrenagem:hover {
+  background: none;
+  border: none;
+}
+
+.nativa-shell .nativa-acoes-linha,
+.nativa-shell .nativa-acoes,
+.nativa-shell .nativa-acoes-robo,
+.nativa-shell .nativa-modal-acoes,
+.nativa-shell .nativa-tarefa,
+.nativa-shell .nativa-empresas li,
+.nativa-shell .nativa-robo-pe,
+.nativa-shell .nativa-pend-item {
+  align-items: center;
+}
+
+.nativa-shell .nativa-empresas button,
+.nativa-shell .nativa-tarefa button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Filtros / segmentos = .cmp-segmento / .cmp-seg das telas originais. */
+.nativa-shell .nativa-segmentos {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  padding: 0.2rem;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.nativa-shell .nativa-segmentos button,
+.nativa-shell .nativa-segmentos button.secundario {
+  min-height: 32px;
+  height: 32px;
+  padding: 0.35rem 0.75rem;
+  margin: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.nativa-shell .nativa-segmentos button:hover,
+.nativa-shell .nativa-segmentos button.secundario:hover {
+  color: #0f172a;
+  background: rgb(255 255 255 / 60%);
+  border: none;
+}
+
+.nativa-shell .nativa-segmentos button[aria-pressed="true"],
+.nativa-shell .nativa-segmentos button.secundario[aria-pressed="true"] {
+  background: #1e3a5f;
+  color: #fff;
+  border: none;
+  box-shadow: 0 1px 3px rgb(30 58 95 / 20%);
+}
+
+.nativa-shell .nativa-filtros {
+  align-items: center;
+}
+
+.nativa-shell .nativa-filtros .campo {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  width: auto;
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .nativa-shell .nativa-segmentos {
+    width: 100%;
+  }
+
+  .nativa-shell .nativa-filtros .campo {
+    flex: 1 1 100%;
+  }
+}

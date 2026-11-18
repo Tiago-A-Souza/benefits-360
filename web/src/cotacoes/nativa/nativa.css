@@ -1,3 +1,5 @@
+@import "./padrao.css";
+
 /* Nova cotação + Andamento nativos: tokens do Benefits (Inter/Fraunces, navy). Sem identidade Newport. */
 
 .nativa-shell {
@@ -270,17 +272,7 @@
   transform: translateX(16px);
 }
 
-.nativa-segmentos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.nativa-segmentos button[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
-  border-color: var(--navy);
-}
+/* segmentos: ver padrao.css (.cmp-seg das telas originais) */
 
 .nativa-frase-robo {
   background: var(--surface-2);
