@@ -1,4 +1,4 @@
-"""python -m app  ->  abre a tela do Newport Cotações no navegador (http://127.0.0.1:8600)."""
+"""python -m app  ->  sobe o motor do robô (API em 127.0.0.1:8600). A interface é o Benefits (5173)."""
 from __future__ import annotations
 
 import argparse
@@ -69,9 +69,10 @@ def main(argv=None) -> int:
 
     if _porta_ocupada(porta):
         if _tela_ja_aberta(porta):
-            print(f"O Newport Cotações já está aberto. Abrindo a tela de novo: {url}")
+            print("robô já estava ligado")
+            print("Motor do robô de cotações em execução. Use o Benefits (http://localhost:5173), aba Cotações.")
             if not args.sem_navegador:
-                webbrowser.open(url)
+                webbrowser.open("http://localhost:5173")
             return 0
         print(f"A porta {porta} está em uso por outro programa. Mude 'tela: porta:' no {args.config}.")
         return 1
@@ -99,10 +100,13 @@ def main(argv=None) -> int:
 
     tela = Tela(args.config, porta)
     _sair_ao_fechar_a_janela(tela)
-    print(f"Newport Cotações aberto em {url}")
-    print("Deixe esta janela aberta enquanto usa a tela. Para encerrar, feche esta janela.")
+    print(f"Motor do robô em {url} (API). Interface: http://localhost:5173 aba Cotações.")
+    print("Deixe esta janela aberta enquanto o Benefits usa o robô. Para encerrar, feche esta janela.")
     if not args.sem_navegador:
-        threading.Thread(target=lambda: (time.sleep(1.2), webbrowser.open(url)), daemon=True).start()
+        threading.Thread(
+            target=lambda: (time.sleep(1.2), webbrowser.open("http://localhost:5173")),
+            daemon=True,
+        ).start()
     uvicorn.run(tela.criar_app(), host="127.0.0.1", port=porta, log_level="warning")
     return 0
 

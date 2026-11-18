@@ -445,19 +445,17 @@ export function quando(iso) {
   return `${d.toLocaleDateString("pt-BR")} às ${hora}`;
 }
 
-/** Volta ao iframe antigo do RPA (comparar / reverter). */
+/** A tela velha do robô não é mais servida. Sempre false (a flag da URL não abre iframe). */
 export function iframeCotacoes() {
-  if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("cotacoes-iframe") === "1";
+  return false;
 }
 
 /**
  * Abrir a casca nativa no carregamento.
- * Padrão da aba Cotações = nativa. `?cotacoes-iframe=1` vence.
+ * Padrão da aba Cotações = nativa.
  */
 export function nativaLigada() {
   if (typeof window === "undefined") return false;
-  if (iframeCotacoes()) return false;
   const q = new URLSearchParams(window.location.search);
   if (q.get("cotacoes-nativa") === "1") return true;
   const h = window.location.hash || "";

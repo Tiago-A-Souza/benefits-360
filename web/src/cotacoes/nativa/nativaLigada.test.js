@@ -22,10 +22,10 @@ describe("nativaLigada e iframeCotacoes", () => {
     expect(nativaLigada()).toBe(true);
   });
 
-  it("?cotacoes-iframe=1 vence e não liga nativa", () => {
+  it("?cotacoes-iframe=1 não abre mais a tela velha", () => {
     vi.stubGlobal("window", { location: { search: "?cotacoes-iframe=1", hash: "#/cotacoes" } });
-    expect(iframeCotacoes()).toBe(true);
-    expect(nativaLigada()).toBe(false);
+    expect(iframeCotacoes()).toBe(false);
+    expect(nativaLigada()).toBe(true);
   });
 
   it("hash #/nova e #/conexoes ligam nativa", () => {

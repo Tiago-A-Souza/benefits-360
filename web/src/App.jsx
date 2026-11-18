@@ -19,7 +19,7 @@ import NavegacaoFerramentas from "./NavegacaoFerramentas";
 import SimularRede from "./simularRede/SimularRede";
 import CotacoesRpa from "./cotacoes/CotacoesRpa";
 import CotacoesNativa from "./cotacoes/nativa/CotacoesNativa";
-import { iframeCotacoes, nativaLigada } from "./cotacoes/nativa/regrasNova";
+import { nativaLigada } from "./cotacoes/nativa/regrasNova";
 import ProvaRpaDireto from "./cotacoes/ProvaRpaDireto";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
@@ -44,7 +44,7 @@ export default function App() {
   const [historicoAberto, setHistoricoAberto] = useState(false);
   // Simular Rede é uma consulta avulsa: não cria nem altera estudo.
   const [simulando, setSimulando] = useState(false);
-  const [cotacoesRpa, setCotacoesRpa] = useState(() => iframeCotacoes());
+  const [cotacoesRpa, setCotacoesRpa] = useState(false);
   const [provaRpa, setProvaRpa] = useState(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
@@ -52,13 +52,8 @@ export default function App() {
   const [cotacoesNativa, setCotacoesNativa] = useState(() => nativaLigada());
 
   function abrirCotacoes() {
-    if (iframeCotacoes()) {
-      setCotacoesNativa(false);
-      setCotacoesRpa(true);
-    } else {
-      setCotacoesRpa(false);
-      setCotacoesNativa(true);
-    }
+    setCotacoesRpa(false);
+    setCotacoesNativa(true);
   }
   const [cestaGlobal, setCestaGlobal] = useState([]);
   const avancarEtapaRef = useRef(null);
@@ -190,15 +185,6 @@ export default function App() {
           onSimularRede={() => {
             setCotacoesNativa(false);
             setSimulando(true);
-          }}
-          onCotacoesIframe={() => {
-            if (typeof window !== "undefined") {
-              const u = new URL(window.location.href);
-              u.searchParams.set("cotacoes-iframe", "1");
-              window.history.replaceState({}, "", u);
-            }
-            setCotacoesNativa(false);
-            setCotacoesRpa(true);
           }}
           onVoltarEstudo={emEstudo ? () => setCotacoesNativa(false) : undefined}
           rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}

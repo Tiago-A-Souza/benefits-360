@@ -20,8 +20,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
-from starlette.routing import Mount, Route
-from starlette.staticfiles import StaticFiles
+from starlette.routing import Route
 
 import operadoras
 from nucleo import configuracao as cfgrobo
@@ -37,17 +36,14 @@ from .codigo import VersaoDoCodigo
 from .eventos import Barramento
 from .trabalhador import Trabalhador
 
-WEB = Path(__file__).parent / "web"
-
-
-class _ArquivosSemCache(StaticFiles):
-    """Os arquivos da tela (JS, CSS) sempre conferidos com o servidor. 05/11: sem isso o Chrome guardava o
-    JavaScript antigo (até depois do F5) e a Nova cotação mandava a coparticipação da cotação anterior."""
-
-    async def get_response(self, path, scope):
-        resposta = await super().get_response(path, scope)
-        resposta.headers["Cache-Control"] = "no-cache"
-        return resposta
+WEB = Path(__file__).parent / "web"  # arquivos da UI velha: ficam no disco, não são mais servidos
+HTML_MOTOR = (
+    "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">"
+    "<title>Motor do robô</title></head><body>"
+    "<p>Motor do robô de cotações em execução. Use o Benefits "
+    "(http://localhost:5173), aba Cotações.</p>"
+    "</body></html>"
+)
 
 # Ajustes gerais que a tela pode gravar. Os de cada operadora são os campos de Operadora.configuracao().
 AJUSTAVEIS_GERAL = {"mapear", "modo_visual"}
@@ -96,10 +92,12 @@ class Tela:
 
     # ------------------------------------------------------------------ rotas
     async def inicio(self, request: Request):
-        """A página com a versão do servidor no endereço de cada arquivo: tela atualizada = arquivos novos."""
-        html = (WEB / "index.html").read_text(encoding="utf-8")
-        html = re.sub(r'((?:src|href)="/static/[^"?]+)"', rf'\1?v={self.versao}"', html)
-        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+        """A UI velha não é mais servida. A interface é o Benefits (5173), aba Cotações."""
+        return HTMLResponse(HTML_MOTOR, headers={"Cache-Control": "no-cache"})
+
+    async def pagina_motor(self, request: Request):
+        """HTML/estáticos da UI velha (`/`, `/index.html`, `/static/...`) → o mesmo aviso."""
+        return await self.inicio(request)
 
     async def estado(self, request: Request):
         total = self.config_total()
@@ -689,6 +687,8 @@ class Tela:
 
         rotas = [
             Route("/", self.inicio),
+            Route("/index.html", self.inicio),
+            Route("/static/{path:path}", self.pagina_motor),
             Route("/api/estado", self.estado),
             Route("/api/operadoras", self.lista_operadoras),
             Route("/api/validar", self.validar, methods=["POST"]),
@@ -721,7 +721,6 @@ class Tela:
             Route("/api/importar", self.importar, methods=["POST"]),
             Route("/api/modelo/{op}", self.modelo),
             Route("/api/eventos", self.eventos),
-            Mount("/static", _ArquivosSemCache(directory=str(WEB)), name="static"),
         ]
         cfg = self.config_total()
         anc = _origens_frame_ancestors(cfg)

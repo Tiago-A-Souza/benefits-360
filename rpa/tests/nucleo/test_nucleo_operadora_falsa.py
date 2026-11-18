@@ -62,6 +62,22 @@ def test_operadora_que_quebra_ao_montar_o_formulario_nao_derruba_a_tela(tmp_path
     assert ind["id"] == "falsa" and "ZeroDivisionError" in ind["motivo"]
 
 
+def test_raiz_nao_serve_a_ui_velha(tmp_path, registro):
+    """`/` e `/static` respondem o aviso do motor; a API /api/estado segue igual."""
+    from app.servidor import Tela
+
+    registro(FALSA)
+    tela = Tela(_config(tmp_path, "falsa"), 0)
+    pedido = Request({"type": "http", "method": "GET", "path": "/", "headers": [], "query_string": b""})
+    html = asyncio.run(tela.inicio(pedido)).body.decode()
+    assert "Motor do robô de cotações em execução" in html
+    assert "Use o Benefits (http://localhost:5173), aba Cotações." in html
+    html_static = asyncio.run(tela.pagina_motor(pedido)).body.decode()
+    assert "Use o Benefits (http://localhost:5173), aba Cotações." in html_static
+    estado = _get(tela.estado)
+    assert "versao" in estado and "robo" in estado
+
+
 def test_estado_da_tela_diz_o_commit_que_esta_rodando(tmp_path, registro):
     """O rodapé da tela mostra o commit (e o aviso de reiniciar) que vem de /api/estado."""
     import subprocess
