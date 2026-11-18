@@ -54,6 +54,12 @@ export default function ComparativoPanel({
 
   const precisaReconfirmar = confirmacaoPrecisaRefazer(rascunho, statusGov);
   const jaConfirmado = confirmacaoEmVigor(rascunho, statusGov);
+  const vidasSemLocalizacao = useMemo(() => {
+    const vidas = rascunho?.vidas || rascunhoFluxo?.vidas || [];
+    return vidas.filter(
+      (v) => v.incluida !== false && (!(v.uf || "").trim() || !(v.cidade || "").trim())
+    ).length;
+  }, [rascunho, rascunhoFluxo]);
 
   async function handleSelecaoSalva() {
     const estavaConfirmado = comparativoConfirmado(rascunho) && !formatoIncompativel;
@@ -147,6 +153,12 @@ export default function ComparativoPanel({
             </p>
           </div>
         </div>
+      )}
+      {vidasSemLocalizacao > 0 && (
+        <p className="aviso" role="status">
+          {vidasSemLocalizacao} beneficiário(s) sem UF ou cidade. A análise de rede
+          credenciada fica limitada para essas vidas — o documento HTML não foi alterado.
+        </p>
       )}
       {!resultado?.calculo_realizado && (
         <>

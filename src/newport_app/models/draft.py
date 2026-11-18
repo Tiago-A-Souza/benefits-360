@@ -269,6 +269,8 @@ class OpcaoPropostaRascunho(BaseModel):
     extracao_opcao_id: str | None = None
     validade_oficial: date | None = None
     observacoes: str | None = None
+    # Entrada manual: totais do PDF ausentes — desliga conferência e exige aviso na UI.
+    totais_impressos_nao_constam: bool = False
 
 
 class AtribuicaoRascunho(BaseModel):

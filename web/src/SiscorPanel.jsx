@@ -52,7 +52,13 @@ export default function SiscorPanel({
     try {
       const res = await importarSiscor(estudoId, arquivo, { modo });
       if (!res.sucesso) {
-        setErro(res.erros_arquivo?.[0]?.mensagem || "Planilha rejeitada pelo importador.");
+        const err0 = res.erros_arquivo?.[0];
+        const faltam = err0?.colunas_faltantes;
+        let msgErro = err0?.mensagem || "Planilha rejeitada pelo importador.";
+        if (Array.isArray(faltam) && faltam.length && !String(msgErro).includes("Faltam:")) {
+          msgErro = `${msgErro} Faltam: ${faltam.join(", ")}.`;
+        }
+        setErro(msgErro);
         return;
       }
       setMsg(`Base importada (versão ${res.resumo?.versao}).`);
@@ -120,6 +126,10 @@ export default function SiscorPanel({
   const excecoes = stats?.linhas_com_excecao ?? 0;
   const confirmadas = stats?.confirmadas ?? 0;
   const baseValidada = temBase && excecoes === 0 && confirmadas > 0;
+  const semLocalizacao = stats?.localizacao_celula_vazia ?? 0;
+  const disp = conferencia?.disponibilidade_colunas;
+  const faltamColunasLocalizacao =
+    disp && (disp.uf === false || disp.cidade === false);
 
   const linhasPlanos = useMemo(
     () => montarTabelaPlanosBase(conferencia, resumoPlanoAtual),
@@ -272,6 +282,14 @@ export default function SiscorPanel({
             ))}
           </div>
         </div>
+      )}
+
+      {stats && (semLocalizacao > 0 || faltamColunasLocalizacao) && (
+        <p className="aviso" role="status">
+          {faltamColunasLocalizacao
+            ? "A planilha não trouxe colunas de UF/cidade. A análise de rede credenciada ficará limitada sem localização dos beneficiários."
+            : `${semLocalizacao} beneficiário(s) sem UF ou cidade. A análise de rede credenciada ficará limitada para essas vidas.`}
+        </p>
       )}
 
       {stats && (

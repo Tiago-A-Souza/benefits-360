@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { obterRascunho, salvarRascunho, excluirOpcaoPropostaManual } from "./api";
 import CotacaoPdfPanel from "./CotacaoPdfPanel";
 import { buildPrefillManualFromExtracao } from "./cotacaoPdf/prefillManual";
@@ -10,6 +10,7 @@ import {
   TIPOS_FISCAIS,
   ensureRegime,
   novoId,
+  sugestaoFiscalPorOperadora,
   tabelaVazia,
 } from "./constants";
 import { centavosParaReaisTexto, reaisTextoParaCentavos } from "./money";
@@ -32,20 +33,18 @@ function novaOpcao() {
     custos_unicos: [],
     validade_oficial: null,
     observacoes: null,
+    totais_impressos_nao_constam: false,
   };
 }
 
-function patchCompFinanceiro(prev, campo, texto) {
-  if (!texto || !String(texto).trim()) return { ...prev, [campo]: null };
+function compFromTexto(texto, priceBasis) {
+  if (!texto || !String(texto).trim()) return null;
   const conv = reaisTextoParaCentavos(texto);
-  if (!conv.ok) return prev;
+  if (!conv.ok) return undefined; // inválido — caller ignora
   return {
-    ...prev,
-    [campo]: {
-      centavos: conv.centavos,
-      price_basis: "desconhecido",
-      proveniencia: { origem: "manual", extrator_versao: "manual", confirmado: false },
-    },
+    centavos: conv.centavos,
+    price_basis: priceBasis || "desconhecido",
+    proveniencia: { origem: "manual", extrator_versao: "manual", confirmado: false },
   };
 }
 
@@ -66,6 +65,7 @@ export default function PropostaPanel({
   const [manualAberto, setManualAberto] = useState(false);
   const [erro, setErro] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [avisoFiscal, setAvisoFiscal] = useState(null);
 
   function recarregar() {
     obterRascunho(estudoId)
@@ -100,10 +100,34 @@ export default function PropostaPanel({
 
   const op = rascunho.opcoes_proposta[sel];
 
+  const sugestaoAtiva = useMemo(() => {
+    if (!op || op.extracao_id) return null;
+    return sugestaoFiscalPorOperadora(op.operadora);
+  }, [op?.operadora, op?.extracao_id, op?.id]);
+
   function patchOpcao(mut) {
     setRascunho((prev) => {
       const copia = structuredClone(prev);
       Object.assign(copia.opcoes_proposta[sel], mut);
+      return copia;
+    });
+  }
+
+  function aplicarSugestaoOperadora(nomeOperadora) {
+    const sug = sugestaoFiscalPorOperadora(nomeOperadora);
+    setAvisoFiscal(sug);
+    if (!sug) return;
+    setRascunho((prev) => {
+      const copia = structuredClone(prev);
+      const alvo = copia.opcoes_proposta[sel];
+      alvo.operadora = nomeOperadora;
+      // Pré-seleção como sugestão — valor aplicado, evidência visível na UI.
+      if (!alvo.tipo_fiscal) alvo.tipo_fiscal = sug.tipo_fiscal;
+      for (const f of alvo.tabela || []) {
+        if (!f.price_basis || f.price_basis === "desconhecido") {
+          f.price_basis = sug.price_basis;
+        }
+      }
       return copia;
     });
   }
@@ -131,8 +155,22 @@ export default function PropostaPanel({
     });
   }
 
-  function patchComp(campo, texto) {
-    setRascunho((prev) => patchCompFinanceiro(prev, campo, texto));
+  function patchCompOpcao(campo, texto) {
+    setRascunho((prev) => {
+      const copia = structuredClone(prev);
+      const alvo = copia.opcoes_proposta[sel];
+      const basis =
+        sugestaoFiscalPorOperadora(alvo.operadora)?.price_basis ||
+        (alvo.tipo_fiscal === "operadora" ? "exclui_iof" : "exclui_iof");
+      if (!texto || !String(texto).trim()) {
+        alvo[campo] = null;
+        return copia;
+      }
+      const comp = compFromTexto(texto, basis);
+      if (comp === undefined) return prev;
+      alvo[campo] = comp;
+      return copia;
+    });
   }
 
   function adicionarOpcao(prefill) {
@@ -140,6 +178,18 @@ export default function PropostaPanel({
     setRascunho((prev) => {
       const copia = structuredClone(prev);
       const opcao = { ...novaOpcao(), ...(prefill || {}) };
+      if (opcao.operadora) {
+        const sug = sugestaoFiscalPorOperadora(opcao.operadora);
+        if (sug) {
+          if (!opcao.tipo_fiscal) opcao.tipo_fiscal = sug.tipo_fiscal;
+          for (const f of opcao.tabela || []) {
+            if (!f.price_basis || f.price_basis === "desconhecido") {
+              f.price_basis = sug.price_basis;
+            }
+          }
+          setAvisoFiscal(sug);
+        }
+      }
       copia.opcoes_proposta.push(opcao);
       if (prefill?.documento_cotacao_id) {
         const docs = copia.documentos_cotacao || [];
@@ -201,26 +251,33 @@ export default function PropostaPanel({
           manuaisIdx.find((i) => i >= sel) ?? manuaisIdx[manuaisIdx.length - 1];
         setSel(preferido);
       }
-      setMsg(`Cotação «${rotulo}» excluída.`);
+      setMsg("Cotação manual excluída.");
       onSalvo?.();
     } catch (e) {
       setErro(e.message);
     }
   }
 
-  const nPdfs = extracoes.length;
-  const nOpcoesEncontradas = extracoes.reduce(
-    (s, ex) => s + (ex.opcoes?.filter((o) => !o.excluida).length || 0),
-    0
-  );
-  const operadoras = [
-    ...new Set(
-      extracoes
-        .map((ex) => ex.documento?.operadora_detectada)
-        .filter(Boolean)
-    ),
-  ];
-  const comErro = extracoes.filter((ex) => ex.estado === "erro").length;
+  useEffect(() => {
+    if (!onRegistrarAvanco) return undefined;
+    return onRegistrarAvanco(async () => {
+      if (!rascunho?.opcoes_proposta?.length) {
+        setErro("Cadastre ao menos uma cotação");
+        return false;
+      }
+      try {
+        await salvarRascunho(estudoId, rascunho);
+        onSalvo?.();
+        return true;
+      } catch (e) {
+        setErro(e.message);
+        return false;
+      }
+    });
+  }, [onRegistrarAvanco, rascunho, estudoId, onSalvo]);
+
+  const textoComp = (comp) =>
+    comp?.centavos != null ? centavosParaReaisTexto(comp.centavos) : "";
 
   return (
     <section className="etapa-fluxo">
@@ -231,72 +288,22 @@ export default function PropostaPanel({
           </div>
           <h1>Cotações</h1>
           <p className="lead">
-            Importe os PDFs recebidos das operadoras, confira a leitura e escolha quais planos
-            entram no comparativo.
+            {unicoPlanoAtual
+              ? `Importe os PDFs e selecione as propostas que competem com ${nomePlanoAtual}.`
+              : "Importe os PDFs de cotação e escolha as propostas do comparativo."}
           </p>
         </div>
+        {nPropostas > 0 && (
+          <span className="badge badge--ok">
+            {nPropostas} {nPropostas === 1 ? "proposta" : "propostas"}
+          </span>
+        )}
       </div>
-
-      {(nPdfs > 0 || nPropostas > 0) && (
-        <div className="metrics">
-          <div className="metric">
-            <small>PDFs importados</small>
-            <strong className="num">{nPdfs}</strong>
-            <span className="hint">
-              {nPdfs === 0
-                ? "nenhum ainda"
-                : extracoes.every((e) => e.estado === "extraido" || e.descartada)
-                  ? "todos extraídos"
-                  : "em revisão"}
-            </span>
-          </div>
-          <div className="metric">
-            <small>Opções encontradas</small>
-            <strong className="num">{nOpcoesEncontradas}</strong>
-            <span className="hint">no catálogo dos PDFs</span>
-          </div>
-          <div className="metric">
-            <small>Selecionados</small>
-            <strong className="num">{nPropostas}</strong>
-            <span className="hint">no comparativo</span>
-          </div>
-          {operadoras.length > 0 && (
-            <div className="metric">
-              <small>Operadoras</small>
-              <strong className="num">{operadoras.length}</strong>
-              <span className="hint">{operadoras.join(" e ")}</span>
-            </div>
-          )}
-          <div className={`metric${comErro > 0 ? " metric--alerta" : " metric--good"}`}>
-            <small>Importações</small>
-            <strong>{comErro > 0 ? `${comErro} erro(s)` : "OK"}</strong>
-            <span className="hint">
-              {comErro > 0 ? "revise os PDFs com falha" : "sem erro de leitura"}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {unicoPlanoAtual && nPropostas > 0 && rascunho.formato !== "novo" && (
-        <p className="ok comparativo-resumo-aviso">
-          {nPropostas === 1
-            ? `1 proposta será comparada com ${nomePlanoAtual}.`
-            : `${nPropostas} propostas serão comparadas com ${nomePlanoAtual}.`}
-        </p>
-      )}
 
       <CotacaoPdfPanel
         estudoId={estudoId}
-        onAplicado={() => {
-          recarregar();
-          onSalvo?.();
-        }}
-        onPreencherManualmente={abrirManualDesdeExtracao}
-        onRegistrarAvanco={onRegistrarAvanco}
-        exigeSelecaoPorGrupo={
-          rascunho.formato !== "novo" && planosAtuais.length > 1
-        }
-        formatoEstudo={rascunho.formato}
+        onAplicado={recarregar}
+        onAbrirManual={abrirManualDesdeExtracao}
         cestaGlobal={cestaGlobal}
         setCestaGlobal={setCestaGlobal}
         opcoesComparativo={opcoesComparativo}
@@ -349,7 +356,7 @@ export default function PropostaPanel({
                   <input
                     list="operadoras-list"
                     value={op.operadora}
-                    onChange={(e) => patchOpcao({ operadora: e.target.value })}
+                    onChange={(e) => aplicarSugestaoOperadora(e.target.value)}
                   />
                 </label>
                 <label>
@@ -413,6 +420,70 @@ export default function PropostaPanel({
                   </select>
                 </label>
               </div>
+
+              {(avisoFiscal || sugestaoAtiva) && (
+                <p className="aviso" role="status">
+                  <b>Sugestão</b> — tipo fiscal «
+                  {(avisoFiscal || sugestaoAtiva).tipo_fiscal}» e base «
+                  {(avisoFiscal || sugestaoAtiva).price_basis}».{" "}
+                  {(avisoFiscal || sugestaoAtiva).evidencia} Revise se o PDF disser o contrário.
+                </p>
+              )}
+
+              <details className="detalhes-recolhidos" open>
+                <summary>Totais impressos no PDF (conferência)</summary>
+                <div className="grid-compacto">
+                  <label>
+                    Subtotal impresso
+                    <input
+                      disabled={op.totais_impressos_nao_constam}
+                      value={textoComp(op.subtotal_impresso)}
+                      onChange={(e) => patchCompOpcao("subtotal_impresso", e.target.value)}
+                      placeholder="R$ 0,00"
+                    />
+                  </label>
+                  <label>
+                    IOF impresso
+                    <input
+                      disabled={op.totais_impressos_nao_constam}
+                      value={textoComp(op.iof)}
+                      onChange={(e) => patchCompOpcao("iof", e.target.value)}
+                      placeholder="R$ 0,00"
+                    />
+                  </label>
+                  <label>
+                    Total recorrente impresso
+                    <input
+                      disabled={op.totais_impressos_nao_constam}
+                      value={textoComp(op.total_recorrente)}
+                      onChange={(e) => patchCompOpcao("total_recorrente", e.target.value)}
+                      placeholder="R$ 0,00"
+                    />
+                  </label>
+                </div>
+                <label className="field" style={{ marginTop: "0.75rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(op.totais_impressos_nao_constam)}
+                    onChange={(e) => {
+                      const marcado = e.target.checked;
+                      patchOpcao({
+                        totais_impressos_nao_constam: marcado,
+                        ...(marcado
+                          ? { subtotal_impresso: null, iof: null, total_recorrente: null }
+                          : {}),
+                      });
+                    }}
+                  />{" "}
+                  Não consta no PDF
+                </label>
+                {op.totais_impressos_nao_constam && (
+                  <p className="aviso" role="status">
+                    Totais impressos marcados como ausentes — a conferência automática está
+                    desligada para esta cotação.
+                  </p>
+                )}
+              </details>
 
               <details className="detalhes-recolhidos">
                 <summary>Tabela por faixa etária</summary>

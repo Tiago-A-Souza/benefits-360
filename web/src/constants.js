@@ -51,10 +51,55 @@ export function faixaVazia(faixa) {
   return {
     faixa,
     valor_centavos: null,
-    quantidade_cotada: null,
+    // Mesmo default do caminho PDF→rascunho (_quantidade_cotada_faixa → 0).
+    // null continua inválido (APP-QTD-001) se vier de outro caminho.
+    quantidade_cotada: 0,
     price_basis: "desconhecido",
     proveniencia: { origem: "manual", extrator_versao: "manual", confirmado: false },
   };
+}
+
+/** Sugestões de tipo fiscal / base IOF por operadora (piloto IVTEC). Não são regra do motor. */
+export const SUGESTOES_FISCAIS_OPERADORA = [
+  {
+    match: /^amil$/i,
+    tipo_fiscal: "operadora",
+    price_basis: "exclui_iof",
+    evidencia: "Amil opera como operadora (sem IOF de seguradora) — padrão visto no IVTEC.",
+  },
+  {
+    match: /bradesco/i,
+    tipo_fiscal: "seguradora",
+    price_basis: "exclui_iof",
+    evidencia: "Bradesco imprime faixas sem IOF e IOF à parte no total — padrão IVTEC.",
+  },
+  {
+    match: /sul\s*am[eé]rica|sulamerica/i,
+    tipo_fiscal: "seguradora",
+    price_basis: "exclui_iof",
+    evidencia: "SulAmérica tratada como seguradora no piloto; confira se o PDF já inclui impostos.",
+  },
+  {
+    match: /porto/i,
+    tipo_fiscal: "seguradora",
+    price_basis: "exclui_iof",
+    evidencia: "Porto costuma cotar como seguradora; revise a base de IOF no PDF.",
+  },
+];
+
+export function sugestaoFiscalPorOperadora(operadora) {
+  const nome = String(operadora || "").trim();
+  if (!nome) return null;
+  for (const s of SUGESTOES_FISCAIS_OPERADORA) {
+    if (s.match.test(nome)) {
+      return {
+        tipo_fiscal: s.tipo_fiscal,
+        price_basis: s.price_basis,
+        evidencia: s.evidencia,
+      };
+    }
+  }
+  return null;
 }
 
 export function tabelaVazia() {
