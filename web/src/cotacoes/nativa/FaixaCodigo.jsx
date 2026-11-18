@@ -39,6 +39,7 @@ export default function FaixaCodigo({ conexao, operadoras, aviso }) {
     setEnviando(true);
     try {
       await chamarRpa("POST", `/api/codigo/${mostrando}`, { codigo });
+      setCodigo("");
       setEnviado(true);
     } catch (e) {
       aviso?.(e.message || "Não deu para enviar o código.", "erro");

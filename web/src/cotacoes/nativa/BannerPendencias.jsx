@@ -7,7 +7,7 @@ import { TEXTO_PENDENCIA, empresaDe, formatarCnpj } from "./regrasNova";
  * Banner de pendências (espelho do painel em cotacoes.js / início).
  * Visível na Nova cotação e no Andamento: o robô não reemite enquanto estiverem aqui.
  */
-export default function BannerPendencias({ aviso }) {
+export default function BannerPendencias({ aviso, recarregarSinal = 0 }) {
   const [lista, setLista] = useState([]);
   const [confirmar, modal] = useConfirmacao();
 
@@ -19,7 +19,7 @@ export default function BannerPendencias({ aviso }) {
 
   useEffect(() => {
     carregar();
-  }, [carregar]);
+  }, [carregar, recarregarSinal]);
 
   async function resolver(p, acao) {
     const opcoes =

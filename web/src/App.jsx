@@ -19,7 +19,7 @@ import NavegacaoFerramentas from "./NavegacaoFerramentas";
 import SimularRede from "./simularRede/SimularRede";
 import CotacoesRpa from "./cotacoes/CotacoesRpa";
 import CotacoesNativa from "./cotacoes/nativa/CotacoesNativa";
-import { nativaLigada } from "./cotacoes/nativa/regrasNova";
+import { iframeCotacoes, nativaLigada } from "./cotacoes/nativa/regrasNova";
 import ProvaRpaDireto from "./cotacoes/ProvaRpaDireto";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
@@ -44,12 +44,22 @@ export default function App() {
   const [historicoAberto, setHistoricoAberto] = useState(false);
   // Simular Rede é uma consulta avulsa: não cria nem altera estudo.
   const [simulando, setSimulando] = useState(false);
-  const [cotacoesRpa, setCotacoesRpa] = useState(false);
+  const [cotacoesRpa, setCotacoesRpa] = useState(() => iframeCotacoes());
   const [provaRpa, setProvaRpa] = useState(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
   });
   const [cotacoesNativa, setCotacoesNativa] = useState(() => nativaLigada());
+
+  function abrirCotacoes() {
+    if (iframeCotacoes()) {
+      setCotacoesNativa(false);
+      setCotacoesRpa(true);
+    } else {
+      setCotacoesRpa(false);
+      setCotacoesNativa(true);
+    }
+  }
   const [cestaGlobal, setCestaGlobal] = useState([]);
   const avancarEtapaRef = useRef(null);
   const registrarAvancoEtapa = useCallback((fn) => {
@@ -182,6 +192,11 @@ export default function App() {
             setSimulando(true);
           }}
           onCotacoesIframe={() => {
+            if (typeof window !== "undefined") {
+              const u = new URL(window.location.href);
+              u.searchParams.set("cotacoes-iframe", "1");
+              window.history.replaceState({}, "", u);
+            }
             setCotacoesNativa(false);
             setCotacoesRpa(true);
           }}
@@ -225,7 +240,7 @@ export default function App() {
           }}
           onCotacoes={() => {
             setSimulando(false);
-            setCotacoesRpa(true);
+            abrirCotacoes();
           }}
           onVoltarEstudo={emEstudo ? () => setSimulando(false) : undefined}
           rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
@@ -241,7 +256,7 @@ export default function App() {
         <MeusEstudos
           onContinuar={entrarEstudo}
           onSimularRede={() => setSimulando(true)}
-          onCotacoes={() => setCotacoesRpa(true)}
+          onCotacoes={abrirCotacoes}
         />
       </div>
     );
@@ -328,7 +343,7 @@ export default function App() {
               ativo={null}
               onMeusEstudos={voltarLista}
               onSimularRede={() => setSimulando(true)}
-              onCotacoes={() => setCotacoesRpa(true)}
+              onCotacoes={abrirCotacoes}
             />
           </div>
         </aside>

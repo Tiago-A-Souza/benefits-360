@@ -1,8 +1,8 @@
 import { tituloProblemaLogin } from "./regrasNova";
 
-const NA_ENGRENAGEM = ["sem_credenciais", "recusadas", "troca_senha", "senha_comprida"];
+const NA_LOGIN = ["sem_credenciais", "recusadas", "troca_senha", "senha_comprida"];
 
-export default function FaixaProblemaLogin({ problema, operadoras, urlRobo, onFechar }) {
+export default function FaixaProblemaLogin({ problema, operadoras, onAbrirLogin, onFechar }) {
   if (!problema) return null;
   const op = (operadoras || []).find((o) => o.id === problema.operadora);
   const nome = op ? op.nome : problema.operadora;
@@ -10,9 +10,9 @@ export default function FaixaProblemaLogin({ problema, operadoras, urlRobo, onFe
   const titulo = tituloProblemaLogin(nome, motivo);
   const texto =
     motivo === "sem_credenciais"
-      ? "O robô entra no portal sozinho com o login guardado na engrenagem. Sem ele, nem abre o portal."
+      ? "O robô entra no portal sozinho com o login guardado em Conexões. Sem ele, nem abre o portal."
       : problema.mensagem || "";
-  const naEngrenagem = NA_ENGRENAGEM.includes(motivo);
+  const naLogin = NA_LOGIN.includes(motivo);
 
   return (
     <div className="nativa-faixa-problema" role="alert">
@@ -21,16 +21,17 @@ export default function FaixaProblemaLogin({ problema, operadoras, urlRobo, onFe
         {texto ? <span className="muted"> {texto}</span> : null}
       </div>
       <div className="nativa-acoes-linha">
-        {naEngrenagem ? (
-          <a
+        {naLogin ? (
+          <button
+            type="button"
             className="secundario btn-compacto"
-            href={`${urlRobo}/#/robo/${problema.operadora}?login=1`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={onFechar}
+            onClick={() => {
+              onAbrirLogin?.(problema.operadora);
+              onFechar?.();
+            }}
           >
-            Abrir a engrenagem
-          </a>
+            Abrir o login
+          </button>
         ) : null}
         <button type="button" className="secundario btn-compacto" onClick={onFechar}>
           Fechar

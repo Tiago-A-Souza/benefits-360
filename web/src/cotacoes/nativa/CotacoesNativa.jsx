@@ -3,22 +3,31 @@ import NavegacaoFerramentas from "../../NavegacaoFerramentas";
 import { chamarRpa, ouvirEventosRpa, urlBaseRpa } from "../rpaClient";
 import Andamento from "./Andamento";
 import BannerPendencias from "./BannerPendencias";
+import Conexoes from "./Conexoes";
 import FaixaCodigo from "./FaixaCodigo";
 import FaixaProblemaLogin from "./FaixaProblemaLogin";
 import FaixaTrabalho from "./FaixaTrabalho";
+import ListaCotacoes from "./ListaCotacoes";
 import NovaCotacao from "./NovaCotacao";
+import { TELAS_ROBO_NAO_PORTADAS } from "./regrasNova";
 import "./nativa.css";
 
 function lerHash() {
   const h = (typeof window !== "undefined" && window.location.hash) || "";
+  const qh = h.includes("?") ? h.slice(h.indexOf("?") + 1) : "";
+  const qs = new URLSearchParams(qh);
   const mAnd = h.match(/^#\/andamento\/(\d+)/);
-  if (mAnd) return { tela: "andamento", id: Number(mAnd[1]), cnpj: null };
+  if (mAnd) return { tela: "andamento", id: Number(mAnd[1]), cnpj: null, op: null };
+  if (h.startsWith("#/conexoes")) return { tela: "conexoes", id: null, cnpj: null, op: qs.get("op") };
+  if (h.startsWith("#/cotacoes")) return { tela: "cotacoes", id: null, cnpj: null, op: null };
   const mNova = h.match(/^#\/nova(?:\?(.*))?/);
-  const q = mNova && mNova[1] ? new URLSearchParams(mNova[1]) : new URLSearchParams();
-  const cnpjHash = q.get("cnpj");
-  const cnpjQuery =
-    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("cnpj") : null;
-  return { tela: "nova", id: null, cnpj: cnpjHash || cnpjQuery };
+  if (mNova) {
+    const q = mNova[1] ? new URLSearchParams(mNova[1]) : new URLSearchParams();
+    const cnpjQuery =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("cnpj") : null;
+    return { tela: "nova", id: null, cnpj: q.get("cnpj") || cnpjQuery, op: null };
+  }
+  return { tela: "cotacoes", id: null, cnpj: null, op: null };
 }
 
 export default function CotacoesNativa({
@@ -28,15 +37,18 @@ export default function CotacoesNativa({
   onVoltarEstudo,
   rotuloEstudo,
 }) {
-  const [{ tela, id, cnpj }, setRota] = useState(lerHash);
+  const [{ tela, id, cnpj, op }, setRota] = useState(lerHash);
   const [operadoras, setOperadoras] = useState(null);
+  const [indisponiveis, setIndisponiveis] = useState([]);
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [conexao, setConexao] = useState({});
   const [problemaLogin, setProblemaLogin] = useState(null);
   const [trabalhoAtual, setTrabalhoAtual] = useState(null);
   const [ultimaEtapa, setUltimaEtapa] = useState(null);
+  const [naFila, setNaFila] = useState([]);
   const [reloadOps, setReloadOps] = useState(0);
+  const [reloadLista, setReloadLista] = useState(0);
   const urlRobo = urlBaseRpa();
 
   const ir = useCallback((hash) => {
@@ -57,13 +69,19 @@ export default function CotacoesNativa({
   useEffect(() => {
     let vivo = true;
     setErro(null);
-    chamarRpa("GET", "/api/operadoras")
-      .then((d) => {
+    Promise.all([chamarRpa("GET", "/api/operadoras"), chamarRpa("GET", "/api/estado").catch(() => null)])
+      .then(([d, estado]) => {
         if (!vivo) return;
         setOperadoras(d);
+        setIndisponiveis((estado && estado.operadoras_indisponiveis) || []);
         const cx = {};
-        for (const op of d || []) cx[op.id] = op.conexao || "desconectado";
+        for (const o of d || []) cx[o.id] = o.conexao || "desconectado";
         setConexao((c) => ({ ...cx, ...c }));
+        if (estado && estado.robo) {
+          setTrabalhoAtual(estado.robo.atual || null);
+          setNaFila(estado.robo.na_fila || []);
+          if (estado.robo.ultima_etapa) setUltimaEtapa(estado.robo.ultima_etapa);
+        }
       })
       .catch((e) => vivo && setErro(e.message || "O robô de cotações não está no ar."));
     return () => {
@@ -90,6 +108,9 @@ export default function CotacoesNativa({
         setProblemaLogin((p) => (p && p.operadora === ev.operadora ? null : p));
       }
       if (ev.tipo === "etapa") setUltimaEtapa(ev);
+      if (ev.tipo === "cotacao" || (ev.tipo === "trabalho" && ev.status !== "rodando")) {
+        setReloadLista((n) => n + 1);
+      }
       if (ev.tipo === "trabalho") {
         if (ev.status === "rodando") {
           setTrabalhoAtual({ id: ev.trabalho, titulo: ev.titulo, modo: ev.modo });
@@ -112,31 +133,66 @@ export default function CotacoesNativa({
     setAviso({ texto, tipo: tipo || "info" });
   }
 
+  function irIframe() {
+    if (typeof window !== "undefined") {
+      const u = new URL(window.location.href);
+      u.searchParams.set("cotacoes-iframe", "1");
+      u.hash = "";
+      window.history.replaceState({}, "", u);
+    }
+    onCotacoesIframe?.();
+  }
+
   const noAndamentoDeste = tela === "andamento" && trabalhoAtual && Number(id) === Number(trabalhoAtual.id);
+  const ativoMenu =
+    tela === "nova" || tela === "andamento" ? "nova" : tela === "conexoes" ? "conexoes" : "cotacoes";
 
   return (
     <div className="lista-shell nativa-shell">
       <aside className="lista-rail app-sidebar">
         <NavegacaoFerramentas
-          ativo={null}
+          ativo="cotacoes"
           onMeusEstudos={onMeusEstudos}
           onSimularRede={onSimularRede}
-          onCotacoes={onCotacoesIframe}
+          onCotacoes={() => ir("#/cotacoes")}
           onVoltarEstudo={onVoltarEstudo}
           rotuloEstudo={rotuloEstudo}
         />
-        <nav className="nav-ferramentas nativa-subnav" aria-label="Cotações nativas">
-          <p className="lista-rail-lb">Prova nativa</p>
+        <nav className="nav-ferramentas nativa-subnav" aria-label="Cotações">
+          <p className="lista-rail-lb">Cotações</p>
           <ul className="lista-filtros">
             <li>
-              <button type="button" aria-pressed={tela === "nova"} onClick={() => ir("#/nova")}>
+              <button type="button" aria-pressed={ativoMenu === "nova"} onClick={() => ir("#/nova")}>
                 Nova cotação
               </button>
             </li>
+            <li>
+              <button type="button" aria-pressed={ativoMenu === "cotacoes"} onClick={() => ir("#/cotacoes")}>
+                Cotações
+              </button>
+            </li>
+            <li>
+              <button type="button" aria-pressed={ativoMenu === "conexoes"} onClick={() => ir("#/conexoes")}>
+                Conexões
+              </button>
+            </li>
+          </ul>
+          <p className="lista-rail-lb">No robô local</p>
+          <ul className="lista-filtros">
+            {TELAS_ROBO_NAO_PORTADAS.map((t) => (
+              <li key={t.hash}>
+                <a href={`${urlRobo}/${t.hash}`} target="_blank" rel="noreferrer" title={`Abre ${t.rotulo} no robô (127.0.0.1:8600) em outra aba`}>
+                  {t.rotulo}
+                </a>
+              </li>
+            ))}
           </ul>
           <p className="muted nativa-flag-hint">
-            Fora do menu. Abra <code>?cotacoes-nativa=1</code> (ou flag <code>VITE_COTACOES_NATIVA=1</code> com{" "}
-            <code>#/nova</code>). A aba Cotações continua no iframe.
+            Telas ainda não portadas abrem o robô local em outra aba. Para comparar com o iframe antigo:{" "}
+            <button type="button" className="link" onClick={irIframe}>
+              ?cotacoes-iframe=1
+            </button>
+            .
           </p>
         </nav>
       </aside>
@@ -146,7 +202,10 @@ export default function CotacoesNativa({
           <FaixaProblemaLogin
             problema={problemaLogin}
             operadoras={operadoras || []}
-            urlRobo={urlRobo}
+            onAbrirLogin={(opId) => {
+              setProblemaLogin(null);
+              ir(`#/conexoes?op=${opId}`);
+            }}
             onFechar={() => setProblemaLogin(null)}
           />
         ) : (
@@ -180,7 +239,31 @@ export default function CotacoesNativa({
 
         {!operadoras && !erro ? <p className="lista-carregando">Carregando operadoras do robô…</p> : null}
 
-        {operadoras ? <BannerPendencias aviso={mostrarAviso} /> : null}
+        {operadoras && tela === "nova" ? <BannerPendencias aviso={mostrarAviso} recarregarSinal={reloadLista} /> : null}
+
+        {operadoras && tela === "cotacoes" ? (
+          <ListaCotacoes
+            operadoras={operadoras}
+            aviso={mostrarAviso}
+            onNova={() => ir("#/nova")}
+            onCotarEmpresa={(cnpjEmp) => ir(`#/nova?cnpj=${cnpjEmp}`)}
+            recarregarSinal={reloadLista}
+          />
+        ) : null}
+
+        {operadoras && tela === "conexoes" ? (
+          <Conexoes
+            operadoras={operadoras}
+            indisponiveis={indisponiveis}
+            conexao={conexao}
+            urlRobo={urlRobo}
+            aviso={mostrarAviso}
+            onReloadOps={() => setReloadOps((n) => n + 1)}
+            trabalhoAtual={trabalhoAtual}
+            naFila={naFila}
+            opLoginInicial={op}
+          />
+        ) : null}
 
         {operadoras && tela === "nova" ? (
           <NovaCotacao
@@ -189,7 +272,7 @@ export default function CotacoesNativa({
             urlRobo={urlRobo}
             cnpjInicial={cnpj}
             onEnfileirado={(tid) => ir(`#/andamento/${tid}`)}
-            onIrIframeCotacoes={onCotacoesIframe}
+            onIrIframeCotacoes={irIframe}
             onCotarEmpresa={(cnpjEmp) => ir(`#/nova?cnpj=${cnpjEmp}`)}
             aviso={mostrarAviso}
           />
@@ -202,7 +285,8 @@ export default function CotacoesNativa({
             conexaoExterna={conexao}
             onNovoTrabalho={(tid) => ir(`#/andamento/${tid}`)}
             onNova={(cnpjNovo) => ir(cnpjNovo ? `#/nova?cnpj=${cnpjNovo}` : "#/nova")}
-            onIrIframeCotacoes={onCotacoesIframe}
+            onIrIframeCotacoes={irIframe}
+            onIrLogin={(opId) => ir(`#/conexoes?op=${opId}`)}
             urlRobo={urlRobo}
             aviso={mostrarAviso}
           />

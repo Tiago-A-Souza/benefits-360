@@ -37,8 +37,8 @@ export default function CotacoesRpa({ onMeusEstudos, onSimularRede, onVoltarEstu
           <div>
             <h1>Cotações</h1>
             <p>
-              Robô de cotação nas operadoras — ferramenta separada dos estudos. Nada é salvo no Benefits;
-              os PDFs ficam na pasta do RPA.
+              Versão iframe do robô (comparar / reverter). A aba Cotações padrão é nativa; tire{" "}
+              <code>?cotacoes-iframe=1</code> da URL para voltar.
             </p>
           </div>
         </header>

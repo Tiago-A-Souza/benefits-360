@@ -11,6 +11,19 @@ export function urlBaseRpa() {
   return RPA_URL_PADRAO;
 }
 
+const CHAVES_SEGREDO = ["senha", "password", "codigo"];
+
+/** Tira valores secretos de um texto (erro, log). Nunca use o retorno para reenviar. */
+export function ocultarSegredosNoTexto(texto, corpo) {
+  let t = String(texto ?? "");
+  if (!corpo || typeof corpo !== "object" || Array.isArray(corpo)) return t;
+  for (const k of CHAVES_SEGREDO) {
+    const v = corpo[k];
+    if (typeof v === "string" && v.length >= 2) t = t.split(v).join("•••");
+  }
+  return t;
+}
+
 export class RpaClienteErro extends Error {
   constructor(codigo, mensagem, status = null, dados = null) {
     super(mensagem);
@@ -59,10 +72,11 @@ export async function chamarRpa(metodo, caminho, corpo, opcoes = {}) {
     }
   }
   if (!resp.ok && !opcoes.aceitarErro) {
-    const msg =
+    const bruto =
       (dados && (dados.erro || dados.mensagem || dados.detail)) ||
       `Falha ao falar com o robô (${resp.status}).`;
-    throw new RpaClienteErro("ROBO_HTTP", String(msg), resp.status, dados);
+    const msg = ocultarSegredosNoTexto(String(bruto), corpo);
+    throw new RpaClienteErro("ROBO_HTTP", msg, resp.status, dados);
   }
   return dados;
 }
