@@ -461,7 +461,17 @@ export function nativaLigada() {
   const q = new URLSearchParams(window.location.search);
   if (q.get("cotacoes-nativa") === "1") return true;
   const h = window.location.hash || "";
-  return h.startsWith("#/nova") || h.startsWith("#/andamento/") || h.startsWith("#/cotacoes") || h.startsWith("#/conexoes");
+  return (
+    h.startsWith("#/nova") ||
+    h.startsWith("#/andamento/") ||
+    h.startsWith("#/cotacoes") ||
+    h.startsWith("#/conexoes") ||
+    h.startsWith("#/inicio") ||
+    h.startsWith("#/ajuda") ||
+    h.startsWith("#/importar") ||
+    h.startsWith("#/robos") ||
+    h.startsWith("#/robo/")
+  );
 }
 
 export const FILTROS_LISTA = [
@@ -479,12 +489,8 @@ export function formatarDataLista(iso) {
   return `${d.toLocaleDateString("pt-BR")} ${hora}`;
 }
 
-export const TELAS_ROBO_NAO_PORTADAS = [
-  { hash: "#/inicio", rotulo: "Início" },
-  { hash: "#/importar", rotulo: "Importar planilha" },
-  { hash: "#/robos", rotulo: "Ajustes dos robôs" },
-  { hash: "#/ajuda", rotulo: "Ajuda" },
-];
+/** Telas que ainda abrem o robô antigo em outra aba. Vazio = seção some do menu. */
+export const TELAS_ROBO_NAO_PORTADAS = [];
 
 /**
  * Confirmações humanas da Nova cotação (ensaio / emitir / já emitidas).

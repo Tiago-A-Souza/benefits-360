@@ -34,6 +34,24 @@ describe("rpaClient — extras da nativa", () => {
     await expect(chamarRpa("POST", "/api/trabalhos", {})).rejects.toBeInstanceOf(RpaClienteErro);
   });
 
+  it("POST /api/importar com FormData não manda JSON", async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => ({ validos: [], erros: [] }),
+    });
+    const form = new FormData();
+    form.append("operadora", "sulamerica");
+    form.append("arquivo", new Blob(["PK"], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "a.xlsx");
+    const r = await chamarRpa("POST", "/api/importar", form);
+    expect(r).toEqual({ validos: [], erros: [] });
+    const [, init] = fetch.mock.calls[0];
+    expect(init.body).toBe(form);
+    expect(init.headers["Content-Type"]).toBeUndefined();
+    expect(init.headers["X-Newport-Tela"]).toBe("1");
+  });
+
   it("POST escolher-pasta envia X-Newport-Tela", async () => {
     fetch.mockResolvedValue({
       ok: true,

@@ -58,7 +58,7 @@ describe("ListaCotacoes e Conexões", () => {
     expect(html).toContain("Buscar por empresa");
   });
 
-  it("conexões mostram status, login e link do robô em outra aba", () => {
+  it("conexões mostram status, login e atalho nativo para Ajustes", () => {
     const html = renderToStaticMarkup(
       <Conexoes
         operadoras={OPERADORAS}
@@ -69,8 +69,9 @@ describe("ListaCotacoes e Conexões", () => {
     expect(html).toContain("Conexões");
     expect(html).toContain("SulAmérica");
     expect(html).toContain("Desconectado");
-    expect(html).toContain("http://127.0.0.1:8600/#/robo/sulamerica");
-    expect(html).toContain("abre o robô local em outra aba");
-    expect(html).toContain("Configurar no robô");
+    expect(html).toContain("Configurar o robô da SulAmérica");
+    expect(html).toContain("Configurar");
+    expect(html).not.toContain("http://127.0.0.1:8600/#/robo/sulamerica");
+    expect(html).not.toContain("Newport");
   });
 });
