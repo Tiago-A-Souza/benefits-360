@@ -134,6 +134,20 @@ def test_usuario_a_nao_ve_estudo_de_b(tmp_path: Path, monkeypatch: pytest.Monkey
     assert dono == "user-a"
 
 
+def test_usuario_a_nao_ve_cliente_de_b(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    client = TestClient(_app_real(tmp_path, monkeypatch))
+    ha = {"Authorization": f"Bearer {_token('user-a')}"}
+    hb = {"Authorization": f"Bearer {_token('user-b')}"}
+    criado = client.post("/api/clientes", json={"nome": "Cliente A"}, headers=ha)
+    assert criado.status_code == 200, criado.text
+    cid = criado.json()["id"]
+    lista_b = client.get("/api/clientes", headers=hb)
+    assert lista_b.status_code == 200
+    assert lista_b.json() == []
+    lista_a = client.get("/api/clientes", headers=ha)
+    assert any(c["id"] == cid for c in lista_a.json())
+
+
 def test_migracao_preserva_linhas_e_backfill(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("NEWPORT_MODO", "demo")
     monkeypatch.setenv("BENEFITS_DONO_LEGADO_ID", "dono-legado")

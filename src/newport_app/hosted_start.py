@@ -27,6 +27,9 @@ def host_http() -> str:
 def main() -> None:
     import uvicorn
 
+    from newport_app.config.logs import instalar_filtro_logs
+
+    instalar_filtro_logs()
     uvicorn.run(
         "newport_app.api.main:app",
         host=host_http(),

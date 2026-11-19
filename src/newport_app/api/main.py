@@ -12,11 +12,16 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from newport_app.api.middleware import ModoRealLocalMiddleware
+from newport_app.api.middleware import (
+    CabecalhosSegurancaMiddleware,
+    LimiteUploadMiddleware,
+    ModoRealLocalMiddleware,
+)
 from newport_app.auth.jwt_supabase import ValidadorJwtSupabase, configurar_validador
 from newport_app.auth.middleware import AuthSupabaseMiddleware
 from newport_app.auth.startup import exigir_auth_configurada
 from newport_app.config.env import carregar_env_local
+from newport_app.config.logs import instalar_filtro_logs
 from newport_app.api.validation_handlers import resposta_validacao_sanitizada
 from newport_app.config.paths import (
     caminho_banco_cotacoes,
@@ -249,6 +254,7 @@ def create_app(
     seed_demos: bool | None = None,
 ) -> FastAPI:
     carregar_env_local()
+    instalar_filtro_logs()
     exigir_auth_configurada()
     if modo_execucao() != ModoExecucao.DEMO:
         import os
@@ -324,6 +330,8 @@ def create_app(
         allow_headers=["*"],
     )
     app.add_middleware(ModoRealLocalMiddleware)
+    app.add_middleware(LimiteUploadMiddleware)
+    app.add_middleware(CabecalhosSegurancaMiddleware)
 
     @app.get("/api/saude")
     def saude() -> dict[str, bool]:

@@ -5,7 +5,15 @@ from __future__ import annotations
 import os
 from enum import Enum
 
-LIMITE_UPLOAD_BYTES = int(os.environ.get("NEWPORT_UPLOAD_MAX_BYTES", 10 * 1024 * 1024))
+_LIMITE_UPLOAD_PADRAO = 10 * 1024 * 1024
+LIMITE_UPLOAD_BYTES = int(os.environ.get("NEWPORT_UPLOAD_MAX_BYTES", _LIMITE_UPLOAD_PADRAO))
+
+
+def limite_upload_bytes() -> int:
+    bruto = (os.environ.get("NEWPORT_UPLOAD_MAX_BYTES") or "").strip()
+    if not bruto:
+        return _LIMITE_UPLOAD_PADRAO
+    return int(bruto)
 HOSTS_PERMITIDOS_MODO_REAL = frozenset({"127.0.0.1", "localhost", "::1"})
 HOSTS_TESTE_AUTOMATIZADO = frozenset({"testclient", "testserver"})
 ORIGENS_CORS_DEV = (
