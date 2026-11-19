@@ -52,6 +52,8 @@ def _valores_cont_rede_tabelas(html: str) -> list[list[str]]:
     rede = html.split('id="visao-rede"', 1)[-1]
     out: list[list[str]] = []
     for table in re.findall(r"<table class='tabela-rede[^>]*>.*?</table>", rede, re.S):
+        if "tabela-labs" in table[:80]:
+            continue
         for inner in re.findall(
             r"<tr class=['\"]cont-rede['\"][^>]*>(.*?)</tr>", table, re.S
         ):

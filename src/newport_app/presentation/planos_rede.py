@@ -143,18 +143,23 @@ def colunas_por_sufixo(
     return hits
 
 
-def carregar_colunas_rede_xlsx(caminho: Path, aliases: dict[str, str] | None = None) -> tuple[ColunaRede, ...]:
+def carregar_colunas_rede_xlsx(
+    caminho: Path,
+    aliases: dict[str, str] | None = None,
+    *,
+    aba: str = "Matriz_Hospital",
+) -> tuple[ColunaRede, ...]:
     from openpyxl import load_workbook
 
     mapa = aliases if aliases is not None else carregar_aliases()
     wb = load_workbook(caminho, read_only=True, data_only=True)
     try:
-        ws = wb["Matriz_Hospital"]
+        ws = wb[aba]
         rows = list(ws.iter_rows(min_row=1, max_row=4, values_only=True))
     finally:
         wb.close()
     if len(rows) < 4:
-        raise BasePlanosRedeInvalida(f"{caminho}: aba Matriz_Hospital incompleta")
+        raise BasePlanosRedeInvalida(f"{caminho}: aba {aba} incompleta")
     _, op_row, linha_row, plano_row = rows
     saida: list[ColunaRede] = []
     for col in range(5, len(plano_row)):

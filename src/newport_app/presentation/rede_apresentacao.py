@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from newport_app.models.draft import CenarioRascunho, RascunhoEstudo
 from newport_app.models.presentation import (
+    BlocoLabsApresentacao,
     BlocoRedeApresentacao,
     ColunaRedeApresentacao,
     LinhaRedeApresentacao,
@@ -17,7 +18,12 @@ from newport_app.models.presentation import (
 )
 from newport_app.presentation.builder import MAX_PROPOSTAS_POR_PAGINA
 from newport_app.presentation.hospitais_principais import carregar_hospitais_principais
+from newport_app.presentation.laboratorios_principais import (
+    BaseLaboratoriosPrincipaisInvalida,
+    carregar_laboratorios_principais,
+)
 from newport_app.presentation.planos_rede import carregar_aliases_rede
+from newport_app.presentation.rede_labs import fatiar_bloco_labs, montar_bloco_labs
 from newport_app.presentation.rede_codigos import (
     formatar_cobertura_abreviada,
     sigla_zona_capital,
@@ -30,6 +36,10 @@ from newport_app.presentation.rede_inclusao_manual import (
 from newport_app.presentation.rede_matriz_hospital import (
     CAMINHO_XLSX_PADRAO,
     carregar_base_rede_hospital,
+)
+from newport_app.presentation.rede_matriz_laboratorio import (
+    BaseRedeLaboratorioInvalida,
+    carregar_base_rede_laboratorio,
 )
 from newport_app.presentation.rede_recorte import parse_municipio_base
 from newport_app.presentation.rede_avisos import AVISO_REDE_SEM_LOCALIZACAO
@@ -68,16 +78,29 @@ def _chave_coluna_proposta(operadora: str, plano_nome: str) -> str:
 def _paginas_colunas_rede(
     colunas_doc: list[ColunaRedeApresentacao],
     blocos_out: list[BlocoRedeApresentacao],
+    labs: BlocoLabsApresentacao | None = None,
 ) -> list[PaginaRedeApresentacao]:
     """Contrato atual em toda fatia; MAX_PROPOSTAS_POR_PAGINA só nas propostas."""
     atual = [c for c in colunas_doc if c.chave == _CHAVE_ATUAL]
     propostas = [c for c in colunas_doc if c.chave != _CHAVE_ATUAL]
     if not propostas:
-        return [PaginaRedeApresentacao(colunas=colunas_doc, blocos=blocos_out)]
+        return [
+            PaginaRedeApresentacao(
+                colunas=colunas_doc,
+                blocos=blocos_out,
+                labs=fatiar_bloco_labs(labs, colunas_doc),
+            )
+        ]
     paginas: list[PaginaRedeApresentacao] = []
     for i in range(0, len(propostas), MAX_PROPOSTAS_POR_PAGINA):
         fatia = [*atual, *propostas[i : i + MAX_PROPOSTAS_POR_PAGINA]]
-        paginas.append(PaginaRedeApresentacao(colunas=fatia, blocos=blocos_out))
+        paginas.append(
+            PaginaRedeApresentacao(
+                colunas=fatia,
+                blocos=blocos_out,
+                labs=fatiar_bloco_labs(labs, fatia),
+            )
+        )
     return paginas
 
 
@@ -274,6 +297,8 @@ def _montar_secao(
     principais,
     tabela,
     manuais: list | None = None,
+    base_lab=None,
+    marcas_lab=None,
 ) -> SecaoRedeApresentacao | None:
     cols_meta = _colunas_subgrupo(
         rascunho, subgrupo_id, propostas_ids, seguro_novo=seguro_novo
@@ -285,7 +310,7 @@ def _montar_secao(
     if not loc:
         sg = next(s for s in rascunho.subgrupos_atuais if s.id == subgrupo_id)
         colunas_doc = list(cols_meta)
-        paginas = _paginas_colunas_rede(colunas_doc, [])
+        paginas = _paginas_colunas_rede(colunas_doc, [], None)
         return SecaoRedeApresentacao(
             subgrupo_id=subgrupo_id,
             rotulo=f"Comparativo — {sg.plano_nome}",
@@ -294,6 +319,7 @@ def _montar_secao(
             paginas=paginas,
             total_linhas=0,
             sem_localizacao_beneficiarios=True,
+            labs=None,
         )
     visao = montar_visao_rede_estudo(
         rascunho,
@@ -379,8 +405,18 @@ def _montar_secao(
             )
         )
 
+    labs = None
+    if base_lab is not None and marcas_lab is not None:
+        labs = montar_bloco_labs(
+            colunas_doc,
+            localizacoes=loc,
+            base=base_lab,
+            marcas=marcas_lab,
+            tabela=tabela,
+        )
+
     sg = next(s for s in rascunho.subgrupos_atuais if s.id == subgrupo_id)
-    paginas = _paginas_colunas_rede(colunas_doc, blocos_out)
+    paginas = _paginas_colunas_rede(colunas_doc, blocos_out, labs)
     total_visiveis = sum(len(b.linhas) for b in blocos_out)
 
     return SecaoRedeApresentacao(
@@ -390,6 +426,7 @@ def _montar_secao(
         blocos=blocos_out,
         paginas=paginas,
         total_linhas=total_visiveis,
+        labs=labs,
     )
 
 
@@ -410,6 +447,12 @@ def montar_rede_apresentacao(
     base = carregar_base_rede_hospital()
     principais = carregar_hospitais_principais(prestadores_matriz=base.prestadores)
     tabela = carregar_aliases_rede(colunas_rede=base.colunas)
+    try:
+        base_lab = carregar_base_rede_laboratorio()
+        marcas_lab = carregar_laboratorios_principais()
+    except (BaseRedeLaboratorioInvalida, BaseLaboratoriosPrincipaisInvalida, OSError):
+        base_lab = None
+        marcas_lab = None
     secoes: list[SecaoRedeApresentacao] = []
     vistos: set[str] = set()
     for sg in rascunho.subgrupos_atuais:
@@ -425,6 +468,8 @@ def montar_rede_apresentacao(
             principais=principais,
             tabela=tabela,
             manuais=_manuais_do_estudo(rascunho) if incluir_manuais else None,
+            base_lab=base_lab,
+            marcas_lab=marcas_lab,
         )
         if sec is not None:
             secoes.append(sec)

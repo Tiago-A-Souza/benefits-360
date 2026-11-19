@@ -156,7 +156,7 @@ def aplicar_exclusoes_rede_documento(
         if blocos_novos != sec.blocos:
             from newport_app.presentation.rede_apresentacao import _paginas_colunas_rede
 
-            paginas = _paginas_colunas_rede(sec.colunas, blocos_novos)
+            paginas = _paginas_colunas_rede(sec.colunas, blocos_novos, sec.labs)
         total = sum(len(b.linhas) for b in blocos_novos)
         secoes.append(
             sec.model_copy(

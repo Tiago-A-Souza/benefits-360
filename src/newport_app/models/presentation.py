@@ -199,9 +199,20 @@ class BlocoRedeApresentacao(BaseModel):
     contagem_por_coluna: dict[str, int] = Field(default_factory=dict)
 
 
+class LinhaLabApresentacao(BaseModel):
+    marca: str
+    celulas: dict[str, str] = Field(default_factory=dict)
+
+
+class BlocoLabsApresentacao(BaseModel):
+    linhas: list[LinhaLabApresentacao] = Field(default_factory=list)
+    contagem_por_coluna: dict[str, int] = Field(default_factory=dict)
+
+
 class PaginaRedeApresentacao(BaseModel):
     colunas: list[ColunaRedeApresentacao] = Field(default_factory=list)
     blocos: list[BlocoRedeApresentacao] = Field(default_factory=list)
+    labs: BlocoLabsApresentacao | None = None
 
 
 class SecaoRedeApresentacao(BaseModel):
@@ -212,6 +223,7 @@ class SecaoRedeApresentacao(BaseModel):
     paginas: list[PaginaRedeApresentacao] = Field(default_factory=list)
     total_linhas: int = 0
     sem_localizacao_beneficiarios: bool = False
+    labs: BlocoLabsApresentacao | None = None
 
 
 class RedeApresentacaoDocumento(BaseModel):
