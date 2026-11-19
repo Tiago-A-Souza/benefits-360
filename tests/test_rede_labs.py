@@ -1,0 +1,210 @@
+"""Bloco Labs — ingestão, recorte com acento, marcas e cobertura binária."""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from pathlib import Path
+
+import pytest
+
+from newport_app.presentation.laboratorios_principais import (
+    BaseLaboratoriosPrincipaisInvalida,
+    carregar_laboratorios_principais,
+    casar_unidades_marca,
+    limpar_cache_laboratorios_principais,
+)
+from newport_app.presentation.planos_rede import carregar_colunas_rede_xlsx
+from newport_app.presentation.rede_matriz_hospital import (
+    CAMINHO_XLSX_PADRAO,
+    carregar_base_rede_hospital,
+)
+from newport_app.presentation.rede_matriz_laboratorio import (
+    carregar_base_rede_laboratorio,
+    limpar_cache_base_rede_laboratorio,
+)
+from newport_app.presentation.rede_recorte import (
+    municipios_permitidos,
+    parse_municipio_base,
+)
+from newport_app.siscor_importer.normalize import normalizar_cabecalho
+
+ROOT = Path(__file__).resolve().parents[1]
+_XLSX = ROOT / "docs" / "SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx"
+
+CASAMENTO_MARCAS_ESPERADO = {
+    "Delboni": {
+        "unidades": 10,
+        "municipios": {
+            "PR.CURITIBA",
+            "SP.BARUERI",
+            "SP.COTIA",
+            "SP.GUARULHOS",
+            "SP.OSASCO",
+            "SP.SANTO ANDRE",
+            "SP.SANTOS",
+            "SP.SAO BERNARDO DO CAMPO",
+            "SP.SAO PAULO",
+        },
+    },
+    "Lavoisier": {
+        "unidades": 14,
+        "municipios": {
+            "SP.BARUERI",
+            "SP.CARAPICUIBA",
+            "SP.COTIA",
+            "SP.DIADEMA",
+            "SP.FRANCISCO MORATO",
+            "SP.GUARULHOS",
+            "SP.ITAPEVI",
+            "SP.MAUA",
+            "SP.OSASCO",
+            "SP.SANTO ANDRE",
+            "SP.SANTOS",
+            "SP.SAO BERNARDO DO CAMPO",
+            "SP.SAO CAETANO DO SUL",
+            "SP.SAO PAULO",
+        },
+    },
+    "CDB": {
+        "unidades": 4,
+        "municipios": {"SP.MOGI DAS CRUZES", "SP.SAO BERNARDO DO CAMPO", "SP.SAO PAULO"},
+    },
+    "Femme": {"unidades": 2, "municipios": {"SP.OSASCO", "SP.SAO PAULO"}},
+    "Pardini": {
+        "unidades": 8,
+        "municipios": {
+            "MG.BELO HORIZONTE",
+            "RJ.RIO DE JANEIRO",
+            "SP.GUARULHOS",
+            "SP.MOGI DAS CRUZES",
+            "SP.OSASCO",
+            "SP.SANTO ANDRE",
+            "SP.SAO BERNARDO DO CAMPO",
+            "SP.SAO PAULO",
+        },
+    },
+    "Salomão": {"unidades": 2, "municipios": {"SP.OSASCO", "SP.SAO PAULO"}},
+    "A+ Medicina Diagnóstica": {
+        "unidades": 13,
+        "municipios": {
+            "BA.SALVADOR",
+            "PE.RECIFE",
+            "PR.CURITIBA",
+            "RJ.RIO DE JANEIRO",
+            "RS.PORTO ALEGRE",
+            "SP.BARUERI",
+            "SP.COTIA",
+            "SP.GUARULHOS",
+            "SP.OSASCO",
+            "SP.SANTO ANDRE",
+            "SP.SAO BERNARDO DO CAMPO",
+            "SP.SAO PAULO",
+        },
+    },
+    "Bittar": {"unidades": 1, "municipios": {"RJ.RIO DE JANEIRO"}},
+    "Lamina": {"unidades": 1, "municipios": {"RJ.RIO DE JANEIRO"}},
+    "Bronstein": {"unidades": 1, "municipios": {"RJ.RIO DE JANEIRO"}},
+}
+
+
+@pytest.fixture(scope="module")
+def base_lab():
+    if not _XLSX.is_file():
+        pytest.skip("XLSX SiscorNet ausente em docs/")
+    limpar_cache_base_rede_laboratorio()
+    return carregar_base_rede_laboratorio(_XLSX)
+
+
+@pytest.fixture(scope="module")
+def base_hospital():
+    if not _XLSX.is_file():
+        pytest.skip("XLSX SiscorNet ausente em docs/")
+    return carregar_base_rede_hospital(_XLSX)
+
+
+def test_p1_parse_municipio_sao_paulo_com_acento_nao_some():
+    """SP.SÃO PAULO da planilha casa com vidas em São Paulo após normalizar."""
+    uf, cidade = parse_municipio_base("SP.SÃO PAULO")
+    assert uf == "SP"
+    assert cidade == "SAO PAULO"
+    assert cidade == normalizar_cabecalho("São Paulo")
+    perm = municipios_permitidos({("SP", "São Paulo")}, {"SP.SAO PAULO"})
+    assert "SP.SAO PAULO" in perm
+    perm_raw = municipios_permitidos({("SP", "SÃO PAULO")}, {"SP.SAO PAULO"})
+    assert "SP.SAO PAULO" in perm_raw
+
+
+def test_p1_ingestao_2683_sem_filtro_hger(base_lab):
+    assert len(base_lab.prestadores) == 2683
+    assert len(base_lab.municipios) == 52
+    assert "SP.SAO PAULO" in base_lab.municipios
+    assert any(p.chave_municipio == "SP.SAO PAULO" for p in base_lab.prestadores)
+    assert len(base_lab.colunas) == 189
+    com_celula = [p for p in base_lab.prestadores if p.celulas]
+    assert len(com_celula) >= 2600
+    amostra = next(p for p in base_lab.prestadores if "ULTRA" in " ".join(p.celulas.values()))
+    assert amostra.celulas
+
+
+def test_p1_colunas_lab_identicas_ao_hospital(base_lab, base_hospital):
+    lab = {(c.col_idx, c.operadora_raw, c.linha, c.plano) for c in base_lab.colunas}
+    hosp = {(c.col_idx, c.operadora_raw, c.linha, c.plano) for c in base_hospital.colunas}
+    assert lab == hosp
+    via_aba = carregar_colunas_rede_xlsx(_XLSX, aba="Matriz_Laboratorio")
+    assert len(via_aba) == 189
+
+
+def test_p1_csv_marcas_na_ordem_e_casamento(base_lab):
+    limpar_cache_laboratorios_principais()
+    base = carregar_laboratorios_principais()
+    nomes = [m.marca for m in base.marcas if m.ativo]
+    assert nomes == [
+        "Delboni",
+        "Lavoisier",
+        "CDB",
+        "Femme",
+        "Pardini",
+        "Salomão",
+        "A+ Medicina Diagnóstica",
+        "Bittar",
+        "Lamina",
+        "Bronstein",
+    ]
+    assert next(m for m in base.marcas if m.marca == "Bittar").ufs == frozenset({"RJ"})
+    pares = casar_unidades_marca(base_lab.prestadores, base.marcas)
+    por_marca: dict[str, list] = defaultdict(list)
+    for u in pares:
+        por_marca[u.marca].append(u.prestador)
+    sem_unidade = [m for m in nomes if m not in por_marca]
+    assert sem_unidade == [], f"marcas sem unidade na matriz: {sem_unidade}"
+    for marca, esperado in CASAMENTO_MARCAS_ESPERADO.items():
+        uns = por_marca[marca]
+        muns = {p.chave_municipio for p in uns}
+        assert len(uns) == esperado["unidades"], (
+            f"{marca}: {len(uns)} unidades, esperado {esperado['unidades']}; "
+            f"municípios {sorted(muns)}"
+        )
+        assert muns == esperado["municipios"], (
+            f"{marca}: municípios {sorted(muns)} != {sorted(esperado['municipios'])}"
+        )
+    # Hospitais da aba lab não casam com marca nenhuma (Samaritano, Albert Sabin).
+    nomes_casados = {u.prestador.prestador for u in pares}
+    assert "HOSPITAL SAMARITANO" not in nomes_casados
+    assert not any("ALBERT SABIN" in n.upper() for n in nomes_casados)
+
+
+def test_p1_csv_malformado_cita_linha(tmp_path):
+    bad = tmp_path / "bad.csv"
+    bad.write_text("marca;padroes_nome;ufs;ativo\nDelboni\n", encoding="utf-8-sig")
+    with pytest.raises(BaseLaboratoriosPrincipaisInvalida, match="registro 2"):
+        carregar_laboratorios_principais(bad)
+
+
+def test_p1_lamina_fora_do_rj_nao_casa(base_lab):
+    lamina = next(
+        m for m in carregar_laboratorios_principais().marcas if m.marca == "Lamina"
+    )
+    df = [p for p in base_lab.prestadores if p.uf == "DF" and "LAMINA" in p.prestador.upper()]
+    assert df
+    pares = casar_unidades_marca(tuple(df), (lamina,))
+    assert pares == ()
