@@ -15,9 +15,11 @@ import threading
 from collections.abc import Iterable
 from pathlib import Path
 
+from newport_app.config.paths import arquivo_docs
 from newport_app.models.presentation import RedeApresentacaoDocumento
 
-CAMINHO_LEGENDA = Path(__file__).resolve().parents[3] / "docs" / "codigos_rede_legenda.csv"
+_LEGENDA_REPO = Path(__file__).resolve().parents[3] / "docs" / "codigos_rede_legenda.csv"
+CAMINHO_LEGENDA = _LEGENDA_REPO
 
 # Siglas que a legenda fixa do rodapé já explica.
 SIGLAS_PADRAO = frozenset({"H", "HD", "M", "PS"})
@@ -47,6 +49,8 @@ def _ler(caminho: Path) -> dict[str, str]:
 def carregar_legenda_codigos(caminho: Path | None = None) -> dict[str, str]:
     """Código → nome (só confiança alta). Arquivo ausente ou ilegível → vazio."""
     origem = caminho or CAMINHO_LEGENDA
+    if origem == CAMINHO_LEGENDA:
+        origem = arquivo_docs("codigos_rede_legenda.csv") if CAMINHO_LEGENDA == _LEGENDA_REPO else CAMINHO_LEGENDA
     try:
         chave = origem.resolve()
         assinatura = _assinatura(origem)

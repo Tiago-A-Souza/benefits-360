@@ -58,11 +58,17 @@ class BaseRedeHospital:
 
 
 def caminho_base_rede_hospital() -> Path:
+    from newport_app.config.paths import caminho_xlsx_rede_padrao
+
     env = os.environ.get("NEWPORT_REDE_XLSX", "").strip()
     if env:
         p = Path(env)
         if p.is_file():
             return p
+        raise BaseRedeHospitalInvalida(f"NEWPORT_REDE_XLSX não é um arquivo: {p}")
+    catalogo = caminho_xlsx_rede_padrao()
+    if catalogo.is_file():
+        return catalogo
     if CAMINHO_XLSX_PADRAO.is_file():
         return CAMINHO_XLSX_PADRAO
     legado = Path(
@@ -71,7 +77,7 @@ def caminho_base_rede_hospital() -> Path:
     if legado.is_file():
         return legado
     raise BaseRedeHospitalInvalida(
-        f"base de rede ausente — coloque em {CAMINHO_XLSX_PADRAO} ou NEWPORT_REDE_XLSX"
+        f"base de rede ausente — coloque em {catalogo} ou NEWPORT_REDE_XLSX"
     )
 
 

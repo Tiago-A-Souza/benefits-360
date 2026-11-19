@@ -19,6 +19,7 @@ from newport_app.presentation.regras_comerciais import (
     carregar_aliases,
     reconhecer_operadora,
 )
+from newport_app.config.paths import arquivo_docs
 from newport_app.siscor_importer.normalize import normalizar_cabecalho
 
 _DOCS = Path(__file__).resolve().parents[3] / "docs"
@@ -183,11 +184,13 @@ def carregar_colunas_rede_xlsx(
 
 
 def caminho_base_rede_padrao() -> Path | None:
+    from newport_app.config.paths import caminho_xlsx_rede_padrao
+
     env = os.environ.get("NEWPORT_REDE_XLSX", "").strip()
     if env:
         p = Path(env)
         return p if p.is_file() else None
-    docs = _DOCS / "SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx"
+    docs = caminho_xlsx_rede_padrao()
     if docs.is_file():
         return docs
     padrao = Path(
@@ -201,7 +204,7 @@ def carregar_aliases_rede(
     *,
     colunas_rede: Iterable[ColunaRede] | None = None,
 ) -> TabelaPlanosRedeAliases:
-    origem = caminho or CAMINHO_ALIASES
+    origem = caminho or arquivo_docs("planos_rede_aliases.csv")
     registros = _abrir_csv(origem)
     if not registros:
         raise BasePlanosRedeInvalida(f"{origem}: arquivo vazio")

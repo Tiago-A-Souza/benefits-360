@@ -7,6 +7,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
+from newport_app.config.paths import arquivo_docs
 from newport_app.presentation.rede_matriz_laboratorio import PrestadorRedeLaboratorio
 from newport_app.siscor_importer.normalize import normalizar_cabecalho
 
@@ -63,7 +64,7 @@ def limpar_cache_laboratorios_principais() -> None:
 def carregar_laboratorios_principais(
     caminho: Path | None = None,
 ) -> BaseLaboratoriosPrincipais:
-    origem = caminho or CAMINHO_BASE
+    origem = caminho or arquivo_docs("laboratorios_principais_base.csv")
     st = origem.stat()
     assinatura = (st.st_mtime_ns, st.st_size)
     chave = origem.resolve()

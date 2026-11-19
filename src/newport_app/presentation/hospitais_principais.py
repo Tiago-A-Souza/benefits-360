@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from newport_app.presentation.rede_recorte import chave_municipio
+from newport_app.config.paths import arquivo_docs
 from newport_app.siscor_importer.normalize import normalizar_cabecalho
 
 _DOCS = Path(__file__).resolve().parents[3] / "docs"
@@ -200,7 +201,7 @@ def carregar_hospitais_principais(
     prestadores_matriz: tuple | None = None,
 ) -> BaseHospitaisPrincipais:
     """Reaproveita o resultado enquanto o CSV (mtime/tamanho) e a matriz forem os mesmos."""
-    origem = caminho or CAMINHO_BASE
+    origem = caminho or arquivo_docs("hospitais_principais_base.csv")
     try:
         st = origem.stat()
     except OSError:
@@ -229,7 +230,7 @@ def _ler_hospitais_principais(
 ) -> BaseHospitaisPrincipais:
     from newport_app.presentation.rede_matriz_hospital import PrestadorRedeHospital
 
-    origem = caminho or CAMINHO_BASE
+    origem = caminho or arquivo_docs("hospitais_principais_base.csv")
     registros = _abrir_csv(origem)
     if not registros:
         raise BaseHospitaisPrincipaisInvalida(f"{origem}: arquivo vazio")
