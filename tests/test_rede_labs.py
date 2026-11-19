@@ -22,8 +22,11 @@ from newport_app.presentation.rede_matriz_laboratorio import (
     carregar_base_rede_laboratorio,
     limpar_cache_base_rede_laboratorio,
 )
+from newport_app.presentation.html_renderer import render_html_completo
 from newport_app.presentation.planos_rede import carregar_aliases_rede
 from newport_app.presentation.rede_apresentacao import montar_rede_apresentacao
+from tests.test_correcao_resumo_regime import _aprovar as _aprovar_anistia
+from newport_app.presentation.builder import construir_view_model
 from newport_app.presentation.rede_labs import (
     MARCA_COBERTURA,
     casar_planos_laboratorio,
@@ -323,6 +326,44 @@ def test_p4_sem_marca_no_recorte_bloco_ausente(base_lab):
     ui = montar_rede_selecao_ui(rasc)
     for sec in ui.secoes:
         assert sec.laboratorios is None
+
+
+def _html_rede(tmp_path, rascunho, cen_id):
+    snap = _aprovar_anistia(tmp_path, rascunho)
+    vm = construir_view_model(snap, modo="resumo", propostas_selecionadas=[cen_id])
+    doc = montar_rede_apresentacao(rascunho, [cen_id])
+    html = render_html_completo(vm, vm, vm, rede=doc)
+    return html, doc
+
+
+def test_p6_html_com_bloco_labs_sp_rj(tmp_path):
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    html, doc = _html_rede(tmp_path, rascunho, cen_id)
+    rede = html.split('id="visao-rede"', 1)[1]
+    assert "tabela-labs" in rede
+    assert "Laboratórios" in rede
+    assert "Delboni" in rede
+    assert "Bittar" in rede
+    assert "Bronstein" in rede
+    assert MARCA_COBERTURA in rede
+    assert "ULTRA" not in rede.split("tabela-labs", 1)[1][:4000]
+    assert "Medservice" in rede
+    assert "Cobertos" in rede
+    assert all(s.labs is not None for s in doc.secoes)
+
+
+def test_p6_html_sem_bloco_quando_recorte_sem_marca(tmp_path):
+    rascunho, cen_id, _ = _rascunho_dois_grupos_um_cenario()
+    vidas = [
+        v.model_copy(update={"uf": "AC", "cidade": "RIO BRANCO"}) for v in rascunho.vidas
+    ]
+    rasc = rascunho.model_copy(update={"vidas": vidas})
+    html, doc = _html_rede(tmp_path, rasc, cen_id)
+    rede = html.split('id="visao-rede"', 1)[1]
+    assert "tabela-labs" not in rede
+    assert "Delboni" not in rede
+    assert all(s.labs is None for s in doc.secoes)
+    assert "Medservice" in rede
 
 
 def test_p1_lamina_fora_do_rj_nao_casa(base_lab):

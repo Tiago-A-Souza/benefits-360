@@ -120,13 +120,56 @@ def _render_tabela_pagina(pag: PaginaRedeApresentacao) -> str:
     return "".join(partes)
 
 
+def _render_tabela_labs(pag: PaginaRedeApresentacao) -> str:
+    bloco = pag.labs
+    if bloco is None or not bloco.linhas:
+        return ""
+    ncols = 1 + len(pag.colunas)
+    partes = ["<div class='rolo rede-rolo'><table class='tabela-rede n tabela-labs'><thead>"]
+    partes.append(_tr_cabecalho_colunas(pag))
+    partes.append("</thead><tbody>")
+    partes.append(
+        f"<tr class='bloco-rede'><td colspan='{ncols}'>"
+        "<div class='bloco-rede-cab'>"
+        "<span class='bloco-rede-tit'>Laboratórios</span>"
+        "<span class='bloco-rede-meta'>"
+        f"<span class='q'>{len(bloco.linhas)} marcas</span>"
+        "</span></div></td></tr>"
+    )
+    for ln in bloco.linhas:
+        partes.append("<tr class='p-rede p-rede-lab'>")
+        partes.append(
+            f"<td class='nm rede-col-prestador'>{html.escape(ln.marca)}</td>"
+        )
+        for col in pag.colunas:
+            val = ln.celulas.get(col.chave, "")
+            cls = "on" if val and val != "—" else "off"
+            partes.append(
+                f"<td class='rede-col-plano {cls}'>{html.escape(val)}</td>"
+            )
+        partes.append("</tr>")
+    partes.append("<tr class='cont-rede'><td colspan='1'>Cobertos</td>")
+    for col in pag.colunas:
+        partes.append(f"<td>{bloco.contagem_por_coluna.get(col.chave, 0)}</td>")
+    partes.append("</tr></tbody></table></div>")
+    return "".join(partes)
+
+
+def _render_pagina_rede(pag: PaginaRedeApresentacao) -> str:
+    partes: list[str] = []
+    if pag.blocos:
+        partes.append(_render_tabela_pagina(pag))
+    partes.append(_render_tabela_labs(pag))
+    return "".join(partes)
+
+
 def _rodape_rede(doc: RedeApresentacaoDocumento) -> str:
     data = html.escape(doc.data_base_rede)
     itens = [
         f"Base SiscorNet atualizada em {data}. A rede credenciada pode ser "
         "alterada pelas operadoras sem aviso prévio. ",
-        "Este comparativo contempla hospital geral e pronto-socorro credenciados; "
-        "não inclui centros clínicos ou consultórios. ",
+        "Este comparativo contempla hospital geral, pronto-socorro e laboratórios "
+        "das marcas da proposta; não inclui centros clínicos ou consultórios. ",
         "Fora de São Paulo, Rio de Janeiro e Distrito Federal, planos Porto Seguro "
         "utilizam a rede Medservice, que não consta nesta extração — a cobertura "
         "pode aparecer vazia por limitação da base, não por falha do sistema.",
@@ -167,7 +210,7 @@ def render_corpo_rede(doc: RedeApresentacaoDocumento) -> str:
             for i, pag in enumerate(sec.paginas):
                 if i > 0:
                     partes.append("<div class='quebra-pagina-rede'></div>")
-                partes.append(_render_tabela_pagina(pag))
+                partes.append(_render_pagina_rede(pag))
         partes.append("</div>")
     partes.append(_rodape_rede(doc))
     return "".join(partes)
@@ -180,5 +223,5 @@ def render_secao_rede_html(sec: SecaoRedeApresentacao, doc: RedeApresentacaoDocu
     for i, pag in enumerate(sec.paginas):
         if i > 0:
             inner.append("<div class='quebra-pagina-rede'></div>")
-        inner.append(_render_tabela_pagina(pag))
+        inner.append(_render_pagina_rede(pag))
     return "".join(inner)

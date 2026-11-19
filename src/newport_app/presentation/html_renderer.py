@@ -1785,7 +1785,7 @@ def render_html_completo(
                 "04",
                 "Rede",
                 "Credenciada",
-                "Hospitais principais no recorte geográfico dos beneficiários de cada grupo.",
+                "Hospitais principais e laboratórios no recorte geográfico dos beneficiários de cada grupo.",
             )
             + inner_rede
         )
