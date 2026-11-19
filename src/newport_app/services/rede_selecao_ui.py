@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.models.responses import (
+    BlocoLabSelecaoItem,
     BlocoRedeSelecaoItem,
     ColunaRedeSelecaoItem,
+    LinhaLabSelecaoItem,
     LinhaRedeSelecaoItem,
     RedeSelecaoResponse,
     SecaoRedeSelecaoItem,
@@ -83,6 +85,15 @@ def montar_rede_selecao_ui(
                 for ln in bloco.linhas
             ]
             blocos.append(BlocoRedeSelecaoItem(titulo=bloco.titulo, linhas=linhas))
+        labs_ui = None
+        if sec.labs and sec.labs.linhas:
+            labs_ui = BlocoLabSelecaoItem(
+                linhas=[
+                    LinhaLabSelecaoItem(marca=ln.marca, celulas=dict(ln.celulas))
+                    for ln in sec.labs.linhas
+                ],
+                contagem_por_coluna=dict(sec.labs.contagem_por_coluna),
+            )
         secoes.append(
             SecaoRedeSelecaoItem(
                 subgrupo_id=sec.subgrupo_id,
@@ -90,6 +101,7 @@ def montar_rede_selecao_ui(
                 sem_localizacao=sec.sem_localizacao_beneficiarios,
                 colunas=colunas,
                 blocos=blocos,
+                laboratorios=labs_ui,
             )
         )
     return RedeSelecaoResponse(

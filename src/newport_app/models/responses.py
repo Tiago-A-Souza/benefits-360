@@ -281,12 +281,23 @@ class BlocoRedeSelecaoItem(BaseModel):
     linhas: list[LinhaRedeSelecaoItem] = Field(default_factory=list)
 
 
+class LinhaLabSelecaoItem(BaseModel):
+    marca: str
+    celulas: dict[str, str] = Field(default_factory=dict)
+
+
+class BlocoLabSelecaoItem(BaseModel):
+    linhas: list[LinhaLabSelecaoItem] = Field(default_factory=list)
+    contagem_por_coluna: dict[str, int] = Field(default_factory=dict)
+
+
 class SecaoRedeSelecaoItem(BaseModel):
     subgrupo_id: str = ""
     rotulo: str
     sem_localizacao: bool = False
     colunas: list[ColunaRedeSelecaoItem] = Field(default_factory=list)
     blocos: list[BlocoRedeSelecaoItem] = Field(default_factory=list)
+    laboratorios: BlocoLabSelecaoItem | None = None
 
 
 class RedeSelecaoResponse(BaseModel):
