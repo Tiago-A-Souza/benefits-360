@@ -7430,6 +7430,35 @@ a.btn-link {
   background: #f5f9ff;
 }
 
+.simular-tipo {
+  display: inline-flex;
+  margin: 0 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #fff;
+}
+
+.simular-tipo button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 650;
+  padding: 8px 16px;
+  box-shadow: none;
+}
+
+.simular-tipo button + button {
+  border-left: 1px solid var(--line);
+}
+
+.simular-tipo button.ativo {
+  background: #f5f9ff;
+  color: var(--blue);
+  box-shadow: 0 0 0 1px var(--blue) inset;
+}
+
 .simular-filtros .panel-body {
   display: grid;
   gap: 16px;

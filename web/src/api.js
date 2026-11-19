@@ -202,6 +202,19 @@ export async function consultarRedePorPlano({ plano, ...filtros }) {
   return tratarResposta(res, "Não foi possível consultar a rede por plano.");
 }
 
+export async function obterOpcoesSimulacaoLaboratorio() {
+  const res = await apiFetch(`${API}/simular-rede/laboratorios/opcoes`);
+  return tratarResposta(res, "Não foi possível carregar a base de laboratórios.");
+}
+
+export async function consultarRedePorLaboratorio({ termo, operadoras = [], ...filtros }) {
+  const p = paramsSimulacao(filtros);
+  if (termo) p.append("q", termo);
+  operadoras.forEach((o) => p.append("operadoras", o));
+  const res = await apiFetch(`${API}/simular-rede/laboratorios/por-laboratorio?${p}`);
+  return tratarResposta(res, "Não foi possível consultar a rede por laboratório.");
+}
+
 export async function salvarRedeSelecao(estudoId, excluidos, revisada) {
   const res = await apiFetch(`${API}/estudos/${estudoId}/rede-selecao`, {
     method: "PUT",
