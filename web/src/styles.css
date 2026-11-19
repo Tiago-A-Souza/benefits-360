@@ -1777,6 +1777,24 @@ button.tabela-faixas-acao:focus {
   padding: 0;
 }
 
+.faixa-rascunho {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: #7a1f12;
+  color: #fff7f0;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+}
+
+.faixa-rascunho strong {
+  letter-spacing: 0.08em;
+}
+
 .app-shell {
   min-height: 100vh;
   background: var(--page);

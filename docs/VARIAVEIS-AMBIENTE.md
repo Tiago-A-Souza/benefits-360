@@ -52,6 +52,7 @@ Com `NEWPORT_HOSTED=1` o backend **recusa**:
 |---|---|---|
 | `VITE_SUPABASE_URL` | login real | tela de login cai em modo demonstração |
 | `VITE_SUPABASE_ANON_KEY` | login real | cliente Supabase não liga |
+| `VITE_FAIXA_RASCUNHO` | piloto (`1` / `true` / `sim`) | some a faixa **RASCUNHO INTERNO** |
 
 ## Robô no PC do corretor (`rpa/`, `127.0.0.1:8600`)
 
