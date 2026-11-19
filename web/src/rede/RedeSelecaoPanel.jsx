@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { obterRedeSelecao, removerRedeManual, salvarRedeSelecao } from "../api";
 import CelulaCobertura from "./CelulaCobertura.jsx";
 import InclusaoManual from "./InclusaoManual.jsx";
+import RedeLabsBloco from "./RedeLabsBloco.jsx";
 import { tituloPasso } from "../fluxo/passos";
 import { filtrarLinhasRede } from "./redeSelecaoFiltros.js";
 
@@ -355,7 +356,13 @@ export default function RedeSelecaoPanel({
             // Com filtro ativo, some a seção sem linha visível; seção sem nenhuma
             // linha (ainda) continua aparecendo, para permitir a busca.
             const aceitaInclusao = Boolean(sec.subgrupo_id) && !sec.sem_localizacao;
-            if (!secaoTemLinha && !(idsSec.length === 0 && aceitaInclusao)) return null;
+            const temLabs = Boolean(sec.laboratorios?.linhas?.length);
+            if (
+              !secaoTemLinha &&
+              !temLabs &&
+              !(idsSec.length === 0 && aceitaInclusao)
+            )
+              return null;
             const incluidosSec = idsSec.filter((id) => !excluidos.has(id)).length;
             const todosIncluidosSec =
               idsSec.length > 0 && incluidosSec === idsSec.length;
@@ -466,6 +473,10 @@ export default function RedeSelecaoPanel({
                       </div>
                     </div>
                   ))}
+                  <RedeLabsBloco
+                    colunas={colunas}
+                    laboratorios={sec.laboratorios}
+                  />
                 </div>
               </div>
             );
