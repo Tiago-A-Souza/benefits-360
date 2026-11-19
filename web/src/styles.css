@@ -7433,30 +7433,27 @@ a.btn-link {
 .simular-tipo {
   display: inline-flex;
   margin: 0 0 16px;
+  padding: 3px;
+  gap: 2px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  border-radius: 999px;
   background: #fff;
 }
 
 .simular-tipo button {
-  border: 0;
-  border-radius: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background: transparent;
   color: var(--ink);
   font-weight: 650;
-  padding: 8px 16px;
+  padding: 7px 16px;
   box-shadow: none;
-}
-
-.simular-tipo button + button {
-  border-left: 1px solid var(--line);
 }
 
 .simular-tipo button.ativo {
   background: #f5f9ff;
   color: var(--blue);
-  box-shadow: 0 0 0 1px var(--blue) inset;
+  border-color: var(--blue);
 }
 
 .simular-filtros .panel-body {
