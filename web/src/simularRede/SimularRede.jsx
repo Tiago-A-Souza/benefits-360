@@ -6,6 +6,7 @@ import {
   obterOpcoesSimulacaoRede,
 } from "../api";
 import NavegacaoFerramentas from "../NavegacaoFerramentas";
+import SimularLabs from "./SimularLabs";
 import {
   LEGENDA_COBERTURA,
   gruposDeOperadora,
@@ -93,6 +94,7 @@ function TabelaResultado({ resp }) {
 }
 
 export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, onVoltarEstudo, rotuloEstudo }) {
+  const [tipoRede, setTipoRede] = useState("hospitais");
   const [opcoes, setOpcoes] = useState(null);
   const [erroOpcoes, setErroOpcoes] = useState(null);
 
@@ -225,13 +227,40 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             <p>
               Consulte a rede credenciada durante a conversa com o cliente — sem abrir estudo.
               Nada é salvo.
-              {opcoes?.data_base_rede ? ` Base de ${opcoes.data_base_rede}.` : ""}
+              {tipoRede === "hospitais" && opcoes?.data_base_rede
+                ? ` Base de ${opcoes.data_base_rede}.`
+                : ""}
             </p>
           </div>
         </header>
 
-        {erroOpcoes && <p className="erro">{erroOpcoes}</p>}
+        {erroOpcoes && tipoRede === "hospitais" && <p className="erro">{erroOpcoes}</p>}
 
+        <div className="simular-tipo" role="tablist" aria-label="Tipo de rede">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tipoRede === "hospitais"}
+            className={tipoRede === "hospitais" ? "ativo" : ""}
+            onClick={() => setTipoRede("hospitais")}
+          >
+            Hospitais
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tipoRede === "laboratorios"}
+            className={tipoRede === "laboratorios" ? "ativo" : ""}
+            onClick={() => setTipoRede("laboratorios")}
+          >
+            Laboratórios
+          </button>
+        </div>
+
+        {tipoRede === "laboratorios" ? (
+          <SimularLabs />
+        ) : (
+          <>
         <div className="simular-modos" role="tablist" aria-label="Tipo de consulta">
           <button
             type="button"
@@ -563,6 +592,8 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             </div>
           )}
         </section>
+          </>
+        )}
       </main>
     </div>
   );

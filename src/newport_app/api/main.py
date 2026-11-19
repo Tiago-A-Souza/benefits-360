@@ -137,8 +137,10 @@ from newport_app.services.rede_selecao_ui import montar_rede_selecao_ui, todos_i
 from newport_app.models.rpa_cotacoes import RpaCotacoesEstadoResponse
 from newport_app.models.simular_rede import ConsultaRedeResponse, OpcoesSimulacaoRede
 from newport_app.presentation import rede_consulta
+from newport_app.presentation import rede_consulta_lab
 from newport_app.services import rpa_cotacoes as rpa_cotacoes_svc
 from newport_app.presentation.rede_matriz_hospital import BaseRedeHospitalInvalida
+from newport_app.presentation.rede_matriz_laboratorio import BaseRedeLaboratorioInvalida
 from newport_app.services.extracao_cotacao import (
     CampoNaoEncontradoError,
     CotacaoDescartadaError,
@@ -1038,6 +1040,57 @@ def create_app(
         except rede_consulta.ConsultaRedeInvalida as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
         except BaseRedeHospitalInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.get("/api/simular-rede/laboratorios/opcoes", response_model=OpcoesSimulacaoRede)
+    def simular_rede_lab_opcoes() -> OpcoesSimulacaoRede:
+        try:
+            return rede_consulta_lab.opcoes_simulacao_laboratorio()
+        except BaseRedeLaboratorioInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.get("/api/simular-rede/laboratorios/por-laboratorio", response_model=ConsultaRedeResponse)
+    def simular_rede_por_laboratorio(
+        q: list[str] = Query(default_factory=list),
+        uf: str | None = None,
+        municipio: str | None = None,
+        operadoras: list[str] = Query(default_factory=list),
+        todos: bool = False,
+        confirmar: bool = False,
+    ) -> ConsultaRedeResponse:
+        try:
+            return rede_consulta_lab.consultar_por_laboratorio(
+                q,
+                uf=uf,
+                municipio=municipio,
+                operadoras=operadoras,
+                todos=todos,
+                confirmar=confirmar,
+            )
+        except rede_consulta.ConsultaRedeInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except BaseRedeLaboratorioInvalida as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from None
+
+    @app.get("/api/simular-rede/laboratorios/por-plano", response_model=ConsultaRedeResponse)
+    def simular_rede_lab_por_plano(
+        plano: str,
+        uf: str | None = None,
+        municipio: str | None = None,
+        todos: bool = False,
+        confirmar: bool = False,
+    ) -> ConsultaRedeResponse:
+        try:
+            return rede_consulta_lab.consultar_por_plano_laboratorio(
+                plano,
+                uf=uf,
+                municipio=municipio,
+                todos=todos,
+                confirmar=confirmar,
+            )
+        except rede_consulta.ConsultaRedeInvalida as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        except BaseRedeLaboratorioInvalida as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from None
 
     @app.get("/api/rpa-cotacoes/estado", response_model=RpaCotacoesEstadoResponse)

@@ -10,6 +10,7 @@ import {
   municipiosDaUf,
   planosDaOperadora,
   textoContagem,
+  textoContagemLabs,
   zonasDoMunicipio,
 } from "./opcoesSimulacao.js";
 
@@ -98,5 +99,24 @@ describe("resultado", () => {
     expect(
       textoContagem({ total_linhas: 11, ocultos_nao_principais: 0, mostrando_todos: true })
     ).toBe("11 prestadores");
+  });
+});
+
+describe("totais de laboratório", () => {
+  it("distingue marcas, laboratórios e linhas não curadas", () => {
+    expect(textoContagemLabs({ total_linhas: 7, total_encontrado: 7, ocultos_nao_principais: 120 })).toBe(
+      "7 marcas · 120 não curada(s) oculta(s)"
+    );
+    expect(
+      textoContagemLabs({
+        total_linhas: 85,
+        total_encontrado: 85,
+        ocultos_nao_principais: 0,
+        mostrando_todos: true,
+      })
+    ).toBe("85 laboratórios");
+    expect(
+      textoContagemLabs({ total_linhas: 1, total_encontrado: 4, ocultos_nao_principais: 3 })
+    ).toBe("1 marca · 4 encontrado(s) · 3 não curada(s) oculta(s)");
   });
 });
