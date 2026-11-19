@@ -6,7 +6,18 @@ import urllib.request
 from app.servidor import _cabecalhos_seguranca, _origens_frame_ancestors, _origens_permitidas
 
 
-def test_origens_vem_do_config():
+def test_origens_extra_env_entram_no_iframe(monkeypatch):
+    monkeypatch.setenv("NEWPORT_RPA_ORIGENS", "https://piloto.up.railway.app")
+    cfg = {"tela": {"frame_ancestors": ["http://localhost:5173"]}}
+    assert _origens_frame_ancestors(cfg) == [
+        "http://localhost:5173",
+        "https://piloto.up.railway.app",
+    ]
+
+
+def test_origens_vem_do_config(monkeypatch):
+    monkeypatch.delenv("NEWPORT_RPA_ORIGENS", raising=False)
+    monkeypatch.delenv("BENEFITS_ORIGENS", raising=False)
     cfg = {"tela": {"frame_ancestors": ["http://localhost:5173", "http://app.newport.exemplo"]}}
     assert _origens_frame_ancestors(cfg) == ["http://localhost:5173", "http://app.newport.exemplo"]
     assert _origens_frame_ancestors({}) == []

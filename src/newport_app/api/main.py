@@ -34,6 +34,7 @@ from newport_app.config.runtime import (
     ModoExecucaoInvalidoError,
     exigir_host_local_modo_real,
     modo_execucao,
+    origens_cors,
 )
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import PriceBasisRascunho, RascunhoEstudo
@@ -318,12 +319,7 @@ def create_app(
     app.add_middleware(AuthSupabaseMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:5174",
-        ],
+        allow_origins=origens_cors(),
         allow_methods=["*"],
         allow_headers=["*"],
     )

@@ -6,12 +6,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from newport_app.config.runtime import ModoExecucao, cliente_eh_local, modo_execucao
+from newport_app.config.runtime import (
+    ModoExecucao,
+    cliente_eh_local,
+    modo_execucao,
+    modo_hospedado,
+)
 
 
 class ModoRealLocalMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if modo_execucao() == ModoExecucao.REAL:
+        if modo_execucao() == ModoExecucao.REAL and not modo_hospedado():
             host = request.client.host if request.client else None
             if not cliente_eh_local(host):
                 return JSONResponse(

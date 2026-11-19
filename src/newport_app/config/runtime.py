@@ -8,6 +8,12 @@ from enum import Enum
 LIMITE_UPLOAD_BYTES = int(os.environ.get("NEWPORT_UPLOAD_MAX_BYTES", 10 * 1024 * 1024))
 HOSTS_PERMITIDOS_MODO_REAL = frozenset({"127.0.0.1", "localhost", "::1"})
 HOSTS_TESTE_AUTOMATIZADO = frozenset({"testclient", "testserver"})
+ORIGENS_CORS_DEV = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+)
 
 
 class ModoExecucao(str, Enum):
@@ -36,15 +42,35 @@ def bind_host_configurado() -> str:
     return os.environ.get("NEWPORT_BIND_HOST", "127.0.0.1").strip()
 
 
+def modo_hospedado() -> bool:
+    """Railway / uma instância pública. Liga com NEWPORT_HOSTED=1."""
+    bruto = os.environ.get("NEWPORT_HOSTED", "").strip().lower()
+    return bruto in {"1", "true", "yes", "sim"}
+
+
+def origens_cors() -> list[str]:
+    """Vite local + origens extras (NEWPORT_CORS_ORIGENS, vírgula)."""
+    saida = list(ORIGENS_CORS_DEV)
+    extra = os.environ.get("NEWPORT_CORS_ORIGENS") or ""
+    for item in extra.split(","):
+        origem = item.strip().rstrip("/")
+        if origem and origem not in saida:
+            saida.append(origem)
+    return saida
+
+
 def exigir_host_local_modo_real() -> None:
     if modo_execucao() != ModoExecucao.REAL:
         return
+    if modo_hospedado():
+        return
     host = bind_host_configurado()
-    if host not in HOSTS_PERMITIDOS_MODO_REAL:
-        raise RuntimeError(
-            "Modo real exige bind em localhost (127.0.0.1). "
-            "Não use --host 0.0.0.0 sem autenticação."
-        )
+    if host in HOSTS_PERMITIDOS_MODO_REAL:
+        return
+    raise RuntimeError(
+        "Modo real exige bind em localhost (127.0.0.1). "
+        "Não use --host 0.0.0.0 sem NEWPORT_HOSTED=1 e autenticação."
+    )
 
 
 def cliente_eh_local(host: str | None) -> bool:
