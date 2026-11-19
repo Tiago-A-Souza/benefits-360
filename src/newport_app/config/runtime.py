@@ -39,7 +39,13 @@ def modo_execucao() -> ModoExecucao:
 
 
 def bind_host_configurado() -> str:
-    return os.environ.get("NEWPORT_BIND_HOST", "127.0.0.1").strip()
+    env = (os.environ.get("NEWPORT_BIND_HOST") or "").strip()
+    if env:
+        return env
+    # Plataforma (Railway) injeta PORT: escuta em todas as interfaces.
+    if modo_hospedado() or (os.environ.get("PORT") or "").strip():
+        return "0.0.0.0"
+    return "127.0.0.1"
 
 
 def modo_hospedado() -> bool:

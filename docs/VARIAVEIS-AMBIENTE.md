@@ -19,7 +19,8 @@ npm run build
 ```
 
 No Docker/Railway o mesmo valor entra como `ARG`/`ENV` **durante o build** da
-imagem (veja `docs/HOSPEDAGEM.md`).
+imagem (`Dockerfile`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
+`VITE_FAIXA_RASCUNHO`). O processo escuta `$PORT` (`python -m newport_app.hosted_start`).
 
 ## Backend (API)
 
