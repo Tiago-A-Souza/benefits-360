@@ -52,6 +52,8 @@ class LinhaConsultaRede(BaseModel):
     # Texto da coluna `rede_verticalizada` do CSV («Hapvida», «Kora»…); vazio se não é.
     rede_verticalizada: str = ""
     celulas: dict[str, str] = Field(default_factory=dict)
+    # Marca agrupada: municípios das unidades no recorte. Vazio nas linhas de hospital.
+    municipios: list[str] = Field(default_factory=list)
 
 
 class BlocoConsultaRede(BaseModel):
@@ -74,3 +76,5 @@ class ConsultaRedeResponse(BaseModel):
     aviso: str | None = None
     sem_cobertura: bool = False
     data_base_rede: str = ""
+    aviso_porto: str | None = None
+    contagem_por_coluna: dict[str, int] = Field(default_factory=dict)
