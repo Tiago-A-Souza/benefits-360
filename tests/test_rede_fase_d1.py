@@ -429,8 +429,9 @@ def test_18_cabecalho_repetido_por_bloco_municipio():
     html = render_corpo_rede(doc)
     n_blocos = sum(len(p.blocos) for s in doc.secoes for p in s.paginas)
     n_tabelas = sum(len(s.paginas) for s in doc.secoes)
+    n_labs = html.count("tabela-labs")
     assert html.count("rede-cab-repetido") == n_blocos - n_tabelas
-    assert html.count("class='bloco-rede'") == n_blocos
+    assert html.count("class='bloco-rede'") == n_blocos + n_labs
     idx = html.find("bloco-rede")
     assert idx >= 0
     trecho = html[idx : idx + 600]

@@ -5,10 +5,10 @@ Arquivo: `SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx` (versionado 
 
 ## Abas usadas
 
-| Aba | Fase C |
+| Aba | Uso |
 |---|---|
 | `Matriz_Hospital` | **Sim** — 1.071 prestadores, 51 municípios |
-| `Matriz_Laboratorio` | Não (fase posterior) |
+| `Matriz_Laboratorio` | **Sim** — bloco Labs da etapa 5 / HTML (marcas em `laboratorios_principais_base.csv`) |
 | `Resumo` | Metadados de referência |
 
 Cabeçalho em **quatro linhas** nas colunas de plano; cinco colunas fixas: Prestador,
@@ -28,3 +28,4 @@ Variável opcional: `NEWPORT_REDE_XLSX` aponta para outro caminho (CI local).
 3. `rede_recorte.py` — **critério geográfico** (`CRITERIO_RECORTE_GEOGRAFICO`)
 4. `hospitais_principais.py` — marcação principal
 5. `rede_visao.py` — junção com `planos_rede_aliases.csv` (fase A)
+6. `rede_matriz_laboratorio.py` + `laboratorios_principais.py` + `rede_labs.py` — bloco Labs (✓ por marca)
