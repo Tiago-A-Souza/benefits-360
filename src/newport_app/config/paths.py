@@ -50,6 +50,11 @@ def arquivo_docs(nome: str) -> Path:
     return diretorio_docs() / nome
 
 
+def diretorio_web_dist() -> Path:
+    """Front compilado (`web/dist`). No host a API serve esta pasta."""
+    return _env_path("NEWPORT_WEB_DIST") or (ROOT / "web" / "dist")
+
+
 def caminho_banco_estudos(modo: ModoExecucao | None = None) -> Path:
     if (modo or modo_execucao()) == ModoExecucao.REAL:
         return diretorio_runtime_privado() / "estudos.db"
