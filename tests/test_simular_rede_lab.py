@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import sqlite3
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
+from newport_app.api.main import create_app
 from newport_app.presentation.rede_consulta import ConsultaRedeInvalida, LIMITE_SEM_FILTRO_GEOGRAFICO
+from newport_app.repository.sqlite import SQLiteStudyRepository
 from newport_app.presentation.rede_consulta_lab import (
     AVISO_PORTO_MEDSERVICE,
     MARCA_COBERTURA,
@@ -47,8 +52,38 @@ def _cache_lab():
     yield
 
 
+@pytest.fixture
+def db_path(tmp_path: Path) -> Path:
+    return tmp_path / "simular-lab.db"
+
+
+@pytest.fixture
+def client(db_path: Path) -> TestClient:
+    return TestClient(create_app(repo=SQLiteStudyRepository(db_path), seed_demos=False))
+
+
 def _linhas(resp) -> list:
     return [ln for b in resp.blocos for ln in b.linhas]
+
+
+def _linhas_json(resp: dict) -> list[dict]:
+    return [ln for b in resp["blocos"] for ln in b["linhas"]]
+
+
+def _hash_banco(db_path: Path) -> str:
+    return hashlib.sha256(db_path.read_bytes()).hexdigest()
+
+
+def _linhas_por_tabela(db_path: Path) -> dict[str, int]:
+    with sqlite3.connect(db_path) as con:
+        tabelas = [
+            r[0]
+            for r in con.execute(
+                "select name from sqlite_master where type='table' "
+                "and name not like 'sqlite_%'"
+            )
+        ]
+        return {t: con.execute(f"select count(*) from {t}").fetchone()[0] for t in tabelas}
 
 
 def _celulas(resp) -> list[str]:
@@ -196,3 +231,119 @@ def test_12_consulta_nao_grava_e_nao_depende_de_estudo(tmp_path: Path):
         opcoes_simulacao_laboratorio().operadoras[0].planos[0].chave, uf="RJ"
     )
     assert not alvo.exists()
+
+
+# --- Rotas HTTP (somente leitura, demo sem auth) ----------------------------
+
+
+def test_api_01_opcoes_laboratorio(client: TestClient):
+    r = client.get("/api/simular-rede/laboratorios/opcoes")
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["total_prestadores"] >= 2600
+    assert corpo["total_principais"] == 10
+    sp = next(u for u in corpo["ufs"] if u["uf"] == "SP")
+    assert "SP.FRANCISCO MORATO" in {m["chave"] for m in sp["municipios"]}
+    assert all(m["zonas"] == [] for u in corpo["ufs"] for m in u["municipios"])
+
+
+def test_api_02_por_laboratorio_sp_capital(client: TestClient):
+    r = client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio",
+        params={"uf": "SP", "municipio": "SP.SAO PAULO"},
+    )
+    assert r.status_code == 200
+    corpo = r.json()
+    nomes = {ln["prestador"] for ln in _linhas_json(corpo)}
+    assert nomes == MARCAS_SP_CAPITAL
+    assert corpo["contagem_por_coluna"]
+    assert corpo["aviso_porto"] is None
+    valores = {v for ln in _linhas_json(corpo) for v in ln["celulas"].values()}
+    assert valores <= {MARCA_COBERTURA}
+
+
+def test_api_03_busca_varios_termos_e_operadora(client: TestClient):
+    r = client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio",
+        params=[
+            ("q", "Delbôni"),
+            ("q", "Lavoisier"),
+            ("uf", "SP"),
+            ("municipio", "SP.SAO PAULO"),
+            ("operadoras", "Amil"),
+        ],
+    ).json()
+    assert {ln["prestador"] for ln in _linhas_json(r)} == {"Delboni", "Lavoisier"}
+    assert r["colunas"] and all(c["operadora"] == "Amil" for c in r["colunas"])
+
+
+def test_api_04_por_plano_rio(client: TestClient):
+    op = client.get("/api/simular-rede/laboratorios/opcoes").json()
+    plano = next(
+        pl["chave"] for o in op["operadoras"] if o["nome"] == "Amil" for pl in o["planos"]
+    )
+    r = client.get(
+        "/api/simular-rede/laboratorios/por-plano",
+        params={"plano": plano, "uf": "RJ", "municipio": "RJ.RIO DE JANEIRO"},
+    )
+    assert r.status_code == 200
+    corpo = r.json()
+    nomes = {ln["prestador"] for ln in _linhas_json(corpo)}
+    assert nomes and nomes <= MARCAS_RIO
+    assert [c["chave"] for c in corpo["colunas"]] == [plano]
+
+
+def test_api_05_ver_todos_trava_100_e_confirma(client: TestClient):
+    r = client.get("/api/simular-rede/laboratorios/por-laboratorio", params={"todos": True})
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["requer_confirmacao"] is True
+    assert corpo["total_linhas"] == 0
+    ok = client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio",
+        params={"todos": True, "confirmar": True},
+    ).json()
+    assert ok["requer_confirmacao"] is False
+    assert ok["total_linhas"] > LIMITE_SEM_FILTRO_GEOGRAFICO
+
+
+def test_api_06_aviso_porto_e_plano_inexistente(client: TestClient):
+    r = client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio",
+        params={"uf": "BA", "municipio": "BA.SALVADOR", "operadoras": "Porto Seguro"},
+    ).json()
+    assert r["aviso_porto"] == AVISO_PORTO_MEDSERVICE
+    bad = client.get("/api/simular-rede/laboratorios/por-plano", params={"plano": "999999"})
+    assert bad.status_code == 422
+
+
+def test_api_07_nada_e_gravado(client: TestClient, db_path: Path):
+    client.get("/api/estudos")
+    antes = _hash_banco(db_path)
+    contagem = _linhas_por_tabela(db_path)
+    client.get("/api/simular-rede/laboratorios/opcoes")
+    client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio",
+        params={"uf": "SP", "municipio": "SP.SAO PAULO"},
+    )
+    plano = client.get("/api/simular-rede/laboratorios/opcoes").json()["operadoras"][0][
+        "planos"
+    ][0]
+    client.get(
+        "/api/simular-rede/laboratorios/por-plano",
+        params={"plano": plano["chave"], "uf": "RJ"},
+    )
+    assert client.get("/api/estudos").json() == []
+    assert _linhas_por_tabela(db_path) == contagem
+    assert _hash_banco(db_path) == antes
+
+
+def test_api_08_rotas_de_hospital_seguem_iguais(client: TestClient):
+    hosp = client.get("/api/simular-rede/opcoes").json()
+    lab = client.get("/api/simular-rede/laboratorios/opcoes").json()
+    sp_h = next(u for u in hosp["ufs"] if u["uf"] == "SP")
+    sp_l = next(u for u in lab["ufs"] if u["uf"] == "SP")
+    assert any(m["zonas"] for m in sp_h["municipios"])
+    assert all(m["zonas"] == [] for m in sp_l["municipios"])
+    assert "SP.FRANCISCO MORATO" not in {m["chave"] for m in sp_h["municipios"]}
+    assert "SP.FRANCISCO MORATO" in {m["chave"] for m in sp_l["municipios"]}
