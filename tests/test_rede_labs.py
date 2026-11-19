@@ -22,7 +22,9 @@ from newport_app.presentation.rede_matriz_laboratorio import (
     carregar_base_rede_laboratorio,
     limpar_cache_base_rede_laboratorio,
 )
-from newport_app.presentation.rede_labs import recortar_laboratorios
+from newport_app.presentation.planos_rede import carregar_aliases_rede
+from newport_app.presentation.rede_labs import casar_planos_laboratorio, recortar_laboratorios
+from newport_app.presentation.rede_visao import EstadoMapeamentoPlanoRede
 from newport_app.presentation.rede_recorte import (
     municipios_permitidos,
     parse_municipio_base,
@@ -213,6 +215,25 @@ def test_p2_recorte_atibaia_inclui_capital(base_lab):
     assert mun == frozenset({"SP.ATIBAIA", "SP.SAO PAULO"})
     assert {p.chave_municipio for p in labs} == mun
     assert len(labs) == 208
+
+
+def test_p3_casamento_igual_ao_hospital(base_lab, base_hospital):
+    tabela = carregar_aliases_rede(colunas_rede=base_lab.colunas)
+    from tests.test_correcao_resumo_regime import _rascunho_anistia_seis
+
+    rasc = _rascunho_anistia_seis()
+    pares = [(sg.operadora, sg.plano_nome) for sg in rasc.subgrupos_atuais]
+    pares += [(op.operadora, op.plano_nome) for op in rasc.opcoes_proposta]
+    lab = casar_planos_laboratorio(pares, base_lab.colunas, tabela)
+    hosp = casar_planos_laboratorio(pares, base_hospital.colunas, tabela)
+    assert [(c.operadora, c.plano_nome, c.estado, c.col_idx) for c in lab] == [
+        (c.operadora, c.plano_nome, c.estado, c.col_idx) for c in hosp
+    ]
+    fake = casar_planos_laboratorio(
+        [("Amil", "plano que nao existe xyz")], base_lab.colunas, tabela
+    )
+    assert fake[0].estado == EstadoMapeamentoPlanoRede.REDE_NAO_MAPEADA
+    assert fake[0].col_idx is None
 
 
 def test_p2_recorte_niteroi_so_capital(base_lab):
