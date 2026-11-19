@@ -2,6 +2,13 @@
    Sem identidade nova. Não há <Botao>/<Campo> compartilhado; estas classes
    espelham button / .secundario / .btn-compacto / input[type=text] / .cmp-seg. */
 
+.nativa-shell h1,
+.nativa-shell h2,
+.nativa-shell .nativa-operadora-nome,
+.nativa-shell .nativa-rotulo {
+  font-family: var(--font);
+}
+
 .nativa-shell .campo,
 .nativa-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="range"]),
 .nativa-shell select,

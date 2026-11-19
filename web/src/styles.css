@@ -145,7 +145,10 @@ header h1 {
 
 .cartao h2 {
   margin-top: 0;
+  font-family: var(--font);
   font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
 }
 
 label {

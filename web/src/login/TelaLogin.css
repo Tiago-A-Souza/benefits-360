@@ -215,10 +215,11 @@
 
 .tela-login-cartao h2 {
   margin: 0;
-  font-family: Fraunces, var(--font-system);
-  font-weight: 600;
-  font-size: 28px;
-  line-height: 1.15;
+  font-family: Inter, var(--font);
+  font-weight: 650;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: #0b1d33;
 }
 
