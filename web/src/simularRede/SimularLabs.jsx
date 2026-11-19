@@ -17,7 +17,7 @@ function textoMunicipios(lista) {
   return (lista || []).join(", ");
 }
 
-function TabelaLabs({ resp }) {
+export function TabelaLabs({ resp }) {
   const colunas = resp.colunas;
   const grupos = gruposDeOperadora(colunas);
   const largura = 1 + colunas.length;
