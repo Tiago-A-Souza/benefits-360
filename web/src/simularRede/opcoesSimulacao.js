@@ -50,3 +50,23 @@ export function textoContagem(resp) {
   }
   return base;
 }
+
+export function textoContagemLabs(resp) {
+  if (!resp) return "";
+  const n = resp.total_linhas;
+  const unidade = resp.mostrando_todos
+    ? n === 1
+      ? "laboratório"
+      : "laboratórios"
+    : n === 1
+      ? "marca"
+      : "marcas";
+  let s = `${n} ${unidade}`;
+  if (resp.total_encontrado > 0 && resp.total_encontrado !== n) {
+    s += ` · ${resp.total_encontrado} encontrado(s)`;
+  }
+  if (resp.ocultos_nao_principais > 0 && !resp.mostrando_todos) {
+    s += ` · ${resp.ocultos_nao_principais} não curada(s) oculta(s)`;
+  }
+  return s;
+}
