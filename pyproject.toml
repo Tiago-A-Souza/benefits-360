@@ -20,7 +20,9 @@ app = [
     "python-multipart>=0.0.9",
     "pdfplumber>=0.11",
     "pymupdf>=1.24",
-    "pypdf>=4.0",
+    "pypdf>=6.21.4",
+    "pillow>=13.0.0",
+    "certifi>=2026.10.18",
     "PyJWT[crypto]>=2.8",
 ]
 dev = [
