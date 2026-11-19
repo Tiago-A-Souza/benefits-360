@@ -40,6 +40,8 @@ imagem (`Dockerfile`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
 | `NEWPORT_REDE_XLSX` | planilha SiscorNet | `docs/SiscorNet_….xlsx` |
 | `NEWPORT_CORS_ORIGENS` | origens extras (vírgula) | só Vite `5173`/`5174` |
 | `NEWPORT_UPLOAD_MAX_BYTES` | limite de upload | 10 MiB |
+| `NEWPORT_BACKUP_DIR` | pasta dos backups diários | `<dados>/backups` |
+| `NEWPORT_BACKUP_RETENCAO_DIAS` | quantos dias guardar | 14 |
 
 Com `NEWPORT_HOSTED=1` o backend **recusa**:
 

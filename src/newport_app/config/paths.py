@@ -97,6 +97,11 @@ def diretorio_dados(modo: ModoExecucao | None = None) -> Path:
     return diretorio_dados_demo()
 
 
+def diretorio_backup(modo: ModoExecucao | None = None) -> Path:
+    """Pastas diárias de backup. Padrão: `<dados>/backups`."""
+    return _env_path("NEWPORT_BACKUP_DIR") or (diretorio_dados(modo) / "backups")
+
+
 def caminho_diagnostico_jsonl(modo: ModoExecucao | None = None) -> Path:
     return diretorio_dados(modo) / "diagnostico.jsonl"
 
