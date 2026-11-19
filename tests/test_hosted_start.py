@@ -44,3 +44,18 @@ def test_dockerfile_saude_e_port():
     assert "/api/saude" in texto
     assert "newport_app.hosted_start" in texto
     assert "HEALTHCHECK" in texto
+
+
+def test_guia_hospedagem_existe():
+    texto = Path("docs/HOSPEDAGEM.md").read_text(encoding="utf-8")
+    for trecho in (
+        "Railway",
+        "/data",
+        "NEWPORT_HOSTED",
+        "VITE_SUPABASE_ANON_KEY",
+        "service_role",
+        "python -m newport_app.backup",
+        "Rollback",
+        "acesso à rede local",
+    ):
+        assert trecho in texto, trecho
