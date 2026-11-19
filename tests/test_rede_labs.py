@@ -22,6 +22,7 @@ from newport_app.presentation.rede_matriz_laboratorio import (
     carregar_base_rede_laboratorio,
     limpar_cache_base_rede_laboratorio,
 )
+from newport_app.presentation.rede_labs import recortar_laboratorios
 from newport_app.presentation.rede_recorte import (
     municipios_permitidos,
     parse_municipio_base,
@@ -198,6 +199,26 @@ def test_p1_csv_malformado_cita_linha(tmp_path):
     bad.write_text("marca;padroes_nome;ufs;ativo\nDelboni\n", encoding="utf-8-sig")
     with pytest.raises(BaseLaboratoriosPrincipaisInvalida, match="registro 2"):
         carregar_laboratorios_principais(bad)
+
+
+def test_p2_recorte_sao_paulo_com_acento(base_lab):
+    mun, labs = recortar_laboratorios(base_lab, {("SP", "São Paulo")})
+    assert "SP.SAO PAULO" in mun
+    assert len(labs) == 199
+    assert all(p.chave_municipio == "SP.SAO PAULO" for p in labs)
+
+
+def test_p2_recorte_atibaia_inclui_capital(base_lab):
+    mun, labs = recortar_laboratorios(base_lab, {("SP", "Atibaia")})
+    assert mun == frozenset({"SP.ATIBAIA", "SP.SAO PAULO"})
+    assert {p.chave_municipio for p in labs} == mun
+    assert len(labs) == 208
+
+
+def test_p2_recorte_niteroi_so_capital(base_lab):
+    mun, labs = recortar_laboratorios(base_lab, {("RJ", "Niterói")})
+    assert mun == frozenset({"RJ.RIO DE JANEIRO"})
+    assert len(labs) == 178
 
 
 def test_p1_lamina_fora_do_rj_nao_casa(base_lab):
