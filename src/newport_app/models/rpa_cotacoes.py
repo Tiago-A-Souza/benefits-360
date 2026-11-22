@@ -15,3 +15,7 @@ class RpaCotacoesEstadoResponse(BaseModel):
     estado: dict[str, Any] | None = Field(
         default=None, description="Corpo de /api/estado do RPA, quando ligado"
     )
+    hospedado: bool = Field(
+        default=False, description="True quando NEWPORT_HOSTED=1: iframe inútil"
+    )
+    aviso: str | None = Field(default=None, description="Mensagem para o corretor")

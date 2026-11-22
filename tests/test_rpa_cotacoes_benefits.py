@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from newport_app.api.main import create_app
+from newport_app.services.rpa_cotacoes import AVISO_IFRAME_HOSPEDADO
 
 
 @pytest.fixture
@@ -43,3 +44,18 @@ def test_rpa_cotacoes_estado_desligado_traz_comando(client: TestClient):
     body = r.json()
     assert body["ligado"] is False
     assert "subir-benefits-e-rpa" in body["comando_subir"]
+
+
+def test_rpa_cotacoes_estado_hospedado_nao_consulta_localhost(client: TestClient, monkeypatch):
+    monkeypatch.setenv("NEWPORT_HOSTED", "1")
+    with patch(
+        "newport_app.services.rpa_cotacoes.urllib.request.urlopen",
+        side_effect=AssertionError("não deve consultar o robô no servidor"),
+    ):
+        r = client.get("/api/rpa-cotacoes/estado")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ligado"] is False
+    assert body["hospedado"] is True
+    assert AVISO_IFRAME_HOSPEDADO in body["aviso"]
+    assert body.get("comando_subir") is None

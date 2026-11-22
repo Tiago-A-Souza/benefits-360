@@ -1100,7 +1100,10 @@ def create_app(
 
     @app.get("/api/rpa-cotacoes/estado", response_model=RpaCotacoesEstadoResponse)
     def rpa_cotacoes_estado() -> RpaCotacoesEstadoResponse:
-        """O Benefits pergunta ao RPA local (urllib, sem CORS); não troca dados de estudo."""
+        """O Benefits pergunta ao RPA local (urllib, sem CORS); não troca dados de estudo.
+
+        Em NEWPORT_HOSTED=1 não consulta localhost do servidor: o robô está no PC do corretor.
+        """
         return RpaCotacoesEstadoResponse(**rpa_cotacoes_svc.consultar_estado_tela_rpa())
 
     @app.get(
