@@ -89,6 +89,25 @@ Só alterar a variável no painel **não** atualiza a tela.
 3. Copie a URL `https://...` e coloque em `NEWPORT_CORS_ORIGENS`.
 4. A mesma URL vai no robô de cada corretor (`NEWPORT_RPA_ORIGENS` — §8).
 
+### 4.1. Supabase — Site URL e Redirect URLs
+
+O login só volta para o site se o Supabase conhecer o endereço da Railway.
+
+1. Abra o painel do **Supabase** (projeto Benefits) → **Authentication** →
+   **URL Configuration**.
+2. **Site URL:** a URL HTTPS do Railway, exatamente como no domínio
+   (ex.: `https://SEU-DOMINIO.up.railway.app`). Sem barra no final.
+3. **Redirect URLs:** inclua a **mesma** URL. Se o login usar callback
+   (`/auth/callback` ou similar), acrescente também
+   `https://SEU-DOMINIO.up.railway.app/**` ou o caminho específico.
+   Pode manter `http://127.0.0.1:5173` / `http://127.0.0.1:8080` só para
+   teste local — **não** deixe URL de desenvolvimento como Site URL do
+   piloto.
+4. Salve. Sem isso o corretor entra no Supabase e **não volta** para o
+   Benefits no ar.
+
+Isso é no painel do Supabase, não nas variáveis da Railway.
+
 ---
 
 ## 5. Build e primeiro deploy
@@ -167,6 +186,10 @@ Se a conta Railway for apagada, o volume some junto.
 
    `python -m newport_app.backup restaurar 2026-11-19`
 
+   A pasta do backup usa a **data UTC** (não o relógio de Brasília). Depois
+   das 21h no Brasil, o “hoje” local ainda pode ser o dia **anterior** em
+   UTC — confira o nome da pasta em `/data/backups`.
+
 3. Suba o site. Confira um estudo que vocês conheçam.
 
 A restauração **já foi testada** em máquina local (os testes automatizados
@@ -218,7 +241,9 @@ continua até você apagá-lo.
 - [ ] `/api/saude` responde ao abrir `https://SEU-DOMINIO/api/saude`
 - [ ] Login cria sessão e “Meus estudos” abre
 - [ ] Cron de backup ligado
-- [ ] URL do site passada para o robô de cada PC
+- [ ] URL do site passada para o robô de cada PC (`NEWPORT_RPA_ORIGENS`)
+- [ ] Supabase: **Site URL** e **Redirect URLs** = endereço HTTPS da Railway
+      (Authentication → URL Configuration)
 - [ ] Aviso ao corretor sobre “acesso à rede local” no Chrome/Edge
 
 Mais detalhe de variáveis: `docs/VARIAVEIS-AMBIENTE.md`.  
