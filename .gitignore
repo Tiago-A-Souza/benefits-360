@@ -97,6 +97,9 @@ web/.env.local
 web/node_modules/
 web/dist/
 calcular_response.json
+*.db
+*.sqlite
+*.sqlite3
 
 # ---------------------------------------------------------------------------
 # RPA Cotações (rpa/) — dados de cliente, sessão, banco e logs. NUNCA versionar.
