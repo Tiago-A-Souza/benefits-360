@@ -208,14 +208,11 @@ apagaram os arquivos e o backup devolveu o conteúdo).
 O site na nuvem **não** emite cotação no portal. O robô continua em
 `http://127.0.0.1:8600` no Windows do corretor.
 
-1. O corretor deixa o robô ligado (janela preta / `python -m app`).
-2. No PC dele, antes de subir o robô:
-
-   `$env:NEWPORT_RPA_ORIGENS="https://SEU-DOMINIO.up.railway.app"`
-
-   Ou acrescente essa URL em `origens_permitidas` no `config.yaml` **local**
-   (não coloque domínio de produção no Git).
-3. No **Chrome ou Edge**, a primeira vez que o site HTTPS falar com o
+1. O corretor deixa o robô ligado (`python -m app --sem-navegador` na pasta
+   `rpa/`). O `config.yaml` do robô já aceita
+   `https://benefits-360-production.up.railway.app`. Outro domínio: variável
+   `NEWPORT_RPA_ORIGENS` (vírgula; `https://` sem barra no final).
+2. No **Chrome ou Edge**, a primeira vez que o site HTTPS falar com o
    localhost, o navegador pede **acesso à rede local**. O corretor deve
    **Permitir**. Sem isso a Cotações nativa não enxerga o robô.
 

@@ -14,7 +14,7 @@ import zipfile
 import time
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -725,6 +725,8 @@ class Tela:
         cfg = self.config_total()
         anc = _origens_frame_ancestors(cfg)
         cors = _origens_permitidas(cfg)
+        if cors:
+            print("Origens que podem chamar o robô: " + ", ".join(cors), flush=True)
         return Starlette(
             routes=rotas,
             middleware=[Middleware(
@@ -737,28 +739,58 @@ class Tela:
         )
 
 
+ORIGEM_HOSPEDADA_PADRAO = "https://benefits-360-production.up.railway.app"
+
+
+def _avisar_origem(msg: str) -> None:
+    print(f"[newport-rpa] {msg}", file=sys.stderr, flush=True)
+
+
+def _normalizar_origem(bruto: str) -> str | None:
+    """https://dominio sem barra no final. Origem mal formada é ignorada (com aviso no log)."""
+    raw = str(bruto or "").strip()
+    if not raw:
+        return None
+    if raw.endswith("/"):
+        _avisar_origem(f"origem mal formada (barra no final; use sem barra): {raw!r}")
+        raw = raw.rstrip("/")
+    parsed = urlparse(raw)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        _avisar_origem(
+            f"origem ignorada (use https://dominio sem barra no final): {bruto!r}"
+        )
+        return None
+    if (parsed.path and parsed.path != "/") or parsed.query or parsed.fragment:
+        _avisar_origem(f"origem ignorada (não use caminho nem query): {bruto!r}")
+        return None
+    host = (parsed.hostname or "").lower()
+    loopback = host in {"localhost", "127.0.0.1", "::1"}
+    if parsed.scheme == "http" and not loopback:
+        _avisar_origem(f"origem HTTP fora do PC; prefira https://: {raw!r}")
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _acumular_origens(brutos) -> list[str]:
+    saida: list[str] = []
+    for item in brutos or []:
+        s = _normalizar_origem(item)
+        if s and s not in saida:
+            saida.append(s)
+    return saida
+
+
 def _lista_origens_cfg(cfg: dict, chave: str) -> list[str]:
     """Lê lista de origens do bloco tela.* (sem domínio fixo no código)."""
     brutos = (cfg.get("tela") or {}).get(chave) or []
     if not isinstance(brutos, list):
         return []
-    saida: list[str] = []
-    for item in brutos:
-        s = str(item).strip().rstrip("/")
-        if s and s not in saida:
-            saida.append(s)
-    return saida
+    return _acumular_origens(brutos)
 
 
 def _origens_extra_ambiente() -> list[str]:
-    """Domínio HTTPS hospedado (NEWPORT_RPA_ORIGENS, vírgula). Só CORS/iframe."""
+    """Origens extras (NEWPORT_RPA_ORIGENS, vírgula). Só CORS/iframe."""
     bruto = os.environ.get("NEWPORT_RPA_ORIGENS") or os.environ.get("BENEFITS_ORIGENS") or ""
-    saida: list[str] = []
-    for item in bruto.split(","):
-        s = item.strip().rstrip("/")
-        if s and s not in saida:
-            saida.append(s)
-    return saida
+    return _acumular_origens(bruto.split(","))
 
 
 def _origens_frame_ancestors(cfg: dict) -> list[str]:
