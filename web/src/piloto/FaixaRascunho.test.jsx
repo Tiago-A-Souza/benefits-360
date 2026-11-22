@@ -1,8 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import FaixaRascunho from "./FaixaRascunho.jsx";
-import { faixaRascunhoLigada } from "./faixaRascunho.js";
+import FaixaRascunho, { faixaRascunhoLigada } from "./FaixaRascunho.jsx";
 
 globalThis.React = React;
 
