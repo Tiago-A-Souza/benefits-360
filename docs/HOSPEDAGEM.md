@@ -70,6 +70,11 @@ Cole no painel **Variables** do serviço. Sem aspas. Sem commit no Git.
 | `BENEFITS_DONO_LEGADO_ID` | UUID do usuário dono dos estudos antigos | só se forem copiar dados que existiam antes do login |
 | `NEWPORT_CORS_ORIGENS` | `https://SEU-DOMINIO.up.railway.app` | depois que o domínio existir (veja §4) |
 
+**Obrigatórias no painel (o processo recusa subir sem elas):**
+`NEWPORT_HOSTED=1` **e** `NEWPORT_MODO=real`. Sem o modo real a mensagem é
+`hospedagem exige NEWPORT_MODO=real`. Sem `SUPABASE_URL` (também obrigatória
+no modo real) o backend não sobe — o login não existe.
+
 A Railway preenche `PORT` sozinha. Não invente porta.
 
 **Proibido:** `SUPABASE_SERVICE_ROLE`, `service_role`, senhas de portal,
@@ -117,6 +122,7 @@ Isso é no painel do Supabase, não nas variáveis da Railway.
    o Python. Demora alguns minutos.
 3. Healthcheck: o Railway chama `/api/saude`. Se o serviço não subir, leia
    os **logs**. Mensagens típicas:
+   - `hospedagem exige NEWPORT_MODO=real`
    - `NEWPORT_MODO=real e SUPABASE_URL não está definida`
    - `NEWPORT_HOSTED=1 exige NEWPORT_VOLUME_DIR`
    - `NEWPORT_HOSTED=1 não permite NEWPORT_MODO=demo`
