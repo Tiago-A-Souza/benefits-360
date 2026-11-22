@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import NavegacaoFerramentas from "../../NavegacaoFerramentas";
-import { chamarRpa, ouvirEventosRpa, urlBaseRpa } from "../rpaClient";
+import { chamarRpa, ouvirEventosRpa, resumoVersaoRobo, urlBaseRpa } from "../rpaClient";
 import Ajuda from "./Ajuda";
 import Andamento from "./Andamento";
 import AjustesRobos from "./AjustesRobos";
@@ -70,6 +70,7 @@ export default function CotacoesNativa({
   const [reloadLista, setReloadLista] = useState(0);
   const [simulador, setSimulador] = useState(false);
   const [retencaoDias, setRetencaoDias] = useState(90);
+  const [versaoRobo, setVersaoRobo] = useState(null);
   const urlRobo = urlBaseRpa();
   const [confirmar, modal] = useConfirmacao();
   const sujoRef = useRef(() => "");
@@ -151,6 +152,7 @@ export default function CotacoesNativa({
         setOperadoras(d);
         setIndisponiveis((estado && estado.operadoras_indisponiveis) || []);
         setSimulador(!!(estado && estado.simulador));
+        setVersaoRobo(resumoVersaoRobo(estado));
         if (estado && estado.retencao_dias) setRetencaoDias(estado.retencao_dias);
         const cx = {};
         for (const o of d || []) cx[o.id] = o.conexao || "desconectado";
@@ -285,6 +287,17 @@ export default function CotacoesNativa({
           {TELAS_ROBO_NAO_PORTADAS.length ? (
             <p className="muted nativa-flag-hint">
               Telas ainda não portadas abrem o robô local em outra aba.
+            </p>
+          ) : null}
+          {versaoRobo ? (
+            <p
+              className={
+                versaoRobo.antigo
+                  ? "muted nativa-versao-robo nativa-versao-robo--aviso"
+                  : "muted nativa-versao-robo"
+              }
+            >
+              {versaoRobo.texto}
             </p>
           ) : null}
         </nav>

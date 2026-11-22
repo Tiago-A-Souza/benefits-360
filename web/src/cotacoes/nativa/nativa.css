@@ -33,6 +33,17 @@
   line-height: 1.35;
 }
 
+.nativa-versao-robo {
+  font-size: 0.72rem;
+  padding: 0.35rem 0.75rem 0.85rem;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.nativa-versao-robo--aviso {
+  color: var(--amber);
+}
+
 .nativa-subnav {
   margin-top: 1rem;
 }
