@@ -1,4 +1,4 @@
-"""Caminhos de dados — demos vs runtime privado."""
+"""Caminhos de dados — demos vs runtime privado vs volume hospedado."""
 
 from __future__ import annotations
 
@@ -9,13 +9,50 @@ from newport_app.config.runtime import ModoExecucao, modo_execucao
 
 ROOT = Path(__file__).resolve().parents[3]
 
+_XLSX_REDE = "SiscorNet_Comparativo_Nacional_Hospital_Laboratorio.xlsx"
+
+
+def _env_path(nome: str) -> Path | None:
+    bruto = (os.environ.get(nome) or "").strip()
+    if not bruto:
+        return None
+    return Path(bruto)
+
+
+def diretorio_docs() -> Path:
+    """Catálogos (CSV/xlsx de rede, regras, PME). Padrão: `<repo>/docs`."""
+    return _env_path("NEWPORT_DOCS_DIR") or (ROOT / "docs")
+
+
+def diretorio_volume() -> Path | None:
+    """Volume persistente do host (`NEWPORT_VOLUME_DIR`)."""
+    return _env_path("NEWPORT_VOLUME_DIR")
+
 
 def diretorio_dados_demo() -> Path:
-    return Path(os.environ.get("NEWPORT_DATA_DIR", ROOT / ".data"))
+    return _env_path("NEWPORT_DATA_DIR") or (ROOT / ".data")
 
 
 def diretorio_runtime_privado() -> Path:
-    return Path(os.environ.get("NEWPORT_PRIVATE_RUNTIME", ROOT / ".private" / "runtime"))
+    """Bancos/PDFs/HTML no modo real. Volume, se houver; senão `.private/runtime`."""
+    return (
+        _env_path("NEWPORT_PRIVATE_RUNTIME")
+        or diretorio_volume()
+        or (ROOT / ".private" / "runtime")
+    )
+
+
+def caminho_xlsx_rede_padrao() -> Path:
+    return diretorio_docs() / _XLSX_REDE
+
+
+def arquivo_docs(nome: str) -> Path:
+    return diretorio_docs() / nome
+
+
+def diretorio_web_dist() -> Path:
+    """Front compilado (`web/dist`). No host a API serve esta pasta."""
+    return _env_path("NEWPORT_WEB_DIST") or (ROOT / "web" / "dist")
 
 
 def caminho_banco_estudos(modo: ModoExecucao | None = None) -> Path:
@@ -58,6 +95,11 @@ def diretorio_dados(modo: ModoExecucao | None = None) -> Path:
     if (modo or modo_execucao()) == ModoExecucao.REAL:
         return diretorio_runtime_privado()
     return diretorio_dados_demo()
+
+
+def diretorio_backup(modo: ModoExecucao | None = None) -> Path:
+    """Pastas diárias de backup. Padrão: `<dados>/backups`."""
+    return _env_path("NEWPORT_BACKUP_DIR") or (diretorio_dados(modo) / "backups")
 
 
 def caminho_diagnostico_jsonl(modo: ModoExecucao | None = None) -> Path:

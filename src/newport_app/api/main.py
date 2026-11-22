@@ -8,14 +8,20 @@ from typing import Literal
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from newport_app.api.middleware import ModoRealLocalMiddleware
+from newport_app.api.middleware import (
+    CabecalhosSegurancaMiddleware,
+    LimiteUploadMiddleware,
+    ModoRealLocalMiddleware,
+)
 from newport_app.auth.jwt_supabase import ValidadorJwtSupabase, configurar_validador
 from newport_app.auth.middleware import AuthSupabaseMiddleware
 from newport_app.auth.startup import exigir_auth_configurada
 from newport_app.config.env import carregar_env_local
+from newport_app.config.logs import instalar_filtro_logs
 from newport_app.api.validation_handlers import resposta_validacao_sanitizada
 from newport_app.config.paths import (
     caminho_banco_cotacoes,
@@ -24,6 +30,7 @@ from newport_app.config.paths import (
     diretorio_entregaveis,
     diretorio_uploads,
     diretorio_uploads_cotacao,
+    diretorio_web_dist,
     garantir_diretorios,
 )
 from newport_app.config.runtime import (
@@ -32,6 +39,7 @@ from newport_app.config.runtime import (
     ModoExecucaoInvalidoError,
     exigir_host_local_modo_real,
     modo_execucao,
+    origens_cors,
 )
 from newport_app.draft_compiler.structural import RascunhoEstruturalInvalidoError
 from newport_app.models.draft import PriceBasisRascunho, RascunhoEstudo
@@ -178,7 +186,6 @@ from newport_app.siscor_mapper.apply import rascunho_vazio
 API_VERSAO = "2.8.2"
 
 ROOT = Path(__file__).resolve().parents[3]
-WEB_DIST = ROOT / "web" / "dist"
 
 
 def _criar_repo() -> SQLiteStudyRepository:
@@ -247,6 +254,7 @@ def create_app(
     seed_demos: bool | None = None,
 ) -> FastAPI:
     carregar_env_local()
+    instalar_filtro_logs()
     exigir_auth_configurada()
     if modo_execucao() != ModoExecucao.DEMO:
         import os
@@ -317,16 +325,13 @@ def create_app(
     app.add_middleware(AuthSupabaseMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:5174",
-        ],
+        allow_origins=origens_cors(),
         allow_methods=["*"],
         allow_headers=["*"],
     )
     app.add_middleware(ModoRealLocalMiddleware)
+    app.add_middleware(LimiteUploadMiddleware)
+    app.add_middleware(CabecalhosSegurancaMiddleware)
 
     @app.get("/api/saude")
     def saude() -> dict[str, bool]:
@@ -1521,8 +1526,27 @@ def create_app(
             raise HTTPException(status_code=404, detail="Estudo não encontrado") from None
         return historico.listar_posicoes(estudo_id)
 
-    if WEB_DIST.is_dir():
-        app.mount("/", StaticFiles(directory=str(WEB_DIST), html=True), name="static")
+    dist = diretorio_web_dist()
+    if dist.is_dir():
+        assets = dist / "assets"
+        if assets.is_dir():
+            app.mount("/assets", StaticFiles(directory=str(assets)), name="front-assets")
+
+        @app.get("/{caminho:path}", include_in_schema=False)
+        def spa_front(caminho: str):
+            if caminho == "api" or caminho.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Não encontrado")
+            alvo = dist / caminho
+            try:
+                alvo.resolve().relative_to(dist.resolve())
+            except ValueError:
+                raise HTTPException(status_code=404, detail="Não encontrado") from None
+            if caminho and alvo.is_file():
+                return FileResponse(alvo)
+            index = dist / "index.html"
+            if index.is_file():
+                return FileResponse(index)
+            raise HTTPException(status_code=503, detail="Front não compilado (web/dist).")
 
     return app
 

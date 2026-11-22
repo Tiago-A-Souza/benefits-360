@@ -10,6 +10,7 @@ import csv
 from dataclasses import dataclass
 from pathlib import Path
 
+from newport_app.config.paths import arquivo_docs
 from newport_app.siscor_importer.normalize import normalizar_cabecalho
 
 _DOCS = Path(__file__).resolve().parents[3] / "docs"
@@ -79,7 +80,7 @@ def _abrir_csv(caminho: Path) -> list[tuple[int, list[str]]]:
 
 def carregar_base(caminho: Path | None = None) -> dict[tuple[str, str], str]:
     """Lê o CSV de valores. Uma célula por (operadora, regra)."""
-    origem = caminho or CAMINHO_BASE
+    origem = caminho or arquivo_docs("regras_comerciais_base.csv")
     registros = _abrir_csv(origem)
     if not registros:
         raise BaseRegrasComerciaisInvalida(f"{origem}: arquivo vazio")
@@ -134,7 +135,7 @@ def carregar_base(caminho: Path | None = None) -> dict[tuple[str, str], str]:
 
 def carregar_aliases(caminho: Path | None = None) -> dict[str, str]:
     """Mapa normalizado → canônica. Igualdade após `normalizar_cabecalho`."""
-    origem = caminho or CAMINHO_ALIASES
+    origem = caminho or arquivo_docs("regras_comerciais_aliases.csv")
     registros = _abrir_csv(origem)
     if not registros:
         raise BaseRegrasComerciaisInvalida(f"{origem}: arquivo vazio")

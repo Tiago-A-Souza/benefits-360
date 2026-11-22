@@ -18,12 +18,21 @@ _CHAVES_PROIBIDAS = frozenset(
         "segurado",
         "cliente",
         "cpf",
+        "cnpj",
         "endereco",
         "telefone",
         "email",
         "mae",
         "beneficiario",
         "beneficiário",
+        "senha",
+        "password",
+        "token",
+        "access_token",
+        "refresh_token",
+        "authorization",
+        "jwt",
+        "secret",
     }
 )
 

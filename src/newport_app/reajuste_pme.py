@@ -12,6 +12,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+from newport_app.config.paths import arquivo_docs
 from newport_app.models.draft import RascunhoEstudo
 from newport_app.presentation.regras_comerciais import (
     OPERADORAS_RECONHECIVEIS,
@@ -111,7 +112,7 @@ def _chave_csv(operadora: str, origem: Path, indice: int) -> str | None:
 
 def carregar_base(caminho: Path | None = None) -> tuple[LinhaReajustePme, ...]:
     """Lê o CSV. Uma linha por (periodo, operadora, tipo)."""
-    origem = caminho or CAMINHO_BASE
+    origem = caminho or arquivo_docs("reajustes_pme_base.csv")
     registros = _abrir_csv(origem)
     if not registros:
         raise BaseReajustesPmeInvalida(f"{origem}: arquivo vazio")

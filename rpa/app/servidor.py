@@ -750,14 +750,33 @@ def _lista_origens_cfg(cfg: dict, chave: str) -> list[str]:
     return saida
 
 
+def _origens_extra_ambiente() -> list[str]:
+    """Domínio HTTPS hospedado (NEWPORT_RPA_ORIGENS, vírgula). Só CORS/iframe."""
+    bruto = os.environ.get("NEWPORT_RPA_ORIGENS") or os.environ.get("BENEFITS_ORIGENS") or ""
+    saida: list[str] = []
+    for item in bruto.split(","):
+        s = item.strip().rstrip("/")
+        if s and s not in saida:
+            saida.append(s)
+    return saida
+
+
 def _origens_frame_ancestors(cfg: dict) -> list[str]:
-    """Origens externas permitidas em frame-ancestors (vêm do config)."""
-    return _lista_origens_cfg(cfg, "frame_ancestors")
+    """Origens externas permitidas em frame-ancestors (config + env)."""
+    saida = _lista_origens_cfg(cfg, "frame_ancestors")
+    for origem in _origens_extra_ambiente():
+        if origem not in saida:
+            saida.append(origem)
+    return saida
 
 
 def _origens_permitidas(cfg: dict) -> list[str]:
-    """Origens do Benefits que podem chamar a API (CORS) — tela.origens_permitidas no config."""
-    return _lista_origens_cfg(cfg, "origens_permitidas")
+    """Origens do Benefits que podem chamar a API (CORS) — config + env."""
+    saida = _lista_origens_cfg(cfg, "origens_permitidas")
+    for origem in _origens_extra_ambiente():
+        if origem not in saida:
+            saida.append(origem)
+    return saida
 
 
 def _cabecalhos_seguranca(frame_ancestors: list[str]) -> list[tuple[bytes, bytes]]:

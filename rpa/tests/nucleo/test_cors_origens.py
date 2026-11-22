@@ -21,10 +21,22 @@ from app.servidor import (
 RAIZ = Path(__file__).resolve().parents[2]
 
 
-def test_origens_permitidas_vem_do_config():
+def test_origens_permitidas_vem_do_config(monkeypatch):
+    monkeypatch.delenv("NEWPORT_RPA_ORIGENS", raising=False)
+    monkeypatch.delenv("BENEFITS_ORIGENS", raising=False)
     cfg = {"tela": {"origens_permitidas": ["http://localhost:5173", "http://app.exemplo"]}}
     assert _origens_permitidas(cfg) == ["http://localhost:5173", "http://app.exemplo"]
     assert _origens_permitidas({}) == []
+
+
+def test_origens_permitidas_aceitam_env(monkeypatch):
+    monkeypatch.setenv("NEWPORT_RPA_ORIGENS", "https://piloto.up.railway.app, https://outro.exemplo/")
+    cfg = {"tela": {"origens_permitidas": ["http://localhost:5173"]}}
+    assert _origens_permitidas(cfg) == [
+        "http://localhost:5173",
+        "https://piloto.up.railway.app",
+        "https://outro.exemplo",
+    ]
 
 
 def test_cabecalhos_cors_preflight_com_pna():
