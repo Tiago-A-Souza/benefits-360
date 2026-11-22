@@ -1,5 +1,12 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { chamarRpa, RpaClienteErro, urlBaseRpa, RPA_URL_PADRAO } from "./rpaClient";
+import {
+  chamarRpa,
+  RpaClienteErro,
+  urlBaseRpa,
+  RPA_URL_PADRAO,
+  opcoesChamadaRpa,
+  resumoVersaoRobo,
+} from "./rpaClient";
 
 describe("rpaClient", () => {
   beforeEach(() => {
@@ -28,7 +35,26 @@ describe("rpaClient", () => {
     );
     const init = fetch.mock.calls[0][1];
     expect(init.headers["X-Newport-Tela"]).toBeUndefined();
+    expect(init.targetAddressSpace).toBe("loopback");
   });
+
+  it("opcoesChamadaRpa marca loopback sem apagar o restante", () => {
+    const o = opcoesChamadaRpa({ method: "GET", headers: { A: "1" } });
+    expect(o.targetAddressSpace).toBe("loopback");
+    expect(o.method).toBe("GET");
+    expect(o.headers.A).toBe("1");
+  });
+
+  it("resumoVersaoRobo avisa se faltar commit e não bloqueia", () => {
+    expect(resumoVersaoRobo(null).antigo).toBe(true);
+    expect(resumoVersaoRobo({}).antigo).toBe(true);
+    expect(resumoVersaoRobo({ codigo: {} }).texto).toMatch(/indisponível/);
+    expect(resumoVersaoRobo({ codigo: { commit: "9db3e86" } })).toEqual({
+      texto: "Robô 9db3e86",
+      antigo: false,
+    });
+  });
+
 
   it("mutação envia X-Newport-Tela", async () => {
     fetch.mockResolvedValue({

@@ -47,7 +47,20 @@ export default function CotacoesRpa({ onMeusEstudos, onSimularRede, onVoltarEstu
 
         {!diag && !erro && <p className="lista-carregando">Conferindo se o robô está no ar…</p>}
 
-        {diag && !ligado && (
+        {diag && diag.hospedado ? (
+          <div className="cotacoes-rpa-off" role="status">
+            <p>
+              <strong>Esta tela iframe não funciona no site da nuvem.</strong>
+            </p>
+            <p>{diag.aviso}</p>
+            <p>
+              Volte à aba <strong>Cotações</strong> (sem <code>?cotacoes-iframe=1</code>) e deixe o
+              robô ligado no PC com <code>Abrir Benefits Robo.bat</code>.
+            </p>
+          </div>
+        ) : null}
+
+        {diag && !diag.hospedado && !ligado && (
           <div className="cotacoes-rpa-off" role="status">
             <p>
               <strong>O robô de cotações não está ligado</strong> em <code>{url}</code>.
@@ -60,7 +73,7 @@ export default function CotacoesRpa({ onMeusEstudos, onSimularRede, onVoltarEstu
           </div>
         )}
 
-        {ligado && (
+        {diag && !diag.hospedado && ligado && (
           <iframe
             className="cotacoes-rpa-iframe"
             title="Newport Cotações (RPA)"

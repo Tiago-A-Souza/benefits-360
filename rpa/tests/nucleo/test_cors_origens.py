@@ -13,7 +13,9 @@ from pathlib import Path
 import pytest
 
 from app.servidor import (
+    ORIGEM_HOSPEDADA_PADRAO,
     _cabecalhos_cors,
+    _normalizar_origem,
     _origens_permitidas,
     SoDaPropriaTela,
 )
@@ -37,6 +39,24 @@ def test_origens_permitidas_aceitam_env(monkeypatch):
         "https://piloto.up.railway.app",
         "https://outro.exemplo",
     ]
+
+
+def test_normalizar_origem_exige_esquema_sem_barra():
+    assert _normalizar_origem("https://benefits-360-production.up.railway.app") == ORIGEM_HOSPEDADA_PADRAO
+    assert _normalizar_origem("https://benefits-360-production.up.railway.app/") == ORIGEM_HOSPEDADA_PADRAO
+    assert _normalizar_origem("benefits-360-production.up.railway.app") is None
+    assert _normalizar_origem("https://evil.example/caminho") is None
+    assert _normalizar_origem("http://127.0.0.1:5173") == "http://127.0.0.1:5173"
+
+
+def test_config_yaml_padrao_inclui_origem_railway():
+    import yaml
+
+    dados = yaml.safe_load((RAIZ / "config.yaml").read_text(encoding="utf-8"))
+    origens = dados["tela"]["origens_permitidas"]
+    assert ORIGEM_HOSPEDADA_PADRAO in origens
+    assert ORIGEM_HOSPEDADA_PADRAO in dados["tela"]["frame_ancestors"]
+    assert all(not str(o).endswith("/") for o in origens)
 
 
 def test_cabecalhos_cors_preflight_com_pna():
@@ -93,6 +113,7 @@ tela:
   origens_permitidas:
     - http://127.0.0.1:5173
     - http://localhost:5173
+    - https://benefits-360-production.up.railway.app
 teste:
   simulador: true
   cofre: memoria
@@ -186,6 +207,24 @@ def test_preflight_origem_permitida(tela_cors):
     )
     assert status == 204
     assert heads.get("access-control-allow-origin") == "http://127.0.0.1:5173"
+    assert "x-newport-tela" in (heads.get("access-control-allow-headers") or "").lower()
+    assert heads.get("access-control-allow-private-network") == "true"
+
+
+def test_preflight_origem_railway(tela_cors):
+    status, heads, _ = _pedir(
+        tela_cors["base"],
+        "OPTIONS",
+        "/api/validar",
+        cabecalhos={
+            "Origin": ORIGEM_HOSPEDADA_PADRAO,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-newport-tela",
+            "Access-Control-Request-Private-Network": "true",
+        },
+    )
+    assert status == 204
+    assert heads.get("access-control-allow-origin") == ORIGEM_HOSPEDADA_PADRAO
     assert "x-newport-tela" in (heads.get("access-control-allow-headers") or "").lower()
     assert heads.get("access-control-allow-private-network") == "true"
 

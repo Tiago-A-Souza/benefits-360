@@ -16,12 +16,14 @@ tela:
   frame_ancestors:
     - http://localhost:5173
     - http://127.0.0.1:5173
-  # Origens do Benefits que podem chamar a API direto do navegador (CORS). Sem domínio fixo no código.
-  # Site hospedado (HTTPS): acrescente o domínio aqui OU defina NEWPORT_RPA_ORIGENS
-  # (vírgula). Chrome/Edge pedem "acesso à rede local" porque o robô é HTTP em 127.0.0.1.
+    - https://benefits-360-production.up.railway.app
+  # Origens do Benefits que podem chamar a API direto do navegador (CORS).
+  # O site na nuvem já entra aqui; NEWPORT_RPA_ORIGENS (vírgula) soma origens extras.
+  # Formato: https://dominio sem barra no final. Chrome/Edge pedem "acesso à rede local".
   origens_permitidas:
     - http://localhost:5173
     - http://127.0.0.1:5173
+    - https://benefits-360-production.up.railway.app
 
 operadoras:
 

@@ -65,8 +65,8 @@ navegador para o robô**.
 
 | Variável / config | O quê |
 |---|---|
-| `tela.origens_permitidas` em `rpa/config.yaml` | localhost do Vite; acrescente o domínio HTTPS |
-| `NEWPORT_RPA_ORIGENS` | extra, vírgula, ex. `https://benefits.up.railway.app` |
+| `tela.origens_permitidas` em `rpa/config.yaml` | localhost do Vite **e** `https://benefits-360-production.up.railway.app` |
+| `NEWPORT_RPA_ORIGENS` | extra, vírgula; `https://dominio` sem barra no final |
 | Chrome / Edge | o site HTTPS pedirá **acesso à rede local**; o corretor precisa permitir. O robô já responde `Access-Control-Allow-Private-Network` no preflight. |
 
 Exemplo no PC do corretor, antes de `python -m app`:
