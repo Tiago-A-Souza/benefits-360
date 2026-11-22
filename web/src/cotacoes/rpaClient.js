@@ -5,6 +5,11 @@
 
 export const RPA_URL_PADRAO = "http://127.0.0.1:8600";
 
+/** Chrome 142+: isenta mixed content no loopback. Navegador antigo ignora a chave. */
+export function opcoesChamadaRpa(init = {}) {
+  return { ...init, targetAddressSpace: "loopback" };
+}
+
 export function urlBaseRpa() {
   const bruto = import.meta.env.VITE_RPA_URL;
   if (typeof bruto === "string" && bruto.trim()) return bruto.trim().replace(/\/$/, "");
@@ -55,7 +60,7 @@ export async function chamarRpa(metodo, caminho, corpo, opcoes = {}) {
   }
   let resp;
   try {
-    resp = await fetch(url, init);
+    resp = await fetch(url, opcoesChamadaRpa(init));
   } catch {
     throw new RpaClienteErro(
       "ROBO_DESLIGADO",
@@ -86,7 +91,7 @@ export async function baixarUrlRpa(caminho, nomeSugerido) {
   const url = `${base}${caminho.startsWith("/") ? caminho : `/${caminho}`}`;
   let resp;
   try {
-    resp = await fetch(url);
+    resp = await fetch(url, opcoesChamadaRpa());
   } catch {
     throw new RpaClienteErro("ROBO_DESLIGADO", `O robô de cotações não está no ar em ${base}.`);
   }
@@ -116,6 +121,7 @@ export function ouvirEventosRpa(onEvento, onErro) {
   const base = urlBaseRpa();
   let fonte;
   try {
+    // EventSource não aceita targetAddressSpace; 127.0.0.1 já é loopback confiável no Chromium.
     fonte = new EventSource(`${base}/api/eventos`);
   } catch (e) {
     onErro?.(
@@ -140,4 +146,16 @@ export function ouvirEventosRpa(onEvento, onErro) {
       fonte.close();
     },
   };
+}
+
+/** Texto discreto da versão do robô. Aviso se faltar codigo.commit — não bloqueia. */
+export function resumoVersaoRobo(estado) {
+  const commit = estado && estado.codigo && estado.codigo.commit;
+  if (!commit) {
+    return {
+      texto: "Versão do robô indisponível — atualize o robô se as telas não baterem.",
+      antigo: true,
+    };
+  }
+  return { texto: `Robô ${commit}`, antigo: false };
 }

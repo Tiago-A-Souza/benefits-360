@@ -84,7 +84,10 @@ describe("rpaClient — extras da nativa", () => {
       return el;
     });
     await baixarUrlRpa("/api/cotacoes/1/pdf");
-    expect(fetch).toHaveBeenCalledWith(`${RPA_URL_PADRAO}/api/cotacoes/1/pdf`);
+    expect(fetch).toHaveBeenCalledWith(
+      `${RPA_URL_PADRAO}/api/cotacoes/1/pdf`,
+      expect.objectContaining({ targetAddressSpace: "loopback" }),
+    );
     expect(clicked[0]).toBe("x.pdf");
   });
 });
