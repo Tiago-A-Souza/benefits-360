@@ -208,13 +208,14 @@ apagaram os arquivos e o backup devolveu o conteúdo).
 O site na nuvem **não** emite cotação no portal. O robô continua em
 `http://127.0.0.1:8600` no Windows do corretor.
 
-1. O corretor deixa o robô ligado (`python -m app --sem-navegador` na pasta
-   `rpa/`). O `config.yaml` do robô já aceita
+1. O corretor deixa o robô ligado com `rpa\Abrir Benefits Robo.bat` (só o
+   robô, sem abrir localhost:5173). O `config.yaml` já aceita
    `https://benefits-360-production.up.railway.app`. Outro domínio: variável
    `NEWPORT_RPA_ORIGENS` (vírgula; `https://` sem barra no final).
 2. No **Chrome ou Edge**, a primeira vez que o site HTTPS falar com o
    localhost, o navegador pede **acesso à rede local**. O corretor deve
    **Permitir**. Sem isso a Cotações nativa não enxerga o robô.
+3. Passo a passo: `docs/GUIA-CORRETOR-ROBO.md`.
 
 ---
 
