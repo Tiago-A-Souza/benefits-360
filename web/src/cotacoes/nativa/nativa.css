@@ -538,6 +538,17 @@
   border-top: 1px solid var(--line);
 }
 
+.nativa-aviso-treino {
+  background: #7a1f1f;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+}
+
 .nativa-faixa-problema,
 .nativa-faixa-trabalho {
   display: flex;
