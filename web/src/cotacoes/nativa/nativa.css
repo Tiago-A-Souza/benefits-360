@@ -408,6 +408,83 @@
   background: var(--blue-50);
 }
 
+.nativa-plano-item span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.nativa-aviso-nao-testado {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--amber);
+  line-height: 1.3;
+}
+
+.nativa-busca-plano {
+  margin-top: 0.85rem;
+  max-width: 28rem;
+}
+
+.nativa-busca-plano-rotulo {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+
+.nativa-busca-plano-lista {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.nativa-busca-plano-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.nativa-busca-plano-item:last-child {
+  border-bottom: 0;
+}
+
+.nativa-busca-plano-item.marcado,
+.nativa-busca-plano-item:hover {
+  background: var(--blue-50);
+}
+
+.nativa-busca-plano-vazio,
+.nativa-aviso-catalogo,
+.nativa-aviso-volume {
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--amber-50);
+  color: var(--amber);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.nativa-aviso-volume {
+  margin: 1rem 0 0;
+}
+
+.nativa-plano-busca {
+  margin-top: 0.45rem;
+}
+
 .nativa-menor-preco {
   display: flex;
   flex-wrap: wrap;

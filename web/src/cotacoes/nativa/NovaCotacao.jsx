@@ -22,6 +22,14 @@ import {
   totalCotacoes,
   totalVidas,
   visivel,
+  filtrarBuscaOutroPlano,
+  mensagemBuscaOutroPlano,
+  avisoPlanoNaoTestado,
+  avisoNadaVistoNoPortal,
+  avisoVolumeCotacoes,
+  rotuloPlano,
+  planoPorRotulo,
+  marcarPlanoSeDoCatalogo,
 } from "./regrasNova";
 
 function Segmentos({ opcoes, valor, onChange, rotulo }) {
@@ -101,6 +109,50 @@ function CampoOperadora({ campo, valor, opId, onChange }) {
         {controle}
         {campo.ajuda ? <div className="nativa-ajuda">{campo.ajuda}</div> : null}
       </div>
+    </div>
+  );
+}
+
+export function BuscaOutroPlano({ op, planosMarcados, onMarcar, consultaInicial = "" }) {
+  const [q, setQ] = useState(consultaInicial);
+  const { resultados, estado } = useMemo(() => filtrarBuscaOutroPlano(op, q), [op, q]);
+  const msg = mensagemBuscaOutroPlano(estado);
+  const id = `busca-plano-${op.id}`;
+  return (
+    <div className="nativa-busca-plano">
+      <label className="nativa-busca-plano-rotulo" htmlFor={id}>
+        Buscar outro plano desta operadora
+      </label>
+      <input
+        id={id}
+        className="campo"
+        type="search"
+        value={q}
+        autoComplete="off"
+        placeholder="Nome como aparece no portal"
+        onChange={(e) => setQ(e.target.value)}
+      />
+      {estado === "resultados" ? (
+        <ul className="nativa-busca-plano-lista">
+          {resultados.map((p) => {
+            const rotulo = rotuloPlano(p);
+            const marcado = (planosMarcados || []).includes(rotulo);
+            return (
+              <li key={rotulo}>
+                <button
+                  type="button"
+                  className={`nativa-busca-plano-item${marcado ? " marcado" : ""}`}
+                  onClick={() => onMarcar(rotulo, !marcado)}
+                >
+                  {p.nome}
+                  {p.acomodacao ? <span className="muted"> · {p.acomodacao}</span> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {msg ? <div className="nativa-busca-plano-vazio">{msg}</div> : null}
     </div>
   );
 }
@@ -273,6 +325,7 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
                         {grupos[acom].map((p) => {
                           const rotulo = `${p.nome} | ${p.acomodacao}`;
                           const marcado = o.planos.includes(rotulo);
+                          const avisoTeste = marcado ? avisoPlanoNaoTestado(p) : "";
                           return (
                             <label key={rotulo} className={`nativa-plano-item${marcado ? " marcado" : ""}`}>
                               <input
@@ -285,7 +338,12 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
                                   onPatch({ planos });
                                 }}
                               />
-                              <span>{p.nome}</span>
+                              <span>
+                                {p.nome}
+                                {avisoTeste ? (
+                                  <span className="nativa-aviso-nao-testado">{avisoTeste}</span>
+                                ) : null}
+                              </span>
                             </label>
                           );
                         })}
@@ -293,6 +351,45 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
                     ))}
                 </div>
               )}
+              {o.menor ? null : (
+                <>
+                  <BuscaOutroPlano
+                    op={op}
+                    planosMarcados={o.planos}
+                    onMarcar={(rotulo, marcar) =>
+                      onPatch({ planos: marcarPlanoSeDoCatalogo(o.planos, rotulo, op, marcar) })
+                    }
+                  />
+                  {(o.planos || [])
+                    .filter((r) => !(op.planos || []).some((p) => `${p.nome} | ${p.acomodacao}` === r))
+                    .map((rotulo) => {
+                      const p = planoPorRotulo(op, rotulo);
+                      const avisoTeste = avisoPlanoNaoTestado(p);
+                      return (
+                        <label key={rotulo} className="nativa-plano-item marcado nativa-plano-busca">
+                          <input
+                            type="checkbox"
+                            checked
+                            onChange={() =>
+                              onPatch({ planos: marcarPlanoSeDoCatalogo(o.planos, rotulo, op, false) })
+                            }
+                          />
+                          <span>
+                            {p ? p.nome : rotulo}
+                            {avisoTeste ? (
+                              <span className="nativa-aviso-nao-testado">{avisoTeste}</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    })}
+                </>
+              )}
+              {avisoNadaVistoNoPortal(op) ? (
+                <div className="nativa-aviso-catalogo" role="status">
+                  {avisoNadaVistoNoPortal(op)}
+                </div>
+              ) : null}
               <div className="nativa-ajuda">
                 {(op.textos || {}).planos ||
                   "Cada plano vira uma cotação e um PDF. A lista cresce sozinha com os planos que o robô encontrar no portal."}
@@ -726,6 +823,12 @@ export default function NovaCotacao({
               <li key={p}>{p}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {avisoVolumeCotacoes(n) ? (
+        <div className="nativa-aviso-volume" role="status">
+          {avisoVolumeCotacoes(n)}
         </div>
       ) : null}
 
