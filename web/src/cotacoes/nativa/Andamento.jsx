@@ -17,10 +17,11 @@ import {
 
 function EtapasPilulas({ op, etapa }) {
   if (!op) return null;
-  const atual = etapa ? op.etapas.findIndex((x) => x.id === etapa.etapa) : -1;
+  const etapas = op.etapas || [];
+  const atual = etapa ? etapas.findIndex((x) => x.id === etapa.etapa) : -1;
   return (
     <ol className="nativa-etapas" aria-label="Telas do portal">
-      {op.etapas.map((x, i) => (
+      {etapas.map((x, i) => (
         <li
           key={x.id}
           className={i < atual ? "feita" : i === atual ? "atual" : ""}
@@ -48,7 +49,7 @@ export default function Andamento({
   const [falhou, setFalhou] = useState(false);
   const [etapa, setEtapa] = useState(null);
   const [pedidoAtual, setPedidoAtual] = useState(null);
-  const [conexao, setConexao] = useState(conexaoExterna);
+  const [conexao, setConexao] = useState(conexaoExterna || {});
   const [parando, setParando] = useState(false);
   const tRef = useRef(null);
   const timer = useRef(null);
@@ -59,7 +60,7 @@ export default function Andamento({
   }, [t]);
 
   useEffect(() => {
-    setConexao((c) => ({ ...c, ...conexaoExterna }));
+    setConexao((c) => ({ ...(c || {}), ...(conexaoExterna || {}) }));
   }, [conexaoExterna]);
 
   useEffect(() => {
@@ -219,7 +220,7 @@ export default function Andamento({
   const op = (operadoras || []).find((o) => o.id === opId) || (operadoras || [])[0];
   const n = contarStatus(t.cotacoes);
   const feitas = (t.cotacoes || []).length;
-  const conexaoOp = op ? conexao[op.id] || "" : "";
+  const conexaoOp = op ? ((conexao && conexao[op.id]) || "") : "";
 
   let tituloPainel = "";
   let linhaPainel = "";

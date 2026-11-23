@@ -11,12 +11,12 @@ export default function CenarioPanel({ estudoId, onSalvo }) {
     if (!estudoId) return;
     obterRascunho(estudoId)
       .then((r) => {
-        if (!r.cenarios.length) {
+        if (!(r.cenarios || []).length) {
           r.cenarios = [
             {
               id: novoId("c"),
               rotulo: "Cenário principal",
-              atribuicoes: r.subgrupos_atuais.map((sg) => ({
+              atribuicoes: (r.subgrupos_atuais || []).map((sg) => ({
                 id: novoId("a"),
                 alvo_tipo: "subgrupo",
                 alvo_id: sg.id,
@@ -32,7 +32,7 @@ export default function CenarioPanel({ estudoId, onSalvo }) {
 
   if (!rascunho) return <p className="muted">Carregando associações…</p>;
 
-  const cenario = rascunho.cenarios[0];
+  const cenario = (rascunho.cenarios || [])[0] || { atribuicoes: [] };
 
   function atualizarAtribuicao(idx, opcaoId) {
     setRascunho((prev) => {
@@ -60,10 +60,10 @@ export default function CenarioPanel({ estudoId, onSalvo }) {
         confirme manualmente.
       </p>
 
-      {rascunho.subgrupos_atuais.length === 0 && (
+      {(rascunho.subgrupos_atuais || []).length === 0 && (
         <p className="erro">Nenhum plano atual para associar.</p>
       )}
-      {rascunho.opcoes_proposta.length === 0 && (
+      {(rascunho.opcoes_proposta || []).length === 0 && (
         <p className="erro">Cadastre propostas na etapa anterior.</p>
       )}
 
@@ -76,7 +76,7 @@ export default function CenarioPanel({ estudoId, onSalvo }) {
           </tr>
         </thead>
         <tbody>
-          {rascunho.subgrupos_atuais.map((sg) => {
+          {(rascunho.subgrupos_atuais || []).map((sg) => {
             const atrIdx = cenario.atribuicoes.findIndex((a) => a.alvo_id === sg.id);
             const atr =
               atrIdx >= 0
@@ -107,7 +107,7 @@ export default function CenarioPanel({ estudoId, onSalvo }) {
                     }}
                   >
                     <option value="">Selecione a proposta…</option>
-                    {rascunho.opcoes_proposta.map((op) => (
+                    {(rascunho.opcoes_proposta || []).map((op) => (
                       <option key={op.id} value={op.id}>
                         {op.operadora} — {op.plano_nome}
                       </option>

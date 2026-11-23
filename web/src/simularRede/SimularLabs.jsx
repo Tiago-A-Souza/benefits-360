@@ -18,7 +18,9 @@ function textoMunicipios(lista) {
 }
 
 export function TabelaLabs({ resp }) {
-  const colunas = resp.colunas;
+  if (!resp) return <p className="muted">Nenhum resultado para mostrar.</p>;
+  const colunas = resp.colunas || [];
+  const blocos = resp.blocos || [];
   const grupos = gruposDeOperadora(colunas);
   const largura = 1 + colunas.length;
   const contagem = resp.contagem_por_coluna || {};
@@ -41,17 +43,17 @@ export function TabelaLabs({ resp }) {
           </tr>
         </thead>
         <tbody>
-          {resp.blocos.map((bloco) => (
+          {blocos.map((bloco) => (
             <Fragment key={bloco.titulo || bloco.municipio || "labs"}>
               {bloco.titulo ? (
                 <tr className="simular-bloco-linha">
                   <th colSpan={largura} scope="colgroup">
                     {bloco.titulo}
-                    <span className="simular-bloco-n">{bloco.linhas.length}</span>
+                    <span className="simular-bloco-n">{(bloco.linhas || []).length}</span>
                   </th>
                 </tr>
               ) : null}
-              {bloco.linhas.map((ln) => (
+              {(bloco.linhas || []).map((ln) => (
                 <tr
                   key={ln.linha_id}
                   className={ln.principal ? "" : "simular-linha-nao-principal"}
@@ -66,7 +68,7 @@ export function TabelaLabs({ resp }) {
                     ) : null}
                   </td>
                   {colunas.map((c) => {
-                    const cob = ln.celulas[c.chave] || "";
+                    const cob = (ln.celulas && ln.celulas[c.chave]) || "";
                     return (
                       <td key={c.chave} className={`rede-col-plano ${cob ? "on" : "off"}`}>
                         {cob}
@@ -365,7 +367,7 @@ export default function SimularLabs() {
                 </span>
               </summary>
               <div className="simular-operadoras-lista">
-                {opcoes.operadoras.map((o) => (
+                {(opcoes.operadoras || []).map((o) => (
                   <label key={o.nome} className="simular-check">
                     <input
                       type="checkbox"

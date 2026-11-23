@@ -3,6 +3,7 @@ import { chamarRpa } from "../rpaClient";
 import LogoOperadora from "./LogoOperadora";
 import { attrsCartaoOperadora } from "./operadoras";
 import { CONEXAO, resumoDoRobo } from "./regrasNova";
+import { asArray, camposDaOperadora } from "../../util/colecao";
 
 export default function AjustesRobos({
   operadoras,
@@ -50,9 +51,9 @@ export default function AjustesRobos({
       </p>
 
       <div className="nativa-robos">
-        {(operadoras || []).map((op) => {
-          const st = conexao[op.id] || op.conexao || "desconectado";
-          const padrao = (c) => (op.campos.find((x) => x.chave === c) || {}).padrao;
+        {asArray(operadoras).map((op) => {
+          const st = (conexao && conexao[op.id]) || op.conexao || "desconectado";
+          const padrao = (c) => (camposDaOperadora(op).find((x) => x.chave === c) || {}).padrao;
           const login = op.login || {};
           const marca = attrsCartaoOperadora(op.id, false);
           return (
