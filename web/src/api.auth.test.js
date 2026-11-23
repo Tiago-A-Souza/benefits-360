@@ -51,6 +51,28 @@ describe("api.js autenticação", () => {
     expect(sessao.avisarNaoAutorizado).toHaveBeenCalled();
   });
 
+  it("JSON inválido em 200 vira erro, não quebra o then", async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError("boom");
+      },
+      text: async () => "<html>não é json</html>",
+    });
+    await expect(listarEstudos()).rejects.toThrow(/não é JSON/i);
+  });
+
+  it("envelope {estudos} vira lista", async () => {
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ estudos: [{ id: "e1" }] }),
+      text: async () => JSON.stringify({ estudos: [{ id: "e1" }] }),
+    });
+    await expect(listarEstudos()).resolves.toEqual([{ id: "e1" }]);
+  });
+
   it("HTML do entregável usa fetch+blob, não <a href>", async () => {
     const blob = new Blob(["<html></html>"], { type: "text/html" });
     globalThis.fetch.mockResolvedValue({

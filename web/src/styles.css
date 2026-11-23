@@ -7768,3 +7768,27 @@ a.btn-link {
   padding: 0 0.5rem;
   font-size: 0.7rem;
 }
+
+.tela-erro {
+  max-width: 36rem;
+  padding: 1.5rem 0;
+}
+.tela-erro h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.4rem;
+}
+.tela-erro-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+.tela-erro-painel {
+  padding: 1rem 0 2rem;
+}
+.app-shell-carregando {
+  min-height: 40vh;
+}
+.app-shell-carregando .lista-carregando {
+  padding: 2rem 1.5rem;
+}

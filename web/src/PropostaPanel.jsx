@@ -70,15 +70,19 @@ export default function PropostaPanel({
   function recarregar() {
     obterRascunho(estudoId)
       .then((r) => {
-        if (!r.opcoes_proposta.length && manualAberto) {
-          r.opcoes_proposta = [novaOpcao()];
+        const rasc = r && typeof r === "object" ? r : {};
+        const ops = Array.isArray(rasc.opcoes_proposta) ? rasc.opcoes_proposta : [];
+        if (!ops.length && manualAberto) {
+          rasc.opcoes_proposta = [novaOpcao()];
+        } else {
+          rasc.opcoes_proposta = ops;
         }
-        for (const o of r.opcoes_proposta) {
+        for (const o of rasc.opcoes_proposta) {
           if (o.regime_copart_id) {
-            ensureRegime(r, o.regime_copart_id.replace("regime-", ""));
+            ensureRegime(rasc, o.regime_copart_id.replace("regime-", ""));
           }
         }
-        setRascunho({ ...r });
+        setRascunho({ ...rasc });
       })
       .catch((e) => setErro(e.message));
   }
@@ -88,22 +92,40 @@ export default function PropostaPanel({
     recarregar();
   }, [estudoId]);
 
-  if (!rascunho) return <p className="muted">Carregando cotações…</p>;
-
-  const planosAtuais = subgruposAtuais.length
-    ? subgruposAtuais
-    : rascunho.subgrupos_atuais || [];
-  const nPropostas = rascunho.opcoes_proposta.length;
-  const unicoPlanoAtual = planosAtuais.length === 1;
-  const nomePlanoAtual =
-    planosAtuais[0]?.plano_nome || planosAtuais[0]?.operadora || "plano atual";
-
-  const op = rascunho.opcoes_proposta[sel];
+  const op = (rascunho?.opcoes_proposta || [])[sel];
 
   const sugestaoAtiva = useMemo(() => {
     if (!op || op.extracao_id) return null;
     return sugestaoFiscalPorOperadora(op.operadora);
   }, [op?.operadora, op?.extracao_id, op?.id]);
+
+  useEffect(() => {
+    if (!onRegistrarAvanco) return undefined;
+    return onRegistrarAvanco(async () => {
+      if (!rascunho?.opcoes_proposta?.length) {
+        setErro("Cadastre ao menos uma cotação");
+        return false;
+      }
+      try {
+        await salvarRascunho(estudoId, rascunho);
+        onSalvo?.();
+        return true;
+      } catch (e) {
+        setErro(e.message);
+        return false;
+      }
+    });
+  }, [onRegistrarAvanco, rascunho, estudoId, onSalvo]);
+
+  if (!rascunho) return <p className="muted">Carregando cotações…</p>;
+
+  const planosAtuais = subgruposAtuais.length
+    ? subgruposAtuais
+    : rascunho.subgrupos_atuais || [];
+  const nPropostas = (rascunho.opcoes_proposta || []).length;
+  const unicoPlanoAtual = planosAtuais.length === 1;
+  const nomePlanoAtual =
+    planosAtuais[0]?.plano_nome || planosAtuais[0]?.operadora || "plano atual";
 
   function patchOpcao(mut) {
     setRascunho((prev) => {
@@ -230,7 +252,7 @@ export default function PropostaPanel({
   }
 
   async function handleExcluirManual() {
-    const atual = rascunho.opcoes_proposta[sel];
+    const atual = (rascunho.opcoes_proposta || [])[sel];
     if (!atual || atual.extracao_id) return;
     const rotulo = atual.plano_nome || atual.operadora || "esta cotação manual";
     if (!window.confirm(`Excluir «${rotulo}»? Ela sairá do comparativo.`)) {
@@ -257,24 +279,6 @@ export default function PropostaPanel({
       setErro(e.message);
     }
   }
-
-  useEffect(() => {
-    if (!onRegistrarAvanco) return undefined;
-    return onRegistrarAvanco(async () => {
-      if (!rascunho?.opcoes_proposta?.length) {
-        setErro("Cadastre ao menos uma cotação");
-        return false;
-      }
-      try {
-        await salvarRascunho(estudoId, rascunho);
-        onSalvo?.();
-        return true;
-      } catch (e) {
-        setErro(e.message);
-        return false;
-      }
-    });
-  }, [onRegistrarAvanco, rascunho, estudoId, onSalvo]);
 
   const textoComp = (comp) =>
     comp?.centavos != null ? centavosParaReaisTexto(comp.centavos) : "";
@@ -316,7 +320,7 @@ export default function PropostaPanel({
           className="link"
           onClick={() => {
             setManualAberto((v) => !v);
-            if (!manualAberto && !rascunho.opcoes_proposta.filter((o) => !o.extracao_id).length) {
+            if (!manualAberto && !(rascunho.opcoes_proposta || []).filter((o) => !o.extracao_id).length) {
               adicionarOpcao();
             }
           }}
@@ -330,7 +334,7 @@ export default function PropostaPanel({
       {manualAberto && (
         <div className="bloco-secao">
           <div className="acoes-lote">
-            {rascunho.opcoes_proposta
+            {(rascunho.opcoes_proposta || [])
               .map((o, i) => ({ o, i }))
               .filter(({ o }) => !o.extracao_id)
               .map(({ o, i }) => (

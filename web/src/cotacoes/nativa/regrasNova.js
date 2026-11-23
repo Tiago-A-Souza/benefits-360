@@ -118,7 +118,7 @@ export function faixasExatas(operadoras) {
 }
 
 export function totalVidas(vidas) {
-  return Object.values(vidas).reduce((a, b) => a + Number(b || 0), 0);
+  return Object.values(vidas || {}).reduce((a, b) => a + Number(b || 0), 0);
 }
 
 export function opsAtivas(form, operadoras) {
@@ -126,15 +126,20 @@ export function opsAtivas(form, operadoras) {
 }
 
 export function multiplicador(form, op) {
-  return op.campos.reduce(
-    (m, c) => m * ((c.multiplica && c.multiplica[form.ops[op.id].campos[c.chave]]) || 1),
+  const camposOp = (op && op.campos) || [];
+  const o = form && form.ops && op ? form.ops[op.id] : null;
+  const valores = (o && o.campos) || {};
+  return camposOp.reduce(
+    (m, c) => m * ((c.multiplica && c.multiplica[valores[c.chave]]) || 1),
     1,
   );
 }
 
 export function cotacoesDe(form, op) {
-  const o = form.ops[op.id];
-  return (o.menor ? Number(o.qtdMenor) : o.planos.length) * multiplicador(form, op);
+  const o = form && form.ops && op ? form.ops[op.id] : null;
+  if (!o) return 0;
+  const nPlanos = o.menor ? Number(o.qtdMenor) : ((o.planos || []).length);
+  return nPlanos * multiplicador(form, op);
 }
 
 export function clonarForm(f) {
@@ -259,7 +264,7 @@ export function montarItens(f, operadoras) {
       dados[`vidas_${k}`] = f.vidas[k];
       if (f.vidas[k] > 0 && f.idades[k].trim()) dados[`idades_${k}`] = listaIdades(f.idades[k]).join("; ");
     }
-    for (const c of op.campos) if (visivel(c, o.campos)) dados[c.chave] = o.campos[c.chave];
+    for (const c of op.campos || []) if (visivel(c, o.campos || {})) dados[c.chave] = (o.campos || {})[c.chave];
     dados.planos = o.menor ? `menor_preco:${o.qtdMenor}` : o.planos.join("; ");
     return { operadora: op.id, pedidos: [dados] };
   });
@@ -277,8 +282,8 @@ export function resumoDoRobo(op, valor, extras = {}) {
       const o = (c.opcoes || []).find((x) => String(x[0]) === String(v)) || [];
       const t = o[2] || o[1];
       if (t) partes.push(t);
-    } else if (c.tipo === "sim_nao") partes.push(`${v === "sim" ? "com" : "sem"} ${c.titulo || c.rotulo}`);
-    else if (c.tipo === "texto" && v) partes.push(`${c.rotulo.toLowerCase()} ${v}`);
+    } else if (c.tipo === "sim_nao") partes.push(`${v === "sim" ? "com" : "sem"} ${c.titulo || c.rotulo || ""}`);
+    else if (c.tipo === "texto" && v) partes.push(`${String(c.rotulo || c.chave || "").toLowerCase()} ${v}`);
   }
   if (extras.produto) partes.push(`produto ${extras.produto}`);
   const minuscula = (t) => (t.length > 1 && t[1] === t[1].toLowerCase() ? t[0].toLowerCase() + t.slice(1) : t);
