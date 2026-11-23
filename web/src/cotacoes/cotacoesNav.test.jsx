@@ -41,9 +41,10 @@ describe("navegação — Cotações (RPA)", () => {
   it("menu Cotações abre só a nativa (sem iframe da tela velha)", () => {
     const app = readFileSync(join(raiz, "App.jsx"), "utf8");
     expect(app).toContain("abrirCotacoes()");
-    expect(app).toContain("nativaLigada()");
-    expect(app).toContain("setCotacoesNativa(true)");
+    expect(app).toContain("HASH_COTACOES_LISTA");
+    expect(app).toContain("irPara");
     expect(app).not.toContain("iframeCotacoes()");
     expect(app).not.toContain("onCotacoes={() => setCotacoesRpa(true)}");
+    expect(app).not.toContain("setCotacoesNativa(true)");
   });
 });

@@ -18,6 +18,7 @@ import NovaCotacao from "./NovaCotacao";
 import { TELAS_ROBO_NAO_PORTADAS } from "./regrasNova";
 import { asArray } from "../../util/colecao";
 import ErrorBoundary from "../../erro/ErrorBoundary";
+import { HASH_ESTUDOS, HASH_SIMULAR, irPara } from "../../rotas";
 import "./nativa.css";
 
 function lerHash() {
@@ -57,6 +58,7 @@ export default function CotacoesNativa({
   onSimularRede,
   onVoltarEstudo,
   rotuloEstudo,
+  hashVoltarEstudo,
 }) {
   const [{ tela, id, cnpj, op }, setRota] = useState(lerHash);
   const [operadoras, setOperadoras] = useState(null);
@@ -82,13 +84,10 @@ export default function CotacoesNativa({
     sujoRef.current = typeof fn === "function" ? fn : () => "";
   }, []);
 
-  const aplicarHash = useCallback((hash) => {
-    if (typeof window !== "undefined") {
-      const u = new URL(window.location.href);
-      u.hash = hash.startsWith("#") ? hash.slice(1) : hash;
-      window.history.replaceState({}, "", u);
-      hashMostrado.current = u.hash.startsWith("#") ? u.hash : `#${u.hash}`;
-    }
+  const aplicarHash = useCallback((hash, { replace = false } = {}) => {
+    irPara(hash, { replace });
+    const alvo = String(hash || "").startsWith("#") ? String(hash) : `#${hash}`;
+    hashMostrado.current = alvo;
     setRota(lerHash());
   }, []);
 
@@ -106,7 +105,7 @@ export default function CotacoesNativa({
         if (!ok) return;
         sujoRef.current = () => "";
       }
-      aplicarHash(hash);
+      aplicarHash(hash, { replace: false });
     },
     [aplicarHash, confirmar],
   );
@@ -124,11 +123,7 @@ export default function CotacoesNativa({
         setRota(lerHash());
         return;
       }
-      if (typeof window !== "undefined") {
-        const u = new URL(window.location.href);
-        u.hash = hashMostrado.current.startsWith("#") ? hashMostrado.current.slice(1) : hashMostrado.current;
-        window.history.replaceState({}, "", u);
-      }
+      irPara(hashMostrado.current, { replace: true });
       const ok = await confirmar({
         titulo: "Sair sem salvar?",
         texto: [msg],
@@ -257,10 +252,14 @@ export default function CotacoesNativa({
       <aside className="lista-rail app-sidebar">
         <NavegacaoFerramentas
           ativo="cotacoes"
-          onMeusEstudos={onMeusEstudos}
-          onSimularRede={onSimularRede}
+          onMeusEstudos={() => ir(HASH_ESTUDOS)}
+          onSimularRede={() => ir(HASH_SIMULAR)}
           onCotacoes={() => ir("#/cotacoes")}
-          onVoltarEstudo={onVoltarEstudo}
+          onVoltarEstudo={
+            hashVoltarEstudo || onVoltarEstudo
+              ? () => (hashVoltarEstudo ? ir(hashVoltarEstudo) : onVoltarEstudo())
+              : undefined
+          }
           rotuloEstudo={rotuloEstudo}
         />
         <nav className="nav-ferramentas nativa-subnav" aria-label="Cotações">

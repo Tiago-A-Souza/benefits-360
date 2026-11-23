@@ -17,9 +17,7 @@ import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
 import NavegacaoFerramentas from "./NavegacaoFerramentas";
 import SimularRede from "./simularRede/SimularRede";
-import CotacoesRpa from "./cotacoes/CotacoesRpa";
 import CotacoesNativa from "./cotacoes/nativa/CotacoesNativa";
-import { nativaLigada } from "./cotacoes/nativa/regrasNova";
 import ProvaRpaDireto from "./cotacoes/ProvaRpaDireto";
 import PropostaPanel from "./PropostaPanel";
 import SiscorPanel from "./SiscorPanel";
@@ -30,6 +28,7 @@ import { proximaEtapaClicavel } from "./fluxo/avancoEtapa";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 import TelaLogin from "./login/TelaLogin";
 import ErrorBoundary from "./erro/ErrorBoundary";
+import TelaNaoEncontrado from "./erro/TelaNaoEncontrado";
 import { asArray } from "./util/colecao";
 import {
   EVENTO_NAO_AUTORIZADO,
@@ -37,37 +36,49 @@ import {
   ouvirSessao,
   sairSessao,
 } from "./login/sessao";
+import {
+  HASH_COTACOES_LISTA,
+  HASH_ESTUDOS,
+  HASH_SIMULAR,
+  ehErroSemAcesso,
+  hashEstudo,
+  irPara,
+  normalizarHashInicial,
+  parseHashAtual,
+} from "./rotas";
+
+const CTX_VAZIO = {
+  conferencia: null,
+  rascunho: null,
+  extracoes: [],
+  pendencias: [],
+  resumoPlanoAtual: null,
+};
 
 export default function App() {
-  const [tela, setTela] = useState("lista");
-  const [estudoId, setEstudoId] = useState(null);
-  const [passo, setPasso] = useState(1);
+  const [rota, setRota] = useState(parseHashAtual);
   const [resumo, setResumo] = useState(null);
-  const [ctxFluxo, setCtxFluxo] = useState({
-    conferencia: null,
-    rascunho: null,
-    extracoes: [],
-    pendencias: [],
-    resumoPlanoAtual: null,
-  });
+  const [estudoStatus, setEstudoStatus] = useState("idle");
+  const [recargaEstudo, setRecargaEstudo] = useState(0);
+  const [ctxFluxo, setCtxFluxo] = useState(CTX_VAZIO);
   const [historicoAberto, setHistoricoAberto] = useState(false);
-  // Simular Rede é uma consulta avulsa: não cria nem altera estudo.
-  const [simulando, setSimulando] = useState(false);
-  const [cotacoesRpa, setCotacoesRpa] = useState(false);
   const [provaRpa, setProvaRpa] = useState(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("prova-rpa") === "1";
   });
-  const [cotacoesNativa, setCotacoesNativa] = useState(() => nativaLigada());
   const [logado, setLogado] = useState(false);
   const [sessaoPronta, setSessaoPronta] = useState(false);
+  const [cestaGlobal, setCestaGlobal] = useState([]);
+  const [retornoEstudo, setRetornoEstudo] = useState(null);
+  const avancarEtapaRef = useRef(null);
+
+  const estudoId = rota.area === "estudo" ? rota.estudoId : null;
+  const passo = rota.area === "estudo" ? rota.passo : 1;
 
   function abrirCotacoes() {
-    setCotacoesRpa(false);
-    setCotacoesNativa(true);
+    irPara(HASH_COTACOES_LISTA);
   }
-  const [cestaGlobal, setCestaGlobal] = useState([]);
-  const avancarEtapaRef = useRef(null);
+
   const registrarAvancoEtapa = useCallback((fn) => {
     avancarEtapaRef.current = fn;
     return () => {
@@ -75,15 +86,16 @@ export default function App() {
     };
   }, []);
 
-  const recarregarContexto = useCallback(async () => {
-    if (!estudoId) return;
+  const recarregarContexto = useCallback(async (id) => {
+    const alvo = id || estudoId;
+    if (!alvo) return;
     const [r, p, c, e, res, resumoPlano] = await Promise.all([
-      obterRascunho(estudoId).catch(() => null),
-      obterPendencias(estudoId).catch(() => []),
-      obterConferenciaSiscor(estudoId).catch(() => null),
-      listarExtracoesCotacao(estudoId).catch(() => ({ extracoes: [] })),
-      obterEstudo(estudoId).catch(() => null),
-      obterResumoPlanoAtual(estudoId).catch(() => null),
+      obterRascunho(alvo).catch(() => null),
+      obterPendencias(alvo).catch(() => []),
+      obterConferenciaSiscor(alvo).catch(() => null),
+      listarExtracoesCotacao(alvo).catch(() => ({ extracoes: [] })),
+      obterEstudo(alvo).catch(() => null),
+      obterResumoPlanoAtual(alvo).catch(() => null),
     ]);
     if (res) setResumo(res);
     const resumoPlanoAtual = r?.formato === "novo" ? null : resumoPlano;
@@ -95,14 +107,84 @@ export default function App() {
       resumoPlanoAtual,
     });
   }, [estudoId]);
+  const recarregarRef = useRef(recarregarContexto);
+  recarregarRef.current = recarregarContexto;
 
   useEffect(() => {
-    if (!estudoId || tela !== "fluxo") return;
+    const sync = () => {
+      const proxima = parseHashAtual();
+      setRota((atual) => {
+        if (
+          atual.area === proxima.area &&
+          atual.estudoId === proxima.estudoId &&
+          atual.passo === proxima.passo &&
+          atual.motivo === proxima.motivo
+        ) {
+          return atual;
+        }
+        return proxima;
+      });
+    };
+    window.addEventListener("hashchange", sync);
+    normalizarHashInicial();
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  useEffect(() => {
+    if (rota.area === "estudos") {
+      setRetornoEstudo(null);
+      setHistoricoAberto(false);
+      setCestaGlobal([]);
+    }
+  }, [rota.area]);
+
+  useEffect(() => {
+    if (rota.area !== "estudo" || !estudoId) return;
+    const rotulo = resumo?.empresa || resumo?.titulo || "";
+    setRetornoEstudo((atual) => {
+      if (
+        atual &&
+        atual.id === estudoId &&
+        atual.passo === passo &&
+        (rotulo ? atual.rotulo === rotulo : Boolean(atual.rotulo))
+      ) {
+        return atual;
+      }
+      return { id: estudoId, passo, rotulo: rotulo || atual?.rotulo || "" };
+    });
+  }, [rota.area, estudoId, passo, resumo]);
+
+  useEffect(() => {
+    if (rota.area !== "estudo" || !estudoId) {
+      if (rota.area !== "estudo") {
+        setEstudoStatus("idle");
+        setResumo(null);
+        setCtxFluxo(CTX_VAZIO);
+      }
+      return undefined;
+    }
+    let vivo = true;
+    setEstudoStatus("carregando");
+    setResumo(null);
+    setCtxFluxo(CTX_VAZIO);
     obterEstudo(estudoId)
-      .then(setResumo)
-      .catch(() => setResumo(null));
-    recarregarContexto();
-  }, [estudoId, tela, recarregarContexto]);
+      .then(async (r) => {
+        if (!vivo) return;
+        setResumo(r);
+        await recarregarRef.current(estudoId);
+        if (!vivo) return;
+        setEstudoStatus("ok");
+      })
+      .catch((err) => {
+        if (!vivo) return;
+        setResumo(null);
+        setCtxFluxo(CTX_VAZIO);
+        setEstudoStatus(ehErroSemAcesso(err) ? "sem_acesso" : "erro");
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [rota.area, estudoId, recargaEstudo]);
 
   const passos = useMemo(
     () => passosVisiveis(ctxFluxo.rascunho),
@@ -110,24 +192,20 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (rota.area !== "estudo" || !estudoId || estudoStatus !== "ok") return;
     if (passo > passos.length && passos.length > 0) {
-      setPasso(passos.length);
+      irPara(hashEstudo(estudoId, passos.length), { replace: true });
     }
-  }, [passo, passos.length]);
+  }, [rota.area, estudoId, passo, passos.length, estudoStatus]);
 
   function entrarEstudo(id) {
-    setEstudoId(id);
-    setPasso(1);
-    setTela("fluxo");
     setHistoricoAberto(false);
     setCestaGlobal([]);
+    irPara(hashEstudo(id, 1));
   }
 
   function voltarLista() {
-    setTela("lista");
-    setEstudoId(null);
-    setResumo(null);
-    setPasso(1);
+    irPara(HASH_ESTUDOS);
   }
 
   const statusPassos = useMemo(() => {
@@ -141,12 +219,12 @@ export default function App() {
   const chavePassoAtual = passos[passo - 1]?.chave;
 
   async function irProximo() {
-    if (passo >= passos.length) return;
+    if (!estudoId || passo >= passos.length) return;
     const confirmar = avancarEtapaRef.current;
     if (typeof confirmar === "function") {
       const ok = await confirmar();
       if (!ok) return;
-      await recarregarContexto();
+      await recarregarContexto(estudoId);
     } else if (!proximaEtapaDisponivel(passo, ctxFluxo)) {
       return;
     }
@@ -157,11 +235,11 @@ export default function App() {
       );
       if (aviso && !window.confirm(aviso)) return;
     }
-    setPasso((atual) => atual + 1);
+    irPara(hashEstudo(estudoId, passo + 1));
   }
 
   function irAnterior() {
-    if (passo > 1) setPasso(passo - 1);
+    if (estudoId && passo > 1) irPara(hashEstudo(estudoId, passo - 1));
   }
 
   const nPlanosVigentes = ctxFluxo.rascunho?.subgrupos_atuais?.length || 0;
@@ -199,6 +277,9 @@ export default function App() {
     void sairSessao().then(() => setLogado(false));
   }, []);
 
+  const irSimular = () => irPara(HASH_SIMULAR);
+  const hashRetorno = retornoEstudo ? hashEstudo(retornoEstudo.id, retornoEstudo.passo) : null;
+
   if (!sessaoPronta) {
     return (
       <div className="app-shell app-shell-carregando">
@@ -226,93 +307,99 @@ export default function App() {
     );
   }
 
-  if (cotacoesNativa) {
-    const emEstudo = tela === "fluxo" && estudoId;
-    const irEstudos = () => {
-      if (emEstudo) voltarLista();
-      setCotacoesNativa(false);
-    };
+  if (rota.area === "invalida") {
+    return (
+      <TelaNaoEncontrado
+        tipo="rota"
+        onVoltarEstudos={voltarLista}
+        onSimularRede={irSimular}
+        onCotacoes={abrirCotacoes}
+        onSair={sair}
+      />
+    );
+  }
+
+  if (rota.area === "estudo" && estudoStatus === "sem_acesso") {
+    return (
+      <TelaNaoEncontrado
+        tipo="estudo"
+        onVoltarEstudos={voltarLista}
+        onSimularRede={irSimular}
+        onCotacoes={abrirCotacoes}
+        onSair={sair}
+      />
+    );
+  }
+
+  if (rota.area === "estudo" && estudoStatus === "erro") {
+    return (
+      <TelaNaoEncontrado
+        tipo="erro"
+        onVoltarEstudos={voltarLista}
+        onSimularRede={irSimular}
+        onCotacoes={abrirCotacoes}
+        onSair={sair}
+        onTentar={() => setRecargaEstudo((n) => n + 1)}
+      />
+    );
+  }
+
+  if (rota.area === "cotacoes") {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
         <ErrorBoundary
           contexto="Cotações"
           modo="painel"
-          onVoltarEstudos={irEstudos}
+          onVoltarEstudos={voltarLista}
           onSair={sair}
           resetKey="cotacoes"
         >
           <CotacoesNativa
-            onMeusEstudos={irEstudos}
-            onSimularRede={() => {
-              setCotacoesNativa(false);
-              setSimulando(true);
-            }}
-            onVoltarEstudo={emEstudo ? () => setCotacoesNativa(false) : undefined}
-            rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+            hashVoltarEstudo={hashRetorno}
+            rotuloEstudo={retornoEstudo?.rotulo}
           />
         </ErrorBoundary>
       </div>
     );
   }
 
-  if (cotacoesRpa) {
-    const emEstudo = tela === "fluxo" && estudoId;
-    return (
-      <div className="app-shell">
-        <EstudoCabecalho resumo={null} onSair={sair} />
-        <ErrorBoundary contexto="Cotações (iframe)" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
-          <CotacoesRpa
-            onMeusEstudos={() => {
-              if (emEstudo) voltarLista();
-              setCotacoesRpa(false);
-            }}
-            onSimularRede={() => {
-              setCotacoesRpa(false);
-              setSimulando(true);
-            }}
-            onVoltarEstudo={emEstudo ? () => setCotacoesRpa(false) : undefined}
-            rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
-          />
-        </ErrorBoundary>
-      </div>
-    );
-  }
-
-  if (simulando) {
-    const emEstudo = tela === "fluxo" && estudoId;
+  if (rota.area === "simular") {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
         <ErrorBoundary contexto="Simular rede" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
           <SimularRede
-            onMeusEstudos={() => {
-              if (emEstudo) voltarLista();
-              setSimulando(false);
-            }}
-            onCotacoes={() => {
-              setSimulando(false);
-              abrirCotacoes();
-            }}
-            onVoltarEstudo={emEstudo ? () => setSimulando(false) : undefined}
-            rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+            onMeusEstudos={voltarLista}
+            onCotacoes={abrirCotacoes}
+            onVoltarEstudo={hashRetorno ? () => irPara(hashRetorno) : undefined}
+            rotuloEstudo={retornoEstudo?.rotulo}
           />
         </ErrorBoundary>
       </div>
     );
   }
 
-  if (tela === "lista") {
+  if (rota.area === "estudos" || rota.area !== "estudo") {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
         <ErrorBoundary contexto="Meus estudos" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
           <MeusEstudos
             onContinuar={entrarEstudo}
-            onSimularRede={() => setSimulando(true)}
+            onSimularRede={irSimular}
             onCotacoes={abrirCotacoes}
           />
         </ErrorBoundary>
+      </div>
+    );
+  }
+
+  if (estudoStatus === "carregando" || estudoStatus === "idle") {
+    return (
+      <div className="app-shell app-shell-carregando">
+        <EstudoCabecalho resumo={null} onSair={sair} />
+        <p className="lista-carregando">Carregando o estudo…</p>
       </div>
     );
   }
@@ -379,7 +466,7 @@ export default function App() {
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      onClick={() => setPasso(p.ordem)}
+                      onClick={() => irPara(hashEstudo(estudoId, p.ordem))}
                       aria-current={passo === p.ordem ? "step" : undefined}
                     >
                       <span className="wizard-num">{p.ordem}</span>
@@ -398,7 +485,7 @@ export default function App() {
             <NavegacaoFerramentas
               ativo={null}
               onMeusEstudos={voltarLista}
-              onSimularRede={() => setSimulando(true)}
+              onSimularRede={irSimular}
               onCotacoes={abrirCotacoes}
             />
           </div>
@@ -419,7 +506,7 @@ export default function App() {
                   etapaIndice={passo}
                   totalEtapas={passos.length}
                   resumoPlanoAtual={ctxFluxo.resumoPlanoAtual}
-                  onAtualizado={recarregarContexto}
+                  onAtualizado={() => recarregarContexto(estudoId)}
                   onRegistrarAvanco={registrarAvancoEtapa}
                 />
               </ErrorBoundary>
@@ -436,7 +523,7 @@ export default function App() {
                   estudoId={estudoId}
                   etapaIndice={passo}
                   totalEtapas={passos.length}
-                  onSalvo={recarregarContexto}
+                  onSalvo={() => recarregarContexto(estudoId)}
                   onRegistrarAvanco={registrarAvancoEtapa}
                 />
               </ErrorBoundary>
@@ -458,7 +545,7 @@ export default function App() {
                   opcoesComparativo={ctxFluxo.rascunho?.opcoes_proposta || []}
                   extracoes={ctxFluxo.extracoes || []}
                   subgruposAtuais={ctxFluxo.rascunho?.subgrupos_atuais || []}
-                  onSalvo={recarregarContexto}
+                  onSalvo={() => recarregarContexto(estudoId)}
                   onRegistrarAvanco={registrarAvancoEtapa}
                 />
               </ErrorBoundary>
@@ -475,7 +562,7 @@ export default function App() {
                   estudoId={estudoId}
                   etapaIndice={passo}
                   totalEtapas={passos.length}
-                  onSalvo={recarregarContexto}
+                  onSalvo={() => recarregarContexto(estudoId)}
                   onRegistrarAvanco={registrarAvancoEtapa}
                 />
               </ErrorBoundary>
@@ -509,7 +596,7 @@ export default function App() {
                   etapaIndice={passo}
                   totalEtapas={passos.length}
                   rascunhoFluxo={ctxFluxo.rascunho}
-                  onAtualizado={recarregarContexto}
+                  onAtualizado={() => recarregarContexto(estudoId)}
                 />
               </ErrorBoundary>
             )}

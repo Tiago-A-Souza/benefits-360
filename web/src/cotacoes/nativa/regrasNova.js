@@ -1,5 +1,7 @@
 /** Regras da Nova cotação — espelho de rpa/app/web/js/telas/nova.js + base.js (fmt, CNPJ, resumo). */
 
+import { parseHash } from "../../rotas";
+
 export const FAIXAS = [
   ["0_18", "0 - 18"],
   ["19_23", "19 - 23"],
@@ -457,24 +459,13 @@ export function iframeCotacoes() {
 
 /**
  * Abrir a casca nativa no carregamento.
- * Padrão da aba Cotações = nativa.
+ * Padrão da aba Cotações = nativa. Hash de Meus estudos / Simular / etapas
+ * nunca abre Cotações — o endereço é a fonte da tela.
  */
 export function nativaLigada() {
   if (typeof window === "undefined") return false;
-  const q = new URLSearchParams(window.location.search);
-  if (q.get("cotacoes-nativa") === "1") return true;
-  const h = window.location.hash || "";
-  return (
-    h.startsWith("#/nova") ||
-    h.startsWith("#/andamento/") ||
-    h.startsWith("#/cotacoes") ||
-    h.startsWith("#/conexoes") ||
-    h.startsWith("#/inicio") ||
-    h.startsWith("#/ajuda") ||
-    h.startsWith("#/importar") ||
-    h.startsWith("#/robos") ||
-    h.startsWith("#/robo/")
-  );
+  const loc = window.location || {};
+  return parseHash(loc.hash || "", loc.search || "").area === "cotacoes";
 }
 
 export const FILTROS_LISTA = [

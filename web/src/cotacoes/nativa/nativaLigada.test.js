@@ -41,4 +41,11 @@ describe("nativaLigada e iframeCotacoes", () => {
       expect(nativaLigada()).toBe(true);
     }
   });
+
+  it("Meus estudos, Simular rede e etapas não ligam nativa (hash não fica preso em Cotações)", () => {
+    for (const h of ["#/estudos", "#/simular-rede", "#/estudos/42/etapa/3", ""]) {
+      vi.stubGlobal("window", { location: { search: "", hash: h } });
+      expect(nativaLigada(), h).toBe(false);
+    }
+  });
 });

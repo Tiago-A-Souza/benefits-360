@@ -103,6 +103,9 @@ export async function interceptarApi(page) {
     }
     if (path === "/api/config") return json(route, { modo: "demo" });
     if (path === "/api/rpa-cotacoes/estado") return json(route, { ligado: false });
+    if (path.startsWith("/api/estudos/") && !path.includes(`/estudos/${ESTUDO_DEMO.id}`)) {
+      return json(route, { detail: "Estudo não encontrado" }, 404);
+    }
     return json(route, {});
   });
 }
@@ -147,7 +150,7 @@ export function coletarFalhas(page) {
     if (/Download the React DevTools/i.test(texto)) return;
     if (/favicon/i.test(texto)) return;
     if (/127\.0\.0\.1:8600/i.test(texto)) return;
-    if (/Failed to load resource/i.test(texto) && /8600|ERR_CONNECTION|503/i.test(texto)) return;
+    if (/Failed to load resource/i.test(texto) && /8600|ERR_CONNECTION|503|404/i.test(texto)) return;
     errosConsole.push(texto);
   });
   page.on("pageerror", (err) => {
