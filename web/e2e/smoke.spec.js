@@ -9,13 +9,13 @@ import {
 } from "./helpers.js";
 
 const ABAS_COTACOES = [
-  { botao: "Início", trecho: "Cotar uma empresa" },
-  { botao: "Nova cotação", trecho: "Nova cotação" },
-  { botao: "Cotações", trecho: "Cotações" },
-  { botao: "Importar planilha", trecho: "Importar planilha" },
-  { botao: "Conexões", trecho: "Conexões" },
-  { botao: "Ajustes dos robôs", trecho: "Robôs" },
-  { botao: "Ajuda", trecho: "Ajuda" },
+  { botao: "Início", trecho: "Cotar uma empresa", hash: "#/inicio" },
+  { botao: "Nova cotação", trecho: "Nova cotação", hash: "#/nova" },
+  { botao: "Cotações", trecho: "Cotações", hash: "#/cotacoes" },
+  { botao: "Importar planilha", trecho: "Importar planilha", hash: "#/importar" },
+  { botao: "Conexões", trecho: "Conexões", hash: "#/conexoes" },
+  { botao: "Ajustes dos robôs", trecho: "Robôs", hash: "#/robos" },
+  { botao: "Ajuda", trecho: "Ajuda", hash: "#/ajuda" },
 ];
 
 async function abrirApp(page, cenarioRobo) {
@@ -44,6 +44,21 @@ async function irCotacoes(page) {
 async function irMeusEstudos(page) {
   await page.getByRole("button", { name: "Meus estudos", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Meus estudos" })).toBeVisible();
+  await expectHash(page, "#/estudos");
+}
+
+async function expectHash(page, hash) {
+  await expect.poll(async () => page.evaluate(() => window.location.hash)).toBe(hash);
+}
+
+async function abrirAppEm(page, cenarioRobo, caminho) {
+  const falhas = coletarFalhas(page);
+  await interceptarApi(page);
+  await interceptarRobo(page, cenarioRobo);
+  await instalarSessaoDemo(page);
+  await page.goto(caminho);
+  await expect(page.locator("#root")).not.toBeEmpty();
+  return falhas;
 }
 
 async function varrerRotas(page, falhas, nomeCenario) {
@@ -58,33 +73,40 @@ async function varrerRotas(page, falhas, nomeCenario) {
   };
 
   await expect(page.getByRole("heading", { name: "Meus estudos" })).toBeVisible({ timeout: 15000 });
+  await expectHash(page, "#/estudos");
   await checar("Meus estudos");
 
   await navSistema(page).getByRole("button", { name: "Simular rede", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Simular rede" })).toBeVisible();
+  await expectHash(page, "#/simular-rede");
   await checar("Simular rede");
 
   await irMeusEstudos(page);
   await irCotacoes(page);
+  await expectHash(page, "#/cotacoes");
   await checar("Cotações (entrada)");
 
   for (const aba of ABAS_COTACOES) {
     await navAbasCotacoes(page).getByRole("button", { name: aba.botao, exact: true }).click();
     await expect(page.locator("main").getByText(aba.trecho).first()).toBeVisible({ timeout: 10000 });
+    await expectHash(page, aba.hash);
     await checar(`Cotações · ${aba.botao}`);
   }
 
   await irMeusEstudos(page);
+  await expectHash(page, "#/estudos");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await expect(page.getByRole("heading", { name: /Base atual|Referência/i })).toBeVisible({ timeout: 10000 });
+  await expectHash(page, "#/estudos/demo-1/etapa/1");
   await checar("Etapa 1");
 
-  const etapas = page.locator("nav[aria-label='Etapas do estudo'] button");
-  const n = await etapas.count();
+  const navEtapas = page.locator("nav[aria-label='Etapas do estudo']");
+  await expect(navEtapas.getByRole("button").first()).toBeVisible();
+  const n = await navEtapas.getByRole("button").count();
   expect(n).toBeGreaterThanOrEqual(5);
   for (let i = 0; i < n; i += 1) {
-    await etapas.nth(i).click();
-    await page.waitForTimeout(250);
+    await navEtapas.getByRole("button").nth(i).click();
+    await expectHash(page, `#/estudos/demo-1/etapa/${i + 1}`);
     await checar(`Etapa ${i + 1}`);
   }
 }
@@ -125,13 +147,53 @@ for (const [nome, cenario] of Object.entries(CENARIOS_ROBO)) {
 }
 
 test("hash #/conexoes após login não fica em branco", async ({ page }) => {
-  const falhas = coletarFalhas(page);
-  await interceptarApi(page);
-  await interceptarRobo(page, CENARIOS_ROBO.antigo);
-  await instalarSessaoDemo(page);
-  await page.goto("/#/conexoes");
+  const falhas = await abrirAppEm(page, CENARIOS_ROBO.antigo, "/#/conexoes");
   await expect(page.getByRole("heading", { name: "Conexões" })).toBeVisible({ timeout: 15000 });
+  await expectHash(page, "#/conexoes");
   await assertTelaViva(page, "hash conexoes");
+  expect(falhas.excecoes, falhas.excecoes.join(" | ")).toEqual([]);
+  expect(falhas.errosConsole, falhas.errosConsole.join(" | ")).toEqual([]);
+});
+
+test("URL direta bate com a tela e não deixa o hash preso em Cotações", async ({ page }) => {
+  const falhas = await abrirAppEm(page, CENARIOS_ROBO.real, "/#/conexoes");
+  await expect(page.getByRole("heading", { name: "Conexões" })).toBeVisible({ timeout: 15000 });
+  await expectHash(page, "#/conexoes");
+
+  await irMeusEstudos(page);
+  await assertTelaViva(page, "Meus estudos após Conexões");
+
+  await page.goto("/#/simular-rede");
+  await expect(page.getByRole("heading", { name: "Simular rede" })).toBeVisible({ timeout: 15000 });
+  await expectHash(page, "#/simular-rede");
+  await assertTelaViva(page, "URL Simular rede");
+
+  await page.goto("/#/estudos");
+  await expect(page.getByRole("heading", { name: "Meus estudos" })).toBeVisible({ timeout: 15000 });
+  await expectHash(page, "#/estudos");
+  await assertTelaViva(page, "URL Meus estudos");
+
+  await page.goto("/#/estudos/demo-1/etapa/1");
+  await expect(page.getByRole("heading", { name: /Base atual|Referência/i })).toBeVisible({ timeout: 15000 });
+  await expectHash(page, "#/estudos/demo-1/etapa/1");
+  await expect(page.getByText("Demo Ltda").first()).toBeVisible();
+  await assertTelaViva(page, "URL etapa 1");
+
+  await page.goto("/#/estudos/demo-1/etapa/3");
+  await expectHash(page, "#/estudos/demo-1/etapa/3");
+  await assertTelaViva(page, "URL etapa 3");
+
+  await page.goto("/#/nao-existe");
+  await expect(page.getByRole("heading", { name: "Esta página não existe" })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Demo Ltda")).toHaveCount(0);
+  await assertTelaViva(page, "URL inválida");
+
+  await page.goto("/#/estudos/outro-user-99/etapa/1");
+  await expect(page.getByRole("heading", { name: "Estudo não encontrado" })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/não foi encontrado ou você não tem acesso/i)).toBeVisible();
+  await expect(page.getByText("Demo Ltda")).toHaveCount(0);
+  await assertTelaViva(page, "estudo sem acesso");
+
   expect(falhas.excecoes, falhas.excecoes.join(" | ")).toEqual([]);
   expect(falhas.errosConsole, falhas.errosConsole.join(" | ")).toEqual([]);
 });
