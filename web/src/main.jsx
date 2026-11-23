@@ -1,12 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import ErrorBoundary from "./erro/ErrorBoundary";
 import FaixaRascunho from "./piloto/FaixaRascunho";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <FaixaRascunho />
-    <App />
+    <ErrorBoundary contexto="aplicativo" modo="pagina">
+      <FaixaRascunho />
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 );
