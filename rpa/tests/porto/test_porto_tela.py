@@ -91,7 +91,7 @@ def test_api_lista_a_porto_desmarcada_com_cpf_e_senha(amb):
     porto = next(o for o in ops if o["id"] == "porto")
     assert porto["nome"] == "Porto Seguro"
     texto = json.dumps(porto)
-    assert "cpf" in texto.lower() and "senha" in texto.lower()
+    assert "cpf" in texto.lower() and "senha" in texto.lower() and "susep" in texto.lower()
     assert "Gerar orçamento" in texto or "gerar" in texto.lower()
     assert Simulador.SENHA not in texto
 
@@ -99,9 +99,13 @@ def test_api_lista_a_porto_desmarcada_com_cpf_e_senha(amb):
 def test_cofre_guarda_o_login_e_nao_devolve_a_senha(amb):
     status, _ = _pedir(amb, "POST", "/api/credenciais/porto",
                        {"cpf": Simulador.CPF, "senha": Simulador.SENHA}, tela=True)
+    assert status == 400
+    status, _ = _pedir(amb, "POST", "/api/credenciais/porto",
+                       {"cpf": Simulador.CPF, "senha": Simulador.SENHA, "susep": Simulador.SUSEP}, tela=True)
     assert status == 200
     status, r = _pedir(amb, "GET", "/api/credenciais/porto")
     assert status == 200 and r["guardadas"] is True
     bruto = json.dumps(r)
     assert Simulador.SENHA not in bruto
     assert "Treino#" not in bruto
+    assert Simulador.SUSEP not in bruto

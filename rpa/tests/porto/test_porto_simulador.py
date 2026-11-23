@@ -32,7 +32,7 @@ def sim():
 def login_falso():
     from nucleo.credenciais import Cofre, CofreMemoria
     CofreMemoria.esvaziar()
-    Cofre("porto", memoria=True).guardar(cpf=Simulador.CPF, senha=Simulador.SENHA)
+    Cofre("porto", memoria=True).guardar(cpf=Simulador.CPF, senha=Simulador.SENHA, susep=Simulador.SUSEP)
     yield
     CofreMemoria.esvaziar()
 
@@ -114,6 +114,7 @@ def test_ensaio_para_no_passo_3_sem_gerar_orcamento(tmp_path, sim, monkeypatch):
     assert sim.cotacoes == {}
     assert sim.gerar_orcamento_cliques == 0
     assert sim.emitir_sem_medicamentos_cliques == 0
+    assert sim.susep_escolhida == Simulador.SUSEP
     [r] = _resultados(tmp_path)
     assert r["plano"] == "Ouro Mais I" and r["status"] == "ENSAIO_OK"
     assert "sem Gerar orçamento" in (r["erro"] or "")

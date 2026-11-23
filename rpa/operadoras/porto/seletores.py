@@ -72,9 +72,56 @@ def captcha_desafio(page: Page) -> Locator:
                      ":not([src*='size=invisible'])"))
 
 
+def normalizar_susep(texto: str) -> str:
+    """'BX865J (P)' ou 'bx865j' → 'BX865J'."""
+    return re.split(r"[\s(/]", (texto or "").strip().upper(), 1)[0]
+
+
+def susep_select(page: Page) -> Locator:
+    return page.locator("select#susep, select[name*=susep i], select[id*=susep i]")
+
+
+def susep_caixa(page: Page) -> Locator:
+    return page.get_by_label(re.compile(r"^susep$", re.I)).or_(
+        page.get_by_role("combobox", name=re.compile(r"susep", re.I))).or_(
+        page.get_by_role("combobox")).or_(susep_select(page))
+
+
 def susep_opcao(page: Page, codigo: str) -> Locator:
-    return page.get_by_role("button", name=re.compile(rf"\b{re.escape(codigo)}\b", re.I)).or_(
-        page.get_by_text(re.compile(rf"\b{re.escape(codigo)}\b", re.I)))
+    rx = re.compile(rf"\b{re.escape(codigo)}\b", re.I)
+    return (page.get_by_role("option", name=rx).or_(
+        page.locator(f"[data-susep='{codigo}']")).or_(
+        page.get_by_role("button", name=rx)).or_(
+        page.get_by_role("listitem", name=rx)).or_(
+        page.get_by_text(rx)))
+
+
+def susep_botao_seguir(page: Page) -> Locator:
+    return page.get_by_role("button", name=re.compile(r"^\s*(continuar|confirmar|entrar|ok)\s*$", re.I))
+
+
+def escolher_susep(page: Page, codigo: str) -> None:
+    """Dropdown nativo ou lista custom (portal real: 'BX865J (P)'). Sem o código, falha."""
+    try:
+        nativo = susep_select(page)
+        if nativo.count():
+            loc = nativo.first
+            try:
+                loc.select_option(value=codigo, timeout=3000)
+                return
+            except Exception:  # noqa: BLE001
+                loc.select_option(label=re.compile(rf"\b{re.escape(codigo)}\b", re.I), timeout=3000)
+                return
+        opcao = susep_opcao(page, codigo)
+        if not opcao.count():
+            caixa = susep_caixa(page)
+            if caixa.count():
+                caixa.first.click(timeout=3000)
+        opcao.first.click(timeout=5000)
+    except Exception as e:  # noqa: BLE001
+        if "closed" in str(e).lower() or "destroy" in str(e).lower():
+            return
+        raise
 
 
 # ---- cotador (lugar = iframe ou página) ----

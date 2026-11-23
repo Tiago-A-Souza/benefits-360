@@ -9,7 +9,7 @@ def main() -> None:
     sim.iniciar()
     print("Simulador da Porto Seguro Saúde PME rodando (Ctrl+C para parar)")
     print(f"  login:  {sim.url_login}")
-    print(f"  login de treino (falso): CPF {sim.CPF}, senha {sim.SENHA}")
+    print(f"  login de treino (falso): CPF {sim.CPF}, senha {sim.SENHA}, SUSEP {sim.SUSEP}")
     try:
         while True:
             time.sleep(1)

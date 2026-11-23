@@ -71,17 +71,19 @@ class Porto(Operadora):
 
     def configuracao(self, cfg: dict) -> list[dict]:
         return [
-            {"etapa": "login", "faz": "Entra no Corretor Online sozinho, só quando o portal pede, com o CPF e a senha "
-                                      "que você guarda aqui. Se aparecer desafio de reCAPTCHA, o robô para e avisa: "
-                                      "não tenta burlar. A sessão fica no navegador do robô.",
+            {"etapa": "login", "faz": "Entra no Corretor Online sozinho, só quando o portal pede, com o CPF, a senha "
+                                      "e o código SUSEP que você guarda em Conexões. Depois do CPF e da senha o portal "
+                                      "abre o dropdown da SUSEP; o robô escolhe o código guardado. Se aparecer "
+                                      "desafio de reCAPTCHA, o robô para e avisa: não tenta burlar. A sessão fica no "
+                                      "navegador do robô.",
              "campos": [{"tipo": "credenciais", "rotulo": "Login no portal", "senha_max": 64,
                          "campos": self.campos_login(),
-                         "ajuda": "Fica no cofre do Windows (NewportCotacoes/porto). A senha nunca volta para a tela."},
+                         "ajuda": "CPF, senha e SUSEP ficam no cofre do Windows (NewportCotacoes/porto). A senha nunca volta para a tela."},
                         {"chave": "tempos.sair_do_portal_min", "rotulo": "Sair do portal depois de (minutos sem pedidos)",
                          "tipo": "numero", "minimo": 0, "maximo": 120}]},
-            {"etapa": "susep", "faz": "Escolhe o código SUSEP da lista (no vídeo: BX865J).",
-             "campos": [{"chave": "padroes.susep", "rotulo": "Código SUSEP", "tipo": "texto",
-                         "sugestoes": ["BX865J"], "ajuda": "Como aparece na lista depois do login."}]},
+            {"etapa": "susep", "faz": "Depois do CPF e da senha, escolhe no dropdown o código SUSEP guardado no login "
+                                      "(o mesmo da lista: BX865J (P), etc.). Sem esse código o robô não entra.",
+             "campos": []},
             {"etapa": "inicio", "faz": "Abre o cotador (iframe) e clica em Criar nova cotação. Nunca Duplicar orçamento.",
              "campos": []},
             {"etapa": "dados", "faz": "Digita o CNPJ, espera o preenchimento da Receita e confere a razão social.",
@@ -167,10 +169,13 @@ class Porto(Operadora):
         entrar(sessao)
 
     CAMPOS_LOGIN = [{"chave": "cpf", "rotulo": "CPF", "tipo": "cpf", "artigo": "o"},
-                    {"chave": "senha", "rotulo": "Senha", "tipo": "senha", "artigo": "a"}]
+                    {"chave": "senha", "rotulo": "Senha", "tipo": "senha", "artigo": "a"},
+                    {"chave": "susep", "rotulo": "SUSEP", "tipo": "texto", "artigo": "o"}]
     mensagens_login = {
         "captcha": "O portal da {op} mostrou um desafio de reCAPTCHA. O robô não tenta resolver: resolva no "
                    "seu navegador (ou ligue “Mostrar a janela do portal”) e peça de novo.",
+        "sem_susep": "O código SUSEP guardado no login da {op} não apareceu na lista do portal. Confira em "
+                     "Conexões e guarde de novo o código exatamente como no dropdown.",
     }
 
     def campos_login(self) -> list[dict]:
@@ -178,7 +183,7 @@ class Porto(Operadora):
 
     def textos_tela(self) -> dict:
         return {
-            "passo_login": "Na engrenagem do robô Porto (tela Login), guarde o CPF e a senha do Corretor Online. Ficam no cofre do Windows (NewportCotacoes/porto). Se o portal mostrar reCAPTCHA, o robô para e avisa.",
+            "passo_login": "Em Conexões da Porto, guarde CPF, senha e o código SUSEP do dropdown (depois do login). Ficam no cofre do Windows (NewportCotacoes/porto). Se o portal mostrar reCAPTCHA, o robô para e avisa.",
             "passo_nova": "CNPJ, vidas por faixa (idade exata de 0 a 18), operadora atual e os planos pelo nome da grade. Cada plano vira uma cotação e um PDF, sempre por Criar nova cotação.",
             "perguntas": {
                 "versoes": [
@@ -198,7 +203,7 @@ class Porto(Operadora):
     def treino(self) -> dict:
         from .simulador.servidor import Simulador
         return {"iniciar": lambda: Simulador(8795).iniciar(), "portas": "porta 8795",
-                "login_falso": {"cpf": Simulador.CPF, "senha": Simulador.SENHA}}
+                "login_falso": {"cpf": Simulador.CPF, "senha": Simulador.SENHA, "susep": Simulador.SUSEP}}
 
     def sair(self, sessao, prazo_s: float = 30) -> bool:
         from .etapas import sair_do_portal

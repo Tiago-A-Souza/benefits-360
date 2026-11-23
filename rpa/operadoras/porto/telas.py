@@ -20,6 +20,19 @@ def _visivel(loc) -> bool:
         return False
 
 
+def tela_susep(page) -> bool:
+    """Dropdown da SUSEP depois do CPF/senha — ainda não está dentro do cotador."""
+    try:
+        if page.is_closed() or _visivel(page.locator("iframe#cotador")):
+            return False
+        path = sel.caminho(page)
+        if path.startswith(sel.ROTA_HOME):
+            return False
+        return path.startswith(sel.ROTA_SUSEP) or _visivel(sel.susep_caixa(page)) or _visivel(sel.susep_select(page))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def login_na_tela(page) -> bool:
     try:
         if page.is_closed():
@@ -31,12 +44,11 @@ def login_na_tela(page) -> bool:
 
 def logado(page) -> bool:
     try:
-        if page.is_closed() or login_na_tela(page):
+        if page.is_closed() or login_na_tela(page) or tela_susep(page):
             return False
         path = sel.caminho(page)
-        return path.startswith(sel.ROTA_HOME) or path.startswith(sel.ROTA_SUSEP) or path.startswith("/novocol") \
-            or _visivel(page.locator("iframe#cotador")) or _visivel(page.get_by_text("EDLAINE")) \
-            or _visivel(page.get_by_text("Corretor Online"))
+        return path.startswith(sel.ROTA_HOME) or path.startswith("/novocol") \
+            or _visivel(page.locator("iframe#cotador")) or _visivel(page.get_by_text("EDLAINE"))
     except Exception:  # noqa: BLE001
         return False
 

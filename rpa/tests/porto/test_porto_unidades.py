@@ -98,13 +98,33 @@ Valor total mensal: R$ 4.721,72
     assert d["total"] == Decimal("4721.72")
 
 
-def test_engrenagem_declara_credenciais_cpf_senha_e_nao_emite():
+def test_engrenagem_declara_credenciais_cpf_senha_susep_e_nao_emite():
     conf = {e["etapa"]: e for e in OP.configuracao(CFG)}
     login = conf["login"]["campos"][0]
     assert login["tipo"] == "credenciais"
-    assert [c["chave"] for c in login["campos"]] == ["cpf", "senha"]
+    assert [c["chave"] for c in login["campos"]] == ["cpf", "senha", "susep"]
+    assert conf["susep"]["campos"] == []
     assert "Gerar orçamento" in conf["orcamento"]["faz"]
     assert "Elaborar proposta" in conf["orcamento"]["faz"]
+
+
+def test_cofre_sem_susep_nao_fica_guardado():
+    from nucleo.credenciais import Cofre, CofreMemoria, ErroCredencial
+    CofreMemoria.esvaziar()
+    cofre = Cofre("porto", memoria=True)
+    with pytest.raises(ErroCredencial):
+        cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1")
+    assert cofre.situacao()["guardadas"] is False
+    cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1", susep="BX865J (P)")
+    assert cofre.ler()["susep"] == "BX865J (P)"
+    CofreMemoria.esvaziar()
+
+
+def test_normaliza_susep_do_dropdown():
+    from operadoras.porto.seletores import normalizar_susep
+    assert normalizar_susep("BX865J (P)") == "BX865J"
+    assert normalizar_susep(" bx865j ") == "BX865J"
+    assert normalizar_susep("1VTUFJ") == "1VTUFJ"
 
 
 def test_seletores_nao_expoe_clique_de_proposta_ou_duplicar():

@@ -125,9 +125,13 @@ def _pagina(titulo: str, corpo: str, script: str = "") -> str:
 class Simulador:
     CPF = "529.982.247-25"
     SENHA = "Treino#Porto1"
+    SUSEP = "BX865J"
+    SUSEPS = ("381N5F", "BX865J", "1VTUFJ", "1Y5ZLJ")
 
     def __init__(self, porta: int = 0):
         self.cpf, self.senha = self.CPF, self.SENHA
+        self.susep = self.SUSEP
+        self.susep_escolhida = ""
         self.sessoes: dict[str, dict] = {}
         self.exigir_captcha = False
         self.tentativas_login = 0
@@ -234,12 +238,24 @@ document.getElementById('entrar').onclick=async()=>{{
                 if path == "/susep":
                     if not sess:
                         self.send_response(302); self.send_header("Location", "/login"); self.end_headers(); return
-                    botoes = "".join(f"<button data-susep='{c}'>{c}</button>" for c in
-                                     ["381N5F", "BX865J", "1VTUFJ", "1Y5ZLJ"])
-                    self._html(200, _pagina("SUSEP", f"<header>Escolha a SUSEP</header><main>{botoes}</main>"
-                                                    "<script>document.querySelectorAll('[data-susep]').forEach(b=>b.onclick="
-                                                    "async()=>{await fetch('/api/susep',{method:'POST',headers:{'Content-Type':'application/json'},"
-                                                    "body:JSON.stringify({codigo:b.dataset.susep})});location='/home'});</script>"))
+                    opcoes = '<option value="">Selecione</option>' + "".join(
+                        f"<option value='{c}'>{c} (P)</option>" if c in ("381N5F", "BX865J") else f"<option value='{c}'>{c}</option>"
+                        for c in sim.SUSEPS)
+                    self._html(200, _pagina("Acesse o Corretor Online", f"""
+<header>Acesse o Corretor Online</header>
+<main class=card style="width:360px;margin:40px auto">
+<label for=susep>SUSEP</label><br>
+<select id=susep name=susep>{opcoes}</select>
+</main>
+<script>
+const caixa=document.getElementById('susep');
+caixa.onchange=async()=>{{
+ if(!caixa.value) return;
+ await fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+  body:JSON.stringify({{codigo:caixa.value}})}});
+ location='/home';
+}};
+</script>"""))
                     return
                 if path == "/home":
                     if not sess:
@@ -282,6 +298,7 @@ document.getElementById('entrar').onclick=async()=>{{
                     self._json(200, {"ok": True, "ir": "/susep"}, sid=sid); return
                 if path == "/api/susep" and sess:
                     sess["susep"] = dados.get("codigo") or ""
+                    sim.susep_escolhida = sess["susep"]
                     self._json(200, {"ok": True}); return
                 if path == "/api/sair" and sess:
                     sim.sessoes.pop(self._sid(), None)
