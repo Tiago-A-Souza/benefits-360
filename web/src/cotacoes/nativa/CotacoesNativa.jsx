@@ -336,10 +336,21 @@ export default function CotacoesNativa({
             <p>
               <strong>O robô de cotações não está ligado</strong> em <code>{urlRobo}</code>.
             </p>
+            <p>
+              O histórico e os PDFs <strong>não foram perdidos</strong>: ficam neste computador, na pasta{" "}
+              <code>rpa\saida</code>. Ligue o robô pelo atalho <strong>Abrir Benefits Robo</strong> (dois cliques
+              na pasta rpa) e depois em Tentar de novo.
+            </p>
             <p className="erro">{erro}</p>
             <button type="button" className="secundario" onClick={() => setReloadOps((n) => n + 1)}>
               Tentar de novo
             </button>
+          </div>
+        ) : null}
+
+        {simulador ? (
+          <div className="nativa-aviso-treino" role="alert">
+            ROBÔ EM MODO TREINO — não são as suas cotações reais
           </div>
         ) : null}
 
@@ -382,6 +393,7 @@ export default function CotacoesNativa({
             aviso={mostrarAviso}
             onConfigurar={(opId) => ir(`#/robo/${opId}`)}
             onLogin={(opId) => ir(`#/conexoes?op=${opId}`)}
+            simulador={simulador}
           />
         ) : null}
 
