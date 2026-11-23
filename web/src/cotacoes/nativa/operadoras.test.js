@@ -14,6 +14,7 @@ describe("marca das operadoras", () => {
     expect(MARCA_OPERADORAS.amil.corCabeca).toBe("rgba(64, 24, 248, 0.06)");
     expect(MARCA_OPERADORAS.bradesco.corCabeca).toBe("rgba(204, 9, 47, 0.06)");
     expect(MARCA_OPERADORAS.sulamerica.corCabeca).toBe("rgba(240, 136, 16, 0.06)");
+    expect(MARCA_OPERADORAS.porto.cor).toBe("#00A651");
   });
 
   it("estilo do cartão leva --cor-op, suave e cabeçalho", () => {
