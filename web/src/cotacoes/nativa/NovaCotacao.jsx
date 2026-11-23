@@ -27,7 +27,7 @@ import {
 function Segmentos({ opcoes, valor, onChange, rotulo }) {
   return (
     <div className="nativa-segmentos" role="group" aria-label={rotulo}>
-      {opcoes.map(([v, texto]) => (
+      {(opcoes || []).map(([v, texto]) => (
         <button
           key={String(v)}
           type="button"
@@ -107,11 +107,13 @@ function CampoOperadora({ campo, valor, opId, onChange }) {
 
 function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
   const padraoDe = (chaveCampo) => {
-    const c = op.campos.find((x) => x.chave === chaveCampo);
+    const c = (op.campos || []).find((x) => x.chave === chaveCampo);
     return c && c.padrao !== undefined && c.padrao !== null ? String(c.padrao) : "";
   };
-  const mudadoNestaCotacao = op.campos.some((c) => c.robo && o.campos[c.chave] !== padraoDe(c.chave));
-  const frase = resumoDoRobo(op, (k) => o.campos[k], { produto: op.produto_portal });
+  const mudadoNestaCotacao = (op.campos || []).some(
+    (c) => c.robo && (o.campos || {})[c.chave] !== padraoDe(c.chave),
+  );
+  const frase = resumoDoRobo(op, (k) => (o.campos || {})[k], { produto: op.produto_portal });
   const grupos = {};
   for (const p of op.planos || []) {
     (grupos[p.acomodacao || "Outros"] = grupos[p.acomodacao || "Outros"] || []).push(p);
@@ -163,12 +165,12 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
       {o.ativa ? (
         <div>
           {(op.campos || [])
-            .filter((c) => !c.robo && visivel(c, o.campos))
+            .filter((c) => !c.robo && visivel(c, o.campos || {}))
             .map((c) => (
               <CampoOperadora
                 key={c.chave}
                 campo={c}
-                valor={o.campos[c.chave]}
+                valor={(o.campos || {})[c.chave]}
                 opId={op.id}
                 onChange={(v) => setCampo(c.chave, v)}
               />
@@ -190,8 +192,8 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
                     type="button"
                     className="link"
                     onClick={() => {
-                      const campos = { ...o.campos };
-                      for (const c of op.campos) if (c.robo) campos[c.chave] = padraoDe(c.chave);
+                      const campos = { ...(o.campos || {}) };
+                      for (const c of op.campos || []) if (c.robo) campos[c.chave] = padraoDe(c.chave);
                       onPatch({ campos, ajustar: o.ajustar });
                     }}
                   >
@@ -207,12 +209,12 @@ function PainelOperadora({ op, o, conexao, soUma, onPatch, onConfigurar }) {
 
           {o.ajustar
             ? (op.campos || [])
-                .filter((c) => c.robo && visivel(c, o.campos))
+                .filter((c) => c.robo && visivel(c, o.campos || {}))
                 .map((c) => (
                   <CampoOperadora
                     key={`aj-${c.chave}`}
                     campo={c}
-                    valor={o.campos[c.chave]}
+                    valor={(o.campos || {})[c.chave]}
                     opId={op.id}
                     onChange={(v) => setCampo(c.chave, v)}
                   />

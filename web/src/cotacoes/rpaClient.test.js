@@ -76,4 +76,27 @@ describe("rpaClient", () => {
     });
     await expect(chamarRpa("GET", "/api/estado")).rejects.toBeInstanceOf(RpaClienteErro);
   });
+
+  it("AbortError → ROBO_TIMEOUT", async () => {
+    const e = new Error("aborted");
+    e.name = "AbortError";
+    fetch.mockRejectedValue(e);
+    await expect(chamarRpa("GET", "/api/estado")).rejects.toMatchObject({
+      codigo: "ROBO_TIMEOUT",
+    });
+  });
+
+  it("JSON inválido em 200 → ROBO_FORMATO", async () => {
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => {
+        throw new SyntaxError("Unexpected token");
+      },
+    });
+    await expect(chamarRpa("GET", "/api/operadoras")).rejects.toMatchObject({
+      codigo: "ROBO_FORMATO",
+    });
+  });
 });

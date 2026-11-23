@@ -16,6 +16,8 @@ import Inicio from "./Inicio";
 import ListaCotacoes from "./ListaCotacoes";
 import NovaCotacao from "./NovaCotacao";
 import { TELAS_ROBO_NAO_PORTADAS } from "./regrasNova";
+import { asArray } from "../../util/colecao";
+import ErrorBoundary from "../../erro/ErrorBoundary";
 import "./nativa.css";
 
 function lerHash() {
@@ -149,18 +151,25 @@ export default function CotacoesNativa({
     Promise.all([chamarRpa("GET", "/api/operadoras"), chamarRpa("GET", "/api/estado").catch(() => null)])
       .then(([d, estado]) => {
         if (!vivo) return;
-        setOperadoras(d);
-        setIndisponiveis((estado && estado.operadoras_indisponiveis) || []);
+        const lista = asArray(d);
+        if (!Array.isArray(d) && d && typeof d === "object" && !d.operadoras) {
+          setErro("O robô devolveu um formato inesperado de operadoras. Atualize o robô ou tente de novo.");
+          setOperadoras([]);
+          return;
+        }
+        setOperadoras(lista);
+        setIndisponiveis(asArray(estado && estado.operadoras_indisponiveis));
         setSimulador(!!(estado && estado.simulador));
         setVersaoRobo(resumoVersaoRobo(estado));
         if (estado && estado.retencao_dias) setRetencaoDias(estado.retencao_dias);
         const cx = {};
-        for (const o of d || []) cx[o.id] = o.conexao || "desconectado";
-        setConexao((c) => ({ ...cx, ...c }));
-        if (estado && estado.robo) {
-          setTrabalhoAtual(estado.robo.atual || null);
-          setNaFila(estado.robo.na_fila || []);
-          if (estado.robo.ultima_etapa) setUltimaEtapa(estado.robo.ultima_etapa);
+        for (const o of lista) cx[o.id] = o.conexao || "desconectado";
+        setConexao((c) => ({ ...cx, ...(c || {}) }));
+        const robo = estado && estado.robo;
+        if (robo && typeof robo === "object") {
+          setTrabalhoAtual(robo.atual || null);
+          setNaFila(asArray(robo.na_fila));
+          if (robo.ultima_etapa) setUltimaEtapa(robo.ultima_etapa);
         }
       })
       .catch((e) => vivo && setErro(e.message || "O robô de cotações não está no ar."));
@@ -304,6 +313,7 @@ export default function CotacoesNativa({
       </aside>
 
       <main className="lista-main nativa-main">
+        <ErrorBoundary contexto={`Cotações · ${tela}`} modo="painel" resetKey={tela} onVoltarEstudos={onMeusEstudos}>
         {problemaLogin ? (
           <FaixaProblemaLogin
             problema={problemaLogin}
@@ -461,6 +471,7 @@ export default function CotacoesNativa({
             aviso={mostrarAviso}
           />
         ) : null}
+        </ErrorBoundary>
       </main>
     </div>
   );

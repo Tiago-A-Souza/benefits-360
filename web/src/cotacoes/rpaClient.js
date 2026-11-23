@@ -4,6 +4,7 @@
  */
 
 export const RPA_URL_PADRAO = "http://127.0.0.1:8600";
+const TIMEOUT_RPA_MS = 20000;
 
 /** Chrome 142+: isenta mixed content no loopback. Navegador antigo ignora a chave. */
 export function opcoesChamadaRpa(init = {}) {
@@ -59,22 +60,38 @@ export async function chamarRpa(metodo, caminho, corpo, opcoes = {}) {
     init.body = corpo;
   }
   let resp;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_RPA_MS);
   try {
-    resp = await fetch(url, opcoesChamadaRpa(init));
-  } catch {
+    resp = await fetch(url, opcoesChamadaRpa({ ...init, signal: ctrl.signal }));
+  } catch (e) {
+    const timeout = e && (e.name === "AbortError" || /aborted/i.test(String(e.message || "")));
     throw new RpaClienteErro(
-      "ROBO_DESLIGADO",
-      `O robô de cotações não está no ar em ${base}.`,
+      timeout ? "ROBO_TIMEOUT" : "ROBO_DESLIGADO",
+      timeout
+        ? `O robô em ${base} não respondeu a tempo.`
+        : `O robô de cotações não está no ar em ${base}.`,
     );
+  } finally {
+    clearTimeout(t);
   }
   let dados = null;
-  const tipo = resp.headers.get("content-type") || "";
-  if (tipo.includes("application/json")) {
-    try {
+  try {
+    if (typeof resp.json === "function") {
       dados = await resp.json();
-    } catch {
-      dados = null;
+    } else if (typeof resp.text === "function") {
+      const texto = await resp.text();
+      dados = texto ? JSON.parse(texto) : null;
     }
+  } catch (e) {
+    if (resp.ok) {
+      throw new RpaClienteErro(
+        "ROBO_FORMATO",
+        "O robô devolveu uma resposta que não é JSON.",
+        resp.status,
+      );
+    }
+    dados = null;
   }
   if (!resp.ok && !opcoes.aceitarErro) {
     const bruto =

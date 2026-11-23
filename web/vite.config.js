@@ -23,4 +23,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
   },
+  test: {
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**"],
+  },
 });

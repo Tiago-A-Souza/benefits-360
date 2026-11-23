@@ -199,6 +199,9 @@ export default function ConfigEstudo({
     setSalvando(true);
     setErro(null);
     const copia = structuredClone(rascunho);
+    if (!copia.escolhas || typeof copia.escolhas !== "object") copia.escolhas = {};
+    if (!copia.escolhas.baseline_escolhido) copia.escolhas.baseline_escolhido = {};
+    if (!copia.escolhas.precedencia_atual_vida) copia.escolhas.precedencia_atual_vida = {};
     const seguroNovo = copia.formato === "novo";
     const exigePrecedencia = Boolean(resumoAtual?.exige_escolha_precedencia);
     if (seguroNovo) {
@@ -307,7 +310,7 @@ export default function ConfigEstudo({
                 Data usada para calcular as idades
                 <input
                   type="date"
-                  value={rascunho.escolhas.data_referencia_idade || ""}
+                  value={rascunho.escolhas?.data_referencia_idade || ""}
                   onChange={(e) => atualizarEscolha("data_referencia_idade", e.target.value)}
                 />
               </label>
@@ -330,7 +333,7 @@ export default function ConfigEstudo({
     );
   }
 
-  const nPlanos = rascunho.subgrupos_atuais.length;
+  const nPlanos = (rascunho.subgrupos_atuais || []).length;
 
   return (
     <section className="etapa-fluxo">
@@ -364,7 +367,7 @@ export default function ConfigEstudo({
         <div className="panel-body">
           <div className="form-grid form-grid--two">
             <CampoDataReferencia
-              valor={rascunho.escolhas.data_referencia_idade}
+              valor={rascunho.escolhas?.data_referencia_idade}
               onChange={(v) => atualizarEscolha("data_referencia_idade", v)}
               periodo={sugestaoPme?.periodo}
             />
@@ -382,12 +385,12 @@ export default function ConfigEstudo({
             <span className="badge badge--muted">Dados editáveis</span>
           </div>
           <div className="panel-body">
-            {rascunho.subgrupos_atuais.map((sg, idx) => {
+            {(rascunho.subgrupos_atuais || []).map((sg, idx) => {
               const vidas = vidasPlano(sg.id);
               const origemReajuste = textoOrigemReajuste(
                 sg,
                 sugestaoPme,
-                rascunho.escolhas.data_referencia_idade
+                rascunho.escolhas?.data_referencia_idade
               );
               return (
                 <article key={sg.id} className="plan-card">
@@ -518,7 +521,7 @@ export default function ConfigEstudo({
           <div className="cartoes-escolha">
             <label
               className={`cartao-escolha${
-                rascunho.escolhas.baseline_escolhido.valor === "vigente"
+                rascunho.escolhas?.baseline_escolhido?.valor === "vigente"
                   ? " cartao-escolha--ativo"
                   : ""
               }`}
@@ -526,7 +529,7 @@ export default function ConfigEstudo({
               <input
                 type="radio"
                 name="baseline"
-                checked={rascunho.escolhas.baseline_escolhido.valor === "vigente"}
+                checked={rascunho.escolhas?.baseline_escolhido?.valor === "vigente"}
                 onChange={() => atualizarEscolha("baseline", "vigente")}
               />
               <strong>Contrato vigente</strong>
@@ -534,7 +537,7 @@ export default function ConfigEstudo({
             </label>
             <label
               className={`cartao-escolha${
-                rascunho.escolhas.baseline_escolhido.valor === "reajustado"
+                rascunho.escolhas?.baseline_escolhido?.valor === "reajustado"
                   ? " cartao-escolha--ativo"
                   : ""
               }`}
@@ -542,7 +545,7 @@ export default function ConfigEstudo({
               <input
                 type="radio"
                 name="baseline"
-                checked={rascunho.escolhas.baseline_escolhido.valor === "reajustado"}
+                checked={rascunho.escolhas?.baseline_escolhido?.valor === "reajustado"}
                 onChange={() => atualizarEscolha("baseline", "reajustado")}
               />
               <strong>Contrato reajustado</strong>
@@ -560,7 +563,7 @@ export default function ConfigEstudo({
               <div className="cartoes-escolha">
                 <label
                   className={`cartao-escolha${
-                    rascunho.escolhas.precedencia_atual_vida.valor === "valor_fatura"
+                    rascunho.escolhas?.precedencia_atual_vida?.valor === "valor_fatura"
                       ? " cartao-escolha--ativo"
                       : ""
                   }`}
@@ -568,7 +571,7 @@ export default function ConfigEstudo({
                   <input
                     type="radio"
                     name="precedencia"
-                    checked={rascunho.escolhas.precedencia_atual_vida.valor === "valor_fatura"}
+                    checked={rascunho.escolhas?.precedencia_atual_vida?.valor === "valor_fatura"}
                     onChange={() => atualizarEscolha("precedencia", "valor_fatura")}
                   />
                   <strong>Valores importados do SISCOR</strong>
@@ -576,7 +579,7 @@ export default function ConfigEstudo({
                 </label>
                 <label
                   className={`cartao-escolha${
-                    rascunho.escolhas.precedencia_atual_vida.valor === "tabela_atual"
+                    rascunho.escolhas?.precedencia_atual_vida?.valor === "tabela_atual"
                       ? " cartao-escolha--ativo"
                       : ""
                   }`}
@@ -584,7 +587,7 @@ export default function ConfigEstudo({
                   <input
                     type="radio"
                     name="precedencia"
-                    checked={rascunho.escolhas.precedencia_atual_vida.valor === "tabela_atual"}
+                    checked={rascunho.escolhas?.precedencia_atual_vida?.valor === "tabela_atual"}
                     onChange={() => atualizarEscolha("precedencia", "tabela_atual")}
                   />
                   <strong>Tabela oficial do plano</strong>

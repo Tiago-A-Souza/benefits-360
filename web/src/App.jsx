@@ -29,6 +29,8 @@ import { passosVisiveis } from "./fluxo/passos";
 import { proximaEtapaClicavel } from "./fluxo/avancoEtapa";
 import { proximaEtapaDisponivel, statusEtapa } from "./fluxo/stepStatus";
 import TelaLogin from "./login/TelaLogin";
+import ErrorBoundary from "./erro/ErrorBoundary";
+import { asArray } from "./util/colecao";
 import {
   EVENTO_NAO_AUTORIZADO,
   obterSessao,
@@ -86,10 +88,10 @@ export default function App() {
     if (res) setResumo(res);
     const resumoPlanoAtual = r?.formato === "novo" ? null : resumoPlano;
     setCtxFluxo({
-      rascunho: r,
-      pendencias: p,
-      conferencia: c,
-      extracoes: e.extracoes || [],
+      rascunho: r && typeof r === "object" ? r : null,
+      pendencias: asArray(p),
+      conferencia: c && typeof c === "object" ? c : null,
+      extracoes: asArray(e && e.extracoes ? e.extracoes : e),
       resumoPlanoAtual,
     });
   }, [estudoId]);
@@ -198,7 +200,11 @@ export default function App() {
   }, []);
 
   if (!sessaoPronta) {
-    return <div className="app-shell" />;
+    return (
+      <div className="app-shell app-shell-carregando">
+        <p className="lista-carregando">Carregando o Benefits…</p>
+      </div>
+    );
   }
 
   if (!logado) {
@@ -222,21 +228,30 @@ export default function App() {
 
   if (cotacoesNativa) {
     const emEstudo = tela === "fluxo" && estudoId;
+    const irEstudos = () => {
+      if (emEstudo) voltarLista();
+      setCotacoesNativa(false);
+    };
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
-        <CotacoesNativa
-          onMeusEstudos={() => {
-            if (emEstudo) voltarLista();
-            setCotacoesNativa(false);
-          }}
-          onSimularRede={() => {
-            setCotacoesNativa(false);
-            setSimulando(true);
-          }}
-          onVoltarEstudo={emEstudo ? () => setCotacoesNativa(false) : undefined}
-          rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
-        />
+        <ErrorBoundary
+          contexto="Cotações"
+          modo="painel"
+          onVoltarEstudos={irEstudos}
+          onSair={sair}
+          resetKey="cotacoes"
+        >
+          <CotacoesNativa
+            onMeusEstudos={irEstudos}
+            onSimularRede={() => {
+              setCotacoesNativa(false);
+              setSimulando(true);
+            }}
+            onVoltarEstudo={emEstudo ? () => setCotacoesNativa(false) : undefined}
+            rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -246,18 +261,20 @@ export default function App() {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
-        <CotacoesRpa
-          onMeusEstudos={() => {
-            if (emEstudo) voltarLista();
-            setCotacoesRpa(false);
-          }}
-          onSimularRede={() => {
-            setCotacoesRpa(false);
-            setSimulando(true);
-          }}
-          onVoltarEstudo={emEstudo ? () => setCotacoesRpa(false) : undefined}
-          rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
-        />
+        <ErrorBoundary contexto="Cotações (iframe)" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
+          <CotacoesRpa
+            onMeusEstudos={() => {
+              if (emEstudo) voltarLista();
+              setCotacoesRpa(false);
+            }}
+            onSimularRede={() => {
+              setCotacoesRpa(false);
+              setSimulando(true);
+            }}
+            onVoltarEstudo={emEstudo ? () => setCotacoesRpa(false) : undefined}
+            rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -267,18 +284,20 @@ export default function App() {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
-        <SimularRede
-          onMeusEstudos={() => {
-            if (emEstudo) voltarLista();
-            setSimulando(false);
-          }}
-          onCotacoes={() => {
-            setSimulando(false);
-            abrirCotacoes();
-          }}
-          onVoltarEstudo={emEstudo ? () => setSimulando(false) : undefined}
-          rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
-        />
+        <ErrorBoundary contexto="Simular rede" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
+          <SimularRede
+            onMeusEstudos={() => {
+              if (emEstudo) voltarLista();
+              setSimulando(false);
+            }}
+            onCotacoes={() => {
+              setSimulando(false);
+              abrirCotacoes();
+            }}
+            onVoltarEstudo={emEstudo ? () => setSimulando(false) : undefined}
+            rotuloEstudo={emEstudo ? resumo?.empresa || resumo?.titulo : undefined}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -287,11 +306,13 @@ export default function App() {
     return (
       <div className="app-shell">
         <EstudoCabecalho resumo={null} onSair={sair} />
-        <MeusEstudos
-          onContinuar={entrarEstudo}
-          onSimularRede={() => setSimulando(true)}
-          onCotacoes={abrirCotacoes}
-        />
+        <ErrorBoundary contexto="Meus estudos" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
+          <MeusEstudos
+            onContinuar={entrarEstudo}
+            onSimularRede={() => setSimulando(true)}
+            onCotacoes={abrirCotacoes}
+          />
+        </ErrorBoundary>
       </div>
     );
   }
@@ -386,63 +407,111 @@ export default function App() {
         <div className="app-main">
           <main className="fluxo-conteudo">
             {chavePassoAtual === "base" && (
-              <SiscorPanel
-                estudoId={estudoId}
-                etapaIndice={passo}
-                totalEtapas={passos.length}
-                resumoPlanoAtual={ctxFluxo.resumoPlanoAtual}
-                onAtualizado={recarregarContexto}
-                onRegistrarAvanco={registrarAvancoEtapa}
-              />
+              <ErrorBoundary
+                contexto={`Etapa ${passo} (base)`}
+                modo="painel"
+                resetKey={`${estudoId}-base`}
+                onVoltarEstudos={voltarLista}
+                onSair={sair}
+              >
+                <SiscorPanel
+                  estudoId={estudoId}
+                  etapaIndice={passo}
+                  totalEtapas={passos.length}
+                  resumoPlanoAtual={ctxFluxo.resumoPlanoAtual}
+                  onAtualizado={recarregarContexto}
+                  onRegistrarAvanco={registrarAvancoEtapa}
+                />
+              </ErrorBoundary>
             )}
             {chavePassoAtual === "plano" && (
-              <ConfigEstudo
-                estudoId={estudoId}
-                etapaIndice={passo}
-                totalEtapas={passos.length}
-                onSalvo={recarregarContexto}
-                onRegistrarAvanco={registrarAvancoEtapa}
-              />
+              <ErrorBoundary
+                contexto={`Etapa ${passo} (plano)`}
+                modo="painel"
+                resetKey={`${estudoId}-plano`}
+                onVoltarEstudos={voltarLista}
+                onSair={sair}
+              >
+                <ConfigEstudo
+                  estudoId={estudoId}
+                  etapaIndice={passo}
+                  totalEtapas={passos.length}
+                  onSalvo={recarregarContexto}
+                  onRegistrarAvanco={registrarAvancoEtapa}
+                />
+              </ErrorBoundary>
             )}
             {chavePassoAtual === "cotacoes" && (
-              <PropostaPanel
-                estudoId={estudoId}
-                etapaIndice={passo}
-                totalEtapas={passos.length}
-                cestaGlobal={cestaGlobal}
-                setCestaGlobal={setCestaGlobal}
-                opcoesComparativo={ctxFluxo.rascunho?.opcoes_proposta || []}
-                extracoes={ctxFluxo.extracoes || []}
-                subgruposAtuais={ctxFluxo.rascunho?.subgrupos_atuais || []}
-                onSalvo={recarregarContexto}
-                onRegistrarAvanco={registrarAvancoEtapa}
-              />
+              <ErrorBoundary
+                contexto={`Etapa ${passo} (cotacoes)`}
+                modo="painel"
+                resetKey={`${estudoId}-cotacoes`}
+                onVoltarEstudos={voltarLista}
+                onSair={sair}
+              >
+                <PropostaPanel
+                  estudoId={estudoId}
+                  etapaIndice={passo}
+                  totalEtapas={passos.length}
+                  cestaGlobal={cestaGlobal}
+                  setCestaGlobal={setCestaGlobal}
+                  opcoesComparativo={ctxFluxo.rascunho?.opcoes_proposta || []}
+                  extracoes={ctxFluxo.extracoes || []}
+                  subgruposAtuais={ctxFluxo.rascunho?.subgrupos_atuais || []}
+                  onSalvo={recarregarContexto}
+                  onRegistrarAvanco={registrarAvancoEtapa}
+                />
+              </ErrorBoundary>
             )}
             {chavePassoAtual === "selecionados" && (
-              <PlanosSelecionadosPanel
-                estudoId={estudoId}
-                etapaIndice={passo}
-                totalEtapas={passos.length}
-                onSalvo={recarregarContexto}
-                onRegistrarAvanco={registrarAvancoEtapa}
-              />
+              <ErrorBoundary
+                contexto={`Etapa ${passo} (selecionados)`}
+                modo="painel"
+                resetKey={`${estudoId}-selecionados`}
+                onVoltarEstudos={voltarLista}
+                onSair={sair}
+              >
+                <PlanosSelecionadosPanel
+                  estudoId={estudoId}
+                  etapaIndice={passo}
+                  totalEtapas={passos.length}
+                  onSalvo={recarregarContexto}
+                  onRegistrarAvanco={registrarAvancoEtapa}
+                />
+              </ErrorBoundary>
             )}
             {chavePassoAtual === "rede" && (
-              <RedeSelecaoPanel
-                estudoId={estudoId}
-                etapaIndice={passo}
-                totalEtapas={passos.length}
-                onRegistrarAvanco={registrarAvancoEtapa}
-              />
+              <ErrorBoundary
+                contexto={`Etapa ${passo} (rede)`}
+                modo="painel"
+                resetKey={`${estudoId}-rede`}
+                onVoltarEstudos={voltarLista}
+                onSair={sair}
+              >
+                <RedeSelecaoPanel
+                  estudoId={estudoId}
+                  etapaIndice={passo}
+                  totalEtapas={passos.length}
+                  onRegistrarAvanco={registrarAvancoEtapa}
+                />
+              </ErrorBoundary>
             )}
             {chavePassoAtual === "comparativo" && (
-              <ComparativoPanel
-                estudoId={estudoId}
-                etapaIndice={passo}
-                totalEtapas={passos.length}
-                rascunhoFluxo={ctxFluxo.rascunho}
-                onAtualizado={recarregarContexto}
-              />
+              <ErrorBoundary
+                contexto={`Etapa ${passo} (comparativo)`}
+                modo="painel"
+                resetKey={`${estudoId}-comparativo`}
+                onVoltarEstudos={voltarLista}
+                onSair={sair}
+              >
+                <ComparativoPanel
+                  estudoId={estudoId}
+                  etapaIndice={passo}
+                  totalEtapas={passos.length}
+                  rascunhoFluxo={ctxFluxo.rascunho}
+                  onAtualizado={recarregarContexto}
+                />
+              </ErrorBoundary>
             )}
 
             <footer className="wizard-nav" aria-label="Navegação entre etapas">
@@ -485,7 +554,9 @@ export default function App() {
 
           {historicoAberto && (
             <aside className="painel-complementar">
-              <HistoricoPanel estudoId={estudoId} />
+              <ErrorBoundary contexto="Histórico" modo="painel" resetKey={estudoId} onVoltarEstudos={voltarLista} onSair={sair}>
+                <HistoricoPanel estudoId={estudoId} />
+              </ErrorBoundary>
             </aside>
           )}
         </div>

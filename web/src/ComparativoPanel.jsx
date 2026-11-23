@@ -77,16 +77,21 @@ export default function ComparativoPanel({
     setAvisoSelecaoAlterada(false);
     try {
       const p = await obterPendencias(estudoId);
-      setPendencias(p);
-      const bloqueios = p.filter((x) => x.tipo === "bloqueio");
+      const listaPend = Array.isArray(p) ? p : [];
+      setPendencias(listaPend);
+      const bloqueios = listaPend.filter((x) => x.tipo === "bloqueio");
       if (bloqueios.length) {
         setErro("Complete as pendências indicadas antes de calcular.");
         return;
       }
       const data = await calcularEstudo(estudoId);
+      if (!data || typeof data !== "object") {
+        setErro("O cálculo devolveu um formato inesperado.");
+        return;
+      }
       const r = await obterRascunho(estudoId);
       setRascunho(r);
-      const idsCalculados = (data.propostas || []).map((p) => p.opcao_id).filter(Boolean);
+      const idsCalculados = (data.propostas || []).map((pr) => pr.opcao_id).filter(Boolean);
       const ordemSalva = r?.selecao_apresentacao?.ordem || [];
       if (data.calculo_realizado && idsCalculados.length && !ordemSalva.length) {
         await salvarSelecaoApresentacao(estudoId, idsCalculados);

@@ -53,8 +53,8 @@ export default function ConfigRobo({
     chamarRpa("GET", `/api/robos/${opId}`)
       .then((d) => {
         if (!vivo) return;
-        setDados(d);
-        aplicarTelas(d.telas);
+        setDados(d && typeof d === "object" ? d : {});
+        aplicarTelas(d && d.telas);
       })
       .catch(() => vivo && setFalhou(true));
     return () => {
@@ -370,7 +370,7 @@ function Controle({ c, valor, paresLinha, planos, onChange }) {
         />
         {lista ? (
           <datalist id={lista}>
-            {c.sugestoes.map((x) => (
+            {(c.sugestoes || []).map((x) => (
               <option key={x} value={x} />
             ))}
           </datalist>
