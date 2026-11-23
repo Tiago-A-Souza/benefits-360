@@ -178,3 +178,9 @@ seguranca:
   # Arquivos do robô (PDFs em pdfs/, prints em mapa/, logs/) com mais de N dias são apagados ao abrir a
   # tela e a cada execução. Nunca apaga estado.json, resultados.xlsx nem a pasta do cliente. 0 desliga.
   retencao_dias: 90
+
+# Backup do histórico (rpa/scripts/backup_historico.py). NÃO roda sozinho; só com autorização.
+backup:
+  pasta_tela: "C:\\Backups\\rpa-tela"
+  retencao_dias: 14
+  pasta_saida_semanal: "C:\\Backups\\rpa-saida-semanal"
