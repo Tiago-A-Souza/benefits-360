@@ -38,7 +38,7 @@ export function haFiltroGeografico({ uf, municipio, zona }) {
 }
 
 export function haRedeVerticalizada(blocos) {
-  return (blocos || []).some((b) => b.linhas.some((ln) => ln.rede_verticalizada));
+  return (blocos || []).some((b) => (b.linhas || []).some((ln) => ln.rede_verticalizada));
 }
 
 export function textoContagem(resp) {

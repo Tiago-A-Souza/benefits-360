@@ -29,8 +29,10 @@ function PillVerticalizada({ operadora }) {
   );
 }
 
-function TabelaResultado({ resp }) {
-  const colunas = resp.colunas;
+export function TabelaResultado({ resp }) {
+  if (!resp) return <p className="muted">Nenhum resultado para mostrar.</p>;
+  const colunas = resp.colunas || [];
+  const blocos = resp.blocos || [];
   const grupos = gruposDeOperadora(colunas);
   const largura = 1 + colunas.length;
   return (
@@ -52,15 +54,15 @@ function TabelaResultado({ resp }) {
           </tr>
         </thead>
         <tbody>
-          {resp.blocos.map((bloco) => (
+          {blocos.map((bloco) => (
             <Fragment key={bloco.municipio}>
               <tr className="simular-bloco-linha">
                 <th colSpan={largura} scope="colgroup">
                   {bloco.titulo}
-                  <span className="simular-bloco-n">{bloco.linhas.length}</span>
+                  <span className="simular-bloco-n">{(bloco.linhas || []).length}</span>
                 </th>
               </tr>
-              {bloco.linhas.map((ln) => (
+                  {(bloco.linhas || []).map((ln) => (
                 <tr key={ln.linha_id} className={ln.principal ? "" : "simular-linha-nao-principal"}>
                   <td className="nm rede-col-prestador">
                     <span className="cell-main">
@@ -76,7 +78,7 @@ function TabelaResultado({ resp }) {
                     ) : null}
                   </td>
                   {colunas.map((c) => {
-                    const cod = ln.celulas[c.chave] || "";
+                    const cod = (ln.celulas && ln.celulas[c.chave]) || "";
                     return (
                       <td key={c.chave} className={`rede-col-plano ${cod ? "on" : "off"}`}>
                         {cod}
@@ -439,7 +441,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
                   </span>
                 </summary>
                 <div className="simular-operadoras-lista">
-                  {opcoes.operadoras.map((o) => (
+                  {(opcoes.operadoras || []).map((o) => (
                     <label key={o.nome} className="simular-check">
                       <input
                         type="checkbox"

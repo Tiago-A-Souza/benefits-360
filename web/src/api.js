@@ -3,19 +3,39 @@ import {
   obterAccessToken,
   sairSessao,
 } from "./login/sessao";
+import { asArray } from "./util/colecao";
 
 const API = "/api";
+const TIMEOUT_MS = 25000;
 
 async function apiFetch(url, options = {}) {
   const headers = new Headers(options.headers || undefined);
   const token = await obterAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await globalThis.fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    void sairSessao();
-    avisarNaoAutorizado();
+  const ctrl = new AbortController();
+  const ms = options.timeoutMs || TIMEOUT_MS;
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const res = await globalThis.fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || ctrl.signal,
+    });
+    if (res.status === 401) {
+      void sairSessao();
+      avisarNaoAutorizado();
+    }
+    return res;
+  } catch (e) {
+    if (e && (e.name === "AbortError" || /aborted/i.test(String(e.message || "")))) {
+      const err = new Error("A requisição demorou demais (timeout). Tente novamente.");
+      err.codigo = "TIMEOUT";
+      throw err;
+    }
+    throw e;
+  } finally {
+    clearTimeout(t);
   }
-  return res;
 }
 
 function montarErroApi(res, body, mensagemPadrao) {
@@ -53,8 +73,21 @@ function montarErroApi(res, body, mensagemPadrao) {
   return err;
 }
 
+async function lerJsonSeguro(res) {
+  const texto = await res.text();
+  if (!texto) return null;
+  try {
+    return JSON.parse(texto);
+  } catch {
+    const err = new Error("O servidor devolveu uma resposta que não é JSON.");
+    err.status = res.status;
+    err.body = texto.slice(0, 200);
+    throw err;
+  }
+}
+
 async function tratarResposta(res, mensagemPadrao) {
-  if (res.ok) return res.json();
+  if (res.ok) return lerJsonSeguro(res);
   const texto = await res.text();
   let body = null;
   try {
@@ -100,8 +133,7 @@ export async function registrarDiagnostico({ estudoId, etapa, evento, detalhe } 
 
 export async function obterConfig() {
   const res = await apiFetch(`${API}/config`);
-  if (!res.ok) throw new Error("Não foi possível carregar a configuração.");
-  return res.json();
+  return tratarResposta(res, "Não foi possível carregar a configuração.");
 }
 
 export async function obterEstudo(estudoId) {
@@ -132,21 +164,28 @@ export async function excluirOpcaoPropostaManual(estudoId, opcaoId) {
 
 export async function obterPendencias(estudoId) {
   const res = await apiFetch(`${API}/estudos/${estudoId}/pendencias`);
-  return tratarResposta(res, "Não foi possível verificar pendências.");
+  const dados = await tratarResposta(res, "Não foi possível verificar pendências.");
+  return asArray(dados);
 }
 
 export async function calcularEstudo(estudoId) {
   const res = await apiFetch(`${API}/estudos/${estudoId}/calcular`, { method: "POST" });
+  let body = null;
+  try {
+    body = await lerJsonSeguro(res);
+  } catch (e) {
+    if (!res.ok) throw new Error("Não foi possível calcular o comparativo.");
+    throw e;
+  }
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    if (body.detail?.erros) {
+    if (body && body.detail && body.detail.erros) {
       const err = new Error("O cálculo não pôde ser concluído.");
       err.pendenciasCompilador = body.detail.erros;
       throw err;
     }
-    throw new Error("Não foi possível calcular o comparativo.");
+    throw montarErroApi(res, body, "Não foi possível calcular o comparativo.");
   }
-  return res.json();
+  return body;
 }
 
 export async function confirmarComparativo(estudoId, hashComparativo, opcaoIds) {
@@ -274,7 +313,8 @@ export async function salvarSelecaoApresentacao(estudoId, opcaoIds) {
 
 export async function listarEstudos() {
   const res = await apiFetch(`${API}/estudos`);
-  return tratarResposta(res, "Não foi possível listar estudos.");
+  const dados = await tratarResposta(res, "Não foi possível listar estudos.");
+  return asArray(dados);
 }
 
 export async function criarEstudo({ titulo, nome_empresa, id, formato } = {}) {
@@ -624,8 +664,7 @@ export async function aprovarSnapshot(estudoId, snapshotId, body) {
 
 export async function obterSnapshotAprovado(estudoId) {
   const res = await apiFetch(`${API}/estudos/${estudoId}/snapshot-aprovado`);
-  if (!res.ok) throw new Error("Não foi possível verificar aprovação.");
-  return res.json();
+  return tratarResposta(res, "Não foi possível verificar aprovação.");
 }
 
 export async function previewApresentacao(estudoId, snapshotId, body) {

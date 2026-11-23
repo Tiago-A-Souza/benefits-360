@@ -68,9 +68,10 @@ export default function RedeSelecaoPanel({
     setErro(null);
     try {
       const r = await obterRedeSelecao(estudoId);
-      setDados(r);
-      setExcluidos(new Set(r.excluidos || []));
-      setRevisada(Boolean(r.revisada));
+      const dados = r && typeof r === "object" ? r : { secoes: [], colunas: [] };
+      setDados(dados);
+      setExcluidos(new Set(dados.excluidos || []));
+      setRevisada(Boolean(dados.revisada));
     } catch (e) {
       setErro(e.message);
     } finally {

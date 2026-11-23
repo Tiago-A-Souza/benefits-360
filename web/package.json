@@ -8,7 +8,8 @@
     "dev:alt": "vite --config vite.config.alternativa.js",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run --exclude e2e/**",
+    "smoke": "npm run build && playwright test"
   },
   "dependencies": {
     "@fontsource/fraunces": "^5.3.0",
@@ -19,6 +20,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"

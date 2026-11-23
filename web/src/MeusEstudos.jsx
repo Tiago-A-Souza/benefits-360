@@ -33,7 +33,7 @@ function estaAprovado(estudo) {
 /** Agrupa por nome de cliente exatamente como gravado; multi-estudo primeiro, singles em «Outros». */
 function agruparPorCliente(estudos) {
   const mapa = new Map();
-  for (const e of estudos) {
+  for (const e of estudos || []) {
     const chave = chaveCliente(e);
     if (!mapa.has(chave)) mapa.set(chave, []);
     mapa.get(chave).push(e);
@@ -79,7 +79,7 @@ function agruparPorCliente(estudos) {
 /** Avisos: mesmo cliente + mesmo rótulo em mais de um estudo (na lista carregada). */
 function avisosRotulosRepetidos(estudos) {
   const porClienteRotulo = new Map();
-  for (const e of estudos) {
+  for (const e of estudos || []) {
     const cli = chaveCliente(e);
     const rotulo = (e.titulo || "").trim();
     if (!cli || !rotulo) continue;

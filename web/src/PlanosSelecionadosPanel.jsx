@@ -36,7 +36,7 @@ function avisosAcomodacaoCenarios(rascunho, cenarios, subgrupos) {
     for (const sg of subgrupos) {
       const atr = (cenario.atribuicoes || []).find((a) => a.alvo_id === sg.id);
       if (!atr?.opcao_plano_id) continue;
-      const op = rascunho.opcoes_proposta.find((o) => o.id === atr.opcao_plano_id);
+      const op = (rascunho.opcoes_proposta || []).find((o) => o.id === atr.opcao_plano_id);
       if (!op) continue;
       const acSg = acomodacaoInformada(sg);
       const acOp = acomodacaoInformada(op);
@@ -82,7 +82,7 @@ function rotuloCenario(rascunho, atribuicoes) {
   }
   if (!opIds.length) return "Cenário sem proposta";
   const nome = (id) =>
-    rascunho.opcoes_proposta.find((o) => o.id === id)?.plano_nome || id;
+    (rascunho.opcoes_proposta || []).find((o) => o.id === id)?.plano_nome || id;
   if (opIds.length === 1) return nome(opIds[0]);
   return opIds.map(nome).join(" + ");
 }

@@ -5,6 +5,7 @@ import LogoOperadora from "./LogoOperadora";
 import { attrsCartaoOperadora } from "./operadoras";
 import { acaoLoginDoCartao } from "./regrasConexao";
 import { CONEXAO, resumoDoRobo } from "./regrasNova";
+import { asArray, camposDaOperadora } from "../../util/colecao";
 
 export default function Conexoes({
   operadoras,
@@ -38,7 +39,7 @@ export default function Conexoes({
       const op = (operadoras || []).find((o) => o.id === opId);
       const quem = ((op && op.textos) || {}).login_livre || "o seu login";
       aviso?.(
-        r.ja_fora
+        r && r.ja_fora
           ? "O robô já estava fora do portal."
           : `Saindo do portal: ${quem} fica livre para usar o portal no navegador. Na próxima cotação o robô entra sozinho de novo.`,
       );
@@ -56,10 +57,10 @@ export default function Conexoes({
         completa do robô (o que ele preenche em cada tela) fica em Ajustes dos robôs.
       </p>
       <div className="nativa-robos">
-        {(operadoras || []).map((op) => {
-          const st = conexao[op.id] || op.conexao || "desconectado";
+        {asArray(operadoras).map((op) => {
+          const st = (conexao && conexao[op.id]) || op.conexao || "desconectado";
           const acao = acaoLoginDoCartao(op, st, { atual: trabalhoAtual, naFila });
-          const padrao = (c) => (op.campos.find((x) => x.chave === c) || {}).padrao;
+          const padrao = (c) => (camposDaOperadora(op).find((x) => x.chave === c) || {}).padrao;
           const marca = attrsCartaoOperadora(op.id, aberto === op.id);
           return (
             <article
