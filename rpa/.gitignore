@@ -32,3 +32,6 @@ codegen/docs/vÃ­deos/AMIL.mp4
 
 # Brand guide pesado — nao versionar (logo/fontes ficam)
 app/web/Marca/*.pdf
+
+# travas de instância (ficam em %%LOCALAPPDATA%%; reforço se alguém gravar aqui)
+.locks/
