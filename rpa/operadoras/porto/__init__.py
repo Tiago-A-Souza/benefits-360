@@ -174,8 +174,8 @@ class Porto(Operadora):
     mensagens_login = {
         "captcha": "O portal da {op} mostrou um desafio de reCAPTCHA. O robô não tenta resolver: resolva no "
                    "seu navegador (ou ligue “Mostrar a janela do portal”) e peça de novo.",
-        "sem_susep": "O código SUSEP guardado no login da {op} não apareceu na lista do portal. Confira em "
-                     "Conexões e guarde de novo o código exatamente como no dropdown.",
+        "sem_susep": "O código SUSEP guardado no robô não está na lista do portal. O campo SUSEP do robô "
+                     "precisa ser um dos códigos do dropdown (o sufixo (P) não precisa ser digitado).",
     }
 
     def campos_login(self) -> list[dict]:

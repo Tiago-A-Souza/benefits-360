@@ -25,10 +25,18 @@ def tela_susep(page) -> bool:
     try:
         if page.is_closed() or _visivel(page.locator("iframe#cotador")):
             return False
+        if _visivel(sel.login_campo_senha(page)):
+            return False
         path = sel.caminho(page)
         if path.startswith(sel.ROTA_HOME):
             return False
-        return path.startswith(sel.ROTA_SUSEP) or _visivel(sel.susep_caixa(page)) or _visivel(sel.susep_select(page))
+        if path.startswith(sel.ROTA_SUSEP):
+            return True
+        if _visivel(sel.susep_caixa(page)) or _visivel(sel.susep_select(page)):
+            return True
+        return _visivel(page.get_by_text(sel.TEXTO_ACESSE_CORRETOR)) and _visivel(
+            page.get_by_text(re.compile(r"^susep$", re.I))
+        )
     except Exception:  # noqa: BLE001
         return False
 

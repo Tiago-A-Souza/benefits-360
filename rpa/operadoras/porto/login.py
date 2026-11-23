@@ -64,21 +64,37 @@ def _codigo_susep(s, login: dict | None) -> str:
     return sel.normalizar_susep(bruto)
 
 
+def _falha_susep(rotulos: list[str] | None = None) -> ErroLogin:
+    if rotulos:
+        return ErroLogin(sel.mensagem_susep_ausente(rotulos), "sem_susep")
+    return _erro("sem_susep")
+
+
 def _escolher_susep(s, codigo: str) -> None:
     page = s.page
     if not codigo:
-        raise _erro("sem_susep")
+        raise _falha_susep()
     s.aviso("etapa", etapa="susep", pedido="", plano="")
-    if not esperar_ate(lambda: tela_susep(page) or _visivel(sel.susep_opcao(page, codigo)),
-                       s.t("timeout_tela_ms") / 1000):
+    if not esperar_ate(lambda: tela_susep(page), s.t("timeout_tela_ms") / 1000):
         if logado(page):
             return
-        raise _erro("sem_susep")
+        raise _falha_susep(sel.listar_rotulos_susep(page))
     try:
         sel.escolher_susep(page, codigo)
+    except sel.SusepNaoEncontrada as e:
+        try:
+            s.mapa.registrar(page, "ERRO_susep", forcar=True)
+        except Exception:  # noqa: BLE001
+            pass
+        raise _falha_susep(e.rotulos) from None
     except Exception:  # noqa: BLE001
-        if not (logado(page) or not tela_susep(page)):
-            raise _erro("sem_susep") from None
+        if logado(page) or not tela_susep(page):
+            return
+        try:
+            s.mapa.registrar(page, "ERRO_susep", forcar=True)
+        except Exception:  # noqa: BLE001
+            pass
+        raise _falha_susep(sel.listar_rotulos_susep(page)) from None
     s.log.info("SUSEP escolhida na lista do portal.")
     botao = sel.susep_botao_seguir(page)
     if _visivel(botao):
