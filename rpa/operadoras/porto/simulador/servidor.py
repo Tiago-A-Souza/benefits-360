@@ -114,6 +114,10 @@ input,select{padding:6px;margin:4px 0}
 [data-plano].sel{border:2px solid #00A651;background:#e8f8ef}
 iframe#cotador{width:100%;height:720px;border:0}
 .proibido{background:#c00}
+#susep-caixa{width:100%;text-align:left;background:#fff;color:#111;border:1px solid #888}
+#susep-lista{list-style:none;margin:4px 0 0;padding:0;border:1px solid #888;background:#fff}
+#susep-lista li{padding:8px;cursor:pointer}
+#susep-lista li:hover{background:#e8f8ef}
 """
 
 
@@ -127,11 +131,16 @@ class Simulador:
     SENHA = "Treino#Porto1"
     SUSEP = "BX865J"
     SUSEPS = ("381N5F", "BX865J", "1VTUFJ", "1Y5ZLJ")
+    SUSEP_COM_P = frozenset({"381N5F", "BX865J"})
 
     def __init__(self, porta: int = 0):
         self.cpf, self.senha = self.CPF, self.SENHA
         self.susep = self.SUSEP
         self.susep_escolhida = ""
+        self.codigos_susep = list(self.SUSEPS)
+        self.susep_com_p = set(self.SUSEP_COM_P)
+        self.dropdown_susep = "select"  # "select" nativo | "menu" personalizado (só clique)
+        self.atraso_susep_ms = 0
         self.sessoes: dict[str, dict] = {}
         self.exigir_captcha = False
         self.tentativas_login = 0
@@ -238,24 +247,7 @@ document.getElementById('entrar').onclick=async()=>{{
                 if path == "/susep":
                     if not sess:
                         self.send_response(302); self.send_header("Location", "/login"); self.end_headers(); return
-                    opcoes = '<option value="">Selecione</option>' + "".join(
-                        f"<option value='{c}'>{c} (P)</option>" if c in ("381N5F", "BX865J") else f"<option value='{c}'>{c}</option>"
-                        for c in sim.SUSEPS)
-                    self._html(200, _pagina("Acesse o Corretor Online", f"""
-<header>Acesse o Corretor Online</header>
-<main class=card style="width:360px;margin:40px auto">
-<label for=susep>SUSEP</label><br>
-<select id=susep name=susep>{opcoes}</select>
-</main>
-<script>
-const caixa=document.getElementById('susep');
-caixa.onchange=async()=>{{
- if(!caixa.value) return;
- await fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
-  body:JSON.stringify({{codigo:caixa.value}})}});
- location='/home';
-}};
-</script>"""))
+                    self._html(200, _pagina_susep(sim))
                     return
                 if path == "/home":
                     if not sess:
@@ -336,6 +328,85 @@ caixa.onchange=async()=>{{
 
 def so_digitos(t) -> str:
     return "".join(c for c in str(t or "") if c.isdigit())
+
+
+def _itens_susep(sim: Simulador) -> list[tuple[str, str]]:
+    itens = []
+    for c in sim.codigos_susep:
+        rotulo = f"{c} (P)" if c in sim.susep_com_p else c
+        itens.append((c, rotulo))
+    return itens
+
+
+def _pagina_susep(sim: Simulador) -> str:
+    """Dropdown só clicável (não aceita digitar), com atraso opcional, select nativo ou menu."""
+    itens = _itens_susep(sim)
+    atraso = int(sim.atraso_susep_ms or 0)
+    js_itens = json.dumps([{"codigo": c, "rotulo": r} for c, r in itens])
+    if sim.dropdown_susep == "menu":
+        corpo = """
+<header>Acesse o Corretor Online</header>
+<main class=card style="width:360px;margin:40px auto">
+<h2>Acesse o Corretor Online</h2>
+<label id=lb-susep>SUSEP</label><br>
+<button type=button id=susep-caixa role=combobox aria-labelledby=lb-susep aria-haspopup=listbox
+ aria-expanded=false aria-label=SUSEP>Selecione</button>
+<ul id=susep-lista role=listbox hidden></ul>
+</main>"""
+        script = f"""
+const itens={js_itens};
+const caixa=document.getElementById('susep-caixa');
+const lista=document.getElementById('susep-lista');
+function enviar(codigo){{
+ fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+  body:JSON.stringify({{codigo}})}}).then(()=>location='/home');
+}}
+function montar(){{
+ lista.innerHTML='';
+ itens.forEach(it=>{{
+  const li=document.createElement('li');
+  li.setAttribute('role','option');
+  li.dataset.susep=it.codigo;
+  li.textContent=it.rotulo;
+  li.onclick=e=>{{e.stopPropagation();enviar(it.codigo);}};
+  lista.appendChild(li);
+ }});
+ lista.hidden=false;
+ caixa.setAttribute('aria-expanded','true');
+}}
+caixa.onclick=()=>{{
+ if(!lista.hidden) return;
+ if({atraso}>0) setTimeout(montar,{atraso}); else montar();
+}};
+caixa.addEventListener('keydown',e=>e.preventDefault());
+"""
+        return _pagina("Acesse o Corretor Online", corpo, script)
+    corpo = """
+<header>Acesse o Corretor Online</header>
+<main class=card style="width:360px;margin:40px auto">
+<h2>Acesse o Corretor Online</h2>
+<label for=susep>SUSEP</label><br>
+<select id=susep name=susep aria-label=SUSEP></select>
+</main>"""
+    script = f"""
+const itens={js_itens};
+const caixa=document.getElementById('susep');
+function montar(){{
+ caixa.innerHTML='<option value="">Selecione</option>'+itens.map(it=>
+  '<option value="'+it.codigo+'">'+it.rotulo+'</option>').join('');
+}}
+caixa.onchange=async()=>{{
+ if(!caixa.value) return;
+ await fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+  body:JSON.stringify({{codigo:caixa.value}})}});
+ location='/home';
+}};
+caixa.addEventListener('keydown',e=>{{
+ if(e.key.length===1) e.preventDefault();
+}});
+if({atraso}>0) setTimeout(montar,{atraso}); else montar();
+"""
+    return _pagina("Acesse o Corretor Online", corpo, script)
 
 
 def _api_cotar(sim: Simulador, sess: dict, dados: dict) -> dict:
