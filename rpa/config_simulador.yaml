@@ -1,9 +1,7 @@
 # Configuração para usar a tela e o robô contra os SIMULADORES locais (SulAmérica e Bradesco).
-# Saídas vão para saida_simulador/, separadas das reais.
-#   python -m operadoras.sulamerica.simulador        (sobe o simulador da SulAmérica)
-#   python -m operadoras.bradesco.simulador          (sobe o simulador da Bradesco)
-#   python -m operadoras.amil.simulador              (sobe o simulador da Amil)
-#   python -m app --config config_simulador.yaml     (abre a tela apontando para ele)
+# Saídas vão para saida_simulador/, separadas das reais. PORTA 8601 — nunca 8600.
+#   python -m app --config config_simulador.yaml --porta 8601 --com-simulador
+# O robô RECUSA este arquivo na porta 8600 (cotações reais).
 
 geral:
   pasta_saida: "saida_simulador"
