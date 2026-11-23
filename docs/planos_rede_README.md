@@ -1,5 +1,8 @@
 # Planos × rede — tabela de equivalência
 
+A coluna SiscorNet **não** é nome de plano no cotador. A tela Nova cotação não
+manda esse rótulo ao robô — ver `docs/COTACAO-NOVA-BUSCA-PLANOS.md`.
+
 Arquivo versionado: `planos_rede_aliases.csv`. Nenhum mapeamento manual vive em `.py`.
 
 ## Formato
