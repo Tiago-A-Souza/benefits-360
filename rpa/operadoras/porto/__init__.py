@@ -35,7 +35,7 @@ class Porto(Operadora):
                      "sair_do_portal_min": 3, "timeout_emissao_ms": 180000, "timeout_tela_ms": 60000,
                      "timeout_download_ms": 120000},
         "emissao_liberada": False,
-        "padroes": {"susep": "BX865J", "produto": "Saude", "comissao": COMISSAO_K001,
+        "padroes": {"susep": "AAAAAA", "produto": "Saude", "comissao": COMISSAO_K001,
                     "aceitar_agenciamento": "sim", "acomodacao": "Apartamento",
                     "coparticipacao": "com", "planos": []},
         "faixas_idade_exata": ["0 - 18"],
@@ -73,8 +73,9 @@ class Porto(Operadora):
         return [
             {"etapa": "login", "faz": "Entra no Corretor Online sozinho, só quando o portal pede, com o CPF, a senha "
                                       "e o código SUSEP que você guarda em Conexões. Depois do CPF e da senha o portal "
-                                      "abre o dropdown da SUSEP; o robô escolhe o código guardado. Se aparecer "
-                                      "desafio de reCAPTCHA, o robô para e avisa: não tenta burlar. A sessão fica no "
+                                      "abre o dropdown da SUSEP; o robô escolhe o código guardado. Se o login for "
+                                      "protegido por reCAPTCHA, o robô preenche CPF e senha e espera você clicar em "
+                                      "ENTRAR na janela do portal. Não tenta resolver nem burlar. A sessão fica no "
                                       "navegador do robô.",
              "campos": [{"tipo": "credenciais", "rotulo": "Login no portal", "senha_max": 64,
                          "campos": self.campos_login(),
@@ -82,7 +83,7 @@ class Porto(Operadora):
                         {"chave": "tempos.sair_do_portal_min", "rotulo": "Sair do portal depois de (minutos sem pedidos)",
                          "tipo": "numero", "minimo": 0, "maximo": 120}]},
             {"etapa": "susep", "faz": "Depois do CPF e da senha, escolhe no dropdown o código SUSEP guardado no login "
-                                      "(o mesmo da lista: BX865J (P), etc.). Sem esse código o robô não entra.",
+                                      "(o mesmo da lista: AAAAAA (P), etc.). Sem esse código o robô não entra.",
              "campos": []},
             {"etapa": "inicio", "faz": "Abre o cotador (iframe) e clica em Criar nova cotação. Nunca Duplicar orçamento.",
              "campos": []},
@@ -172,10 +173,18 @@ class Porto(Operadora):
                     {"chave": "senha", "rotulo": "Senha", "tipo": "senha", "artigo": "a"},
                     {"chave": "susep", "rotulo": "SUSEP", "tipo": "texto", "artigo": "o"}]
     mensagens_login = {
-        "captcha": "O portal da {op} mostrou um desafio de reCAPTCHA. O robô não tenta resolver: resolva no "
-                   "seu navegador (ou ligue “Mostrar a janela do portal”) e peça de novo.",
-        "sem_susep": "O código SUSEP guardado no login da {op} não apareceu na lista do portal. Confira em "
-                     "Conexões e guarde de novo o código exatamente como no dropdown.",
+        "captcha": "O login da {op} é protegido por reCAPTCHA. O robô preenche CPF e senha e não clica em "
+                   "ENTRAR: clique você na janela do portal. Se a janela não estiver visível, ligue "
+                   "“Mostrar a janela do portal” e peça de novo.",
+        "sem_susep": "O código SUSEP guardado no robô não está na lista do portal. O campo SUSEP do robô "
+                     "precisa ser um dos códigos do dropdown (o sufixo (P) não precisa ser digitado).",
+        "sem_botao_entrada": "O robô parou na primeira página da {op}: não achei o botão «Acessar o Corretor "
+                             "Online». Ligue “Mostrar a janela do portal” e confira se o site mudou.",
+        "sem_janela_login": "O robô clicou em «Acessar o Corretor Online», mas a janela de login não abriu. "
+                            "Ligue “Mostrar a janela do portal” e tente de novo.",
+        "sem_resposta": "O robô parou na primeira página da {op} sem chegar ao login (o portal não mostrou "
+                        "CPF, senha nem SUSEP). Ele já recusa o aviso de localização sozinho. Ligue "
+                        "“Mostrar a janela do portal” e tente de novo.",
     }
 
     def campos_login(self) -> list[dict]:
@@ -183,7 +192,8 @@ class Porto(Operadora):
 
     def textos_tela(self) -> dict:
         return {
-            "passo_login": "Em Conexões da Porto, guarde CPF, senha e o código SUSEP do dropdown (depois do login). Ficam no cofre do Windows (NewportCotacoes/porto). Se o portal mostrar reCAPTCHA, o robô para e avisa.",
+            "passo_login": "Em Conexões da Porto, guarde CPF, senha e o código SUSEP do dropdown (depois do login). Ficam no cofre do Windows (NewportCotacoes/porto). Se o login for protegido por reCAPTCHA, o robô preenche os campos e espera você clicar em ENTRAR na janela do portal.",
+            "aguardando_portal": "O login da Porto é protegido por reCAPTCHA. O robô já preencheu CPF e senha: clique em ENTRAR na janela do portal. Depois disso o robô escolhe a SUSEP sozinho.",
             "passo_nova": "CNPJ, vidas por faixa (idade exata de 0 a 18), operadora atual e os planos pelo nome da grade. Cada plano vira uma cotação e um PDF, sempre por Criar nova cotação.",
             "perguntas": {
                 "versoes": [

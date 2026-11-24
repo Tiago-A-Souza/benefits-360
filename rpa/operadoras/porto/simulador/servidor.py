@@ -114,6 +114,10 @@ input,select{padding:6px;margin:4px 0}
 [data-plano].sel{border:2px solid #00A651;background:#e8f8ef}
 iframe#cotador{width:100%;height:720px;border:0}
 .proibido{background:#c00}
+#susep-caixa{width:100%;text-align:left;background:#fff;color:#111;border:1px solid #888}
+#susep-lista{list-style:none;margin:4px 0 0;padding:0;border:1px solid #888;background:#fff}
+#susep-lista li{padding:8px;cursor:pointer}
+#susep-lista li:hover{background:#e8f8ef}
 """
 
 
@@ -125,15 +129,21 @@ def _pagina(titulo: str, corpo: str, script: str = "") -> str:
 class Simulador:
     CPF = "529.982.247-25"
     SENHA = "Treino#Porto1"
-    SUSEP = "BX865J"
-    SUSEPS = ("381N5F", "BX865J", "1VTUFJ", "1Y5ZLJ")
+    SUSEP = "AAAAAA"
+    SUSEPS = ("BBBBBB", "AAAAAA", "CCCCCC", "DDDDDD")
+    SUSEP_COM_P = frozenset({"BBBBBB", "AAAAAA"})
 
     def __init__(self, porta: int = 0):
         self.cpf, self.senha = self.CPF, self.SENHA
         self.susep = self.SUSEP
         self.susep_escolhida = ""
+        self.codigos_susep = list(self.SUSEPS)
+        self.susep_com_p = set(self.SUSEP_COM_P)
+        self.dropdown_susep = "select"  # "select" nativo | "menu" personalizado (só clique)
+        self.atraso_susep_ms = 0
         self.sessoes: dict[str, dict] = {}
         self.exigir_captcha = False
+        self.proteger_recaptcha = False  # selo/iframe, sem desafio: o robô não deve clicar em ENTRAR
         self.tentativas_login = 0
         self.cotacoes: dict[str, dict] = {}
         self.proxima = 9000001
@@ -150,6 +160,10 @@ class Simulador:
         self.httpd: ThreadingHTTPServer | None = None
         self.thread = None
         self.porta = porta
+
+    @property
+    def url(self) -> str:
+        return f"http://127.0.0.1:{self.porta}/"
 
     @property
     def url_login(self) -> str:
@@ -221,12 +235,18 @@ class Simulador:
                 if path == "/login":
                     desafio = ("<p id='captcha' class='erro'>Não sou um robô — desafio reCAPTCHA</p>"
                                if sim.exigir_captcha else "")
+                    selo = ("<iframe title='reCAPTCHA' src='/recaptcha/api2/anchor?size=invisible' "
+                            "width='256' height='60'></iframe>"
+                            "<small>protegido pelo reCAPTCHA</small>"
+                            if sim.proteger_recaptcha else "")
                     self._html(200, _pagina("Login Porto", f"""
 <header>Corretor Online</header><main class=card style="width:360px;margin:40px auto">
 <h2>Acesse o Corretor Online</h2>
 <label for=cpf>CPF</label><br><input id=cpf name=cpf autocomplete=off><br>
 <label for=senha>Senha</label><br><input id=senha name=senha type=password autocomplete=off><br>
-<button id=entrar>ENTRAR</button>{desafio}<p id=erro class=erro style="display:none"></p>
+<button id=entrar>ENTRAR</button>
+<small>O Recaptcha serve para a sua maior segurança ao acessar o Corretor Online.</small>
+{selo}{desafio}<p id=erro class=erro style="display:none"></p>
 </main><script>
 document.getElementById('entrar').onclick=async()=>{{
  const r=await (await fetch('/api/login',{{method:'POST',headers:{{'Content-Type':'application/json'}},
@@ -238,24 +258,7 @@ document.getElementById('entrar').onclick=async()=>{{
                 if path == "/susep":
                     if not sess:
                         self.send_response(302); self.send_header("Location", "/login"); self.end_headers(); return
-                    opcoes = '<option value="">Selecione</option>' + "".join(
-                        f"<option value='{c}'>{c} (P)</option>" if c in ("381N5F", "BX865J") else f"<option value='{c}'>{c}</option>"
-                        for c in sim.SUSEPS)
-                    self._html(200, _pagina("Acesse o Corretor Online", f"""
-<header>Acesse o Corretor Online</header>
-<main class=card style="width:360px;margin:40px auto">
-<label for=susep>SUSEP</label><br>
-<select id=susep name=susep>{opcoes}</select>
-</main>
-<script>
-const caixa=document.getElementById('susep');
-caixa.onchange=async()=>{{
- if(!caixa.value) return;
- await fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
-  body:JSON.stringify({{codigo:caixa.value}})}});
- location='/home';
-}};
-</script>"""))
+                    self._html(200, _pagina_susep(sim))
                     return
                 if path == "/home":
                     if not sess:
@@ -279,7 +282,8 @@ caixa.onchange=async()=>{{
                     self._bytes(_pdf(numero, cot["plano"], cot["cnpj"]), "application/pdf")
                     return
                 if path == "/":
-                    self.send_response(302); self.send_header("Location", "/login"); self.end_headers(); return
+                    self._html(200, _pagina_entrada())
+                    return
                 self.send_response(404); self.end_headers()
 
             def do_POST(self):
@@ -334,8 +338,115 @@ caixa.onchange=async()=>{{
             self.httpd.server_close()
 
 
+def _pagina_entrada() -> str:
+    """Página pública: aviso de localização, cookies e o botão que abre a janela de login."""
+    corpo = """
+<header>Porto Seguro · Corretor Online</header>
+<main class=card style="width:420px;margin:40px auto">
+<div id=aviso-localizacao role=dialog>
+ <p>O site quer saber sua localização.</p>
+ <button type=button id=loc-bloquear>Bloquear</button>
+</div>
+<div id=aviso-cookies>
+ <p>Usamos cookies.</p>
+ <button type=button id=cookies-recusar>Recusar cookies</button>
+</div>
+<h1>Corretor Online</h1>
+<p>Para cotar, entre no Corretor Online.</p>
+<button type=button id=acessar class="ps-btn ps-btn-secondary">ACESSAR O CORRETOR ONLINE</button>
+<input type=password style="display:none" aria-hidden="true" tabindex="-1">
+<input type=password style="display:none" aria-hidden="true" tabindex="-1">
+</main>
+"""
+    script = """
+document.getElementById('loc-bloquear').onclick=()=>document.getElementById('aviso-localizacao').remove();
+document.getElementById('cookies-recusar').onclick=()=>document.getElementById('aviso-cookies').remove();
+document.getElementById('acessar').onclick=()=>{ location.href='/login'; };
+"""
+    return _pagina("Corretor Online", corpo, script)
+
+
 def so_digitos(t) -> str:
     return "".join(c for c in str(t or "") if c.isdigit())
+
+
+def _itens_susep(sim: Simulador) -> list[tuple[str, str]]:
+    itens = []
+    for c in sim.codigos_susep:
+        rotulo = f"{c} (P)" if c in sim.susep_com_p else c
+        itens.append((c, rotulo))
+    return itens
+
+
+def _pagina_susep(sim: Simulador) -> str:
+    """Dropdown só clicável (não aceita digitar), com atraso opcional, select nativo ou menu."""
+    itens = _itens_susep(sim)
+    atraso = int(sim.atraso_susep_ms or 0)
+    js_itens = json.dumps([{"codigo": c, "rotulo": r} for c, r in itens])
+    if sim.dropdown_susep == "menu":
+        corpo = """
+<header>Acesse o Corretor Online</header>
+<main class=card style="width:360px;margin:40px auto">
+<h2>Acesse o Corretor Online</h2>
+<label id=lb-susep>SUSEP</label><br>
+<button type=button id=susep-caixa role=combobox aria-labelledby=lb-susep aria-haspopup=listbox
+ aria-expanded=false aria-label=SUSEP>Selecione</button>
+<ul id=susep-lista role=listbox hidden></ul>
+</main>"""
+        script = f"""
+const itens={js_itens};
+const caixa=document.getElementById('susep-caixa');
+const lista=document.getElementById('susep-lista');
+function enviar(codigo){{
+ fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+  body:JSON.stringify({{codigo}})}}).then(()=>location='/home');
+}}
+function montar(){{
+ lista.innerHTML='';
+ itens.forEach(it=>{{
+  const li=document.createElement('li');
+  li.setAttribute('role','option');
+  li.dataset.susep=it.codigo;
+  li.textContent=it.rotulo;
+  li.onclick=e=>{{e.stopPropagation();enviar(it.codigo);}};
+  lista.appendChild(li);
+ }});
+ lista.hidden=false;
+ caixa.setAttribute('aria-expanded','true');
+}}
+caixa.onclick=()=>{{
+ if(!lista.hidden) return;
+ if({atraso}>0) setTimeout(montar,{atraso}); else montar();
+}};
+caixa.addEventListener('keydown',e=>e.preventDefault());
+"""
+        return _pagina("Acesse o Corretor Online", corpo, script)
+    corpo = """
+<header>Acesse o Corretor Online</header>
+<main class=card style="width:360px;margin:40px auto">
+<h2>Acesse o Corretor Online</h2>
+<label for=susep>SUSEP</label><br>
+<select id=susep name=susep aria-label=SUSEP></select>
+</main>"""
+    script = f"""
+const itens={js_itens};
+const caixa=document.getElementById('susep');
+function montar(){{
+ caixa.innerHTML='<option value="">Selecione</option>'+itens.map(it=>
+  '<option value="'+it.codigo+'">'+it.rotulo+'</option>').join('');
+}}
+caixa.onchange=async()=>{{
+ if(!caixa.value) return;
+ await fetch('/api/susep',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+  body:JSON.stringify({{codigo:caixa.value}})}});
+ location='/home';
+}};
+caixa.addEventListener('keydown',e=>{{
+ if(e.key.length===1) e.preventDefault();
+}});
+if({atraso}>0) setTimeout(montar,{atraso}); else montar();
+"""
+    return _pagina("Acesse o Corretor Online", corpo, script)
 
 
 def _api_cotar(sim: Simulador, sess: dict, dados: dict) -> dict:

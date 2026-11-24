@@ -25,10 +25,18 @@ def tela_susep(page) -> bool:
     try:
         if page.is_closed() or _visivel(page.locator("iframe#cotador")):
             return False
+        if _visivel(sel.login_campo_senha(page)):
+            return False
         path = sel.caminho(page)
         if path.startswith(sel.ROTA_HOME):
             return False
-        return path.startswith(sel.ROTA_SUSEP) or _visivel(sel.susep_caixa(page)) or _visivel(sel.susep_select(page))
+        if path.startswith(sel.ROTA_SUSEP):
+            return True
+        if _visivel(sel.susep_caixa(page)) or _visivel(sel.susep_select(page)):
+            return True
+        return _visivel(page.get_by_text(sel.TEXTO_ACESSE_CORRETOR)) and _visivel(
+            page.get_by_text(re.compile(r"^susep$", re.I))
+        )
     except Exception:  # noqa: BLE001
         return False
 
@@ -88,6 +96,18 @@ def texto_do_cotador(page, limite: int = 60000) -> str:
             return (page.locator("body").inner_text(timeout=5000) or "")[:limite]
         except Exception:  # noqa: BLE001
             return ""
+
+
+def fechar_banners_entrada(page) -> None:
+    """Cookies e aviso HTML de localização. Só a página principal — iframe de reCAPTCHA trava o Playwright."""
+    for montar in (sel.botao_bloquear_localizacao, sel.botao_recusar_cookies):
+        try:
+            loc = montar(page)
+            if loc.count() and loc.first.is_visible():
+                loc.first.click(timeout=1500, force=True)
+                time.sleep(0.2)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def fechar_overlays(page) -> None:

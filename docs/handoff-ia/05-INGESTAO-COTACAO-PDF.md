@@ -44,7 +44,7 @@ Definidas em `template_families.py` via `_registrar_familias` (`template_familie
 | ID | Operadora | Âncoras obrigatórias | Âncoras proibidas | Páginas | Extrator |
 |----|-----------|----------------------|-------------------|---------|----------|
 | `porto-demonstrativo-27` | Porto Seguro | `PORTO`, `TABELA GERAL DE PREM`, `DEMONSTRATIVO TOTAL` | — | 25–30 | `porto.parse` |
-| `porto-tabela-geral-15` | Porto Seguro | `PORTO`, `TABELA GERAL DE PREM`, `BX865J` | `DEMONSTRATIVO TOTAL` | 14–18 | `porto.parse` |
+| `porto-tabela-geral-15` | Porto Seguro | `PORTO`, `TABELA GERAL DE PREM`, código SUSEP do corretor (não versionar) | `DEMONSTRATIVO TOTAL` | 14–18 | `porto.parse` |
 | `sulamerica-pme-sem-cp-13` | SulAmérica | `SUL`, `AMERICA`, `TABELA DE PRECOS`, `SEM COPART` | `COM COPARTICIP`, `30% DE COPART` | 12–14 | `sulamerica.parse` |
 | `sulamerica-pme-copart-13` | SulAmérica | `SUL`, `AMERICA`, `TABELA DE PRECOS` | `SEM COPARTICIP` | 12–14 | `sulamerica.parse` |
 | `sulamerica-pme-ajustes-dual` | SulAmérica | `SUL`, `AMERICA`, `TABELA DE PRECOS` | — | 12–14 | `sulamerica.parse` |
@@ -64,7 +64,7 @@ Definidas em `template_families.py` via `_registrar_familias` (`template_familie
 - Amil texto: página 0 com **≥ 80** palavras PyMuPDF; visual: **&lt; 80**.
 - Empate de score + especificidade → `None` (ambíguo).
 
-`operadora_candidata` (`template_families.py:278-288`): PORTO/BX865J, SUL+AMERICA, AMIL, OMINT — sem Bradesco.
+`operadora_candidata` (`template_families.py:278-288`): PORTO, SUL+AMERICA, AMIL, OMINT — sem Bradesco.
 
 ---
 

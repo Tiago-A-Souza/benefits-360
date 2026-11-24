@@ -115,16 +115,41 @@ def test_cofre_sem_susep_nao_fica_guardado():
     with pytest.raises(ErroCredencial):
         cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1")
     assert cofre.situacao()["guardadas"] is False
-    cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1", susep="BX865J (P)")
-    assert cofre.ler()["susep"] == "BX865J (P)"
+    cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1", susep="AAAAAA (P)")
+    assert cofre.ler()["susep"] == "AAAAAA (P)"
     CofreMemoria.esvaziar()
 
 
 def test_normaliza_susep_do_dropdown():
-    from operadoras.porto.seletores import normalizar_susep
-    assert normalizar_susep("BX865J (P)") == "BX865J"
-    assert normalizar_susep(" bx865j ") == "BX865J"
-    assert normalizar_susep("1VTUFJ") == "1VTUFJ"
+    from operadoras.porto.seletores import mascarar_susep, mensagem_susep_ausente, normalizar_susep
+    assert normalizar_susep("AAAAAA (P)") == "AAAAAA"
+    assert normalizar_susep(" aaaaaa ") == "AAAAAA"
+    assert normalizar_susep("BBBBBB") == "BBBBBB"
+    assert mascarar_susep("AAAAAA (P)") == "AA**AA (P)"
+    assert mascarar_susep("BBBBBB") == "BB**BB"
+    msg = mensagem_susep_ausente(["AAAAAA (P)", "BBBBBB"])
+    assert "AAAAAA" not in msg and "BBBBBB" not in msg
+    assert "AA**AA (P)" in msg and "BB**BB" in msg
+    assert "precisa ser um deles" in msg
+
+
+def test_escolher_susep_nunca_digita_no_campo():
+    import inspect
+    from operadoras.porto import seletores as sel
+    fonte = inspect.getsource(sel.escolher_susep) + inspect.getsource(sel._escolhe_no_select) + inspect.getsource(
+        sel._escolhe_no_menu
+    )
+    assert ".fill(" not in fonte
+    assert ".type(" not in fonte
+    assert "keyboard.type" not in fonte
+
+
+def test_captura_de_erro_nao_entra_no_git():
+    from pathlib import Path
+    gitignore = Path(__file__).resolve().parents[3].joinpath(".gitignore").read_text(encoding="utf-8")
+    assert "rpa/saida/" in gitignore
+    assert "rpa/saida_simulador/" in gitignore
+    assert "rpa/saida_teste_porto/" in gitignore
 
 
 def test_seletores_nao_expoe_clique_de_proposta_ou_duplicar():
