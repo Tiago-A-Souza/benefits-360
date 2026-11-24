@@ -8,7 +8,8 @@ import yaml
 from playwright.sync_api import sync_playwright
 
 from nucleo.credenciais import Cofre, CofreMemoria
-from nucleo.navegador import ARGS_SEM_PAUSA, _sem_guardar_formularios
+from nucleo.navegador import ARGS_SEM_PAUSA, ErroLogin, _sem_guardar_formularios
+from nucleo.texto import so_digitos
 from operadoras.porto import seletores as sel
 from operadoras.porto.login import _clicar_acessar_corretor, entrar
 from operadoras.porto.simulador.servidor import Simulador
@@ -110,9 +111,32 @@ def test_aviso_recaptcha_do_modal_nao_e_desafio():
             "<button>ENTRAR</button>"
         )
         assert not _visivel(sel.captcha_desafio(page))
+        assert not sel.login_recaptcha_protege(page)
         page.set_content("<p id=captcha>Não sou um robô — desafio reCAPTCHA</p>")
         assert _visivel(sel.captcha_desafio(page))
         page.context.browser.close()
+
+
+def test_recaptcha_protege_pelo_iframe_nao_pelo_aviso():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content("<p>O Recaptcha serve para a sua maior segurança ao acessar o Corretor Online.</p>")
+        assert not sel.login_recaptcha_protege(page)
+        page.set_content(
+            "<iframe title='reCAPTCHA' src='https://www.google.com/recaptcha/api2/anchor?size=invisible'></iframe>"
+            "<small>protegido pelo reCAPTCHA</small>"
+        )
+        assert sel.login_recaptcha_protege(page)
+        page.context.browser.close()
+
+
+def test_bloqueio_de_automacao_nao_e_senha_errada():
+    msg = "Por motivos de segurança, não conseguimos validar seu acesso."
+    assert sel.TEXTO_BLOQUEIO_AUTOMACAO.search(msg)
+    assert not sel.TEXTO_RECUSA_LOGIN.search(msg)
+    assert not sel.TEXTO_PROTEGIDO_RECAPTCHA.search(
+        "O Recaptcha serve para a sua maior segurança ao acessar o Corretor Online.")
+    assert sel.TEXTO_PROTEGIDO_RECAPTCHA.search("protegido pelo reCAPTCHA")
 
 
 def test_cpf_do_modal_nao_e_o_de_recuperar_senha():
@@ -134,6 +158,40 @@ def test_cpf_do_modal_nao_e_o_de_recuperar_senha():
         assert page.locator("#logonPrincipal").input_value() == "529.982.247-25"
         assert page.locator("#logonSenha").input_value() == ""
         page.context.browser.close()
+
+
+def test_com_recaptcha_preenche_e_nao_clica_entrar(tmp_path, sim):
+    sim.proteger_recaptcha = True
+    avisos = []
+    secao = {"urls": {"login": sim.url, "cotador": sim.url_home},
+             "tempos": {"timeout_login_ms": 4000, "timeout_tela_ms": 8000, "timeout_codigo_ms": 2500}}
+    cfg = {"geral": {"pasta_saida": str(tmp_path / "saida"), "modo_visual": False, "lentidao_ms": 0,
+                     "mapear": False, "pausa_entre_pedidos_s": 0},
+           "teste": {"cofre": "memoria"}, "operadoras": {"porto": secao}}
+    with sync_playwright() as pw:
+        import operadoras
+        from nucleo.estado import Estado
+        from nucleo.navegador import Mapeador, abrir
+        from nucleo.registro import carregar_config, configurar_log
+
+        (tmp_path / "config.yaml").write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+        op = operadoras.obter("porto")
+        cfg_op = op.config(carregar_config(tmp_path / "config.yaml"))
+        pasta = tmp_path / "saida" / "porto"
+        log = configurar_log(pasta / "logs")
+        contexto, page = abrir(pw, cfg_op)
+        s = op.nova_sessao(cfg_op, log, contexto, page, Estado(pasta / "estado.json"),
+                           op.resultados(pasta / "resultados.xlsx", log),
+                           Mapeador(pasta, False, log), True,
+                           avisar=lambda tipo, **d: avisos.append((tipo, d)))
+        with pytest.raises(ErroLogin) as e:
+            entrar(s)
+        assert e.value.motivo == "captcha"
+        assert sim.tentativas_login == 0
+        assert so_digitos(s.page.locator("#cpf").input_value()) == so_digitos(Simulador.CPF)
+        assert s.page.locator("#senha").input_value() == Simulador.SENHA
+        contexto.close()
+    assert any(t == "login_aguardando" for t, _ in avisos)
 
 
 def test_entrar_pela_pagina_publica_abre_janela_e_loga(tmp_path, sim):
