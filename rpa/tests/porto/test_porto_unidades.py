@@ -115,8 +115,8 @@ def test_cofre_sem_susep_nao_fica_guardado():
     with pytest.raises(ErroCredencial):
         cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1")
     assert cofre.situacao()["guardadas"] is False
-    cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1", susep="BX865J (P)")
-    assert cofre.ler()["susep"] == "BX865J (P)"
+    cofre.guardar(cpf="529.982.247-25", senha="Treino#Porto1", susep="AAAAAA (P)")
+    assert cofre.ler()["susep"] == "AAAAAA (P)"
     CofreMemoria.esvaziar()
 
 

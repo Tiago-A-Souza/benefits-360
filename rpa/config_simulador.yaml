@@ -69,4 +69,4 @@ operadoras:
       timeout_tela_ms: 20000
       timeout_emissao_ms: 30000
     padroes:
-      susep: "BX865J"
+      susep: "AAAAAA"

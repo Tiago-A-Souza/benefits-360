@@ -35,7 +35,7 @@ class Porto(Operadora):
                      "sair_do_portal_min": 3, "timeout_emissao_ms": 180000, "timeout_tela_ms": 60000,
                      "timeout_download_ms": 120000},
         "emissao_liberada": False,
-        "padroes": {"susep": "BX865J", "produto": "Saude", "comissao": COMISSAO_K001,
+        "padroes": {"susep": "AAAAAA", "produto": "Saude", "comissao": COMISSAO_K001,
                     "aceitar_agenciamento": "sim", "acomodacao": "Apartamento",
                     "coparticipacao": "com", "planos": []},
         "faixas_idade_exata": ["0 - 18"],
@@ -83,7 +83,7 @@ class Porto(Operadora):
                         {"chave": "tempos.sair_do_portal_min", "rotulo": "Sair do portal depois de (minutos sem pedidos)",
                          "tipo": "numero", "minimo": 0, "maximo": 120}]},
             {"etapa": "susep", "faz": "Depois do CPF e da senha, escolhe no dropdown o código SUSEP guardado no login "
-                                      "(o mesmo da lista: BX865J (P), etc.). Sem esse código o robô não entra.",
+                                      "(o mesmo da lista: AAAAAA (P), etc.). Sem esse código o robô não entra.",
              "campos": []},
             {"etapa": "inicio", "faz": "Abre o cotador (iframe) e clica em Criar nova cotação. Nunca Duplicar orçamento.",
              "campos": []},

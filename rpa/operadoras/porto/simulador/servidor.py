@@ -129,9 +129,9 @@ def _pagina(titulo: str, corpo: str, script: str = "") -> str:
 class Simulador:
     CPF = "529.982.247-25"
     SENHA = "Treino#Porto1"
-    SUSEP = "BX865J"
-    SUSEPS = ("381N5F", "BX865J", "1VTUFJ", "1Y5ZLJ")
-    SUSEP_COM_P = frozenset({"381N5F", "BX865J"})
+    SUSEP = "AAAAAA"
+    SUSEPS = ("BBBBBB", "AAAAAA", "CCCCCC", "DDDDDD")
+    SUSEP_COM_P = frozenset({"BBBBBB", "AAAAAA"})
 
     def __init__(self, porta: int = 0):
         self.cpf, self.senha = self.CPF, self.SENHA

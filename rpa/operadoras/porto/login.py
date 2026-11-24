@@ -149,7 +149,7 @@ def _preencher(page, campo, valor: str) -> None:
 
 
 def _codigo_susep(s, login: dict | None) -> str:
-    """Código do cofre (Conexões); se faltar, o padrão da engrenagem. Aceita 'BX865J (P)'."""
+    """Código do cofre (Conexões); se faltar, o padrão da engrenagem. Aceita 'AAAAAA (P)'."""
     bruto = ((login or {}).get("susep") or (s.cfg.get("padroes") or {}).get("susep") or "")
     return sel.normalizar_susep(bruto)
 

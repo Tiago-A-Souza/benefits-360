@@ -1,6 +1,6 @@
 # Porto Seguro — acesso autorizado ao Corretor Online
 
-Como o robô entra no portal da Porto **sem burlar reCAPTCHA**. Nenhum CPF, senha ou SUSEP real entra neste arquivo; os códigos de teste são fictícios (`AAAAAA`, `BX865J` do simulador).
+Como o robô entra no portal da Porto **sem burlar reCAPTCHA**. Nenhum CPF, senha ou SUSEP real entra neste arquivo; os códigos de teste são fictícios (`AAAAAA`, `BBBBBB`).
 
 ## O que está autorizado
 
@@ -56,4 +56,4 @@ O Chromium de teste usa `saida_teste_porto/porto/perfil_navegador`. Não version
 - `tests/porto/test_porto_susep.py` — clique no dropdown (`AAAAAA` / `BBBBBB`).
 - `tests/porto/test_porto_entrada.py` — página pública, modal, CPF `#logonPrincipal`, reCAPTCHA não clica em ENTRAR.
 - `tests/porto/test_porto_simulador.py` — ensaio até o passo 3; `exigir_captcha` para o robô **sem burlar**.
-- Simulador: CPF `529.982.247-25`, senha `Treino#Porto1`, SUSEP `BX865J` — já eram o treino do repositório.
+- Simulador: CPF `529.982.247-25`, senha `Treino#Porto1`, SUSEP `AAAAAA`.

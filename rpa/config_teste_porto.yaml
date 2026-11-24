@@ -157,7 +157,7 @@ operadoras:
       timeout_download_ms: 120000
       sair_do_portal_min: 3
     padroes:
-      susep: "BX865J"
+      susep: "AAAAAA"
       comissao: "K001 | ag1(100%) | ag2(100%) | ag3(0%) | Corretagem(5%)"
       acomodacao: "Apartamento"
       coparticipacao: "com"
