@@ -619,3 +619,29 @@ def test_abrir_cotacao_spg_pelo_submenu_quando_acesso_rapido_esta_vazio():
         assert page.locator("#spg").get_attribute("data-aberto") == "1"
         nav.close()
 
+
+def test_abrir_cotacao_spg_no_dropdown_sem_href_sem_fechar_o_menu():
+    """Portal 24/11: Acesso rápido vazio; o item do dropdown é um <p>, não um <a>. Cotações é toggle."""
+    from playwright.sync_api import sync_playwright
+
+    from operadoras.bradesco.etapas import _abrir_cotacao_spg
+
+    html = """
+    <p>Favorite um menu para exibir aqui</p>
+    <div openmenuoptions="" id="cot" onclick="
+      var m=document.getElementById('menu'); m.hidden=!m.hidden;">Cotações</div>
+    <div id="menu" hidden>
+      <div id="spg" onclick="this.dataset.aberto='1'">
+        <span>casa</span><span>estrela</span><p>Cotação SPG</p>
+      </div>
+    </div>
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page()
+        page.set_content(html)
+        _abrir_cotacao_spg(page, 5)
+        assert page.locator("#spg").get_attribute("data-aberto") == "1"
+        assert page.locator("#menu").evaluate("e => e.hidden") is False
+        nav.close()
+

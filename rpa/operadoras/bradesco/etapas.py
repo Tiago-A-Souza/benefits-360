@@ -312,6 +312,8 @@ def _abrir_cotacao_spg(page, tempo: float, log=None, url_cotador: str = "") -> N
                 n_href = 0
             if time.monotonic() >= proximo_menu:
                 menus = visiveis(sel.menu_cotacoes(page))
+                # Cotações é um toggle: se o dropdown já mostra o item, clicar de novo FECHA o menu
+                # e o robô fica no Painel Saúde com Acesso rápido vazio (portal 24/11).
                 if menus:
                     if log:
                         log.info("Painel Saúde: menu Cotações.")
@@ -324,6 +326,13 @@ def _abrir_cotacao_spg(page, tempo: float, log=None, url_cotador: str = "") -> N
                     except Exception:  # noqa: BLE001
                         pass
                     proximo_menu = time.monotonic() + 2.5
+                    # O item pode aparecer no mesmo ciclo (dropdown federado sem href).
+                    itens = visiveis(sel.link_cotacao_spg(page))
+                    if itens:
+                        if log:
+                            log.info("Painel Saúde: abrindo Cotação SPG.")
+                        itens[0].click()
+                        return
                 elif (not tentou_endereco and url_cotador and time.monotonic() - comeco >= 6
                       and sel.ROTA_AREA_LOGADA in sel.caminho(page)):
                     tentou_endereco = True

@@ -112,10 +112,12 @@ def menu_cotacoes(lugar) -> Locator:                    # vídeo [03] e portal 1
 
 def link_cotacao_spg(lugar) -> Locator:                 # OK no portal 07/11; 18/11 também pelo texto do submenu
     # Acesso rápido: o card "Cotação SPG" com o link "Conferir" (href .../saude/cotacoes/cotacao-spg).
-    # Submenu COTAÇÕES: o próprio item "Cotação SPG" é o <a> (vídeo [03]).
+    # Submenu COTAÇÕES: no vídeo [03] o item era <a>; no portal atual o dropdown federado mostra
+    # "Cotação SPG" num <p>/<div> (casa + estrela), sem href — get_by_role("link") não acha.
     href = lugar.locator("a[href*='/cotacoes/cotacao-spg']")
-    texto = lugar.get_by_role("link", name=re.compile(r"cota[cç][aã]o\s+spg", re.I))
-    return href.or_(texto)
+    texto_link = lugar.get_by_role("link", name=re.compile(r"cota[cç][aã]o\s+spg", re.I))
+    item = lugar.get_by_text(re.compile(r"^\s*Cota[cç][aã]o\s+SPG\s*$", re.I))
+    return href.or_(texto_link).or_(item)
 
 
 # Na página da Cotação SPG o portal abre a área de trabalho antiga num iframe (wwws.../EEEM-EmissaoExpressa,
