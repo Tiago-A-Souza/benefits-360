@@ -141,7 +141,8 @@ def test_tela_sensivel_nao_avalia_iframe_de_recaptcha(tmp_path):
             self.url = url
             self.evals = 0
 
-        def evaluate(self, js, timeout=None):
+        def evaluate(self, js, arg=None):
+            assert arg is None
             self.evals += 1
             if "recaptcha" in self.url:
                 raise AssertionError("evaluate no iframe de reCAPTCHA")
@@ -160,6 +161,19 @@ def test_tela_sensivel_nao_avalia_iframe_de_recaptcha(tmp_path):
     mapa = Mapeador(tmp_path, True, logging.getLogger("teste"), url_login="")
     assert mapa.tela_sensivel(pagina) is None
     assert recaptcha.evals == 0
+
+
+def test_avaliar_quadro_chama_evaluate_sem_timeout():
+    """Playwright Frame.evaluate(expression, arg=None): timeout= vira TypeError e o mapa some."""
+    from nucleo.navegador import _avaliar_quadro
+
+    class Quadro:
+        def evaluate(self, expression, arg=None):
+            if arg is not None:
+                raise TypeError("evaluate() got an unexpected keyword argument")
+            return True
+
+    assert _avaliar_quadro(Quadro(), "() => true") is True
 
 
 def test_mapa_de_erro_guarda_o_erro_inteiro_e_o_estado_de_carga(tmp_path):

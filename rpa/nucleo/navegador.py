@@ -252,8 +252,11 @@ def quadros_do_portal(page: Page) -> list:
 
 
 def _avaliar_quadro(frame, js: str):
+    # Playwright Frame.evaluate(expression, arg=None) — sem timeout. Recaptcha já
+    # fica de fora em quadros_do_portal; passar timeout= vira TypeError e o mapa
+    # deixa de ver campo de senha (login SulAmérica/Amil em iframe).
     try:
-        return frame.evaluate(js, timeout=1500)
+        return frame.evaluate(js)
     except Exception:  # noqa: BLE001
         return None
 
