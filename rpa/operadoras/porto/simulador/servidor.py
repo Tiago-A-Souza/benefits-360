@@ -239,7 +239,9 @@ class Simulador:
 <h2>Acesse o Corretor Online</h2>
 <label for=cpf>CPF</label><br><input id=cpf name=cpf autocomplete=off><br>
 <label for=senha>Senha</label><br><input id=senha name=senha type=password autocomplete=off><br>
-<button id=entrar>ENTRAR</button>{desafio}<p id=erro class=erro style="display:none"></p>
+<button id=entrar>ENTRAR</button>
+<small>O Recaptcha serve para a sua maior segurança ao acessar o Corretor Online.</small>
+{desafio}<p id=erro class=erro style="display:none"></p>
 </main><script>
 document.getElementById('entrar').onclick=async()=>{{
  const r=await (await fetch('/api/login',{{method:'POST',headers:{{'Content-Type':'application/json'}},

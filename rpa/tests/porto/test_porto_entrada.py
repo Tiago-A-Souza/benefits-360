@@ -95,6 +95,23 @@ def test_botao_do_header_e_button_mesmo_com_senha_escondida(sim):
         assert not _visivel(sel.login_campo_senha(page))
         assert _clicar_acessar_corretor(page)
         page.wait_for_url("**/login")
+        assert page.get_by_text("O Recaptcha serve").count()
+        assert not _visivel(sel.captcha_desafio(page))
+        page.context.browser.close()
+
+
+def test_aviso_recaptcha_do_modal_nao_e_desafio():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(
+            "<p>O Recaptcha serve para a sua maior segurança ao acessar o Corretor Online.</p>"
+            "<label for=cpf>CPF</label><input id=cpf>"
+            "<label for=senha>Senha</label><input id=senha type=password>"
+            "<button>ENTRAR</button>"
+        )
+        assert not _visivel(sel.captcha_desafio(page))
+        page.set_content("<p id=captcha>Não sou um robô — desafio reCAPTCHA</p>")
+        assert _visivel(sel.captcha_desafio(page))
         page.context.browser.close()
 
 

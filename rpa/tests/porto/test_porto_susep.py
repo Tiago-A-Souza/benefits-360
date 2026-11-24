@@ -40,7 +40,7 @@ def _iniciar(sim, *, modo: str, atraso: int = 0, unicos=None):
 def _abrir_dropdown(page, sim):
     page.goto(sim.url_login)
     page.get_by_label("CPF").fill(Simulador.CPF)
-    page.locator("input[type=password]").fill(Simulador.SENHA)
+    page.get_by_label("Senha").fill(Simulador.SENHA)
     page.get_by_role("button", name="ENTRAR").click()
     page.wait_for_url("**/susep")
 

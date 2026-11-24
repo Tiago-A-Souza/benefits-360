@@ -33,7 +33,8 @@ def iframe_cotador(page: Page) -> FrameLocator:
 # ---- textos (VALIDAR) ----
 TEXTO_RECUSA_LOGIN = re.compile(r"(cpf|senha|credenciais?).{0,60}(inv[aá]lid|incorret)"
                                 r"|(inv[aá]lid|incorret).{0,40}(cpf|senha)", re.I)
-TEXTO_CAPTCHA = re.compile(r"n[aã]o sou (um )?rob[oô]|recaptcha|desafio", re.I)
+# Só o desafio de verdade. O modal da Porto traz "O Recaptcha serve para a sua maior segurança" — isso não é desafio.
+TEXTO_CAPTCHA = re.compile(r"n[aã]o sou (um )?rob[oô]|resolva o (re)?captcha|desafio (do |de )?(re)?captcha", re.I)
 TEXTO_TROCA_SENHA = re.compile(r"(trocar|redefinir|alterar) (a )?senha|senha expirou", re.I)
 TEXTO_CRIAR_NOVA = rx("Criar nova cotação")
 TEXTO_DADOS_INICIAIS = rx("Dados iniciais")
@@ -88,9 +89,9 @@ def botao_bloquear_localizacao(lugar) -> Locator:
 
 
 def captcha_desafio(page: Page) -> Locator:
+    """Desafio visível (não sou um robô / bframe). O aviso 'O Recaptcha serve para…' não conta."""
     return page.get_by_text(TEXTO_CAPTCHA).or_(
-        page.locator("iframe[src*='recaptcha'][src*='bframe'], iframe[src*='recaptcha/api2/anchor']"
-                     ":not([src*='size=invisible'])"))
+        page.locator("iframe[src*='recaptcha'][src*='bframe']"))
 
 
 TEXTO_ACESSE_CORRETOR = re.compile(r"Acesse o Corretor Online", re.I)

@@ -16,7 +16,7 @@ from datetime import datetime
 from nucleo.configuracao import aprendido, aprender
 from nucleo.credenciais import cofre as cofre_da_config, mensagem_login
 
-from nucleo.navegador import ErroLogin, Parado
+from nucleo.navegador import ErroLogin, Parado, visiveis
 
 from . import seletores as sel
 from .telas import (
@@ -133,8 +133,10 @@ def _abrir_login(s) -> None:
 
 
 def _preencher(page, campo, valor: str) -> None:
-    campo.first.click()
-    campo.first.fill(valor)
+    """O modal da Porto deixa inputs type=password escondidos no DOM: preenche só o visível."""
+    alvo = visiveis(campo)[0] if visiveis(campo) else campo.first
+    alvo.click()
+    alvo.fill(valor)
 
 
 def _codigo_susep(s, login: dict | None) -> str:
