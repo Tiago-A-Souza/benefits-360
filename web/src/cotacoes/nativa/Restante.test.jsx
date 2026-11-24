@@ -130,6 +130,27 @@ describe("Início, Ajuda, Importar, Ajustes", () => {
     expect(html).toContain('data-cor-op="#F08810"');
     expect(html).not.toContain("type=\"password\"");
     expect(html).not.toContain("127.0.0.1:8600/#/robo");
+    expect(html).not.toContain("ROBÔ EM MODO TREINO");
+  });
+
+  it("Ajustes em modo treino mostra aviso destacado e não as cotações reais", () => {
+    const html = renderToStaticMarkup(
+      <AjustesRobos
+        operadoras={OPERADORAS}
+        conexao={{ sulamerica: "desconectado" }}
+        simulador
+      />,
+    );
+    expect(html).toContain("ROBÔ EM MODO TREINO — não são as suas cotações reais");
+    expect(html).toContain("nativa-aviso-treino");
+  });
+
+  it("aba Cotações avisa modo treino e, se o robô estiver desligado, que o histórico não se perdeu", () => {
+    const shell = readFileSync(join(dir, "CotacoesNativa.jsx"), "utf8");
+    expect(shell).toContain("ROBÔ EM MODO TREINO — não são as suas cotações reais");
+    expect(shell).toContain("não foram perdidos");
+    expect(shell).toContain("Abrir Benefits Robo");
+    expect(shell).toContain("{urlRobo}");
   });
 
   it("ConfigRobo manda login para Conexões e não desenha senha", () => {

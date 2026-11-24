@@ -63,7 +63,7 @@ class Tela:
         self.porta = porta
         base = carregar_config(self.caminho_config)
         migrar_legado(base)
-        self.pasta = pasta_saida(base)
+        self.pasta = pasta_saida(base).absolute()
         self.pasta.mkdir(parents=True, exist_ok=True)
         self.arquivo_ajustes = self.pasta / "config_tela.json"
         self.versao = str(time.time_ns())   # muda a cada vez que a tela é aberta: a página recarrega sozinha
@@ -108,7 +108,8 @@ class Tela:
             # Operadoras que não carregaram (ou que quebraram ao montar o formulário): a tela mostra "indisponível".
             "operadoras_indisponiveis": operadoras.indisponiveis(total) + list(self._falhas_operadora.values()),
             "simulador": bool((total.get("teste") or {}).get("simulador")),
-            "pasta_saida": str(self.pasta),
+            "modo": "treino" if (total.get("teste") or {}).get("simulador") else "real",
+            "pasta_saida": str(self.pasta.absolute()),
             "retencao_dias": self.dias_retencao,
         })
 
@@ -581,7 +582,9 @@ class Tela:
     async def ler_geral(self, request: Request):
         total = self.config_total()
         return JSONResponse({"geral": {k: total["geral"].get(k) for k in AJUSTAVEIS_GERAL},
-                             "pasta_saida": str(self.pasta), "retencao_dias": self.dias_retencao})
+                             "pasta_saida": str(self.pasta.absolute()),
+                             "simulador": bool((total.get("teste") or {}).get("simulador")),
+                             "retencao_dias": self.dias_retencao})
 
     async def gravar_geral(self, request: Request):
         corpo = await request.json()

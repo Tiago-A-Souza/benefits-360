@@ -109,6 +109,7 @@ calcular_response.json
 # ---------------------------------------------------------------------------
 rpa/saida/
 rpa/saida_simulador/
+rpa/saida_teste_porto/
 rpa/.venv/
 rpa/**/perfil_navegador/
 rpa/**/*.db

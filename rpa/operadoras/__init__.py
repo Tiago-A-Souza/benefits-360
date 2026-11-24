@@ -20,6 +20,7 @@ _REGISTRO: list[tuple[str, str, str, str]] = [
     ("sulamerica", "SulAmérica", "operadoras.sulamerica", "SulAmerica"),
     ("bradesco", "Bradesco", "operadoras.bradesco", "Bradesco"),
     ("amil", "Amil", "operadoras.amil", "Amil"),
+    ("porto", "Porto Seguro", "operadoras.porto", "Porto"),
 ]
 _INSTANCIAS: dict[str, Operadora] = {}
 _INDISPONIVEIS: dict[str, dict] = {}

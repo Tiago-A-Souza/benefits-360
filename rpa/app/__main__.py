@@ -8,6 +8,7 @@ import threading
 import time
 import urllib.request
 import webbrowser
+from pathlib import Path
 
 
 def _tela_ja_aberta(porta: int) -> bool:
@@ -48,6 +49,43 @@ def _sair_ao_fechar_a_janela(tela) -> None:
         pass
 
 
+class _Tee:
+    def __init__(self, *streams):
+        self._s = streams
+
+    def write(self, data):
+        for s in self._s:
+            try:
+                s.write(data)
+                s.flush()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def flush(self):
+        for s in self._s:
+            try:
+                s.flush()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def reconfigure(self, **kwargs):
+        for s in self._s:
+            fn = getattr(s, "reconfigure", None)
+            if fn:
+                try:
+                    fn(**kwargs)
+                except Exception:  # noqa: BLE001
+                    pass
+
+
+def _ligar_log(caminho: str) -> None:
+    p = Path(caminho)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    arq = p.open("a", encoding="utf-8")
+    sys.stdout = _Tee(sys.__stdout__, arq)
+    sys.stderr = _Tee(sys.__stderr__, arq)
+
+
 def main(argv=None) -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -59,22 +97,40 @@ def main(argv=None) -> int:
     ap.add_argument("--sem-navegador", action="store_true", help="não abre o navegador sozinho")
     ap.add_argument("--com-simulador", action="store_true",
                     help="sobe junto o simulador de treino de cada operadora (use com config_simulador.yaml)")
+    ap.add_argument("--log", default=None, help="também grava a saída neste arquivo")
     args = ap.parse_args(argv)
+    if args.log:
+        _ligar_log(args.log)
 
+    from nucleo.instancia import OcupadoErro, TravaPorta, mensagem_porta_config
     from nucleo.registro import carregar_config
 
     total = carregar_config(args.config)
     porta = args.porta or int((total.get("tela") or {}).get("porta", 8600))
+    recusa = mensagem_porta_config(args.config, porta)
+    if recusa:
+        print(recusa)
+        return 2
     url = f"http://127.0.0.1:{porta}"
 
     if _porta_ocupada(porta):
         if _tela_ja_aberta(porta):
-            print("robô já estava ligado")
+            print("Já existe um robô nesta porta. O que está ligado continua; este atalho não abre outro.")
             print("Motor do robô de cotações em execução. Use o Benefits (http://localhost:5173), aba Cotações.")
             if not args.sem_navegador:
                 webbrowser.open("http://localhost:5173")
             return 0
         print(f"A porta {porta} está em uso por outro programa. Mude 'tela: porta:' no {args.config}.")
+        return 1
+
+    try:
+        trava = TravaPorta(porta)
+        trava.__enter__()
+    except OcupadoErro as e:
+        print(e)
+        if _tela_ja_aberta(porta):
+            print("O robô que já está no ar continua. Este atalho não abre outro.")
+            return 0
         return 1
 
     if args.com_simulador:
@@ -98,17 +154,23 @@ def main(argv=None) -> int:
 
     from .servidor import Tela
 
-    tela = Tela(args.config, porta)
-    _sair_ao_fechar_a_janela(tela)
-    print(f"Motor do robô em {url} (API). Interface: http://localhost:5173 aba Cotações.")
-    print("Deixe esta janela aberta enquanto o Benefits usa o robô. Para encerrar, feche esta janela.")
-    if not args.sem_navegador:
-        threading.Thread(
-            target=lambda: (time.sleep(1.2), webbrowser.open("http://localhost:5173")),
-            daemon=True,
-        ).start()
-    uvicorn.run(tela.criar_app(), host="127.0.0.1", port=porta, log_level="warning")
-    return 0
+    try:
+        tela = Tela(args.config, porta)
+        _sair_ao_fechar_a_janela(tela)
+        print(f"Motor do robô em {url} (API). Interface: http://localhost:5173 aba Cotações.")
+        print(f"Pasta de saída: {tela.pasta}")
+        if (total.get("teste") or {}).get("simulador"):
+            print("MODO TREINO: esta pasta NÃO é a das cotações reais (saida).")
+        print("Deixe esta janela aberta enquanto o Benefits usa o robô. Para encerrar, feche esta janela.")
+        if not args.sem_navegador:
+            threading.Thread(
+                target=lambda: (time.sleep(1.2), webbrowser.open("http://localhost:5173")),
+                daemon=True,
+            ).start()
+        uvicorn.run(tela.criar_app(), host="127.0.0.1", port=porta, log_level="warning")
+        return 0
+    finally:
+        trava.__exit__(None, None, None)
 
 
 if __name__ == "__main__":

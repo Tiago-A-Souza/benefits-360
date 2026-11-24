@@ -97,6 +97,7 @@ ARGS_SEM_PAUSA = [
     "--disable-background-timer-throttling",
     "--disable-ipc-flooding-protection",
     "--disable-notifications",
+    "--deny-permission-prompts",
 ]
 
 
@@ -200,8 +201,11 @@ def _sem_guardar_formularios(perfil: Path) -> None:
     perfil_prefs = prefs.setdefault("profile", {})
     perfil_prefs["password_manager_enabled"] = False
     # 2 = bloquear. Sem isso o Chrome cobre o portal com "o site quer mostrar notificações" e o robô
-    # não consegue clicar (Bradesco, Seguros Friday, 18/11).
-    perfil_prefs.setdefault("default_content_setting_values", {})["notifications"] = 2
+    # não consegue clicar (Bradesco, Seguros Friday, 18/11). A Porto pede localização na primeira
+    # página: o mesmo bloqueio, mais --deny-permission-prompts, para o robô não ficar esperando clique.
+    conteudo = perfil_prefs.setdefault("default_content_setting_values", {})
+    conteudo["notifications"] = 2
+    conteudo["geolocation"] = 2
     prefs.setdefault("autofill", {}).update(enabled=False, profile_enabled=False, credit_card_enabled=False)
     arquivo.parent.mkdir(parents=True, exist_ok=True)
     arquivo.write_text(json.dumps(prefs), encoding="utf-8")
@@ -224,6 +228,34 @@ _JS_CAMPO_CODIGO = ("() => { const e = [...document.querySelectorAll('input')].f
 # mapa. 05/11: o painel "Estou em cotações" ficava sem mapa por um campo de senha escondido e vazio.
 _JS_CAMPO_SENHA = ("() => [...document.querySelectorAll('input[type=password i]')].some(e => "
                    "(e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden') || !!e.value)")
+
+_RX_IFRAME_CAPTCHA = re.compile(
+    r"recaptcha|hcaptcha|turnstile|challenges\.cloudflare|gstatic\.com/recaptcha", re.I)
+
+
+def quadros_do_portal(page: Page) -> list:
+    """Frames da operadora. evaluate() em iframe de captcha trava ~30s (origem cruzada)."""
+    try:
+        frames = list(page.frames)
+    except Exception:  # noqa: BLE001
+        return []
+    proprios = []
+    for f in frames:
+        try:
+            u = f.url or ""
+        except Exception:  # noqa: BLE001
+            continue
+        if _RX_IFRAME_CAPTCHA.search(u):
+            continue
+        proprios.append(f)
+    return proprios
+
+
+def _avaliar_quadro(frame, js: str):
+    try:
+        return frame.evaluate(js, timeout=1500)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 class Mapeador:
@@ -253,13 +285,13 @@ class Mapeador:
     def tela_sensivel(self, page: Page) -> str | None:
         """"login", "codigo" ou None. Na dúvida (página navegando ou fechada), "login": melhor perder um mapa."""
         try:
-            achado = next((c for c in (f.evaluate(_JS_CAMPO_CODIGO) for f in page.frames) if c), "")
+            achado = next((c for c in (_avaliar_quadro(f, _JS_CAMPO_CODIGO) for f in quadros_do_portal(page)) if c), "")
             if achado:
                 self._campo_codigo = achado
                 return "codigo"
             if self.path_login and urlparse(page.url).path.rstrip("/").lower() == self.path_login:
                 return "login"
-            return "login" if any(f.evaluate(_JS_CAMPO_SENHA) for f in page.frames) else None
+            return "login" if any(_avaliar_quadro(f, _JS_CAMPO_SENHA) for f in quadros_do_portal(page)) else None
         except Exception:  # noqa: BLE001
             return "login"
 
@@ -268,7 +300,10 @@ class Mapeador:
 
     def _campos_vazios(self, page: Page) -> bool:
         try:
-            return all(f.evaluate(_JS_CAMPOS_VAZIOS) for f in page.frames)
+            for f in quadros_do_portal(page):
+                if not _avaliar_quadro(f, _JS_CAMPOS_VAZIOS):
+                    return False
+            return True
         except Exception:  # noqa: BLE001
             return False
 
@@ -287,7 +322,8 @@ class Mapeador:
         base = self.pasta / f"{self.n:02d}_{etapa}"
         try:
             mascaras = [page.get_by_text(s) for s in segredos_visiveis()]
-            page.screenshot(path=str(base.with_suffix(".png")), full_page=True, mask=mascaras)
+            page.screenshot(path=str(base.with_suffix(".png")), full_page=True, mask=mascaras,
+                            timeout=8000)
         except Exception:  # noqa: BLE001
             self.log.warning("mapear: print falhou")
         try:
@@ -295,7 +331,7 @@ class Mapeador:
         except Exception:  # noqa: BLE001
             self.log.warning("mapear: HTML falhou")
         try:
-            arvore = page.locator("body").aria_snapshot()
+            arvore = page.locator("body").aria_snapshot(timeout=5000)
             base.with_suffix(".aria.txt").write_text(ocultar(f"URL: {page.url}\n\n{arvore}"), encoding="utf-8")
         except Exception:  # noqa: BLE001
             self.log.warning("mapear: árvore falhou")

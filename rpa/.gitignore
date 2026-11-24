@@ -28,7 +28,15 @@ docs/amil_quadros/
 codegen/docs/amil_quadros/
 codegen/docs/videos/AMIL.mp4
 codegen/docs/vÃ­deos/AMIL.mp4
+
+# material da Porto com dados pessoais (video e quadros do corretor). Nunca versionar.
+docs/porto_quadros/
+codegen/docs/porto_quadros/
+codegen/docs/videos/PORTO.mp4
 *.mp4
 
 # Brand guide pesado — nao versionar (logo/fontes ficam)
 app/web/Marca/*.pdf
+
+# travas de instância (ficam em %%LOCALAPPDATA%%; reforço se alguém gravar aqui)
+.locks/

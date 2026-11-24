@@ -174,7 +174,40 @@ operadoras:
         "AMIL BLACK I R1 COPART": "BLACK"
         "AMIL S2500 R1 QP COPART": "S2500"
 
+  porto:
+    ativa: true
+    urls:
+      login: "https://corretor.portoseguro.com.br/"
+      cotador: "https://www.saude.portoseguro.com.br/corretor/cotar"
+    # Só ensaio até a calibragem no portal real. "Gerar orçamento" só quando o Tiago ligar e clicar em Gerar.
+    emissao_liberada: false
+    tempos:
+      timeout_login_ms: 60000
+      timeout_tela_ms: 60000
+      timeout_emissao_ms: 180000
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3
+    padroes:
+      susep: "AAAAAA"
+      comissao: "K001 | ag1(100%) | ag2(100%) | ag3(0%) | Corretagem(5%)"
+      acomodacao: "Apartamento"
+      coparticipacao: "com"
+    conferencias:
+      aliquota_iof: "0.0238"
+      taxa_inscricao_por_vida: "5.00"
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "PORTO_{cnpj}_{protocolo}.pdf"
+      nome_pdf_destino: "PORTO {plano_arquivo} {versao}.pdf"
+      substituir_no_destino: true
+
 seguranca:
   # Arquivos do robô (PDFs em pdfs/, prints em mapa/, logs/) com mais de N dias são apagados ao abrir a
   # tela e a cada execução. Nunca apaga estado.json, resultados.xlsx nem a pasta do cliente. 0 desliga.
   retencao_dias: 90
+
+# Backup do histórico (rpa/scripts/backup_historico.py). NÃO roda sozinho; só com autorização.
+backup:
+  pasta_tela: "C:\\Backups\\rpa-tela"
+  retencao_dias: 14
+  pasta_saida_semanal: "C:\\Backups\\rpa-saida-semanal"

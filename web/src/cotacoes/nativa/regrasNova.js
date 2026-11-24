@@ -267,7 +267,9 @@ export function montarItens(f, operadoras) {
       if (f.vidas[k] > 0 && f.idades[k].trim()) dados[`idades_${k}`] = listaIdades(f.idades[k]).join("; ");
     }
     for (const c of op.campos || []) if (visivel(c, o.campos || {})) dados[c.chave] = (o.campos || {})[c.chave];
-    dados.planos = o.menor ? `menor_preco:${o.qtdMenor}` : o.planos.join("; ");
+    dados.planos = o.menor
+      ? `menor_preco:${o.qtdMenor}`
+      : (o.planos || []).filter((r) => ehPlanoDoCatalogoPortal(op, r)).join("; ");
     return { operadora: op.id, pedidos: [dados] };
   });
 }
@@ -300,6 +302,95 @@ export function fraseResumoBarra(form, operadoras) {
 
 export function totalCotacoes(form, operadoras) {
   return opsAtivas(form, operadoras).reduce((a, op) => a + cotacoesDe(form, op), 0);
+}
+
+/** Acima disto a barra avisa quantos PDFs a seleção vai gerar. */
+export const LIMITE_AVISO_VOLUME = 6;
+
+export function rotuloPlano(p) {
+  if (!p) return "";
+  const nome = String(p.nome || "").trim();
+  const acom = String(p.acomodacao || "").trim();
+  return acom ? `${nome} | ${acom}` : nome;
+}
+
+export function normalizarTextoPlano(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function planosDoCatalogoPortal(op) {
+  return [...((op && op.planos) || []), ...((op && op.planos_busca) || [])];
+}
+
+export function ehPlanoDoCatalogoPortal(op, rotulo) {
+  return planosDoCatalogoPortal(op).some((p) => rotuloPlano(p) === rotulo);
+}
+
+export function planoPorRotulo(op, rotulo) {
+  return planosDoCatalogoPortal(op).find((p) => rotuloPlano(p) === rotulo) || null;
+}
+
+function casaConsultaPlano(p, consultaNorm) {
+  if (!consultaNorm) return false;
+  const blob = normalizarTextoPlano(`${p.nome || ""} ${p.acomodacao || ""} ${rotuloPlano(p)}`);
+  return blob.includes(consultaNorm);
+}
+
+/**
+ * Busca só no catálogo do portal. Os cards (`op.planos`) ficam de fora dos
+ * resultados — já estão na lista. `op.planos_busca` são extras ainda não
+ * promovidos a card. A matriz SiscorNet nunca entra aqui.
+ */
+export function filtrarBuscaOutroPlano(op, consulta) {
+  const q = normalizarTextoPlano(consulta);
+  if (!q) return { resultados: [], estado: "idle" };
+  const cards = (op && op.planos) || [];
+  const noCard = new Set(cards.map(rotuloPlano));
+  const extras = ((op && op.planos_busca) || []).filter((p) => !noCard.has(rotuloPlano(p)));
+  const resultados = extras.filter((p) => casaConsultaPlano(p, q));
+  if (resultados.length) return { resultados, estado: "resultados" };
+  if (cards.some((p) => casaConsultaPlano(p, q))) return { resultados: [], estado: "ja_no_card" };
+  return { resultados: [], estado: "indisponivel" };
+}
+
+export function mensagemBuscaOutroPlano(estado) {
+  if (estado === "ja_no_card") return "Esse plano já está nos cards acima.";
+  if (estado === "indisponivel") {
+    return "Só aparecem planos já vistos no portal. Esse plano ainda não está disponível.";
+  }
+  return "";
+}
+
+export function avisoPlanoNaoTestado(p) {
+  if (!p || p.visto_no_portal) return "";
+  return "ainda não testado neste portal — o robô pode não encontrá-lo";
+}
+
+export function avisoNadaVistoNoPortal(op) {
+  const planos = planosDoCatalogoPortal(op);
+  if (!planos.length) return "";
+  if (planos.some((p) => p.visto_no_portal)) return "";
+  const nome = (op && op.nome) || "esta operadora";
+  return `Nenhum plano da ${nome} foi visto neste portal ainda. O robô pode não encontrá-los. O caminho recomendado é o Ensaio, sem gerar.`;
+}
+
+export function avisoVolumeCotacoes(nPdfs) {
+  const n = Number(nPdfs) || 0;
+  if (n <= LIMITE_AVISO_VOLUME) return "";
+  return `Esta seleção gera ${n} cotações e ${n} PDFs (planos × coparticipação, quando as duas opções estão ligadas). Confira antes de gerar.`;
+}
+
+export function marcarPlanoSeDoCatalogo(planos, rotulo, op, marcar) {
+  if (!ehPlanoDoCatalogoPortal(op, rotulo)) return [...(planos || [])];
+  const set = new Set(planos || []);
+  if (marcar) set.add(rotulo);
+  else set.delete(rotulo);
+  return [...set];
 }
 
 /**

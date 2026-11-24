@@ -12,6 +12,7 @@ export default function AjustesRobos({
   aviso,
   onConfigurar,
   onLogin,
+  simulador = false,
 }) {
   const [geral, setGeral] = useState(null);
 
@@ -151,9 +152,15 @@ export default function AjustesRobos({
           <div className="nativa-rotulo">Pasta do robô</div>
           <div>
             <div className="num">{geral ? geral.pasta_saida : "…"}</div>
+            {simulador || (geral && geral.simulador) ? (
+              <div className="nativa-aviso-treino" role="alert">
+                ROBÔ EM MODO TREINO — não são as suas cotações reais
+              </div>
+            ) : null}
             <div className="nativa-ajuda">
-              Guarda a sessão do portal, os PDFs, o histórico e o registro que impede cotação repetida. Arquivos do
-              robô com mais de {geral && geral.retencao_dias ? geral.retencao_dias : 90} dias são apagados sozinhos.
+              Caminho absoluto neste computador. Guarda a sessão do portal, os PDFs, o histórico e o registro que
+              impede cotação repetida. Arquivos do robô com mais de{" "}
+              {geral && geral.retencao_dias ? geral.retencao_dias : 90} dias são apagados sozinhos.
             </div>
           </div>
         </div>

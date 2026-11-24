@@ -16,6 +16,7 @@ export const MARCA_OPERADORAS = {
   sulamerica: marca("SulAmérica", "/operadoras/sulamerica.png", "#F08810"),
   bradesco: marca("Bradesco", "/operadoras/bradesco.svg", "#CC092F"),
   amil: marca("Amil", "/operadoras/amil.png", "#4018F8"),
+  porto: marca("Porto Seguro", null, "#00A651"),
 };
 
 const FALLBACK = marca("", null, "#0B1F36");

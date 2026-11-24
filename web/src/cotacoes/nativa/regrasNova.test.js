@@ -10,6 +10,9 @@ import {
   fluxoConfirmacao,
   montarItens,
   problemasLocais,
+  filtrarBuscaOutroPlano,
+  avisoVolumeCotacoes,
+  marcarPlanoSeDoCatalogo,
   resumoDoRobo,
   totalVidas,
   valorRoboParaCentavos,
@@ -83,6 +86,16 @@ describe("regrasNova — formulário a partir da API", () => {
     expect(itens[0].pedidos[0].idades_0_18).toBe("7");
     expect(itens[0].pedidos[0].planos).toBe("Especial Mais | Apartamento");
     expect(itens[0].pedidos[0].coparticipacao).toBe("as_duas");
+  });
+
+  it("busca ignora Siscor e o volume avisa acima de 6 PDFs", () => {
+    expect(filtrarBuscaOutroPlano(OPERADORAS[0], "S380").estado).toBe("indisponivel");
+    expect(filtrarBuscaOutroPlano(OPERADORAS[0], "Especial Mais").estado).toBe("ja_no_card");
+    expect(marcarPlanoSeDoCatalogo(["Especial Mais | Apartamento"], "DIRETO NACIONAL - APTO", OPERADORAS[0], true)).toEqual([
+      "Especial Mais | Apartamento",
+    ]);
+    expect(avisoVolumeCotacoes(7)).toMatch(/7 PDFs/);
+    expect(avisoVolumeCotacoes(2)).toBe("");
   });
 
   it("aplicarDados não sobrescreve campos do robô", () => {

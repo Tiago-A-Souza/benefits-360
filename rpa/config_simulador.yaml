@@ -1,9 +1,11 @@
 # Configuração para usar a tela e o robô contra os SIMULADORES locais (SulAmérica e Bradesco).
-# Saídas vão para saida_simulador/, separadas das reais.
+# Saídas vão para saida_simulador/, separadas das reais. PORTA 8601 — nunca 8600.
 #   python -m operadoras.sulamerica.simulador        (sobe o simulador da SulAmérica)
 #   python -m operadoras.bradesco.simulador          (sobe o simulador da Bradesco)
 #   python -m operadoras.amil.simulador              (sobe o simulador da Amil)
-#   python -m app --config config_simulador.yaml     (abre a tela apontando para ele)
+#   python -m operadoras.porto.simulador             (sobe o simulador da Porto, porta 8795)
+#   python -m app --config config_simulador.yaml --porta 8601 --com-simulador
+# O robô RECUSA este arquivo na porta 8600 (cotações reais).
 
 geral:
   pasta_saida: "saida_simulador"
@@ -16,9 +18,13 @@ tela:
   frame_ancestors:
     - http://localhost:5173
     - http://127.0.0.1:5173
+    - http://localhost:5174
+    - http://127.0.0.1:5174
   origens_permitidas:
     - http://localhost:5173
     - http://127.0.0.1:5173
+    - http://localhost:5174
+    - http://127.0.0.1:5174
 
 teste:
   simulador: true   # a tela mostra "Simulador local"
@@ -56,3 +62,16 @@ operadoras:
       timeout_login_ms: 15000
       timeout_tela_ms: 20000
       timeout_emissao_ms: 30000
+
+  porto:
+    urls:
+      login: "http://127.0.0.1:8795/login"
+      cotador: "http://127.0.0.1:8795/cotar"
+    # O padrão continua falso: o ensaio do simulador para no passo 3. Testes de Gerar orçamento ligam só no config do teste.
+    emissao_liberada: false
+    tempos:
+      timeout_login_ms: 15000
+      timeout_tela_ms: 20000
+      timeout_emissao_ms: 30000
+    padroes:
+      susep: "AAAAAA"

@@ -1,0 +1,174 @@
+# Robô de TESTE do login real da Porto (correção SUSEP).
+# Porta 8602 + pasta saida_teste_porto: NÃO usa rpa/saida nem o tela.db real (8600).
+# Cofre: o do Windows (NewportCotacoes/porto). NÃO use teste.cofre: memoria —
+# o login guardado neste robô fica disponível depois no robô real (8600).
+#
+# Subir desta pasta rpa, com --sem-navegador para não abrir o front 5173:
+#   python -m app --config config_teste_porto.yaml --sem-navegador
+# Front de teste: http://localhost:5176 com VITE_RPA_URL=http://127.0.0.1:8602
+#
+# Caminhos relativos à pasta deste arquivo. Sem senha, CPF ou SUSEP real aqui.
+
+geral:
+  pasta_saida: "saida_teste_porto"
+  modo_visual: true            # janela do portal visível para conferir o dropdown SUSEP
+  janela_escondida: headless
+  lentidao_ms: 150
+  mapear: false
+  pausa_entre_pedidos_s: 3
+
+tela:
+  porta: 8602
+  frame_ancestors:
+    - http://localhost:5176
+    - http://127.0.0.1:5176
+  origens_permitidas:
+    - http://localhost:5176
+    - http://127.0.0.1:5176
+
+operadoras:
+
+  sulamerica:
+    ativa: true
+    urls:
+      login: "https://os11.sulamerica.com.br/SaudeCotador/LoginGeral.aspx"
+    tempos:
+      timeout_padrao_ms: 30000
+      timeout_login_ms: 60000
+      timeout_codigo_ms: 300000
+      login_reentrada_ms: 60000
+      login_liberacao_ms: 600000
+      timeout_emissao_ms: 180000
+      timeout_tela_ms: 150000
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3
+    padroes:
+      cuidado_360: "sim"
+      tipo_contratacao: "compulsoria"
+      produto: "557 - AHO"
+      vigencia_meses: "24"
+      coparticipacao: "as_duas"
+      vendedor: ""
+      planos_modo: "lista"
+      planos: []
+    faixas_idade_exata: ["0 - 18", "59+"]
+    criterio_plano:
+      tipo: "menor_preco"
+      quantidade: 1
+    navegacao:
+      proxima_empresa: "voltar_home"
+    recuperar_pdf_automatico: false
+    conferencias:
+      aliquota_iof: "0.0238"
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "SULAMERICA_{cnpj}_{protocolo}.pdf"
+      nome_pdf_destino: "SULAMERICA {plano_arquivo}.pdf"
+      substituir_no_destino: true
+      nomes_arquivo:
+        "Executivo R1": "EXECUTIVO"
+    congeneres_de_para:
+      "NotreDame Intermédica": "NOTREDAME"
+      "Notre Dame": "NOTREDAME"
+      "Bradesco Saúde": "BRADESCO"
+      "Bradesco Saude": "BRADESCO"
+
+  bradesco:
+    ativa: true
+    urls:
+      login: "https://wwwn.bradescoseguros.com.br/pnegocios2/wps/portal/portaldenegociosnovo/"
+      cotador: "https://wwwn.bradescoseguros.com.br/pnegocios/wps/myportal/portalnegocios/arealogada/saude/cotacoes/cotacao-spg"
+    emissao_liberada: true
+    teste_repetir: true
+    tempos:
+      timeout_login_ms: 60000
+      timeout_tela_ms: 180000
+      timeout_emissao_ms: 180000
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3
+    padroes:
+      categoria: "Sócios e Diretores"
+      adesao: "compulsoria"
+      cobertura: "top"
+      mais_de_um_titular: "nao"
+      desconto_folha: "nao"
+      desconto_comissao: "nenhum"
+      sucursal: "978"
+      codigo_corretor: "438451"
+      acomodacao: "Quarto"
+      coparticipacao: "com"
+      copart_percentual: "30%"
+      dental: "Sem plano dental"
+      identificador_com: "COM COPAY"
+      identificador_sem: "SEM COPAY"
+      email_corretora: ""
+      celular_corretora: ""
+      angariacao: "3 Primeiras Parcelas 100%"
+      corretagem: "2% vitalício a partir da 4ª parcela"
+      intermediario_papel: "corretor"
+      transferencia: "nao"
+      ramo: "OUTROS"
+    conferencias:
+      aliquota_iof: "0.0238"
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "BRADESCO_{cnpj}_{protocolo}_{plano_arquivo}.pdf"
+      nome_pdf_destino: "BRADESCO {plano_arquivo}.pdf"
+      substituir_no_destino: true
+
+  amil:
+    ativa: true
+    urls:
+      login: "https://vendas.amil.com.br/login"
+      home: "https://vendas.amil.com.br/"
+    emissao_liberada: true
+    tempos:
+      timeout_login_ms: 60000
+      timeout_tela_ms: 60000
+      timeout_emissao_ms: 180000
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3
+    padroes:
+      coligacao: "nao"
+      corretor: "EDLAINE ABREU SOARES"
+      supervisor: ""
+      dental_aderir: "sim"
+    conferencias:
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "AMIL_{cnpj}_{protocolo}.pdf"
+      nome_pdf_destino: "AMIL {plano_arquivo} {versao}.pdf"
+      substituir_no_destino: true
+      nomes_arquivo:
+        "PLATINUM R1 COPART": "PLATINUM"
+        "AMIL BLACK I R1 COPART": "BLACK"
+        "AMIL S2500 R1 QP COPART": "S2500"
+
+  porto:
+    ativa: true
+    urls:
+      login: "https://corretor.portoseguro.com.br/"
+      cotador: "https://www.saude.portoseguro.com.br/corretor/cotar"
+    emissao_liberada: false
+    tempos:
+      timeout_login_ms: 60000
+      timeout_tela_ms: 60000
+      timeout_emissao_ms: 180000
+      timeout_download_ms: 120000
+      sair_do_portal_min: 3
+    padroes:
+      susep: "AAAAAA"
+      comissao: "K001 | ag1(100%) | ag2(100%) | ag3(0%) | Corretagem(5%)"
+      acomodacao: "Apartamento"
+      coparticipacao: "com"
+    conferencias:
+      aliquota_iof: "0.0238"
+      taxa_inscricao_por_vida: "5.00"
+      tolerancia_reais: "0.05"
+    arquivos:
+      nome_pdf_arquivo: "PORTO_{cnpj}_{protocolo}.pdf"
+      nome_pdf_destino: "PORTO {plano_arquivo} {versao}.pdf"
+      substituir_no_destino: true
+
+seguranca:
+  retencao_dias: 90

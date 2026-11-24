@@ -116,7 +116,7 @@ def pasta_saida(total: dict) -> Path:
     pasta = Path(total["geral"]["pasta_saida"])
     if not pasta.is_absolute():
         pasta = Path(total.get("_pasta_config", ".")) / pasta
-    return pasta
+    return pasta.absolute()
 
 
 def config_operadora(total: dict, op_id: str, padrao_op: dict) -> dict:
