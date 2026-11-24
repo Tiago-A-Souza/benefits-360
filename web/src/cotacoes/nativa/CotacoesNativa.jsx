@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import BarraLateral from "../../layout/BarraLateral";
+import { RotuloNav } from "../../layout/IconeNav";
 import NavegacaoFerramentas from "../../NavegacaoFerramentas";
 import { chamarRpa, ouvirEventosRpa, resumoVersaoRobo, urlBaseRpa } from "../rpaClient";
 import Ajuda from "./Ajuda";
@@ -237,19 +239,19 @@ export default function CotacoesNativa({
                 : "cotacoes";
 
   const itensMenu = [
-    { id: "inicio", rotulo: "Início", hash: "#/inicio" },
-    { id: "nova", rotulo: "Nova cotação", hash: "#/nova" },
-    { id: "cotacoes", rotulo: "Cotações", hash: "#/cotacoes" },
-    { id: "importar", rotulo: "Importar planilha", hash: "#/importar" },
-    { id: "conexoes", rotulo: "Conexões", hash: "#/conexoes" },
-    { id: "robos", rotulo: "Ajustes dos robôs", hash: "#/robos" },
-    { id: "ajuda", rotulo: "Ajuda", hash: "#/ajuda" },
+    { id: "inicio", rotulo: "Início", hash: "#/inicio", icone: "inicio" },
+    { id: "nova", rotulo: "Nova cotação", hash: "#/nova", icone: "nova" },
+    { id: "cotacoes", rotulo: "Cotações", hash: "#/cotacoes", icone: "lista" },
+    { id: "importar", rotulo: "Importar planilha", hash: "#/importar", icone: "importar" },
+    { id: "conexoes", rotulo: "Conexões", hash: "#/conexoes", icone: "conexoes" },
+    { id: "robos", rotulo: "Ajustes dos robôs", hash: "#/robos", icone: "robos" },
+    { id: "ajuda", rotulo: "Ajuda", hash: "#/ajuda", icone: "ajuda" },
   ];
 
   return (
     <div className="lista-shell nativa-shell">
       {modal}
-      <aside className="lista-rail app-sidebar">
+      <BarraLateral>
         <NavegacaoFerramentas
           ativo="cotacoes"
           onMeusEstudos={() => ir(HASH_ESTUDOS)}
@@ -268,7 +270,7 @@ export default function CotacoesNativa({
             {itensMenu.map((item) => (
               <li key={item.id}>
                 <button type="button" aria-pressed={ativoMenu === item.id} onClick={() => ir(item.hash)}>
-                  {item.rotulo}
+                  <RotuloNav icone={item.icone}>{item.rotulo}</RotuloNav>
                 </button>
               </li>
             ))}
@@ -309,7 +311,7 @@ export default function CotacoesNativa({
             </p>
           ) : null}
         </nav>
-      </aside>
+      </BarraLateral>
 
       <main className="lista-main nativa-main">
         <ErrorBoundary contexto={`Cotações · ${tela}`} modo="painel" resetKey={tela} onVoltarEstudos={onMeusEstudos}>

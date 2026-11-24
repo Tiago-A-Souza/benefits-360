@@ -1796,8 +1796,20 @@ button.tabela-faixas-acao:focus {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--page);
+}
+
+.app-menu-toggle {
+  display: none;
+}
+
+.app-sidebar-backdrop {
+  display: none;
 }
 
 .topbar {
@@ -1908,21 +1920,85 @@ button.tabela-faixas-acao:focus {
 .app-body {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
+  flex: 1 1 auto;
   max-width: 1540px;
   margin: 0 auto;
-  min-height: calc(100vh - 70px);
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-sidebar {
-  padding: 28px 20px 32px;
+  padding: 20px 20px 16px;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   background: var(--chrome-side);
   color: #e8eef6;
   position: sticky;
-  top: 70px;
-  height: calc(100vh - 70px);
-  align-self: start;
+  top: 0;
+  height: 100%;
+  align-self: stretch;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-sidebar-marca {
+  flex-shrink: 0;
+  margin: 0 0 18px;
+}
+
+.app-sidebar-corpo {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-sidebar-corpo::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.app-sidebar-rodape {
+  flex-shrink: 0;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.btn-sair-sidebar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: none;
+}
+
+.btn-sair-sidebar:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.app-versao {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: rgba(232, 238, 246, 0.42);
+  user-select: none;
 }
 
 .side-card {
@@ -2054,6 +2130,8 @@ button.tabela-faixas-acao:focus {
 .app-main {
   padding: 34px 38px 40px;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .fluxo-conteudo {
@@ -2069,47 +2147,68 @@ button.tabela-faixas-acao:focus {
   display: inline-flex;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
+  .app-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 80;
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+    box-shadow: var(--shadow);
+  }
+
+  .app-shell--menu-aberto .app-menu-toggle {
+    left: calc(min(270px, 86vw) + 8px);
+  }
+
+  .app-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    min-height: 0;
+    background: rgba(7, 24, 40, 0.45);
+    box-shadow: none;
+  }
+
   .app-body {
     display: block;
-  }
-
-  .app-sidebar {
-    position: relative;
-    top: 0;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 15px 16px;
-  }
-
-  .side-card,
-  .steps-label {
-    display: none;
-  }
-
-  .app-sidebar .steps {
-    display: flex;
     overflow: auto;
-    gap: 8px;
   }
 
-  .app-sidebar .step {
-    min-width: 170px;
+  .app-sidebar,
+  .lista-rail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 60;
+    width: min(270px, 86vw);
+    height: 100vh;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0;
+    padding: 18px 16px 16px;
   }
 
-  .app-sidebar .step:not(:last-child)::after {
-    display: none;
-  }
-
-  .wizard--operacional .wizard-passo {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    padding: 9px;
+  .app-shell--menu-aberto .app-sidebar,
+  .app-shell--menu-aberto .lista-rail {
+    transform: translateX(0);
   }
 
   .app-main {
-    padding: 24px 16px 40px;
+    padding: 56px 16px 40px;
+    overflow: visible;
   }
 
   .hide-mobile {
@@ -2122,15 +2221,6 @@ button.tabela-faixas-acao:focus {
 }
 
 @media (max-width: 560px) {
-  .system-title {
-    font-size: 1.2rem;
-  }
-
-  .topbar {
-    padding: 0 16px;
-    gap: 10px;
-  }
-
   .brand-mark {
     height: 40px;
     max-width: 160px;
@@ -2816,14 +2906,12 @@ button.tabela-faixas-acao:focus {
 }
 
 .action-bar {
-  position: sticky;
-  bottom: 18px;
-  z-index: 35;
+  position: static;
   margin-top: 26px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
   padding: 12px 14px;
   display: flex;
   align-items: center;
@@ -3187,11 +3275,13 @@ label.field select {
 }
 
 .action-bar--cenarios {
-  position: static;
-  z-index: auto;
   justify-content: flex-start;
-  margin-top: 4px;
+  margin-top: 16px;
   margin-bottom: 8px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 .action-bar--cenarios .secundario {
@@ -3743,19 +3833,23 @@ a.btn-link {
 .lista-shell {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
+  flex: 1 1 auto;
   max-width: 1540px;
   margin: 0 auto;
-  min-height: calc(100vh - 70px);
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .lista-rail {
   position: sticky;
-  top: 70px;
-  height: calc(100vh - 70px);
-  align-self: start;
-  overflow: auto;
+  top: 0;
+  height: 100%;
+  align-self: stretch;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .lista-busca {
@@ -3790,8 +3884,14 @@ a.btn-link {
   top: 50%;
   transform: translateY(-50%);
   color: rgba(232, 238, 246, 0.45);
-  font-size: 13px;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lista-busca-ic .nav-icone {
+  opacity: 1;
 }
 
 .lista-rail-lb {
@@ -3846,6 +3946,21 @@ a.btn-link {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nav-icone {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0.78;
+}
+
+.lista-filtros button:hover .nav-icone,
+.lista-filtros button[aria-pressed="true"] .nav-icone,
+.btn-sair-sidebar:hover .nav-icone {
+  opacity: 1;
 }
 
 .lista-filtros-c {
@@ -3876,6 +3991,8 @@ a.btn-link {
 .lista-main {
   padding: 30px 32px 70px;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
   background: var(--page);
 }
 
@@ -4226,18 +4343,12 @@ a.btn-link {
 @media (max-width: 900px) {
   .lista-shell {
     grid-template-columns: 1fr;
-  }
-
-  .lista-rail {
-    position: relative;
-    top: 0;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: auto;
   }
 
   .lista-main {
-    padding: 22px 18px 50px;
+    padding: 56px 18px 50px;
+    overflow: visible;
   }
 }
 

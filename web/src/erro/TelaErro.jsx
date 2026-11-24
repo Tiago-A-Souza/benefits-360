@@ -1,4 +1,5 @@
-import EstudoCabecalho from "../EstudoCabecalho";
+import AppChrome, { useAppChrome } from "../layout/AppChrome";
+import BarraLateral from "../layout/BarraLateral";
 import NavegacaoFerramentas from "../NavegacaoFerramentas";
 
 export default function TelaErro({
@@ -8,6 +9,7 @@ export default function TelaErro({
   onVoltarEstudos,
   onSair,
 }) {
+  const chrome = useAppChrome();
   const corpo = (
     <div className="tela-erro" role="alert">
       <h1>Esta tela não carregou</h1>
@@ -31,20 +33,20 @@ export default function TelaErro({
     return <div className="tela-erro-painel">{corpo}</div>;
   }
 
-  return (
-    <div className="app-shell">
-      <EstudoCabecalho resumo={null} onSair={onSair} />
-      <div className="lista-shell">
-        <aside className="lista-rail app-sidebar">
-          <NavegacaoFerramentas
-            ativo="estudos"
-            onMeusEstudos={onVoltarEstudos}
-            onSimularRede={onVoltarEstudos}
-            onCotacoes={onVoltarEstudos}
-          />
-        </aside>
-        <main className="lista-main">{corpo}</main>
-      </div>
+  const pagina = (
+    <div className="lista-shell">
+      <BarraLateral>
+        <NavegacaoFerramentas
+          ativo="estudos"
+          onMeusEstudos={onVoltarEstudos}
+          onSimularRede={onVoltarEstudos}
+          onCotacoes={onVoltarEstudos}
+        />
+      </BarraLateral>
+      <main className="lista-main">{corpo}</main>
     </div>
   );
+
+  if (chrome) return pagina;
+  return <AppChrome onSair={onSair}>{pagina}</AppChrome>;
 }

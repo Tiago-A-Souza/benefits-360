@@ -1,4 +1,5 @@
-import EstudoCabecalho from "../EstudoCabecalho";
+import AppChrome, { useAppChrome } from "../layout/AppChrome";
+import BarraLateral from "../layout/BarraLateral";
 import NavegacaoFerramentas from "../NavegacaoFerramentas";
 
 const TEXTOS = {
@@ -25,36 +26,37 @@ export default function TelaNaoEncontrado({
   onSair,
   onTentar,
 }) {
+  const chrome = useAppChrome();
   const t = TEXTOS[tipo] || TEXTOS.rota;
-  return (
-    <div className="app-shell">
-      <EstudoCabecalho resumo={null} onSair={onSair} />
-      <div className="lista-shell">
-        <aside className="lista-rail app-sidebar">
-          <NavegacaoFerramentas
-            ativo="estudos"
-            onMeusEstudos={onVoltarEstudos}
-            onSimularRede={onSimularRede}
-            onCotacoes={onCotacoes}
-          />
-        </aside>
-        <main className="lista-main">
-          <div className="tela-erro" role="alert">
-            <h1>{t.titulo}</h1>
-            <p>{t.corpo}</p>
-            <div className="tela-erro-acoes">
-              {onTentar ? (
-                <button type="button" onClick={onTentar}>
-                  Tentar de novo
-                </button>
-              ) : null}
-              <button type="button" className={onTentar ? "secundario" : undefined} onClick={onVoltarEstudos}>
-                Voltar aos estudos
+  const pagina = (
+    <div className="lista-shell">
+      <BarraLateral>
+        <NavegacaoFerramentas
+          ativo="estudos"
+          onMeusEstudos={onVoltarEstudos}
+          onSimularRede={onSimularRede}
+          onCotacoes={onCotacoes}
+        />
+      </BarraLateral>
+      <main className="lista-main">
+        <div className="tela-erro" role="alert">
+          <h1>{t.titulo}</h1>
+          <p>{t.corpo}</p>
+          <div className="tela-erro-acoes">
+            {onTentar ? (
+              <button type="button" onClick={onTentar}>
+                Tentar de novo
               </button>
-            </div>
+            ) : null}
+            <button type="button" className={onTentar ? "secundario" : undefined} onClick={onVoltarEstudos}>
+              Voltar aos estudos
+            </button>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
+
+  if (chrome) return pagina;
+  return <AppChrome onSair={onSair}>{pagina}</AppChrome>;
 }

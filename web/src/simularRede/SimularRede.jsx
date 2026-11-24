@@ -5,6 +5,7 @@ import {
   mensagemErroOperador,
   obterOpcoesSimulacaoRede,
 } from "../api";
+import BarraLateral from "../layout/BarraLateral";
 import NavegacaoFerramentas from "../NavegacaoFerramentas";
 import SimularLabs from "./SimularLabs";
 import {
@@ -211,7 +212,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
 
   return (
     <div className="lista-shell">
-      <aside className="lista-rail app-sidebar">
+      <BarraLateral>
         <NavegacaoFerramentas
           ativo="simular"
           onMeusEstudos={onMeusEstudos}
@@ -220,7 +221,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
           onVoltarEstudo={onVoltarEstudo}
           rotuloEstudo={rotuloEstudo}
         />
-      </aside>
+      </BarraLateral>
 
       <main className="lista-main simular-rede">
         <header className="lista-head">

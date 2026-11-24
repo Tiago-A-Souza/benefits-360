@@ -598,12 +598,8 @@ export default function PlanosSelecionadosPanel({
 
       {mensagemFalta && <p className="alerta">{mensagemFalta}</p>}
 
-      <div className="action-bar">
-        <div className="action-left">
-          {msg && <span className="action-note ok-inline">{msg}</span>}
-          {erro && <span className="action-note erro-inline">{erro}</span>}
-        </div>
-      </div>
+      {erro && <p className="erro">{erro}</p>}
+      {msg && <p className="ok">{msg}</p>}
     </section>
   );
 }

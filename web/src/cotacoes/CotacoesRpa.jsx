@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { obterEstadoRpaCotacoes } from "../api";
+import BarraLateral from "../layout/BarraLateral";
 import NavegacaoFerramentas from "../NavegacaoFerramentas";
 
 export default function CotacoesRpa({ onMeusEstudos, onSimularRede, onVoltarEstudo, rotuloEstudo }) {
@@ -21,7 +22,7 @@ export default function CotacoesRpa({ onMeusEstudos, onSimularRede, onVoltarEstu
 
   return (
     <div className="lista-shell">
-      <aside className="lista-rail app-sidebar">
+      <BarraLateral>
         <NavegacaoFerramentas
           ativo="cotacoes"
           onMeusEstudos={onMeusEstudos}
@@ -30,7 +31,7 @@ export default function CotacoesRpa({ onMeusEstudos, onSimularRede, onVoltarEstu
           onVoltarEstudo={onVoltarEstudo}
           rotuloEstudo={rotuloEstudo}
         />
-      </aside>
+      </BarraLateral>
 
       <main className="lista-main cotacoes-rpa">
         <header className="lista-head">

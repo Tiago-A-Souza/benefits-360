@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { criarEstudo, listarEstudos } from "./api";
+import BarraLateral from "./layout/BarraLateral";
+import IconeNav, { RotuloNav } from "./layout/IconeNav";
 import NavegacaoFerramentas from "./NavegacaoFerramentas";
 
 function formatarData(iso) {
@@ -176,7 +178,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
 
   return (
     <div className="lista-shell">
-      <aside className="lista-rail app-sidebar">
+      <BarraLateral>
         {(onSimularRede || onCotacoes) && (
           <NavegacaoFerramentas
             ativo="estudos"
@@ -187,7 +189,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
         )}
         <div className="lista-busca">
           <span className="lista-busca-ic" aria-hidden="true">
-            ⌕
+            <IconeNav nome="busca" />
           </span>
           <input
             type="search"
@@ -206,7 +208,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
               aria-pressed={filtroEstado === "todos"}
               onClick={() => setFiltroEstado("todos")}
             >
-              Todos
+              <RotuloNav icone="todos">Todos</RotuloNav>
               <span className="lista-filtros-c num">{contagens.todos}</span>
             </button>
           </li>
@@ -216,10 +218,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
               aria-pressed={filtroEstado === "em_andamento"}
               onClick={() => setFiltroEstado("em_andamento")}
             >
-              <span className="lista-filtros-lb">
-                <span className="lista-pt lista-pt--azul" aria-hidden="true" />
-                Em andamento
-              </span>
+              <RotuloNav icone="andamento">Em andamento</RotuloNav>
               <span className="lista-filtros-c num">{contagens.em_andamento}</span>
             </button>
           </li>
@@ -229,10 +228,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
               aria-pressed={filtroEstado === "aprovado"}
               onClick={() => setFiltroEstado("aprovado")}
             >
-              <span className="lista-filtros-lb">
-                <span className="lista-pt lista-pt--verde" aria-hidden="true" />
-                Aprovados
-              </span>
+              <RotuloNav icone="aprovado">Aprovados</RotuloNav>
               <span className="lista-filtros-c num">{contagens.aprovado}</span>
             </button>
           </li>
@@ -246,7 +242,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
               aria-pressed={filtroFormato === "todos"}
               onClick={() => setFiltroFormato("todos")}
             >
-              Todos
+              <RotuloNav icone="todos">Todos</RotuloNav>
               <span className="lista-filtros-c num">{contagens.todos}</span>
             </button>
           </li>
@@ -256,7 +252,7 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
               aria-pressed={filtroFormato === "renovacao"}
               onClick={() => setFiltroFormato("renovacao")}
             >
-              Renovação
+              <RotuloNav icone="renovacao">Renovação</RotuloNav>
               <span className="lista-filtros-c num">{contagens.renovacao}</span>
             </button>
           </li>
@@ -266,12 +262,12 @@ export default function MeusEstudos({ onContinuar, onSimularRede, onCotacoes }) 
               aria-pressed={filtroFormato === "novo"}
               onClick={() => setFiltroFormato("novo")}
             >
-              Seguro novo
+              <RotuloNav icone="seguro">Seguro novo</RotuloNav>
               <span className="lista-filtros-c num">{contagens.novo}</span>
             </button>
           </li>
         </ul>
-      </aside>
+      </BarraLateral>
 
       <main className="lista-main">
         <header className="lista-head">
