@@ -10,8 +10,10 @@ import {
 import { textoReajusteContrato } from "./fluxo/resumoPlanoUi";
 import ComparativoPanel from "./ComparativoPanel";
 import ConfigEstudo from "./ConfigEstudo";
-import EstudoCabecalho from "./EstudoCabecalho";
 import HistoricoPanel from "./HistoricoPanel";
+import AppChrome from "./layout/AppChrome";
+import BarraLateral from "./layout/BarraLateral";
+import { RotuloNav } from "./layout/IconeNav";
 import MeusEstudos from "./MeusEstudos";
 import PlanosSelecionadosPanel from "./PlanosSelecionadosPanel";
 import RedeSelecaoPanel from "./rede/RedeSelecaoPanel";
@@ -294,60 +296,67 @@ export default function App() {
 
   if (provaRpa) {
     return (
-      <div className="lista-shell">
-        <ProvaRpaDireto
-          onFechar={() => {
-            setProvaRpa(false);
-            const u = new URL(window.location.href);
-            u.searchParams.delete("prova-rpa");
-            window.history.replaceState({}, "", u.pathname + u.search);
-          }}
-        />
-      </div>
+      <AppChrome onSair={sair}>
+        <div className="lista-shell">
+          <BarraLateral />
+          <div className="lista-main">
+            <ProvaRpaDireto
+              onFechar={() => {
+                setProvaRpa(false);
+                const u = new URL(window.location.href);
+                u.searchParams.delete("prova-rpa");
+                window.history.replaceState({}, "", u.pathname + u.search);
+              }}
+            />
+          </div>
+        </div>
+      </AppChrome>
     );
   }
 
   if (rota.area === "invalida") {
     return (
-      <TelaNaoEncontrado
-        tipo="rota"
-        onVoltarEstudos={voltarLista}
-        onSimularRede={irSimular}
-        onCotacoes={abrirCotacoes}
-        onSair={sair}
-      />
+      <AppChrome onSair={sair}>
+        <TelaNaoEncontrado
+          tipo="rota"
+          onVoltarEstudos={voltarLista}
+          onSimularRede={irSimular}
+          onCotacoes={abrirCotacoes}
+        />
+      </AppChrome>
     );
   }
 
   if (rota.area === "estudo" && estudoStatus === "sem_acesso") {
     return (
-      <TelaNaoEncontrado
-        tipo="estudo"
-        onVoltarEstudos={voltarLista}
-        onSimularRede={irSimular}
-        onCotacoes={abrirCotacoes}
-        onSair={sair}
-      />
+      <AppChrome onSair={sair}>
+        <TelaNaoEncontrado
+          tipo="estudo"
+          onVoltarEstudos={voltarLista}
+          onSimularRede={irSimular}
+          onCotacoes={abrirCotacoes}
+        />
+      </AppChrome>
     );
   }
 
   if (rota.area === "estudo" && estudoStatus === "erro") {
     return (
-      <TelaNaoEncontrado
-        tipo="erro"
-        onVoltarEstudos={voltarLista}
-        onSimularRede={irSimular}
-        onCotacoes={abrirCotacoes}
-        onSair={sair}
-        onTentar={() => setRecargaEstudo((n) => n + 1)}
-      />
+      <AppChrome onSair={sair}>
+        <TelaNaoEncontrado
+          tipo="erro"
+          onVoltarEstudos={voltarLista}
+          onSimularRede={irSimular}
+          onCotacoes={abrirCotacoes}
+          onTentar={() => setRecargaEstudo((n) => n + 1)}
+        />
+      </AppChrome>
     );
   }
 
   if (rota.area === "cotacoes") {
     return (
-      <div className="app-shell">
-        <EstudoCabecalho resumo={null} onSair={sair} />
+      <AppChrome onSair={sair}>
         <ErrorBoundary
           contexto="Cotações"
           modo="painel"
@@ -360,14 +369,13 @@ export default function App() {
             rotuloEstudo={retornoEstudo?.rotulo}
           />
         </ErrorBoundary>
-      </div>
+      </AppChrome>
     );
   }
 
   if (rota.area === "simular") {
     return (
-      <div className="app-shell">
-        <EstudoCabecalho resumo={null} onSair={sair} />
+      <AppChrome onSair={sair}>
         <ErrorBoundary contexto="Simular rede" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
           <SimularRede
             onMeusEstudos={voltarLista}
@@ -376,14 +384,13 @@ export default function App() {
             rotuloEstudo={retornoEstudo?.rotulo}
           />
         </ErrorBoundary>
-      </div>
+      </AppChrome>
     );
   }
 
   if (rota.area === "estudos" || rota.area !== "estudo") {
     return (
-      <div className="app-shell">
-        <EstudoCabecalho resumo={null} onSair={sair} />
+      <AppChrome onSair={sair}>
         <ErrorBoundary contexto="Meus estudos" modo="painel" onVoltarEstudos={voltarLista} onSair={sair}>
           <MeusEstudos
             onContinuar={entrarEstudo}
@@ -391,30 +398,25 @@ export default function App() {
             onCotacoes={abrirCotacoes}
           />
         </ErrorBoundary>
-      </div>
+      </AppChrome>
     );
   }
 
   if (estudoStatus === "carregando" || estudoStatus === "idle") {
     return (
-      <div className="app-shell app-shell-carregando">
-        <EstudoCabecalho resumo={null} onSair={sair} />
-        <p className="lista-carregando">Carregando o estudo…</p>
-      </div>
+      <AppChrome onSair={sair}>
+        <div className="app-body app-shell-carregando">
+          <BarraLateral />
+          <p className="lista-carregando">Carregando o estudo…</p>
+        </div>
+      </AppChrome>
     );
   }
 
   return (
-    <div className="app-shell">
-      <EstudoCabecalho
-        resumo={resumo}
-        onTrocarEstudo={voltarLista}
-        onHistorico={() => setHistoricoAberto((v) => !v)}
-        onSair={sair}
-      />
-
+    <AppChrome onSair={sair}>
       <div className="app-body">
-        <aside className="app-sidebar">
+        <BarraLateral>
           {resumo && (
             <div className="side-card">
               <div className="study-eyebrow">
@@ -488,8 +490,19 @@ export default function App() {
               onSimularRede={irSimular}
               onCotacoes={abrirCotacoes}
             />
+            <ul className="lista-filtros">
+              <li>
+                <button
+                  type="button"
+                  aria-pressed={historicoAberto}
+                  onClick={() => setHistoricoAberto((v) => !v)}
+                >
+                  <RotuloNav icone="historico">Histórico</RotuloNav>
+                </button>
+              </li>
+            </ul>
           </div>
-        </aside>
+        </BarraLateral>
 
         <div className="app-main">
           <main className="fluxo-conteudo">
@@ -648,6 +661,6 @@ export default function App() {
           )}
         </div>
       </div>
-    </div>
+    </AppChrome>
   );
 }

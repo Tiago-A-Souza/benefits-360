@@ -24,6 +24,11 @@ describe("faixa RASCUNHO INTERNO", () => {
     expect(html).toBe("");
   });
 
+  it("padrão (sem prop) não reserva faixa no layout", () => {
+    const html = renderToStaticMarkup(<FaixaRascunho />);
+    expect(html).toBe("");
+  });
+
   it("mostra o aviso no topo quando ligada", () => {
     const html = renderToStaticMarkup(<FaixaRascunho ligada />);
     expect(html).toContain("RASCUNHO INTERNO");

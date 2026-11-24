@@ -629,13 +629,9 @@ export default function ConfigEstudo({
         </div>
       </div>
 
-      <div className="action-bar">
-        <div className="action-left">
-          {msg && <span className="action-note ok-inline">{msg}</span>}
-          {erro && <span className="action-note erro-inline">{erro}</span>}
-          {salvando && <span className="action-note">Salvando…</span>}
-        </div>
-      </div>
+      {(msg || erro || salvando) && (
+        <p className={erro ? "erro" : "ok"}>{erro || msg || "Salvando…"}</p>
+      )}
 
     </section>
   );

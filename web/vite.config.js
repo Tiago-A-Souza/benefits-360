@@ -1,5 +1,26 @@
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+
+const raiz = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(raiz, "package.json"), "utf8"));
+
+function commitCurto() {
+  const env = process.env.VITE_BUILD_COMMIT || process.env.GITHUB_SHA || "";
+  if (env) return String(env).slice(0, 7);
+  try {
+    return execSync("git rev-parse --short HEAD", {
+      cwd: raiz,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
 
 export default defineConfig({
   root: ".",
@@ -10,6 +31,10 @@ export default defineConfig({
     preserveSymlinks: true,
   },
   plugins: [react()],
+  define: {
+    __BENEFITS_VERSAO__: JSON.stringify(pkg.version),
+    __BENEFITS_COMMIT__: JSON.stringify(commitCurto()),
+  },
   server: {
     host: true,
     port: 5173,

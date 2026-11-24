@@ -74,6 +74,12 @@ async function varrerRotas(page, falhas, nomeCenario) {
 
   await expect(page.getByRole("heading", { name: "Meus estudos" })).toBeVisible({ timeout: 15000 });
   await expectHash(page, "#/estudos");
+  await expect(page.locator("header.topbar")).toHaveCount(0);
+  await expect(page.getByText("Estudo Saúde")).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Turya" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
+  await expect(page.getByText("V1.0.0", { exact: true })).toBeVisible();
+  await expect(page.getByText("RASCUNHO INTERNO")).toHaveCount(0);
   await checar("Meus estudos");
 
   await navSistema(page).getByRole("button", { name: "Simular rede", exact: true }).click();

@@ -1,3 +1,5 @@
+import { RotuloNav } from "./layout/IconeNav";
+
 /** Itens de navegação fora do fluxo de estudo — presentes nas barras laterais. */
 export default function NavegacaoFerramentas({
   ativo,
@@ -19,14 +21,16 @@ export default function NavegacaoFerramentas({
               aria-current={ativo === "estudos" ? "page" : undefined}
               onClick={onMeusEstudos}
             >
-              Meus estudos
+              <RotuloNav icone="estudos">Meus estudos</RotuloNav>
             </button>
           </li>
         )}
         {onVoltarEstudo && (
           <li>
             <button type="button" aria-pressed={false} onClick={onVoltarEstudo}>
-              {rotuloEstudo ? `← Voltar ao estudo · ${rotuloEstudo}` : "← Voltar ao estudo"}
+              <RotuloNav icone="voltar">
+                {rotuloEstudo ? `Voltar ao estudo · ${rotuloEstudo}` : "Voltar ao estudo"}
+              </RotuloNav>
             </button>
           </li>
         )}
@@ -37,7 +41,7 @@ export default function NavegacaoFerramentas({
             aria-current={ativo === "simular" ? "page" : undefined}
             onClick={onSimularRede}
           >
-            Simular rede
+            <RotuloNav icone="simular">Simular rede</RotuloNav>
           </button>
         </li>
         {onCotacoes && (
@@ -48,7 +52,7 @@ export default function NavegacaoFerramentas({
               aria-current={ativo === "cotacoes" ? "page" : undefined}
               onClick={onCotacoes}
             >
-              Cotações
+              <RotuloNav icone="cotacoes">Cotações</RotuloNav>
             </button>
           </li>
         )}
