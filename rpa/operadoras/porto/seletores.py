@@ -35,6 +35,11 @@ TEXTO_RECUSA_LOGIN = re.compile(r"(cpf|senha|credenciais?).{0,60}(inv[aá]lid|in
                                 r"|(inv[aá]lid|incorret).{0,40}(cpf|senha)", re.I)
 # Só o desafio de verdade. O modal da Porto traz "O Recaptcha serve para a sua maior segurança" — isso não é desafio.
 TEXTO_CAPTCHA = re.compile(r"n[aã]o sou (um )?rob[oô]|resolva o (re)?captcha|desafio (do |de )?(re)?captcha", re.I)
+# Selo do Google no rodapé. Não confundir com o texto de ajuda «O Recaptcha serve para…».
+TEXTO_PROTEGIDO_RECAPTCHA = re.compile(r"protegido pel[oa]s? reCAPTCHA", re.I)
+# Clique automatizado no ENTRAR: o portal recusa sem ser senha errada.
+TEXTO_BLOQUEIO_AUTOMACAO = re.compile(
+    r"motivos de seguran[cç]a.{0,80}validar seu acesso|n[aã]o conseguimos validar seu acesso", re.I)
 TEXTO_TROCA_SENHA = re.compile(r"(trocar|redefinir|alterar) (a )?senha|senha expirou", re.I)
 TEXTO_CRIAR_NOVA = rx("Criar nova cotação")
 TEXTO_DADOS_INICIAIS = rx("Dados iniciais")
@@ -95,9 +100,23 @@ def botao_bloquear_localizacao(lugar) -> Locator:
 
 
 def captcha_desafio(page: Page) -> Locator:
-    """Desafio visível (não sou um robô / bframe). O aviso 'O Recaptcha serve para…' não conta."""
-    return page.get_by_text(TEXTO_CAPTCHA).or_(
-        page.locator("iframe[src*='recaptcha'][src*='bframe']"))
+    """Desafio visível («Não sou um robô»). Sem iframe: is_visible no reCAPTCHA trava o Playwright."""
+    return page.get_by_text(TEXTO_CAPTCHA)
+
+
+def login_recaptcha_protege(page: Page) -> bool:
+    """Selo/iframe do reCAPTCHA (inclusive invisível). Só count(): is_visible no iframe trava."""
+    try:
+        if page.locator(
+            "iframe[src*='recaptcha' i], iframe[title*='reCAPTCHA' i], .grecaptcha-badge"
+        ).count() > 0:
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return page.get_by_text(TEXTO_PROTEGIDO_RECAPTCHA).count() > 0
+    except Exception:  # noqa: BLE001
+        return False
 
 
 TEXTO_ACESSE_CORRETOR = re.compile(r"Acesse o Corretor Online", re.I)
