@@ -149,6 +149,7 @@ def test_captura_de_erro_nao_entra_no_git():
     gitignore = Path(__file__).resolve().parents[3].joinpath(".gitignore").read_text(encoding="utf-8")
     assert "rpa/saida/" in gitignore
     assert "rpa/saida_simulador/" in gitignore
+    assert "rpa/saida_teste_porto/" in gitignore
 
 
 def test_seletores_nao_expoe_clique_de_proposta_ou_duplicar():
