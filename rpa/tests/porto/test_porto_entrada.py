@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 from nucleo.credenciais import Cofre, CofreMemoria
 from nucleo.navegador import ARGS_SEM_PAUSA, _sem_guardar_formularios
 from operadoras.porto import seletores as sel
-from operadoras.porto.login import entrar
+from operadoras.porto.login import _clicar_acessar_corretor, entrar
 from operadoras.porto.simulador.servidor import Simulador
 from operadoras.porto.telas import _visivel, fechar_banners_entrada, logado
 
@@ -93,6 +93,8 @@ def test_botao_do_header_e_button_mesmo_com_senha_escondida(sim):
         assert page.get_by_role("button", name=sel._RX_BOTAO_CORRETOR).count() == 1
         assert sel.login_campo_senha(page).count() >= 1
         assert not _visivel(sel.login_campo_senha(page))
+        assert _clicar_acessar_corretor(page)
+        page.wait_for_url("**/login")
         page.context.browser.close()
 
 

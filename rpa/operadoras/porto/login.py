@@ -15,7 +15,6 @@ from datetime import datetime
 
 from nucleo.configuracao import aprendido, aprender
 from nucleo.credenciais import cofre as cofre_da_config, mensagem_login
-from playwright.sync_api import TimeoutError as PWTimeout
 
 from nucleo.navegador import ErroLogin, Parado
 
@@ -72,19 +71,46 @@ def _login_a_vista(page) -> bool:
             or _visivel(sel.login_campo_cpf(page)) or _visivel(sel.login_campo_senha(page)))
 
 
-def _abrir_janela_corretor(s, botao) -> None:
-    """No portal real o clique abre um modal na mesma página; no simulador pode abrir outra janela."""
-    page = s.page
+_JS_CLICAR_ACESSAR = """() => {
+  const rx = /acess[ae]r?\\s+o\\s+corretor\\s+online/i;
+  const els = [...document.querySelectorAll('button, a, [role=button], [role=link]')];
+  const b = els.find(e => {
+    const t = (e.innerText || '').replace(/\\s+/g, ' ').trim();
+    if (!rx.test(t) || t.length > 80) return false;
+    const r = e.getBoundingClientRect();
+    return r.width > 8 && r.height > 8;
+  });
+  if (!b) return false;
+  b.click();
+  return true;
+}"""
+
+
+def _clicar_acessar_corretor(page) -> bool:
+    """Clique no DOM da página principal — sem varrer iframe de reCAPTCHA nem esperar popup."""
     try:
-        with page.expect_popup(timeout=1500) as info:
-            botao.first.click(timeout=5000)
-        nova = info.value
-        nova.wait_for_load_state("domcontentloaded")
-        s.page = nova
-        _marcar(s, "janela do corretor online", "Janela do Corretor Online aberta.")
-        return
-    except Exception:  # noqa: BLE001  (timeout do popup = modal na mesma página; o clique já ocorreu)
-        pass
+        return bool(page.evaluate(_JS_CLICAR_ACESSAR))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _abrir_janela_corretor(s) -> None:
+    """Portal real: modal na mesma página. Simulador: pode ir para /login na mesma aba."""
+    page = s.page
+    timeout_ms = int(s.t("timeout_tela_ms"))
+    fim = time.monotonic() + timeout_ms / 1000
+    clicou = False
+    while time.monotonic() < fim:
+        if _login_a_vista(s.page):
+            break
+        if _clicar_acessar_corretor(s.page):
+            clicou = True
+            break
+        time.sleep(0.4)
+    if not clicou and not _login_a_vista(s.page):
+        raise _erro("sem_botao_entrada")
+    if len(page.context.pages) > 1:
+        s.page = page.context.pages[-1]
     if esperar_ate(lambda: _login_a_vista(s.page), 20):
         _marcar(s, "janela do corretor online", "Janela do Corretor Online aberta.")
         return
@@ -92,25 +118,17 @@ def _abrir_janela_corretor(s, botao) -> None:
 
 
 def _abrir_login(s) -> None:
-    """Página pública → recusa localização/cookies → «Acessar o Corretor Online» → janela de login."""
+    """Página pública → recusa localização/cookies → «Acessar o Corretor Online» → modal de login."""
     _marcar(s, "abrindo login", "Abrindo a página pública do Corretor Online.")
-    s.page.goto(s.cfg["urls"]["login"])
-    s.page.wait_for_load_state("domcontentloaded")
+    s.page.goto(s.cfg["urls"]["login"], wait_until="domcontentloaded")
     fechar_banners_entrada(s.page)
-    _marcar(s, "abrindo login", "Primeira página da Porto aberta (localização recusada pelo navegador).",
+    _marcar(s, "abrindo login",
+            f"Primeira página da Porto aberta ({sel.caminho(s.page) or '/'}).",
             captura="entrada_porto")
-    botao = sel.botao_acessar_corretor(s.page)
-    try:
-        botao.first.wait_for(state="visible", timeout=int(s.t("timeout_tela_ms")))
-    except PWTimeout:
-        if _login_a_vista(s.page):
-            return
-        raise _erro("sem_botao_entrada")
     ja_no_login = _visivel(sel.login_campo_cpf(s.page)) and _visivel(sel.login_campo_senha(s.page))
     if not ja_no_login:
-        fechar_banners_entrada(s.page)
         _marcar(s, "abrindo login", "Clicando em Acessar o Corretor Online.")
-        _abrir_janela_corretor(s, botao)
+        _abrir_janela_corretor(s)
         fechar_banners_entrada(s.page)
 
 
