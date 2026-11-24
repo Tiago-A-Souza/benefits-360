@@ -97,6 +97,7 @@ ARGS_SEM_PAUSA = [
     "--disable-background-timer-throttling",
     "--disable-ipc-flooding-protection",
     "--disable-notifications",
+    "--deny-permission-prompts",
 ]
 
 
@@ -200,8 +201,11 @@ def _sem_guardar_formularios(perfil: Path) -> None:
     perfil_prefs = prefs.setdefault("profile", {})
     perfil_prefs["password_manager_enabled"] = False
     # 2 = bloquear. Sem isso o Chrome cobre o portal com "o site quer mostrar notificações" e o robô
-    # não consegue clicar (Bradesco, Seguros Friday, 18/11).
-    perfil_prefs.setdefault("default_content_setting_values", {})["notifications"] = 2
+    # não consegue clicar (Bradesco, Seguros Friday, 18/11). A Porto pede localização na primeira
+    # página: o mesmo bloqueio, mais --deny-permission-prompts, para o robô não ficar esperando clique.
+    conteudo = perfil_prefs.setdefault("default_content_setting_values", {})
+    conteudo["notifications"] = 2
+    conteudo["geolocation"] = 2
     prefs.setdefault("autofill", {}).update(enabled=False, profile_enabled=False, credit_card_enabled=False)
     arquivo.parent.mkdir(parents=True, exist_ok=True)
     arquivo.write_text(json.dumps(prefs), encoding="utf-8")
