@@ -120,14 +120,18 @@ def combo_corretor(page: Page) -> Locator:
     # Combobox do formulário vazio; na retomada o campo vira chip (botão com ×) + busca.
     combo = page.get_by_role("combobox", name=rx("Nome do Corretor"))
     selecione = page.get_by_text(rx("Selecione um corretor"))
-    chip = page.locator("main").get_by_role("button").filter(has_text=re.compile(r"×"))
-    return combo.or_(selecione).or_(chip)
+    return combo.or_(selecione).or_(chip_corretor(page))
+
+
+def chip_corretor(page: Page) -> Locator:
+    """Corretor já marcado no Vínculo: botão do chip com × (não o Continuar)."""
+    return page.locator("main").get_by_role("button").filter(has_text=re.compile(r"×"))
 
 
 def corretor_ja_escolhido(page: Page, nome: str) -> Locator:
     """O campo do corretor já preenchido é um botão com o nome e um "×" (aria de 12/11: button "EDLAINE ABREU SOARES ×");
-    só conta o botão dentro do conteúdo principal e com o nome pedido."""
-    return page.locator("main button").filter(has_text=rx(nome))
+    só conta o chip do Vínculo com o nome pedido (o da engrenagem)."""
+    return chip_corretor(page).filter(has_text=rx(nome))
 
 
 def busca_corretor(page: Page) -> Locator:

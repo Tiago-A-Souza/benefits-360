@@ -99,6 +99,29 @@ def escolher_no_select(campo, texto: str, descricao: str, etapa: str) -> str:
     return escolhida
 
 
+def escolher_corretor_vinculo(page, nome: str, etapa: str) -> str:
+    """Garante o corretor da engrenagem. O portal pré-marca o usuário logado (chip com ×); isso não vale."""
+    if visiveis(sel.corretor_ja_escolhido(page, nome)):
+        return nome
+    for _ in range(3):
+        errados = [c for c in visiveis(sel.chip_corretor(page))
+                   if norm(nome) not in norm(c.inner_text() or "")]
+        if not errados:
+            break
+        cruz = visiveis(errados[0].get_by_text("×", exact=True))
+        (cruz[0] if cruz else errados[0]).click()
+        esperar_ate(lambda: visiveis(sel.corretor_ja_escolhido(page, nome)) or not visiveis(sel.chip_corretor(page)), 4)
+    if visiveis(sel.corretor_ja_escolhido(page, nome)):
+        return nome
+    escolhido = escolher_na_lista(
+        page, sel.combo_corretor(page), nome, "Nome do Corretor", etapa, busca=sel.busca_corretor(page))
+    if not visiveis(sel.corretor_ja_escolhido(page, nome)):
+        raise ErroFluxo(
+            f"o Vínculo de Vendas não ficou com o corretor da engrenagem ('{nome}'); "
+            "o portal manteve outro. Peça de novo.", etapa)
+    return escolhido
+
+
 def escolher_na_lista(page, abrir, texto: str, descricao: str, etapa: str, busca=None, segundos: float = 10) -> str:
     """Lista aberta por clique (quadro 10): abre, digita para filtrar (se há busca) e escolhe a opção que contém o texto.
     O corretor aparece como "30227287860 - EDLAINE ABREU SOARES": vale o texto contido, sem acento nem maiúsculas."""

@@ -33,7 +33,7 @@ from . import extracao as ex
 from . import seletores as sel
 from .login import entrar
 from .pedido import NOME_OPORTUNIDADE, Oportunidade, Pedido, familia
-from .telas import (SessaoCaiu, _visivel, escolher_na_lista, escolher_no_select, esperar_ate, esperar_sem_carregando,
+from .telas import (SessaoCaiu, _visivel, escolher_corretor_vinculo, escolher_na_lista, escolher_no_select, esperar_ate, esperar_sem_carregando,
                     fechar_avisos, login_na_tela, logado, opcoes_do_select, texto_da_pagina)
 
 
@@ -343,13 +343,8 @@ def cotacao(s: Sessao, a: Andamento) -> None:
         s.log.info(f"Cotação criada: {a.cot} (id {a.cot_id}) para {a.alvo.nome}.")
     if _tela_da_cotacao(s) == "vinculo":
         _mapa(s, f"vinculo_{a.indice + 1}")
-        if visiveis(sel.corretor_ja_escolhido(page, p.corretor)):
-            # cotação continuada: o portal já mostra o corretor no campo ("EDLAINE ABREU SOARES ×"); não abre a lista de novo
-            s.log.info(f"Corretor do Vínculo de Vendas já escolhido: {p.corretor}.")
-        else:
-            escolhido = escolher_na_lista(page, sel.combo_corretor(page), p.corretor, "Nome do Corretor", etapa,
-                                          busca=sel.busca_corretor(page))
-            s.log.info(f"Corretor do Vínculo de Vendas: {escolhido}.")
+        escolhido = escolher_corretor_vinculo(page, p.corretor, etapa)
+        s.log.info(f"Corretor do Vínculo de Vendas (engrenagem): {escolhido}.")
         if p.supervisor:
             esperar_ate(lambda: sel.combo_supervisor(page).count() > 0, 5)
             escolhido = escolher_na_lista(page, sel.combo_supervisor(page), p.supervisor, "Nome do Supervisor", etapa)

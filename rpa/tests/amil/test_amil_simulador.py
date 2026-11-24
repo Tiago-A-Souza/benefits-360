@@ -385,7 +385,6 @@ def test_escolher_corretor_com_lista_ja_aberta_sem_combobox():
     <main>
       <h2>Vínculo de Vendas</h2>
       <label>Nome do Corretor *</label>
-      <button type="button">OUTRO ×</button>
       <input placeholder="Digite nome ou código do corretor...">
       <div id="opcao" onclick="this.dataset.ok='1'">AAAAAA - EDLAINE ABREU SOARES</div>
       <button type="button">Continuar</button>
@@ -400,4 +399,39 @@ def test_escolher_corretor_com_lista_ja_aberta_sem_combobox():
             busca=busca_corretor(page), segundos=5)
         assert "EDLAINE" in escolhido.upper()
         assert page.locator("#opcao").get_attribute("data-ok") == "1"
+        nav.close()
+
+
+def test_vinculo_troca_corretor_premarcado_pelo_da_engrenagem():
+    """O portal pré-marca o usuário logado; a engrenagem pede outro nome — limpa o chip e escolhe o certo."""
+    from playwright.sync_api import sync_playwright
+
+    from operadoras.amil.telas import escolher_corretor_vinculo
+
+    html = """
+    <main>
+      <h2>Vínculo de Vendas</h2>
+      <button type="button" id="chip">OUTRO <span id="x" onclick="
+        event.stopPropagation();
+        document.getElementById('chip').remove();
+      ">×</span></button>
+      <input placeholder="Digite nome ou código do corretor...">
+      <div id="opcao" onclick="
+        this.dataset.ok='1';
+        var b=document.createElement('button');
+        b.textContent='EDLAINE ABREU SOARES ×';
+        document.querySelector('main').insertBefore(b, document.querySelector('input'));
+      ">AAAAAA - EDLAINE ABREU SOARES</div>
+      <button type="button">Continuar</button>
+    </main>
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page()
+        page.set_content(html)
+        escolhido = escolher_corretor_vinculo(page, "EDLAINE ABREU SOARES", "vinculo")
+        assert "EDLAINE" in escolhido.upper()
+        assert page.locator("#opcao").get_attribute("data-ok") == "1"
+        assert page.get_by_role("button").filter(has_text="EDLAINE").count() >= 1
+        assert page.locator("#chip").count() == 0
         nav.close()
