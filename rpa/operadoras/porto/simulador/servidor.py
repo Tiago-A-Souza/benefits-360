@@ -143,6 +143,7 @@ class Simulador:
         self.atraso_susep_ms = 0
         self.sessoes: dict[str, dict] = {}
         self.exigir_captcha = False
+        self.proteger_recaptcha = False  # selo/iframe, sem desafio: o robô não deve clicar em ENTRAR
         self.tentativas_login = 0
         self.cotacoes: dict[str, dict] = {}
         self.proxima = 9000001
@@ -234,6 +235,10 @@ class Simulador:
                 if path == "/login":
                     desafio = ("<p id='captcha' class='erro'>Não sou um robô — desafio reCAPTCHA</p>"
                                if sim.exigir_captcha else "")
+                    selo = ("<iframe title='reCAPTCHA' src='/recaptcha/api2/anchor?size=invisible' "
+                            "width='256' height='60'></iframe>"
+                            "<small>protegido pelo reCAPTCHA</small>"
+                            if sim.proteger_recaptcha else "")
                     self._html(200, _pagina("Login Porto", f"""
 <header>Corretor Online</header><main class=card style="width:360px;margin:40px auto">
 <h2>Acesse o Corretor Online</h2>
@@ -241,7 +246,7 @@ class Simulador:
 <label for=senha>Senha</label><br><input id=senha name=senha type=password autocomplete=off><br>
 <button id=entrar>ENTRAR</button>
 <small>O Recaptcha serve para a sua maior segurança ao acessar o Corretor Online.</small>
-{desafio}<p id=erro class=erro style="display:none"></p>
+{selo}{desafio}<p id=erro class=erro style="display:none"></p>
 </main><script>
 document.getElementById('entrar').onclick=async()=>{{
  const r=await (await fetch('/api/login',{{method:'POST',headers:{{'Content-Type':'application/json'}},
