@@ -66,6 +66,26 @@ def login_botao_entrar(page: Page) -> Locator:
     return page.get_by_role("button", name=re.compile(r"^\s*(entrar|acessar)\s*$", re.I))
 
 
+# Primeira página pública (corretor.portoseguro.com.br/corretoronline): o login só abre depois deste clique.
+_RX_BOTAO_CORRETOR = re.compile(r"acess[ae]r?\s+o\s+corretor\s+online", re.I)
+_RX_RECUSAR_COOKIES = re.compile(
+    r"recusar(\s+cookies)?|rejeitar(\s+cookies)?|não aceitar|continuar sem (aceitar|cookies)", re.I)
+_RX_BLOQUEAR_LOCAL = re.compile(r"^(bloquear|agora não|não permitir)$", re.I)
+
+
+def botao_acessar_corretor(lugar) -> Locator:
+    """Botão ou link da página pública. Aceita 'Acessar' e 'Acesse o Corretor Online'."""
+    return lugar.locator("a, button, [role=button], [role=link]").filter(has_text=_RX_BOTAO_CORRETOR)
+
+
+def botao_recusar_cookies(lugar) -> Locator:
+    return lugar.get_by_role("button", name=_RX_RECUSAR_COOKIES)
+
+
+def botao_bloquear_localizacao(lugar) -> Locator:
+    return lugar.get_by_role("button", name=_RX_BLOQUEAR_LOCAL)
+
+
 def captcha_desafio(page: Page) -> Locator:
     return page.get_by_text(TEXTO_CAPTCHA).or_(
         page.locator("iframe[src*='recaptcha'][src*='bframe'], iframe[src*='recaptcha/api2/anchor']"

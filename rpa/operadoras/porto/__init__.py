@@ -176,6 +176,13 @@ class Porto(Operadora):
                    "seu navegador (ou ligue “Mostrar a janela do portal”) e peça de novo.",
         "sem_susep": "O código SUSEP guardado no robô não está na lista do portal. O campo SUSEP do robô "
                      "precisa ser um dos códigos do dropdown (o sufixo (P) não precisa ser digitado).",
+        "sem_botao_entrada": "O robô parou na primeira página da {op}: não achei o botão «Acessar o Corretor "
+                             "Online». Ligue “Mostrar a janela do portal” e confira se o site mudou.",
+        "sem_janela_login": "O robô clicou em «Acessar o Corretor Online», mas a janela de login não abriu. "
+                            "Ligue “Mostrar a janela do portal” e tente de novo.",
+        "sem_resposta": "O robô parou na primeira página da {op} sem chegar ao login (o portal não mostrou "
+                        "CPF, senha nem SUSEP). Ele já recusa o aviso de localização sozinho. Ligue "
+                        "“Mostrar a janela do portal” e tente de novo.",
     }
 
     def campos_login(self) -> list[dict]:

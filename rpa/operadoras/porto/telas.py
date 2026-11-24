@@ -98,6 +98,38 @@ def texto_do_cotador(page, limite: int = 60000) -> str:
             return ""
 
 
+def primeiro_visivel(page, montar):
+    """Primeiro locator visível na página ou num iframe (o login da Porto às vezes não está no frame principal)."""
+    lugares = [page]
+    try:
+        lugares.extend(page.frames)
+    except Exception:  # noqa: BLE001
+        pass
+    visto = None
+    for lugar in lugares:
+        try:
+            loc = montar(lugar)
+            if visto is None:
+                visto = loc
+            if _visivel(loc):
+                return loc
+        except Exception:  # noqa: BLE001
+            continue
+    return visto if visto is not None else montar(page)
+
+
+def fechar_banners_entrada(page) -> None:
+    """Cookies e o aviso HTML de localização (o do Chrome já é recusado na abertura do navegador)."""
+    for montar in (sel.botao_bloquear_localizacao, sel.botao_recusar_cookies):
+        try:
+            loc = primeiro_visivel(page, montar)
+            if _visivel(loc):
+                loc.first.click(timeout=2000)
+                time.sleep(0.2)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def fechar_overlays(page) -> None:
     try:
         banner = page.get_by_text(sel.TEXTO_BANNER_DUVIDAS)
