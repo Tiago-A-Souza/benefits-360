@@ -115,6 +115,27 @@ def test_aviso_recaptcha_do_modal_nao_e_desafio():
         page.context.browser.close()
 
 
+def test_cpf_do_modal_nao_e_o_de_recuperar_senha():
+    from operadoras.porto.login import _cpf_para_campo, _preencher
+
+    html = """
+    <label class="ps-frm-lbl">CPF</label>
+    <input id="logonSenha" type="text" name="logon" title="CPF" data-gtm-name="cpf-recuperar-senha">
+    <label class="ps-frm-lbl">CPF</label>
+    <input id="logonPrincipal" type="text" name="logon" title="logon" data-gtm-name="cpf"
+           autocomplete="username" class="ps-frm-cpf" maxlength="14">
+    <input name="password" type="password">
+    """
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(html)
+        bruto = "52998224725"
+        _preencher(page, sel.login_campo_cpf(page), _cpf_para_campo(bruto))
+        assert page.locator("#logonPrincipal").input_value() == "529.982.247-25"
+        assert page.locator("#logonSenha").input_value() == ""
+        page.context.browser.close()
+
+
 def test_entrar_pela_pagina_publica_abre_janela_e_loga(tmp_path, sim):
     avisos = []
     with sync_playwright() as pw:

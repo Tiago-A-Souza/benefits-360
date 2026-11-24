@@ -55,8 +55,14 @@ TEXTO_PAGINA_PRINCIPAL = rx("Ir para página principal")
 
 # ---- login (VALIDAR) ----
 def login_campo_cpf(page: Page) -> Locator:
-    return page.get_by_label(re.compile(r"^cpf$", re.I)).or_(
-        page.locator("input[name*=cpf i], input[id*=cpf i]"))
+    """Modal «Acesse o Corretor Online»: #logonPrincipal (name=logon, title=logon).
+
+    Não é #logonSenha (recuperar senha): esse tem title=CPF e o get_by_label ia preenchê-lo.
+    """
+    return page.locator(
+        "#logonPrincipal, #cpf, input[name='cpf' i], "
+        "input[data-gtm-name='cpf'][autocomplete='username']"
+    )
 
 
 def login_campo_senha(page: Page) -> Locator:

@@ -17,6 +17,7 @@ from nucleo.configuracao import aprendido, aprender
 from nucleo.credenciais import cofre as cofre_da_config, mensagem_login
 
 from nucleo.navegador import ErroLogin, Parado, visiveis
+from nucleo.texto import so_digitos
 
 from . import seletores as sel
 from .telas import (
@@ -132,11 +133,23 @@ def _abrir_login(s) -> None:
         fechar_banners_entrada(s.page)
 
 
+def _cpf_para_campo(valor: str) -> str:
+    """O #logonPrincipal tem máscara e maxlength 14: 000.000.000-00."""
+    d = so_digitos(valor)
+    if len(d) == 11:
+        return f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}"
+    return valor
+
+
 def _preencher(page, campo, valor: str) -> None:
     """O modal da Porto deixa inputs type=password escondidos no DOM: preenche só o visível."""
     alvo = visiveis(campo)[0] if visiveis(campo) else campo.first
     alvo.click()
     alvo.fill(valor)
+    try:
+        alvo.press("Tab")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _codigo_susep(s, login: dict | None) -> str:
@@ -254,7 +267,7 @@ def _tentar_login(s, cofre, login: dict, parar, codigo_susep: str) -> None:
                     raise _erro("recusadas")
             if _visivel(sel.login_campo_cpf(page)) and not digitou["cpf"]:
                 s.mapa.login_digitado = True
-                _preencher(page, sel.login_campo_cpf(page), login["cpf"])
+                _preencher(page, sel.login_campo_cpf(page), _cpf_para_campo(login["cpf"]))
                 digitou["cpf"] = True
                 continue
             if _visivel(sel.login_campo_senha(page)) and not digitou["senha"]:
