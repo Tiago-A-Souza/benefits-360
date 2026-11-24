@@ -161,6 +161,10 @@ class Simulador:
         self.porta = porta
 
     @property
+    def url(self) -> str:
+        return f"http://127.0.0.1:{self.porta}/"
+
+    @property
     def url_login(self) -> str:
         return f"http://127.0.0.1:{self.porta}/login"
 
@@ -271,7 +275,8 @@ document.getElementById('entrar').onclick=async()=>{{
                     self._bytes(_pdf(numero, cot["plano"], cot["cnpj"]), "application/pdf")
                     return
                 if path == "/":
-                    self.send_response(302); self.send_header("Location", "/login"); self.end_headers(); return
+                    self._html(200, _pagina_entrada())
+                    return
                 self.send_response(404); self.end_headers()
 
             def do_POST(self):
@@ -324,6 +329,31 @@ document.getElementById('entrar').onclick=async()=>{{
         if self.httpd:
             self.httpd.shutdown()
             self.httpd.server_close()
+
+
+def _pagina_entrada() -> str:
+    """Página pública: aviso de localização, cookies e o botão que abre a janela de login."""
+    corpo = """
+<header>Porto Seguro · Corretor Online</header>
+<main class=card style="width:420px;margin:40px auto">
+<div id=aviso-localizacao role=dialog>
+ <p>O site quer saber sua localização.</p>
+ <button type=button id=loc-bloquear>Bloquear</button>
+</div>
+<div id=aviso-cookies>
+ <p>Usamos cookies.</p>
+ <button type=button id=cookies-recusar>Recusar cookies</button>
+</div>
+<h1>Corretor Online</h1>
+<p>Para cotar, entre no Corretor Online.</p>
+<a id=acessar class=btn href="/login" target="_blank">Acessar o Corretor Online</a>
+</main>
+"""
+    script = """
+document.getElementById('loc-bloquear').onclick=()=>document.getElementById('aviso-localizacao').remove();
+document.getElementById('cookies-recusar').onclick=()=>document.getElementById('aviso-cookies').remove();
+"""
+    return _pagina("Corretor Online", corpo, script)
 
 
 def so_digitos(t) -> str:
