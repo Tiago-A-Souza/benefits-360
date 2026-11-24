@@ -131,6 +131,37 @@ def test_rodape_diz_o_commit_e_avisa_quando_o_disco_fica_mais_novo(tmp_path):
     assert versao.situacao() == {"commit": None, "quando": None, "mais_novo_no_disco": True}
 
 
+def test_tela_sensivel_nao_avalia_iframe_de_recaptcha(tmp_path):
+    import logging
+
+    from nucleo.navegador import Mapeador, quadros_do_portal
+
+    class Quadro:
+        def __init__(self, url):
+            self.url = url
+            self.evals = 0
+
+        def evaluate(self, js, timeout=None):
+            self.evals += 1
+            if "recaptcha" in self.url:
+                raise AssertionError("evaluate no iframe de reCAPTCHA")
+            if "one-time-code" in js or "otp" in js:
+                return ""
+            if "password" in js:
+                return False
+            return True
+
+    recaptcha = Quadro("https://www.google.com/recaptcha/api2/anchor?k=x")
+    pagina = type("P", (), {
+        "url": "https://corretor.portoseguro.com.br/corretoronline",
+        "frames": [Quadro("https://corretor.portoseguro.com.br/corretoronline"), recaptcha],
+    })()
+    assert recaptcha not in quadros_do_portal(pagina)
+    mapa = Mapeador(tmp_path, True, logging.getLogger("teste"), url_login="")
+    assert mapa.tela_sensivel(pagina) is None
+    assert recaptcha.evals == 0
+
+
 def test_mapa_de_erro_guarda_o_erro_inteiro_e_o_estado_de_carga(tmp_path):
     """15/11: o log só tem a 1ª linha do erro do Playwright; o mapa ERRO_ guarda o resto e o estado da página."""
     import logging
