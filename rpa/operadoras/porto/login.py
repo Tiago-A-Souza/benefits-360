@@ -6,7 +6,7 @@ Regras:
 - só entra quando o portal pede; a sessão fica no perfil do navegador;
 - nada do que é digitado vai para log, mapa, evento ou erro;
 - recusado: para na primeira vez;
-- reCAPTCHA ou 2FA: para e avisa. Nunca tenta burlar.
+- reCAPTCHA: preenche CPF e senha e espera o corretor clicar em ENTRAR. Nunca resolve nem burla.
 """
 from __future__ import annotations
 
@@ -146,10 +146,6 @@ def _preencher(page, campo, valor: str) -> None:
     alvo = visiveis(campo)[0] if visiveis(campo) else campo.first
     alvo.click()
     alvo.fill(valor)
-    try:
-        alvo.press("Tab")
-    except Exception:  # noqa: BLE001
-        pass
 
 
 def _codigo_susep(s, login: dict | None) -> str:
@@ -224,6 +220,20 @@ def entrar(s, pode_parar: bool = True, insistir: bool = True) -> None:
         login = None
 
 
+def _pedir_clique_entrar(s, fim: float) -> float:
+    """reCAPTCHA valida o clique em ENTRAR. O robô não clica: espera o corretor na janela do portal."""
+    try:
+        s.page.bring_to_front()
+    except Exception:  # noqa: BLE001
+        pass
+    s.aviso("login_aguardando")
+    _marcar(s, "aguardando reCAPTCHA",
+            "O portal protege o login com reCAPTCHA. CPF e senha já estão preenchidos: clique em ENTRAR "
+            "na janela do portal; o robô continua depois (SUSEP).")
+    extra = int(s.cfg["execucao"].get("timeout_codigo_ms", 300000)) / 1000
+    return max(fim, time.monotonic() + extra)
+
+
 def _tentar_login(s, cofre, login: dict, parar, codigo_susep: str) -> None:
     page, log = s.page, s.log
     if _visivel(sel.captcha_desafio(page)):
@@ -240,13 +250,14 @@ def _tentar_login(s, cofre, login: dict, parar, codigo_susep: str) -> None:
     limite = s.cfg["execucao"].get("timeout_login_ms", 60000) / 1000
     fim = time.monotonic() + limite
     digitou = {"cpf": False, "senha": False, "susep": False}
+    esperando_entrar = False
     recusa_antes = _visivel(page.get_by_text(sel.TEXTO_RECUSA_LOGIN))
     try:
         while time.monotonic() < fim:
             if parar():
                 raise Parado("login")
             page = s.page
-            if _visivel(sel.captcha_desafio(page)):
+            if _visivel(sel.captcha_desafio(page)) and not esperando_entrar:
                 _marcar(s, "aguardando reCAPTCHA",
                         "O portal pediu um reCAPTCHA. O robô parou: resolva no navegador e peça de novo.")
                 raise _erro("captcha")
@@ -265,6 +276,11 @@ def _tentar_login(s, cofre, login: dict, parar, codigo_susep: str) -> None:
                 if not logado(page) and _visivel(page.get_by_text(sel.TEXTO_RECUSA_LOGIN)):
                     cofre.marcar_recusadas()
                     raise _erro("recusadas")
+            if _visivel(page.get_by_text(sel.TEXTO_BLOQUEIO_AUTOMACAO)):
+                _marcar(s, "aguardando reCAPTCHA",
+                        "O portal recusou o acesso (reCAPTCHA). Neste aviso o ENTRAR não vale: feche o modal e "
+                        "peça o login de novo.")
+                raise _erro("captcha")
             if _visivel(sel.login_campo_cpf(page)) and not digitou["cpf"]:
                 s.mapa.login_digitado = True
                 _preencher(page, sel.login_campo_cpf(page), _cpf_para_campo(login["cpf"]))
@@ -274,6 +290,10 @@ def _tentar_login(s, cofre, login: dict, parar, codigo_susep: str) -> None:
                 s.mapa.login_digitado = True
                 _preencher(page, sel.login_campo_senha(page), login["senha"])
                 digitou["senha"] = True
+                if sel.login_recaptcha_protege(page):
+                    fim = _pedir_clique_entrar(s, fim)
+                    esperando_entrar = True
+                    continue
                 sel.login_botao_entrar(page).first.click()
                 _marcar(s, "CPF e senha enviados", "CPF e senha enviados.")
                 time.sleep(0.5)
@@ -283,4 +303,4 @@ def _tentar_login(s, cofre, login: dict, parar, codigo_susep: str) -> None:
         raise
     except Exception as e:  # noqa: BLE001
         raise ErroLogin(_erro("falha").args[0], "falha") from None
-    raise _erro("sem_resposta")
+    raise _erro("captcha" if esperando_entrar else "sem_resposta")

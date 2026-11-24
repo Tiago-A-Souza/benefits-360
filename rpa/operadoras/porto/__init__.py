@@ -73,8 +73,9 @@ class Porto(Operadora):
         return [
             {"etapa": "login", "faz": "Entra no Corretor Online sozinho, só quando o portal pede, com o CPF, a senha "
                                       "e o código SUSEP que você guarda em Conexões. Depois do CPF e da senha o portal "
-                                      "abre o dropdown da SUSEP; o robô escolhe o código guardado. Se aparecer "
-                                      "desafio de reCAPTCHA, o robô para e avisa: não tenta burlar. A sessão fica no "
+                                      "abre o dropdown da SUSEP; o robô escolhe o código guardado. Se o login for "
+                                      "protegido por reCAPTCHA, o robô preenche CPF e senha e espera você clicar em "
+                                      "ENTRAR na janela do portal. Não tenta resolver nem burlar. A sessão fica no "
                                       "navegador do robô.",
              "campos": [{"tipo": "credenciais", "rotulo": "Login no portal", "senha_max": 64,
                          "campos": self.campos_login(),
@@ -172,8 +173,9 @@ class Porto(Operadora):
                     {"chave": "senha", "rotulo": "Senha", "tipo": "senha", "artigo": "a"},
                     {"chave": "susep", "rotulo": "SUSEP", "tipo": "texto", "artigo": "o"}]
     mensagens_login = {
-        "captcha": "O portal da {op} mostrou um desafio de reCAPTCHA. O robô não tenta resolver: resolva no "
-                   "seu navegador (ou ligue “Mostrar a janela do portal”) e peça de novo.",
+        "captcha": "O login da {op} é protegido por reCAPTCHA. O robô preenche CPF e senha e não clica em "
+                   "ENTRAR: clique você na janela do portal. Se a janela não estiver visível, ligue "
+                   "“Mostrar a janela do portal” e peça de novo.",
         "sem_susep": "O código SUSEP guardado no robô não está na lista do portal. O campo SUSEP do robô "
                      "precisa ser um dos códigos do dropdown (o sufixo (P) não precisa ser digitado).",
         "sem_botao_entrada": "O robô parou na primeira página da {op}: não achei o botão «Acessar o Corretor "
@@ -190,7 +192,8 @@ class Porto(Operadora):
 
     def textos_tela(self) -> dict:
         return {
-            "passo_login": "Em Conexões da Porto, guarde CPF, senha e o código SUSEP do dropdown (depois do login). Ficam no cofre do Windows (NewportCotacoes/porto). Se o portal mostrar reCAPTCHA, o robô para e avisa.",
+            "passo_login": "Em Conexões da Porto, guarde CPF, senha e o código SUSEP do dropdown (depois do login). Ficam no cofre do Windows (NewportCotacoes/porto). Se o login for protegido por reCAPTCHA, o robô preenche os campos e espera você clicar em ENTRAR na janela do portal.",
+            "aguardando_portal": "O login da Porto é protegido por reCAPTCHA. O robô já preencheu CPF e senha: clique em ENTRAR na janela do portal. Depois disso o robô escolhe a SUSEP sozinho.",
             "passo_nova": "CNPJ, vidas por faixa (idade exata de 0 a 18), operadora atual e os planos pelo nome da grade. Cada plano vira uma cotação e um PDF, sempre por Criar nova cotação.",
             "perguntas": {
                 "versoes": [
