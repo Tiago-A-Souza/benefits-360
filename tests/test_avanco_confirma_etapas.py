@@ -51,4 +51,6 @@ def test_app_proxima_etapa_chama_confirmacao():
     assert "registrarAvancoEtapa" in src
     assert "avancarEtapaRef" in src
     assert "proximaEtapaClicavel" in src
-    assert "setPasso(passo - 1)" in src or "setPasso((p) => p - 1)" in src
+    # Voltar etapa: a barra lateral navega por hash, não por setPasso do cabeçalho antigo.
+    assert "function irAnterior()" in src
+    assert "hashEstudo(estudoId, passo - 1)" in src
