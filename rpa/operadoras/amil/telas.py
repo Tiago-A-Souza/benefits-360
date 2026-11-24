@@ -102,9 +102,14 @@ def escolher_no_select(campo, texto: str, descricao: str, etapa: str) -> str:
 def escolher_na_lista(page, abrir, texto: str, descricao: str, etapa: str, busca=None, segundos: float = 10) -> str:
     """Lista aberta por clique (quadro 10): abre, digita para filtrar (se há busca) e escolhe a opção que contém o texto.
     O corretor aparece como "30227287860 - EDLAINE ABREU SOARES": vale o texto contido, sem acento nem maiúsculas."""
-    abrir.first.click()
-    if busca is not None and esperar_ate(lambda: _visivel(busca), 3):
+    # Portal 24/11 (cotação retomada em Digitação): o campo já é um chip com × e a busca já está
+    # visível. Não há combobox "Nome do Corretor"; clicar nele estoura 30s e o robô para.
+    if busca is not None and _visivel(busca):
         busca.first.fill(texto)
+    else:
+        abrir.first.click()
+        if busca is not None and esperar_ate(lambda: _visivel(busca), 3):
+            busca.first.fill(texto)
     alvo = norm(texto)
     achada = {}
 

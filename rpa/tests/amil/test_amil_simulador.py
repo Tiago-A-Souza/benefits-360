@@ -372,3 +372,32 @@ def test_dental_que_o_portal_nao_traz_marcado_e_marcado_e_conferido(tmp_path, si
     [c] = sim.cotacoes.values()
     assert c["dental"] is True and c["totais"]["apos_12"] == 4827
     assert "Dental: desmarcado no portal; pedido: aderir" in _logs(tmp_path)
+
+
+def test_escolher_corretor_com_lista_ja_aberta_sem_combobox():
+    """Portal 24/11: retomada em Digitação. Chip + busca visíveis, sem combobox 'Nome do Corretor'."""
+    from playwright.sync_api import sync_playwright
+
+    from operadoras.amil.seletores import busca_corretor, combo_corretor
+    from operadoras.amil.telas import escolher_na_lista
+
+    html = """
+    <main>
+      <h2>Vínculo de Vendas</h2>
+      <label>Nome do Corretor *</label>
+      <button type="button">OUTRO ×</button>
+      <input placeholder="Digite nome ou código do corretor...">
+      <div id="opcao" onclick="this.dataset.ok='1'">AAAAAA - EDLAINE ABREU SOARES</div>
+      <button type="button">Continuar</button>
+    </main>
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page()
+        page.set_content(html)
+        escolhido = escolher_na_lista(
+            page, combo_corretor(page), "EDLAINE ABREU SOARES", "Nome do Corretor", "vinculo",
+            busca=busca_corretor(page), segundos=5)
+        assert "EDLAINE" in escolhido.upper()
+        assert page.locator("#opcao").get_attribute("data-ok") == "1"
+        nav.close()

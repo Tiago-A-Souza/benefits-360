@@ -117,7 +117,11 @@ def botao_ver_cotacao(linha: Locator) -> Locator:                      # o ícon
 
 # ---- vínculo de vendas (quadros 10 e 11) ----
 def combo_corretor(page: Page) -> Locator:
-    return page.get_by_role("combobox", name=rx("Nome do Corretor")).or_(page.get_by_text(rx("Selecione um corretor")))
+    # Combobox do formulário vazio; na retomada o campo vira chip (botão com ×) + busca.
+    combo = page.get_by_role("combobox", name=rx("Nome do Corretor"))
+    selecione = page.get_by_text(rx("Selecione um corretor"))
+    chip = page.locator("main").get_by_role("button").filter(has_text=re.compile(r"×"))
+    return combo.or_(selecione).or_(chip)
 
 
 def corretor_ja_escolhido(page: Page, nome: str) -> Locator:
