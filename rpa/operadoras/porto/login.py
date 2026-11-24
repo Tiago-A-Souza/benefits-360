@@ -22,7 +22,7 @@ from nucleo.navegador import ErroLogin, Parado
 from . import seletores as sel
 from .telas import (
     _visivel, esperar_ate, fechar_banners_entrada, logado, login_na_tela,
-    primeiro_visivel, tela_susep,
+    tela_susep,
 )
 
 OPERADORA = ("porto", "Porto Seguro")
@@ -73,25 +73,22 @@ def _login_a_vista(page) -> bool:
 
 
 def _abrir_janela_corretor(s, botao) -> None:
+    """No portal real o clique abre um modal na mesma página; no simulador pode abrir outra janela."""
     page = s.page
     try:
-        with page.expect_popup(timeout=8000) as info:
+        with page.expect_popup(timeout=1500) as info:
             botao.first.click(timeout=5000)
         nova = info.value
         nova.wait_for_load_state("domcontentloaded")
         s.page = nova
         _marcar(s, "janela do corretor online", "Janela do Corretor Online aberta.")
         return
-    except PWTimeout:
+    except Exception:  # noqa: BLE001  (timeout do popup = modal na mesma página; o clique já ocorreu)
         pass
-    except Exception:  # noqa: BLE001
-        try:
-            botao.first.click(timeout=5000)
-        except Exception:  # noqa: BLE001
-            pass
-    if not esperar_ate(lambda: _login_a_vista(s.page), 12):
-        raise _erro("sem_janela_login")
-    _marcar(s, "janela do corretor online", "Janela do Corretor Online aberta.")
+    if esperar_ate(lambda: _login_a_vista(s.page), 20):
+        _marcar(s, "janela do corretor online", "Janela do Corretor Online aberta.")
+        return
+    raise _erro("sem_janela_login")
 
 
 def _abrir_login(s) -> None:
@@ -102,20 +99,19 @@ def _abrir_login(s) -> None:
     fechar_banners_entrada(s.page)
     _marcar(s, "abrindo login", "Primeira página da Porto aberta (localização recusada pelo navegador).",
             captura="entrada_porto")
-    if _login_a_vista(s.page):
-        return
-    botao = primeiro_visivel(s.page, sel.botao_acessar_corretor)
-    if not _visivel(botao):
-        if not esperar_ate(lambda: _login_a_vista(s.page) or _visivel(
-                primeiro_visivel(s.page, sel.botao_acessar_corretor)), s.t("timeout_tela_ms") / 1000):
-            raise _erro("sem_botao_entrada")
-        botao = primeiro_visivel(s.page, sel.botao_acessar_corretor)
+    botao = sel.botao_acessar_corretor(s.page)
+    try:
+        botao.first.wait_for(state="visible", timeout=int(s.t("timeout_tela_ms")))
+    except PWTimeout:
         if _login_a_vista(s.page):
             return
-    fechar_banners_entrada(s.page)
-    _marcar(s, "abrindo login", "Clicando em Acessar o Corretor Online.")
-    _abrir_janela_corretor(s, botao)
-    fechar_banners_entrada(s.page)
+        raise _erro("sem_botao_entrada")
+    ja_no_login = _visivel(sel.login_campo_cpf(s.page)) and _visivel(sel.login_campo_senha(s.page))
+    if not ja_no_login:
+        fechar_banners_entrada(s.page)
+        _marcar(s, "abrindo login", "Clicando em Acessar o Corretor Online.")
+        _abrir_janela_corretor(s, botao)
+        fechar_banners_entrada(s.page)
 
 
 def _preencher(page, campo, valor: str) -> None:

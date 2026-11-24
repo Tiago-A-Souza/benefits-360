@@ -346,12 +346,15 @@ def _pagina_entrada() -> str:
 </div>
 <h1>Corretor Online</h1>
 <p>Para cotar, entre no Corretor Online.</p>
-<a id=acessar class=btn href="/login" target="_blank">Acessar o Corretor Online</a>
+<button type=button id=acessar class="ps-btn ps-btn-secondary">ACESSAR O CORRETOR ONLINE</button>
+<input type=password style="display:none" aria-hidden="true" tabindex="-1">
+<input type=password style="display:none" aria-hidden="true" tabindex="-1">
 </main>
 """
     script = """
 document.getElementById('loc-bloquear').onclick=()=>document.getElementById('aviso-localizacao').remove();
 document.getElementById('cookies-recusar').onclick=()=>document.getElementById('aviso-cookies').remove();
+document.getElementById('acessar').onclick=()=>{ location.href='/login'; };
 """
     return _pagina("Corretor Online", corpo, script)
 

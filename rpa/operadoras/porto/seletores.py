@@ -74,8 +74,9 @@ _RX_BLOQUEAR_LOCAL = re.compile(r"^(bloquear|agora não|não permitir)$", re.I)
 
 
 def botao_acessar_corretor(lugar) -> Locator:
-    """Botão ou link da página pública. Aceita 'Acessar' e 'Acesse o Corretor Online'."""
-    return lugar.locator("a, button, [role=button], [role=link]").filter(has_text=_RX_BOTAO_CORRETOR)
+    """O portal real usa <button> no header e abre um modal; o simulador pode ser link."""
+    return lugar.get_by_role("button", name=_RX_BOTAO_CORRETOR).or_(
+        lugar.get_by_role("link", name=_RX_BOTAO_CORRETOR))
 
 
 def botao_recusar_cookies(lugar) -> Locator:

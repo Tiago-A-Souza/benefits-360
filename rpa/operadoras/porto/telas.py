@@ -99,23 +99,26 @@ def texto_do_cotador(page, limite: int = 60000) -> str:
 
 
 def primeiro_visivel(page, montar):
-    """Primeiro locator visível na página ou num iframe (o login da Porto às vezes não está no frame principal)."""
-    lugares = [page]
+    """Primeiro locator visível. Só olha iframes se a página principal não tiver — recaptcha trava se varrer tudo."""
     try:
-        lugares.extend(page.frames)
+        loc = montar(page)
+        if _visivel(loc):
+            return loc
+    except Exception:  # noqa: BLE001
+        loc = None
+    try:
+        for frame in page.frames:
+            if frame is page.main_frame:
+                continue
+            try:
+                outro = montar(frame)
+                if _visivel(outro):
+                    return outro
+            except Exception:  # noqa: BLE001
+                continue
     except Exception:  # noqa: BLE001
         pass
-    visto = None
-    for lugar in lugares:
-        try:
-            loc = montar(lugar)
-            if visto is None:
-                visto = loc
-            if _visivel(loc):
-                return loc
-        except Exception:  # noqa: BLE001
-            continue
-    return visto if visto is not None else montar(page)
+    return loc if loc is not None else montar(page)
 
 
 def fechar_banners_entrada(page) -> None:

@@ -9,9 +9,10 @@ from playwright.sync_api import sync_playwright
 
 from nucleo.credenciais import Cofre, CofreMemoria
 from nucleo.navegador import ARGS_SEM_PAUSA, _sem_guardar_formularios
+from operadoras.porto import seletores as sel
 from operadoras.porto.login import entrar
 from operadoras.porto.simulador.servidor import Simulador
-from operadoras.porto.telas import fechar_banners_entrada, logado
+from operadoras.porto.telas import _visivel, fechar_banners_entrada, logado
 
 COD = "AAAAAA"
 
@@ -79,6 +80,19 @@ def test_fecha_aviso_de_localizacao_e_cookies(sim):
         fechar_banners_entrada(page)
         assert page.locator("#aviso-localizacao").count() == 0
         assert page.locator("#aviso-cookies").count() == 0
+        page.context.browser.close()
+
+
+def test_botao_do_header_e_button_mesmo_com_senha_escondida(sim):
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.goto(sim.url)
+        fechar_banners_entrada(page)
+        botao = sel.botao_acessar_corretor(page)
+        assert botao.first.is_visible()
+        assert page.get_by_role("button", name=sel._RX_BOTAO_CORRETOR).count() == 1
+        assert sel.login_campo_senha(page).count() >= 1
+        assert not _visivel(sel.login_campo_senha(page))
         page.context.browser.close()
 
 
