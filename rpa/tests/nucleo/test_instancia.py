@@ -157,3 +157,24 @@ def test_backup_diario_nao_apaga_origem(tmp_path):
     mod.backup_diario(db, dest, retencao_dias=14, hoje=datetime.now().date())
     assert not velho.exists()
     assert db.is_file()
+
+
+def test_tee_isatty_e_fileno_nao_quebram_o_uvicorn(tmp_path):
+    """--log espelha stdout; o formatter do uvicorn chama isatty() no stream."""
+    import sys
+
+    from app.__main__ import _Tee, _ligar_log
+    from uvicorn.config import Config
+
+    log = tmp_path / "robo.log"
+    antigo_out, antigo_err = sys.stdout, sys.stderr
+    try:
+        _ligar_log(str(log))
+        assert isinstance(sys.stdout, _Tee)
+        assert isinstance(sys.stdout.isatty(), bool)
+        assert sys.stdout.fileno() == sys.__stdout__.fileno()
+        Config(app="app.servidor:Tela", log_level="warning").configure_logging()
+        print("tee-ok")
+    finally:
+        sys.stdout, sys.stderr = antigo_out, antigo_err
+    assert "tee-ok" in log.read_text(encoding="utf-8")

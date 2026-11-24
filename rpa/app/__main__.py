@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import socket
 import sys
 import threading
@@ -50,6 +51,8 @@ def _sair_ao_fechar_a_janela(tela) -> None:
 
 
 class _Tee:
+    """Espelha stdout/stderr no arquivo de --log. O uvicorn consulta isatty/fileno."""
+
     def __init__(self, *streams):
         self._s = streams
 
@@ -67,6 +70,45 @@ class _Tee:
                 s.flush()
             except Exception:  # noqa: BLE001
                 pass
+
+    def isatty(self):
+        for s in self._s:
+            fn = getattr(s, "isatty", None)
+            if not fn:
+                continue
+            try:
+                if fn():
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+        return False
+
+    def fileno(self):
+        for s in self._s:
+            fn = getattr(s, "fileno", None)
+            if not fn:
+                continue
+            try:
+                return fn()
+            except Exception:  # noqa: BLE001
+                pass
+        raise io.UnsupportedOperation("fileno")
+
+    @property
+    def encoding(self):
+        for s in self._s:
+            enc = getattr(s, "encoding", None)
+            if enc:
+                return enc
+        return "utf-8"
+
+    @property
+    def errors(self):
+        for s in self._s:
+            err = getattr(s, "errors", None)
+            if err:
+                return err
+        return "replace"
 
     def reconfigure(self, **kwargs):
         for s in self._s:
