@@ -218,8 +218,7 @@ def _abrir_login(s) -> None:
     esperar_ate(lambda: _entrada_pronta(s.page), min(20.0, int(s.t("timeout_tela_ms")) / 1000))
     fechar_banners_entrada(s.page)
     _marcar(s, "abrindo login",
-            f"Primeira página da Porto aberta ({sel.caminho(s.page) or '/'}).",
-            captura="entrada_porto")
+            f"Primeira página da Porto aberta ({sel.caminho(s.page) or '/'}).")
     if logado(s.page) and not login_na_tela(s.page) and not tela_susep(s.page):
         return
     ja_no_login = _visivel(sel.login_campo_cpf(s.page)) and _visivel(sel.login_campo_senha(s.page))
@@ -227,6 +226,11 @@ def _abrir_login(s) -> None:
         _marcar(s, "abrindo login", "Clicando em Acessar o Corretor Online.")
         _abrir_janela_corretor(s)
         fechar_banners_entrada(s.page)
+    # Mapa depois do clique: na 1ª tela um iframe sem URL fazia o Playwright pendurar
+    # em evaluate (sem timeout) e o robô nunca chegava a openLogin().
+    _marcar(s, "abrindo login",
+            f"Primeira página da Porto aberta ({sel.caminho(s.page) or '/'}).",
+            captura="entrada_porto", login_vazio=True)
 
 
 def _cpf_para_campo(valor: str) -> str:

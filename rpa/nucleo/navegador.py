@@ -234,7 +234,8 @@ _RX_IFRAME_CAPTCHA = re.compile(
 
 
 def quadros_do_portal(page: Page) -> list:
-    """Frames da operadora. evaluate() em iframe de captcha trava ~30s (origem cruzada)."""
+    """Frames da operadora. evaluate() em iframe de captcha ou sem URL trava o Playwright
+    (Porto 26/11: iframe vazio na 1ª tela, evaluate sem timeout, o clique nunca rodava)."""
     try:
         frames = list(page.frames)
     except Exception:  # noqa: BLE001
@@ -242,10 +243,10 @@ def quadros_do_portal(page: Page) -> list:
     proprios = []
     for f in frames:
         try:
-            u = f.url or ""
+            u = (f.url or "").strip()
         except Exception:  # noqa: BLE001
             continue
-        if _RX_IFRAME_CAPTCHA.search(u):
+        if not u or _RX_IFRAME_CAPTCHA.search(u):
             continue
         proprios.append(f)
     return proprios
@@ -327,17 +328,17 @@ class Mapeador:
             mascaras = [page.get_by_text(s) for s in segredos_visiveis()]
             page.screenshot(path=str(base.with_suffix(".png")), full_page=True, mask=mascaras,
                             timeout=8000)
-        except Exception:  # noqa: BLE001
-            self.log.warning("mapear: print falhou")
+        except Exception as e:  # noqa: BLE001
+            self.log.warning("mapear: print falhou (%s)", type(e).__name__)
         try:
             base.with_suffix(".html").write_text(ocultar(page.content()), encoding="utf-8")
-        except Exception:  # noqa: BLE001
-            self.log.warning("mapear: HTML falhou")
+        except Exception as e:  # noqa: BLE001
+            self.log.warning("mapear: HTML falhou (%s)", type(e).__name__)
         try:
             arvore = page.locator("body").aria_snapshot(timeout=5000)
             base.with_suffix(".aria.txt").write_text(ocultar(f"URL: {page.url}\n\n{arvore}"), encoding="utf-8")
-        except Exception:  # noqa: BLE001
-            self.log.warning("mapear: árvore falhou")
+        except Exception as e:  # noqa: BLE001
+            self.log.warning("mapear: árvore falhou (%s)", type(e).__name__)
         if forcar and etapa.startswith("ERRO_"):
             self._diagnostico(page, base)
         self.log.info(f"mapa salvo: {base}.*")
