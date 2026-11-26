@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import re
 import threading
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -83,6 +85,11 @@ def caminho_base_rede_hospital() -> Path:
 
 _CACHE_BASE_LOCK = threading.Lock()
 _CACHE_BASE: dict[Path, tuple[tuple[int, int, int, int], BaseRedeHospital]] = {}
+_CACHE_DATA_LOCK = threading.Lock()
+_CACHE_DATA: dict[Path, tuple[tuple[int, int], str]] = {}
+_RE_EXTRAIDO_EM = re.compile(
+    r"extra[ií]do em\s+(\d{1,2}/\d{1,2}/\d{4})", re.IGNORECASE
+)
 
 
 def _assinatura_arquivo(caminho: Path) -> tuple[int, int]:
@@ -106,6 +113,52 @@ def limpar_cache_base_rede_hospital() -> None:
     """Descarta a base em memória (testes e diagnóstico)."""
     with _CACHE_BASE_LOCK:
         _CACHE_BASE.clear()
+    with _CACHE_DATA_LOCK:
+        _CACHE_DATA.clear()
+
+
+def data_base_rede_formatada(caminho: Path | None = None) -> str:
+    """Data «Base de …» da aba Resumo («extraído em DD/MM/AAAA»); senão, mtime."""
+    origem = caminho or caminho_base_rede_hospital()
+    try:
+        sig = _assinatura_arquivo(origem)
+    except OSError:
+        return ""
+    chave = origem.resolve()
+    with _CACHE_DATA_LOCK:
+        hit = _CACHE_DATA.get(chave)
+        if hit is not None and hit[0] == sig:
+            return hit[1]
+        texto = _ler_data_aba_resumo(origem)
+        if not texto:
+            texto = datetime.fromtimestamp(origem.stat().st_mtime, tz=timezone.utc).strftime(
+                "%d/%m/%Y"
+            )
+        _CACHE_DATA[chave] = (sig, texto)
+        return texto
+
+
+def _ler_data_aba_resumo(origem: Path) -> str:
+    try:
+        wb = load_workbook(origem, read_only=True, data_only=True)
+    except Exception:
+        return ""
+    try:
+        if "Resumo" not in wb.sheetnames:
+            return ""
+        ws = wb["Resumo"]
+        for row in ws.iter_rows(min_row=1, max_row=40, max_col=8, values_only=True):
+            for cell in row:
+                if cell is None:
+                    continue
+                achado = _RE_EXTRAIDO_EM.search(str(cell))
+                if achado:
+                    return achado.group(1)
+    except Exception:
+        return ""
+    finally:
+        wb.close()
+    return ""
 
 
 def carregar_base_rede_hospital(caminho: Path | None = None) -> BaseRedeHospital:

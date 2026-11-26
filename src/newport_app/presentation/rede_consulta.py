@@ -10,10 +10,8 @@ Nada aqui grava coisa alguma.
 
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timezone
 
 from newport_app.models.simular_rede import (
     BlocoConsultaRede,
@@ -38,8 +36,8 @@ from newport_app.presentation.rede_codigos import (
 from newport_app.presentation.rede_matriz_hospital import (
     BaseRedeHospital,
     PrestadorRedeHospital,
-    caminho_base_rede_hospital,
     carregar_base_rede_hospital,
+    data_base_rede_formatada,
 )
 from newport_app.presentation.rede_prestador_rotulo import nome_prestador_para_rotulo
 from newport_app.presentation.rede_recorte import parse_municipio_base
@@ -183,11 +181,7 @@ def _carregar() -> tuple[BaseRedeHospital, BaseHospitaisPrincipais]:
 
 
 def _data_base_rede() -> str:
-    try:
-        mtime = os.path.getmtime(caminho_base_rede_hospital())
-    except OSError:
-        return ""
-    return datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%d/%m/%Y")
+    return data_base_rede_formatada()
 
 
 # --------------------------------------------------------------------------

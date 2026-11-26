@@ -73,7 +73,8 @@ def test_01_abre_sem_estudo_nenhum(client: TestClient):
     r = client.get("/api/simular-rede/opcoes")
     assert r.status_code == 200
     corpo = r.json()
-    assert corpo["total_prestadores"] > 1000
+    assert corpo["total_prestadores"] == 882
+    assert corpo["data_base_rede"] == "17/11/2026"
     assert corpo["operadoras"] and corpo["ufs"]
 
 
@@ -267,11 +268,11 @@ def test_09_filtros_de_estado_municipio_e_zona_reduzem_nos_dois_modos(client: Te
 
 
 def test_10_so_principais_por_padrao_e_ver_todos_amplia(client: TestClient):
-    padrao = client.get(
-        "/api/simular-rede/por-hospital", params={"q": "Samaritano"}
-    ).json()
+    # Samaritano na extração 17/11 só restou como principal; usa recorte com mistos.
+    params = {"q": "hospital", "uf": "SP", "municipio": "SP.SAO PAULO"}
+    padrao = client.get("/api/simular-rede/por-hospital", params=params).json()
     todos = client.get(
-        "/api/simular-rede/por-hospital", params={"q": "Samaritano", "todos": True}
+        "/api/simular-rede/por-hospital", params={**params, "todos": True}
     ).json()
     assert all(ln["principal"] for ln in _linhas(padrao))
     assert padrao["ocultos_nao_principais"] > 0

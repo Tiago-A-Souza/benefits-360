@@ -61,9 +61,10 @@ CASAMENTO_MARCAS_ESPERADO = {
         },
     },
     "Lavoisier": {
-        "unidades": 14,
+        "unidades": 16,
         "municipios": {
             "SP.BARUERI",
+            "SP.CAIEIRAS",
             "SP.CARAPICUIBA",
             "SP.COTIA",
             "SP.DIADEMA",
@@ -77,15 +78,21 @@ CASAMENTO_MARCAS_ESPERADO = {
             "SP.SAO BERNARDO DO CAMPO",
             "SP.SAO CAETANO DO SUL",
             "SP.SAO PAULO",
+            "SP.TABOAO DA SERRA",
         },
     },
     "CDB": {
-        "unidades": 4,
-        "municipios": {"SP.MOGI DAS CRUZES", "SP.SAO BERNARDO DO CAMPO", "SP.SAO PAULO"},
+        "unidades": 5,
+        "municipios": {
+            "SP.MOGI DAS CRUZES",
+            "SP.SAO BERNARDO DO CAMPO",
+            "SP.SAO PAULO",
+            "SP.SUZANO",
+        },
     },
     "Femme": {"unidades": 2, "municipios": {"SP.OSASCO", "SP.SAO PAULO"}},
     "Pardini": {
-        "unidades": 8,
+        "unidades": 10,
         "municipios": {
             "MG.BELO HORIZONTE",
             "RJ.RIO DE JANEIRO",
@@ -95,6 +102,7 @@ CASAMENTO_MARCAS_ESPERADO = {
             "SP.SANTO ANDRE",
             "SP.SAO BERNARDO DO CAMPO",
             "SP.SAO PAULO",
+            "SP.TABOAO DA SERRA",
         },
     },
     "Salomão": {"unidades": 2, "municipios": {"SP.OSASCO", "SP.SAO PAULO"}},
@@ -148,15 +156,16 @@ def test_p1_parse_municipio_sao_paulo_com_acento_nao_some():
     assert "SP.SAO PAULO" in perm_raw
 
 
-def test_p1_ingestao_2683_sem_filtro_hger(base_lab):
-    assert len(base_lab.prestadores) == 2683
-    assert len(base_lab.municipios) == 52
+def test_p1_ingestao_1455_sem_filtro_hger(base_lab):
+    # Extração 17/11/2026 filtrada (ACLIN/S_ESP): 2.683 → 1.455; 68 municípios; 193 planos.
+    assert len(base_lab.prestadores) == 1455
+    assert len(base_lab.municipios) == 68
     assert "SP.SAO PAULO" in base_lab.municipios
     assert any(p.chave_municipio == "SP.SAO PAULO" for p in base_lab.prestadores)
-    assert len(base_lab.colunas) == 189
+    assert len(base_lab.colunas) == 193
     com_celula = [p for p in base_lab.prestadores if p.celulas]
-    assert len(com_celula) >= 2600
-    amostra = next(p for p in base_lab.prestadores if "ULTRA" in " ".join(p.celulas.values()))
+    assert len(com_celula) == 1455
+    amostra = next(p for p in base_lab.prestadores if "ACLIN" in " ".join(p.celulas.values()))
     assert amostra.celulas
 
 
@@ -165,7 +174,7 @@ def test_p1_colunas_lab_identicas_ao_hospital(base_lab, base_hospital):
     hosp = {(c.col_idx, c.operadora_raw, c.linha, c.plano) for c in base_hospital.colunas}
     assert lab == hosp
     via_aba = carregar_colunas_rede_xlsx(_XLSX, aba="Matriz_Laboratorio")
-    assert len(via_aba) == 189
+    assert len(via_aba) == 193
 
 
 def test_p1_csv_marcas_na_ordem_e_casamento(base_lab):
@@ -217,15 +226,16 @@ def test_p1_csv_malformado_cita_linha(tmp_path):
 def test_p2_recorte_sao_paulo_com_acento(base_lab):
     mun, labs = recortar_laboratorios(base_lab, {("SP", "São Paulo")})
     assert "SP.SAO PAULO" in mun
-    assert len(labs) == 199
+    assert len(labs) == 141
     assert all(p.chave_municipio == "SP.SAO PAULO" for p in labs)
 
 
 def test_p2_recorte_atibaia_inclui_capital(base_lab):
+    # Atibaia saiu da matriz filtrada 17/11; o recorte cai na capital da UF.
     mun, labs = recortar_laboratorios(base_lab, {("SP", "Atibaia")})
-    assert mun == frozenset({"SP.ATIBAIA", "SP.SAO PAULO"})
+    assert mun == frozenset({"SP.SAO PAULO"})
     assert {p.chave_municipio for p in labs} == mun
-    assert len(labs) == 208
+    assert len(labs) == 141
 
 
 def test_p3_casamento_igual_ao_hospital(base_lab, base_hospital):
@@ -250,7 +260,7 @@ def test_p3_casamento_igual_ao_hospital(base_lab, base_hospital):
 def test_p2_recorte_niteroi_so_capital(base_lab):
     mun, labs = recortar_laboratorios(base_lab, {("RJ", "Niterói")})
     assert mun == frozenset({"RJ.RIO DE JANEIRO"})
-    assert len(labs) == 178
+    assert len(labs) == 91
 
 
 def test_p4_bloco_sp_e_rj_por_marca(base_lab):

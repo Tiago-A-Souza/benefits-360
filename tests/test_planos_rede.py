@@ -194,6 +194,8 @@ def _planos_estudo_reais() -> list[tuple[str, str]]:
 
 def test_censo_55_casam(colunas_rede, tabela_rede):
     planos = _planos_estudo_reais()
+    if not planos:
+        pytest.skip("censo de estudos reais ausente neste worktree")
     assert len(planos) == 55
     alias = regra = sem = 0
     amb: list[str] = []
