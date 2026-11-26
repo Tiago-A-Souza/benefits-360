@@ -10,6 +10,7 @@ import {
   haFiltroGeografico,
   municipiosDaUf,
   planosDaOperadora,
+  temTermoConsulta,
   textoContagemLabs,
 } from "./opcoesSimulacao";
 
@@ -137,16 +138,19 @@ export default function SimularLabs() {
       : ["plano", plano, uf, municipio, todos]
   );
   const confirmar = confirmadoPara === chaveConsulta;
-  const consultaAtiva = modo === "laboratorio" || Boolean(plano);
+  const consultaAtiva = modo === "laboratorio" ? temTermoConsulta(termo) : Boolean(plano);
   const nOperadoras = opcoes?.operadoras?.length ?? 0;
 
   useEffect(() => {
     if (!consultaAtiva) {
+      seq.current += 1;
       setResp(null);
       setErro(null);
       setMs(null);
-      return;
+      setCarregando(false);
+      return undefined;
     }
+    const ac = new AbortController();
     const minha = ++seq.current;
     const inicio = performance.now();
     setCarregando(true);
@@ -160,6 +164,7 @@ export default function SimularLabs() {
             municipio,
             todos,
             confirmar,
+            signal: ac.signal,
           })
         : consultarRedePorPlanoLaboratorio({
             plano,
@@ -167,27 +172,52 @@ export default function SimularLabs() {
             municipio,
             todos,
             confirmar,
+            signal: ac.signal,
           });
     chamada
       .then((r) => {
-        if (seq.current !== minha) return;
+        if (seq.current !== minha || ac.signal.aborted) return;
         setResp(r);
         setMs(Math.round(performance.now() - inicio));
       })
       .catch((e) => {
-        if (seq.current !== minha) return;
+        if (seq.current !== minha || ac.signal.aborted || e?.codigo === "ABORTADO") return;
         setResp(null);
         setErro(mensagemErroOperador(e, "Falha na consulta."));
       })
       .finally(() => {
         if (seq.current === minha) setCarregando(false);
       });
+    return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveConsulta, confirmar, consultaAtiva]);
 
+  function resetarConsulta() {
+    setTexto("");
+    setTermo("");
+    setOperadorasSel([]);
+    setOpPlano("");
+    setPlano("");
+    setUf("");
+    setMunicipio("");
+    setTodos(false);
+    setConfirmadoPara("");
+    setResp(null);
+    setErro(null);
+    setMs(null);
+  }
+
+  function escolherModo(proximo) {
+    if (proximo === modo) return;
+    resetarConsulta();
+    setModo(proximo);
+  }
+
   function submeter(e) {
     e.preventDefault();
-    setTermo(texto.trim());
+    const t = texto.trim();
+    if (!temTermoConsulta(t)) return;
+    setTermo(t);
   }
 
   function escolherUf(valor) {
@@ -211,7 +241,7 @@ export default function SimularLabs() {
           role="tab"
           aria-selected={modo === "laboratorio"}
           className={modo === "laboratorio" ? "ativo" : ""}
-          onClick={() => setModo("laboratorio")}
+          onClick={() => escolherModo("laboratorio")}
         >
           Por laboratório
           <small>Quais planos cobrem?</small>
@@ -221,7 +251,7 @@ export default function SimularLabs() {
           role="tab"
           aria-selected={modo === "plano"}
           className={modo === "plano" ? "ativo" : ""}
-          onClick={() => setModo("plano")}
+          onClick={() => escolherModo("plano")}
         >
           Por plano
           <small>Onde o plano atende?</small>
@@ -247,10 +277,12 @@ export default function SimularLabs() {
                   autoComplete="off"
                 />
                 <span className="hint">
-                  Várias marcas separadas por «;» ou vírgula. Vazio lista as marcas da base.
+                  Várias marcas separadas por «;» ou vírgula. Busca por parte do nome.
                 </span>
               </div>
-              <button type="submit">Consultar</button>
+              <button type="submit" disabled={!temTermoConsulta(texto)}>
+                Consultar
+              </button>
             </form>
           ) : (
             <div className="catalog-filters simular-plano">
@@ -399,8 +431,16 @@ export default function SimularLabs() {
               i
             </div>
             <div>
-              <b>Escolha operadora e plano</b>
-              <p>A tabela lista as marcas cobertas pelo plano na geografia escolhida.</p>
+              <b>
+                {modo === "laboratorio"
+                  ? "Digite um ou mais laboratórios"
+                  : "Escolha operadora e plano"}
+              </b>
+              <p>
+                {modo === "laboratorio"
+                  ? "A tabela mostra uma linha por marca e uma coluna por plano que a cobre."
+                  : "A tabela lista as marcas cobertas pelo plano na geografia escolhida."}
+              </p>
             </div>
           </div>
         )}

@@ -15,6 +15,7 @@ import {
   haRedeVerticalizada,
   municipiosDaUf,
   planosDaOperadora,
+  temTermoConsulta,
   textoContagem,
   zonasDoMunicipio,
 } from "./opcoesSimulacao";
@@ -144,15 +145,18 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
   );
   const confirmar = confirmadoPara === chaveConsulta;
 
-  const consultaAtiva = modo === "hospital" ? Boolean(termo.trim()) : Boolean(plano);
+  const consultaAtiva = modo === "hospital" ? temTermoConsulta(termo) : Boolean(plano);
 
   useEffect(() => {
     if (!consultaAtiva) {
+      seq.current += 1;
       setResp(null);
       setErro(null);
       setMs(null);
-      return;
+      setCarregando(false);
+      return undefined;
     }
+    const ac = new AbortController();
     const minha = ++seq.current;
     const inicio = performance.now();
     setCarregando(true);
@@ -166,28 +170,69 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             municipio,
             zona,
             todos,
+            signal: ac.signal,
           })
-        : consultarRedePorPlano({ plano, uf, municipio, zona, todos, confirmar });
+        : consultarRedePorPlano({
+            plano,
+            uf,
+            municipio,
+            zona,
+            todos,
+            confirmar,
+            signal: ac.signal,
+          });
     chamada
       .then((r) => {
-        if (seq.current !== minha) return;
+        if (seq.current !== minha || ac.signal.aborted) return;
         setResp(r);
         setMs(Math.round(performance.now() - inicio));
       })
       .catch((e) => {
-        if (seq.current !== minha) return;
+        if (seq.current !== minha || ac.signal.aborted || e?.codigo === "ABORTADO") return;
         setResp(null);
         setErro(mensagemErroOperador(e, "Falha na consulta."));
       })
       .finally(() => {
         if (seq.current === minha) setCarregando(false);
       });
+    return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveConsulta, confirmar, consultaAtiva]);
 
+  function resetarConsulta() {
+    setTexto("");
+    setTermo("");
+    setOperadorasSel([]);
+    setOpPlano("");
+    setPlano("");
+    setUf("");
+    setMunicipio("");
+    setZona("");
+    setTodos(false);
+    setConfirmadoPara("");
+    setResp(null);
+    setErro(null);
+    setMs(null);
+  }
+
+  function escolherTipo(tipo) {
+    if (tipo === tipoRede) return;
+    resetarConsulta();
+    setModo("hospital");
+    setTipoRede(tipo);
+  }
+
+  function escolherModo(proximo) {
+    if (proximo === modo) return;
+    resetarConsulta();
+    setModo(proximo);
+  }
+
   function submeterHospital(e) {
     e.preventDefault();
-    setTermo(texto.trim());
+    const t = texto.trim();
+    if (!temTermoConsulta(t)) return;
+    setTermo(t);
   }
 
   function escolherUf(valor) {
@@ -245,7 +290,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             role="tab"
             aria-selected={tipoRede === "hospitais"}
             className={tipoRede === "hospitais" ? "ativo" : ""}
-            onClick={() => setTipoRede("hospitais")}
+            onClick={() => escolherTipo("hospitais")}
           >
             Hospitais
           </button>
@@ -254,14 +299,14 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             role="tab"
             aria-selected={tipoRede === "laboratorios"}
             className={tipoRede === "laboratorios" ? "ativo" : ""}
-            onClick={() => setTipoRede("laboratorios")}
+            onClick={() => escolherTipo("laboratorios")}
           >
             Laboratórios
           </button>
         </div>
 
         {tipoRede === "laboratorios" ? (
-          <SimularLabs />
+          <SimularLabs key="laboratorios" />
         ) : (
           <>
         <div className="simular-modos" role="tablist" aria-label="Tipo de consulta">
@@ -270,7 +315,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             role="tab"
             aria-selected={modo === "hospital"}
             className={modo === "hospital" ? "ativo" : ""}
-            onClick={() => setModo("hospital")}
+            onClick={() => escolherModo("hospital")}
           >
             Por hospital
             <small>Quais planos cobrem?</small>
@@ -280,7 +325,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
             role="tab"
             aria-selected={modo === "plano"}
             className={modo === "plano" ? "ativo" : ""}
-            onClick={() => setModo("plano")}
+            onClick={() => escolherModo("plano")}
           >
             Por plano
             <small>Onde o plano atende?</small>
@@ -307,7 +352,7 @@ export default function SimularRede({ onMeusEstudos, onSimularRede, onCotacoes, 
                     Vários hospitais separados por «;» ou vírgula. Busca por parte do nome.
                   </span>
                 </div>
-                <button type="submit" disabled={!texto.trim()}>
+                <button type="submit" disabled={!temTermoConsulta(texto)}>
                   Consultar
                 </button>
               </form>

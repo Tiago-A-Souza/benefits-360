@@ -37,7 +37,7 @@ from newport_app.presentation.rede_consulta import (
     _normalizar_busca,
     _ordem_municipio,
     _rotulo_municipio,
-    termos_de_busca,
+    exigir_termos_busca,
 )
 from newport_app.presentation.rede_labs import MARCA_COBERTURA
 from newport_app.presentation.rede_matriz_laboratorio import (
@@ -98,20 +98,18 @@ def _aviso_porto(
     *,
     uf: str,
     municipio: str,
+    operadoras: Sequence[str] | None = None,
 ) -> str | None:
-    cols = list(colunas)
-    if not cols:
-        return None
-    tem_porto = False
-    for c in cols:
-        nome = getattr(c, "operadora", None) or _nome_operadora(c)
-        if _operadora_porto_ou_medservice(nome):
-            tem_porto = True
-            break
+    """Só depois de uma consulta, e só se o resultado ou o filtro envolver Porto."""
+    nomes: list[str] = []
+    for c in colunas:
+        nomes.append(getattr(c, "operadora", None) or _nome_operadora(c))
         raw = getattr(c, "operadora_raw", "") or ""
-        if _operadora_porto_ou_medservice(raw):
-            tem_porto = True
-            break
+        if raw:
+            nomes.append(raw)
+    if operadoras:
+        nomes.extend(operadoras)
+    tem_porto = any(_operadora_porto_ou_medservice(n) for n in nomes if n)
     if not tem_porto:
         return None
     uf_alvo = uf or (municipio.split(".", 1)[0] if municipio else "")
@@ -246,10 +244,11 @@ def consultar_por_laboratorio(
     confirmar: bool = False,
 ) -> ConsultaRedeResponse:
     """Marcas (ou cada prestador, se `todos`) × planos da matriz, com ✓."""
-    termos = termos_de_busca(consulta)
+    termos = exigir_termos_busca(consulta, o_que="laboratório")
     base, marcas = _carregar()
     uf_f, mun_f = _normalizar_filtros(uf, municipio)
     sem_filtro_geo = not (uf_f or mun_f)
+    ops_filtro = [o for o in (operadoras or []) if (o or "").strip()]
     colunas_alvo = _filtrar_colunas(base, operadoras)
     no_geo = _unidades_no_filtro(base, uf_f, mun_f)
 
@@ -313,7 +312,9 @@ def consultar_por_laboratorio(
             aviso=aviso,
             sem_cobertura=bool(linhas) and not colunas,
             data_base_rede=_data_base_rede(),
-            aviso_porto=_aviso_porto(colunas_alvo, uf=uf_f, municipio=mun_f),
+            aviso_porto=_aviso_porto(
+                colunas, uf=uf_f, municipio=mun_f, operadoras=ops_filtro
+            ),
             contagem_por_coluna=_contagem(linhas, [c.chave for c in colunas]),
         )
 
@@ -366,7 +367,9 @@ def consultar_por_laboratorio(
         aviso=aviso,
         sem_cobertura=bool(linhas_marca) and not colunas,
         data_base_rede=_data_base_rede(),
-        aviso_porto=_aviso_porto(colunas_alvo, uf=uf_f, municipio=mun_f),
+        aviso_porto=_aviso_porto(
+            colunas, uf=uf_f, municipio=mun_f, operadoras=ops_filtro
+        ),
         contagem_por_coluna=_contagem(linhas_marca, [c.chave for c in colunas]),
     )
 

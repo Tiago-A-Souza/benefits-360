@@ -113,6 +113,16 @@ def termos_de_busca(consulta: str | Sequence[str] | None) -> list[list[str]]:
     return saida
 
 
+def exigir_termos_busca(
+    consulta: str | Sequence[str] | None, *, o_que: str
+) -> list[list[str]]:
+    """Exige ao menos um termo; busca vazia nunca lista a base inteira."""
+    termos = termos_de_busca(consulta)
+    if not termos:
+        raise ConsultaRedeInvalida(f"Digite o nome de ao menos um {o_que}.")
+    return termos
+
+
 def _prestador_casa(p: PrestadorRedeHospital, termos: list[list[str]]) -> bool:
     palheiro = _normalizar_busca(f"{p.prestador} {p.bairro}")
     return any(all(tok in palheiro for tok in termo) for termo in termos)
@@ -334,9 +344,7 @@ def consultar_por_hospital(
     todos: bool = False,
 ) -> ConsultaRedeResponse:
     """Quais planos cobrem o(s) hospital(is) digitado(s) — uma linha por unidade."""
-    termos = termos_de_busca(consulta)
-    if not termos:
-        raise ConsultaRedeInvalida("Digite o nome de ao menos um hospital.")
+    termos = exigir_termos_busca(consulta, o_que="hospital")
     base, principais = _carregar()
     uf_f, mun_f, zona_f = _normalizar_filtros(uf, municipio, zona)
 

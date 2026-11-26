@@ -12,14 +12,20 @@ async function apiFetch(url, options = {}) {
   const headers = new Headers(options.headers || undefined);
   const token = await obterAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  const { signal: sinalChamador, timeoutMs, ...rest } = options;
   const ctrl = new AbortController();
-  const ms = options.timeoutMs || TIMEOUT_MS;
+  const ms = timeoutMs || TIMEOUT_MS;
   const t = setTimeout(() => ctrl.abort(), ms);
+  const abortarComChamador = () => ctrl.abort();
+  if (sinalChamador) {
+    if (sinalChamador.aborted) ctrl.abort();
+    else sinalChamador.addEventListener("abort", abortarComChamador, { once: true });
+  }
   try {
     const res = await globalThis.fetch(url, {
-      ...options,
+      ...rest,
       headers,
-      signal: options.signal || ctrl.signal,
+      signal: ctrl.signal,
     });
     if (res.status === 401) {
       void sairSessao();
@@ -28,6 +34,11 @@ async function apiFetch(url, options = {}) {
     return res;
   } catch (e) {
     if (e && (e.name === "AbortError" || /aborted/i.test(String(e.message || "")))) {
+      if (sinalChamador?.aborted) {
+        const err = new Error("Consulta cancelada.");
+        err.codigo = "ABORTADO";
+        throw err;
+      }
       const err = new Error("A requisição demorou demais (timeout). Tente novamente.");
       err.codigo = "TIMEOUT";
       throw err;
@@ -35,6 +46,7 @@ async function apiFetch(url, options = {}) {
     throw e;
   } finally {
     clearTimeout(t);
+    if (sinalChamador) sinalChamador.removeEventListener("abort", abortarComChamador);
   }
 }
 
@@ -226,18 +238,18 @@ function paramsSimulacao({ uf, municipio, zona, todos, confirmar }) {
   return p;
 }
 
-export async function consultarRedePorHospital({ termo, operadoras = [], ...filtros }) {
+export async function consultarRedePorHospital({ termo, operadoras = [], signal, ...filtros }) {
   const p = paramsSimulacao(filtros);
-  p.append("q", termo);
+  p.append("q", termo ?? "");
   operadoras.forEach((o) => p.append("operadoras", o));
-  const res = await apiFetch(`${API}/simular-rede/por-hospital?${p}`);
+  const res = await apiFetch(`${API}/simular-rede/por-hospital?${p}`, signal ? { signal } : {});
   return tratarResposta(res, "Não foi possível consultar a rede por hospital.");
 }
 
-export async function consultarRedePorPlano({ plano, ...filtros }) {
+export async function consultarRedePorPlano({ plano, signal, ...filtros }) {
   const p = paramsSimulacao(filtros);
   p.set("plano", plano);
-  const res = await apiFetch(`${API}/simular-rede/por-plano?${p}`);
+  const res = await apiFetch(`${API}/simular-rede/por-plano?${p}`, signal ? { signal } : {});
   return tratarResposta(res, "Não foi possível consultar a rede por plano.");
 }
 
@@ -246,18 +258,24 @@ export async function obterOpcoesSimulacaoLaboratorio() {
   return tratarResposta(res, "Não foi possível carregar a base de laboratórios.");
 }
 
-export async function consultarRedePorLaboratorio({ termo, operadoras = [], ...filtros }) {
+export async function consultarRedePorLaboratorio({ termo, operadoras = [], signal, ...filtros }) {
   const p = paramsSimulacao(filtros);
-  if (termo) p.append("q", termo);
+  p.append("q", termo ?? "");
   operadoras.forEach((o) => p.append("operadoras", o));
-  const res = await apiFetch(`${API}/simular-rede/laboratorios/por-laboratorio?${p}`);
+  const res = await apiFetch(
+    `${API}/simular-rede/laboratorios/por-laboratorio?${p}`,
+    signal ? { signal } : {}
+  );
   return tratarResposta(res, "Não foi possível consultar a rede por laboratório.");
 }
 
-export async function consultarRedePorPlanoLaboratorio({ plano, ...filtros }) {
+export async function consultarRedePorPlanoLaboratorio({ plano, signal, ...filtros }) {
   const p = paramsSimulacao(filtros);
   p.set("plano", plano);
-  const res = await apiFetch(`${API}/simular-rede/laboratorios/por-plano?${p}`);
+  const res = await apiFetch(
+    `${API}/simular-rede/laboratorios/por-plano?${p}`,
+    signal ? { signal } : {}
+  );
   return tratarResposta(res, "Não foi possível consultar a rede de laboratório por plano.");
 }
 

@@ -7480,6 +7480,17 @@ a.btn-link {
   gap: 18px;
 }
 
+.simular-rede .lista-head,
+.simular-tipo,
+.simular-modos,
+.simular-filtros {
+  flex-shrink: 0;
+}
+
+.simular-filtros {
+  overflow: visible;
+}
+
 .simular-rede .lista-head {
   margin-bottom: 0;
 }
