@@ -105,7 +105,9 @@ def test_01_opcoes_vem_da_base_de_laboratorio():
 
 
 def test_02_sp_capital_agrupa_marcas_e_lista_municipio():
-    r = consultar_por_laboratorio(uf="SP", municipio="SP.SAO PAULO")
+    r = consultar_por_laboratorio(
+        "; ".join(MARCAS_SP_CAPITAL), uf="SP", municipio="SP.SAO PAULO"
+    )
     nomes = {ln.prestador for ln in _linhas(r)}
     assert nomes == MARCAS_SP_CAPITAL
     assert r.total_linhas == 7
@@ -132,10 +134,21 @@ def test_03_busca_acento_insensivel_e_varios_termos():
     assert {ln.prestador for ln in _linhas(virgula)} == {"Femme", "Pardini"}
 
 
+def test_02b_busca_vazia_e_recusada():
+    with pytest.raises(ConsultaRedeInvalida):
+        consultar_por_laboratorio()
+    with pytest.raises(ConsultaRedeInvalida):
+        consultar_por_laboratorio(" ; ")
+    with pytest.raises(ConsultaRedeInvalida):
+        consultar_por_laboratorio(todos=True)
+
+
 def test_04_filtro_operadora_reduz_colunas():
-    todas = consultar_por_laboratorio(uf="SP", municipio="SP.SAO PAULO")
+    todas = consultar_por_laboratorio(
+        "Delboni", uf="SP", municipio="SP.SAO PAULO"
+    )
     amil = consultar_por_laboratorio(
-        uf="SP", municipio="SP.SAO PAULO", operadoras=["Amil"]
+        "Delboni", uf="SP", municipio="SP.SAO PAULO", operadoras=["Amil"]
     )
     assert amil.colunas
     assert len(amil.colunas) < len(todas.colunas)
@@ -143,7 +156,7 @@ def test_04_filtro_operadora_reduz_colunas():
 
 
 def test_05_cobertura_binaria_nunca_codigo_de_exame():
-    r = consultar_por_laboratorio(uf="SP", municipio="SP.SAO PAULO")
+    r = consultar_por_laboratorio("Delboni", uf="SP", municipio="SP.SAO PAULO")
     valores = set(_celulas(r))
     assert valores <= {MARCA_COBERTURA}
     assert MARCA_COBERTURA == MARCA_COBERTURA_ETAPA5 == "✓"
@@ -154,11 +167,11 @@ def test_05_cobertura_binaria_nunca_codigo_de_exame():
 
 
 def test_06_ver_todos_lista_prestador_sem_agrupar():
-    marcas = consultar_por_laboratorio(uf="SP", municipio="SP.SAO PAULO")
-    todos = consultar_por_laboratorio(uf="SP", municipio="SP.SAO PAULO", todos=True)
+    marcas = consultar_por_laboratorio("LAB", uf="SP", municipio="SP.SAO PAULO")
+    todos = consultar_por_laboratorio("LAB", uf="SP", municipio="SP.SAO PAULO", todos=True)
     assert todos.mostrando_todos is True
+    assert marcas.mostrando_todos is False
     assert todos.total_linhas > marcas.total_linhas
-    assert todos.total_linhas > 50
     ids = [ln.linha_id for ln in _linhas(todos)]
     assert all(i.startswith("l") for i in ids)
     assert len(ids) == len(set(ids))
@@ -166,22 +179,22 @@ def test_06_ver_todos_lista_prestador_sem_agrupar():
 
 
 def test_07_trava_100_sem_filtro_geografico():
-    r = consultar_por_laboratorio(todos=True)
+    r = consultar_por_laboratorio("LAB", todos=True)
     assert r.requer_confirmacao is True
     assert r.total_linhas == 0
     assert r.total_encontrado > LIMITE_SEM_FILTRO_GEOGRAFICO
-    ok = consultar_por_laboratorio(todos=True, confirmar=True)
+    ok = consultar_por_laboratorio("LAB", todos=True, confirmar=True)
     assert ok.requer_confirmacao is False
     assert ok.total_linhas == ok.total_encontrado > LIMITE_SEM_FILTRO_GEOGRAFICO
 
 
 def test_08_aviso_porto_fora_de_sp_rj_df():
     ba = consultar_por_laboratorio(
-        uf="BA", municipio="BA.SALVADOR", operadoras=["Porto Seguro"]
+        "Delboni", uf="BA", municipio="BA.SALVADOR", operadoras=["Porto Seguro"]
     )
     assert ba.aviso_porto == AVISO_PORTO_MEDSERVICE
     sp = consultar_por_laboratorio(
-        uf="SP", municipio="SP.SAO PAULO", operadoras=["Porto Seguro"]
+        "Delboni", uf="SP", municipio="SP.SAO PAULO", operadoras=["Porto Seguro"]
     )
     assert sp.aviso_porto is None
 
@@ -226,7 +239,7 @@ def test_11_por_plano_ver_todos_trava_sem_geo():
 
 def test_12_consulta_nao_grava_e_nao_depende_de_estudo(tmp_path: Path):
     alvo = tmp_path / "vazio.db"
-    consultar_por_laboratorio(uf="SP")
+    consultar_por_laboratorio("Delboni", uf="SP")
     consultar_por_plano_laboratorio(
         opcoes_simulacao_laboratorio().operadoras[0].planos[0].chave, uf="RJ"
     )
@@ -250,12 +263,12 @@ def test_api_01_opcoes_laboratorio(client: TestClient):
 def test_api_02_por_laboratorio_sp_capital(client: TestClient):
     r = client.get(
         "/api/simular-rede/laboratorios/por-laboratorio",
-        params={"uf": "SP", "municipio": "SP.SAO PAULO"},
+        params={"q": "Delboni", "uf": "SP", "municipio": "SP.SAO PAULO"},
     )
     assert r.status_code == 200
     corpo = r.json()
     nomes = {ln["prestador"] for ln in _linhas_json(corpo)}
-    assert nomes == MARCAS_SP_CAPITAL
+    assert nomes == {"Delboni"}
     assert corpo["contagem_por_coluna"]
     assert corpo["aviso_porto"] is None
     valores = {v for ln in _linhas_json(corpo) for v in ln["celulas"].values()}
@@ -294,14 +307,22 @@ def test_api_04_por_plano_rio(client: TestClient):
 
 
 def test_api_05_ver_todos_trava_100_e_confirma(client: TestClient):
-    r = client.get("/api/simular-rede/laboratorios/por-laboratorio", params={"todos": True})
+    vazio = client.get("/api/simular-rede/laboratorios/por-laboratorio")
+    assert vazio.status_code == 422
+    assert client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio", params={"todos": True}
+    ).status_code == 422
+    r = client.get(
+        "/api/simular-rede/laboratorios/por-laboratorio",
+        params={"q": "LAB", "todos": True},
+    )
     assert r.status_code == 200
     corpo = r.json()
     assert corpo["requer_confirmacao"] is True
     assert corpo["total_linhas"] == 0
     ok = client.get(
         "/api/simular-rede/laboratorios/por-laboratorio",
-        params={"todos": True, "confirmar": True},
+        params={"q": "LAB", "todos": True, "confirmar": True},
     ).json()
     assert ok["requer_confirmacao"] is False
     assert ok["total_linhas"] > LIMITE_SEM_FILTRO_GEOGRAFICO
@@ -310,7 +331,12 @@ def test_api_05_ver_todos_trava_100_e_confirma(client: TestClient):
 def test_api_06_aviso_porto_e_plano_inexistente(client: TestClient):
     r = client.get(
         "/api/simular-rede/laboratorios/por-laboratorio",
-        params={"uf": "BA", "municipio": "BA.SALVADOR", "operadoras": "Porto Seguro"},
+        params={
+            "q": "Delboni",
+            "uf": "BA",
+            "municipio": "BA.SALVADOR",
+            "operadoras": "Porto Seguro",
+        },
     ).json()
     assert r["aviso_porto"] == AVISO_PORTO_MEDSERVICE
     bad = client.get("/api/simular-rede/laboratorios/por-plano", params={"plano": "999999"})
@@ -324,7 +350,7 @@ def test_api_07_nada_e_gravado(client: TestClient, db_path: Path):
     client.get("/api/simular-rede/laboratorios/opcoes")
     client.get(
         "/api/simular-rede/laboratorios/por-laboratorio",
-        params={"uf": "SP", "municipio": "SP.SAO PAULO"},
+        params={"q": "Delboni", "uf": "SP", "municipio": "SP.SAO PAULO"},
     )
     plano = client.get("/api/simular-rede/laboratorios/opcoes").json()["operadoras"][0][
         "planos"

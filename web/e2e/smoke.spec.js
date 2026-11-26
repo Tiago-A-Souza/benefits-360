@@ -78,7 +78,7 @@ async function varrerRotas(page, falhas, nomeCenario) {
   await expect(page.getByText("Estudo Saúde")).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Turya" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sair", exact: true })).toBeVisible();
-  await expect(page.getByText("V1.0.0", { exact: true })).toBeVisible();
+  await expect(page.getByText("V1.0.1", { exact: true })).toBeVisible();
   await expect(page.getByText("RASCUNHO INTERNO")).toHaveCount(0);
   await checar("Meus estudos");
 

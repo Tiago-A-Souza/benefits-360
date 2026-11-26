@@ -9,6 +9,7 @@ import {
   haRedeVerticalizada,
   municipiosDaUf,
   planosDaOperadora,
+  temTermoConsulta,
   textoContagem,
   textoContagemLabs,
   zonasDoMunicipio,
@@ -68,6 +69,17 @@ describe("selects encadeados", () => {
   it("plano depende da operadora", () => {
     expect(planosDaOperadora(opcoes, "")).toEqual([]);
     expect(planosDaOperadora(opcoes, "Porto Seguro").map((p) => p.rotulo)).toEqual(["Prata", "Ouro"]);
+  });
+});
+
+describe("consulta só com mínimo", () => {
+  it("exige 2 caracteres e aceita A+", () => {
+    expect(temTermoConsulta("")).toBe(false);
+    expect(temTermoConsulta(" ")).toBe(false);
+    expect(temTermoConsulta("E")).toBe(false);
+    expect(temTermoConsulta("Ei")).toBe(true);
+    expect(temTermoConsulta("A+")).toBe(true);
+    expect(temTermoConsulta("Einstein")).toBe(true);
   });
 });
 

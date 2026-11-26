@@ -3,8 +3,8 @@ import { commitBuild, rotuloVersao, versaoProduto } from "./versaoProduto.js";
 
 describe("versão do produto", () => {
   it("lê a versão do package.json injetada pelo Vite, não a da API", () => {
-    expect(versaoProduto()).toBe("1.0.0");
-    expect(rotuloVersao()).toBe("V1.0.0");
+    expect(versaoProduto()).toBe("1.0.1");
+    expect(rotuloVersao()).toBe("V1.0.1");
     expect(versaoProduto()).not.toBe("2.8.2");
   });
 

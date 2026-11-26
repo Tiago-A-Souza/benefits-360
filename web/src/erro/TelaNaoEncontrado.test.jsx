@@ -21,7 +21,7 @@ describe("TelaNaoEncontrado", () => {
     expect(html).not.toContain("empresa");
     expect(html).not.toContain("Estudo Saúde");
     expect(html).toContain("Turya");
-    expect(html).toContain("V1.0.0");
+    expect(html).toContain("V1.0.1");
   });
 
   it("rota inválida não fica em branco", () => {
@@ -32,6 +32,6 @@ describe("TelaNaoEncontrado", () => {
     expect(html).toContain("Voltar aos estudos");
     expect(html).not.toContain("Estudo Saúde");
     expect(html).not.toContain("topbar");
-    expect(html).toContain("V1.0.0");
+    expect(html).toContain("V1.0.1");
   });
 });

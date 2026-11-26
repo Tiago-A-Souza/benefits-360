@@ -1,5 +1,10 @@
 /** Derivações puras das opções do Simular Rede (selects encadeados). */
 
+/** Mínimo para Consultar / Enter: 2 caracteres (vale «A+»). */
+export function temTermoConsulta(texto) {
+  return (texto || "").trim().length >= 2;
+}
+
 export const LEGENDA_COBERTURA = [
   ["H", "Hospital geral"],
   ["HD", "Hospital-dia"],
