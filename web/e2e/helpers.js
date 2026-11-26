@@ -96,10 +96,152 @@ export async function interceptarApi(page) {
     }
     if (path === `/api/estudos/${ESTUDO_DEMO.id}/snapshot-aprovado`) return json(route, null);
     if (path === "/api/simular-rede/opcoes") {
-      return json(route, { ufs: [], operadoras: [] });
+      return json(route, {
+        data_base_rede: "26/11/2026",
+        total_prestadores: 1071,
+        total_principais: 395,
+        operadoras: [
+          { nome: "Alice", planos: [{ chave: "1", rotulo: "Alice Smart" }] },
+          { nome: "Amil", planos: [{ chave: "20", rotulo: "S750" }] },
+        ],
+        ufs: [
+          {
+            uf: "SP",
+            municipios: [{ chave: "SP.SAO PAULO", rotulo: "Sao Paulo", zonas: ["OESTE"] }],
+          },
+          {
+            uf: "RJ",
+            municipios: [
+              { chave: "RJ.RIO DE JANEIRO", rotulo: "Rio De Janeiro", zonas: ["BARRA", "ZONA SUL"] },
+            ],
+          },
+        ],
+      });
     }
     if (path === "/api/simular-rede/laboratorios/opcoes") {
-      return json(route, { ufs: [], operadoras: [] });
+      return json(route, {
+        data_base_rede: "26/11/2026",
+        total_prestadores: 2683,
+        total_principais: 10,
+        operadoras: [
+          { nome: "Alice", planos: [{ chave: "1", rotulo: "Alice Smart" }] },
+          { nome: "Amil", planos: [{ chave: "10", rotulo: "S750" }] },
+        ],
+        ufs: [
+          {
+            uf: "SP",
+            municipios: [{ chave: "SP.SAO PAULO", rotulo: "Sao Paulo", zonas: [] }],
+          },
+        ],
+      });
+    }
+    if (path === "/api/simular-rede/por-hospital") {
+      const q = url.searchParams.getAll("q").join(" ").trim();
+      if (!q || q === ";") {
+        return json(route, { detail: "Digite o nome de ao menos um hospital." }, 422);
+      }
+      const linhas = [];
+      if (/einstein/i.test(q)) {
+        linhas.push({
+          linha_id: "l-einstein",
+          prestador: "HOSPITAL ALBERT EINSTEIN",
+          prestador_nome: "HOSPITAL ALBERT EINSTEIN",
+          bairro: "MORUMBI",
+          principal: true,
+          celulas: { 20: "H" },
+        });
+      }
+      if (/samaritano/i.test(q)) {
+        linhas.push(
+          {
+            linha_id: "l-sam-barra",
+            prestador: "HOSP SAMARITANO",
+            prestador_nome: "HOSP SAMARITANO",
+            bairro: "BARRA DA TIJUCA",
+            principal: true,
+            celulas: { 20: "H" },
+          },
+          {
+            linha_id: "l-sam-bot",
+            prestador: "HOSP SAMARITANO",
+            prestador_nome: "HOSP SAMARITANO",
+            bairro: "BOTAFOGO",
+            principal: true,
+            celulas: { 20: "H" },
+          }
+        );
+      }
+      if (!linhas.length) {
+        return json(route, {
+          modo: "hospital",
+          colunas: [],
+          blocos: [],
+          total_linhas: 0,
+          total_encontrado: 0,
+          ocultos_nao_principais: 0,
+          aviso: "Nenhum prestador da base corresponde à busca e aos filtros.",
+        });
+      }
+      return json(route, {
+        modo: "hospital",
+        colunas: [{ chave: "20", operadora: "Amil", plano: "S750" }],
+        blocos: [{ municipio: "SP.SAO PAULO", titulo: "Sao Paulo · SP", linhas }],
+        total_linhas: linhas.length,
+        total_encontrado: linhas.length,
+        ocultos_nao_principais: 0,
+        mostrando_todos: false,
+      });
+    }
+    if (path === "/api/simular-rede/laboratorios/por-laboratorio") {
+      const q = url.searchParams.getAll("q").join(" ").trim();
+      if (!q || q === ";") {
+        return json(route, { detail: "Digite o nome de ao menos um laboratório." }, 422);
+      }
+      const linhas = [];
+      if (/delboni/i.test(q)) {
+        linhas.push({
+          linha_id: "marca:DELBONI",
+          prestador: "Delboni",
+          prestador_nome: "Delboni",
+          principal: true,
+          municipios: ["Sao Paulo"],
+          celulas: { 10: "✓" },
+        });
+      }
+      if (/lavoisier/i.test(q)) {
+        linhas.push({
+          linha_id: "marca:LAVOISIER",
+          prestador: "Lavoisier",
+          prestador_nome: "Lavoisier",
+          principal: true,
+          municipios: ["Sao Paulo"],
+          celulas: { 10: "✓" },
+        });
+      }
+      return json(route, {
+        modo: "laboratorio",
+        colunas: linhas.length ? [{ chave: "10", operadora: "Amil", plano: "S750" }] : [],
+        blocos: linhas.length ? [{ titulo: "Laboratórios", municipio: "", linhas }] : [],
+        total_linhas: linhas.length,
+        total_encontrado: linhas.length,
+        ocultos_nao_principais: 0,
+        aviso: linhas.length ? null : "Nenhuma marca da lista corresponde à busca e aos filtros.",
+      });
+    }
+    if (path === "/api/simular-rede/por-plano" || path === "/api/simular-rede/laboratorios/por-plano") {
+      const plano = url.searchParams.get("plano") || "";
+      if (!plano) {
+        return json(route, { detail: "Plano não encontrado na base de rede." }, 422);
+      }
+      return json(route, {
+        modo: "plano",
+        colunas: [{ chave: plano, operadora: "Amil", plano: "S750" }],
+        blocos: [],
+        total_linhas: 0,
+        total_encontrado: 0,
+        ocultos_nao_principais: 0,
+        requer_confirmacao: false,
+      });
     }
     if (path === "/api/config") return json(route, { modo: "demo" });
     if (path === "/api/rpa-cotacoes/estado") return json(route, { ligado: false });

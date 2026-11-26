@@ -59,12 +59,26 @@ describe("seletor Hospitais | Laboratórios", () => {
     expect(html).toContain("Por plano");
     expect(html).toContain("Zona");
     expect(html).toContain("Ver todos os prestadores");
+    expect(html).toContain("Digite um ou mais hospitais");
+    expect(html).toContain("Estado");
+    expect(html).toContain("Município");
     expect(html).not.toContain("Por laboratório");
     expect(html).not.toContain("Ver todos os laboratórios");
+    expect(html).not.toContain("Planos que cobrem os hospitais");
   });
 });
 
 describe("SimularLabs", () => {
+  it("abre vazio, sem consultar e sem aviso Porto", () => {
+    const html = renderToStaticMarkup(<SimularLabs />);
+    expect(html).toContain("Digite um ou mais laboratórios");
+    expect(html).toContain("disabled");
+    expect(html).not.toContain("Planos que cobrem os laboratórios");
+    expect(html).not.toContain("Ver todos (+");
+    expect(html).not.toContain("Porto Seguro / Medservice");
+    expect(html).not.toContain("Vazio lista as marcas da base");
+  });
+
   it("não oferece zona nem códigos H/M/PS", () => {
     const html = renderToStaticMarkup(<SimularLabs />);
     expect(html).toContain("Por laboratório");

@@ -165,6 +165,15 @@ def test_05b_busca_vazia_e_recusada(client: TestClient):
     assert client.get("/api/simular-rede/por-hospital", params={"q": " ; "}).status_code == 422
 
 
+def test_05c_einstein_lista_unidades_sem_restringir_a_alice(client: TestClient):
+    r = client.get("/api/simular-rede/por-hospital", params={"q": "Einstein"}).json()
+    linhas = _linhas(r)
+    assert linhas and all("EINSTEIN" in ln["prestador"].upper() for ln in linhas)
+    ops = {c["operadora"] for c in r["colunas"]}
+    assert len(ops) > 1
+    assert "Alice" in ops
+
+
 # --- Por plano --------------------------------------------------------------
 
 

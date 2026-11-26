@@ -7,7 +7,7 @@ import BarraLateral from "./BarraLateral.jsx";
 globalThis.React = React;
 
 describe("BarraLateral", () => {
-  it("logo no topo, Sair e V1.0.0 no rodapé, sem Estudo Saúde", () => {
+  it("logo no topo, Sair e versão no rodapé, sem Estudo Saúde", () => {
     const html = renderToStaticMarkup(
       <AppChrome onSair={() => {}}>
         <BarraLateral>
@@ -18,13 +18,13 @@ describe("BarraLateral", () => {
     expect(html).toContain("turya-logo.png");
     expect(html).toContain('alt="Turya"');
     expect(html).toContain("Sair");
-    expect(html).toContain("V1.0.0");
+    expect(html).toContain("V1.0.1");
     expect(html).not.toContain("Estudo Saúde");
     expect(html).not.toContain("topbar");
     expect(html).not.toContain("system-title");
     expect(html).toContain("app-sidebar-rodape");
     expect(html.indexOf("turya-logo.png")).toBeLessThan(html.indexOf("Sair"));
-    expect(html.indexOf("Sair")).toBeLessThan(html.indexOf("V1.0.0"));
+    expect(html.indexOf("Sair")).toBeLessThan(html.indexOf("V1.0.1"));
   });
 
   it("sem onSair não mostra o botão, mas mostra a versão", () => {
@@ -34,7 +34,7 @@ describe("BarraLateral", () => {
       </BarraLateral>
     );
     expect(html).not.toContain(">Sair<");
-    expect(html).toContain("V1.0.0");
+    expect(html).toContain("V1.0.1");
     expect(html).toContain("Turya");
   });
 });
