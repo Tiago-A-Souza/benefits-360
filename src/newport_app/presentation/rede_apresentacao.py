@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
-from datetime import datetime, timezone
 
 from newport_app.models.draft import CenarioRascunho, RascunhoEstudo
 from newport_app.models.presentation import (
@@ -36,6 +34,7 @@ from newport_app.presentation.rede_inclusao_manual import (
 from newport_app.presentation.rede_matriz_hospital import (
     CAMINHO_XLSX_PADRAO,
     carregar_base_rede_hospital,
+    data_base_rede_formatada,
 )
 from newport_app.presentation.rede_matriz_laboratorio import (
     BaseRedeLaboratorioInvalida,
@@ -475,11 +474,9 @@ def montar_rede_apresentacao(
             secoes.append(sec)
     if not secoes:
         return None
-    mtime = os.path.getmtime(CAMINHO_XLSX_PADRAO)
-    atualizado = datetime.fromtimestamp(mtime, tz=timezone.utc).strftime("%d/%m/%Y")
     aviso = None if estudo_tem_localizacao_rede(rascunho) else AVISO_REDE_SEM_LOCALIZACAO
     doc = RedeApresentacaoDocumento(
-        data_base_rede=atualizado,
+        data_base_rede=data_base_rede_formatada(),
         secoes=secoes,
         aviso_sem_localizacao=aviso,
     )

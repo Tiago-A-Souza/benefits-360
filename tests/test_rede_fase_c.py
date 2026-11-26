@@ -28,6 +28,8 @@ from newport_app.presentation.rede_matriz_hospital import (
     CAMINHO_XLSX_PADRAO,
     BaseRedeHospitalInvalida,
     carregar_base_rede_hospital,
+    data_base_rede_formatada,
+    limpar_cache_base_rede_hospital,
 )
 from newport_app.presentation.rede_recorte import (
     CRITERIO_RECORTE_GEOGRAFICO,
@@ -62,12 +64,12 @@ from newport_app.snapshot.hashing import hash_snapshot_canonico
 
 ROOT = Path(__file__).resolve().parents[1]
 
-TOTAL_APOS_ESPECIALIDADE_GLOBAL = 782
+TOTAL_APOS_ESPECIALIDADE_GLOBAL = 796
 FUNIL_ANISTIA_ESPERADO = {
-    "total_base": 1071,
-    "apos_municipio_beneficiario": 312,
-    "apos_municipio_e_capital": 312,
-    "apos_especialidade": 234,
+    "total_base": 882,
+    "apos_municipio_beneficiario": 228,
+    "apos_municipio_e_capital": 228,
+    "apos_especialidade": 214,
 }
 
 
@@ -88,19 +90,28 @@ def tabela_planos(base_rede):
     return carregar_aliases_rede(colunas_rede=base_rede.colunas)
 
 
-def test_01_base_1071_prestadores_51_municipios(base_rede):
-    assert len(base_rede.prestadores) == 1071
-    assert len(base_rede.municipios) == 51
+def test_01_base_882_prestadores_56_municipios(base_rede):
+    # Extração 17/11/2026 filtrada (HGER/HD/HCELT/PSGER/MAT): 1.071 → 882.
+    assert len(base_rede.prestadores) == 882
+    assert len(base_rede.municipios) == 56
 
 
 def test_02_csv_1071_linhas_391_principais(principais):
+    # CSV de principais não foi alterado nesta troca (órfãos ficam; novos sem marcação).
     assert principais.total_linhas_csv == 1071
     assert sum(1 for e in principais.linhas_csv if e.principal) == 391
 
 
-def test_03_todo_csv_existe_na_matriz(base_rede, principais):
+def test_03_todo_prestador_matriz_tem_meta(base_rede, principais):
     for p in base_rede.prestadores:
         assert p.chave in principais.por_prestador_matriz
+    novos = [
+        p
+        for p in base_rede.prestadores
+        if principais.por_prestador_matriz[p.chave].linha_csv == 0
+    ]
+    assert len({(p.prestador, p.chave_municipio) for p in novos}) == 51
+    assert all(not principais.por_prestador_matriz[p.chave].principal for p in novos)
 
 
 def test_04_csv_malformado_falha_com_linha(base_rede, tmp_path):
@@ -115,7 +126,8 @@ def test_04_csv_malformado_falha_com_linha(base_rede, tmp_path):
         carregar_hospitais_principais(bad, prestadores_matriz=base_rede.prestadores)
 
 
-def test_05_prestador_inexistente_falha(base_rede, tmp_path):
+def test_05_prestador_csv_orfao_nao_derruba_carga(base_rede, tmp_path):
+    """Linha do CSV sem correspondente na matriz permanece; hospital novo entra não-principal."""
     bad = tmp_path / "bad.csv"
     cab = (
         "uf;municipio;zona;prestador;principal;confianca;rede_verticalizada;"
@@ -125,8 +137,11 @@ def test_05_prestador_inexistente_falha(base_rede, tmp_path):
         cab + "SP;SAO PAULO;;HOSPITAL QUE NAO EXISTE;nao;;;;\n",
         encoding="utf-8-sig",
     )
-    with pytest.raises(BaseHospitaisPrincipaisInvalida, match="registro 2"):
-        carregar_hospitais_principais(bad, prestadores_matriz=base_rede.prestadores)
+    carregado = carregar_hospitais_principais(
+        bad, prestadores_matriz=base_rede.prestadores
+    )
+    assert any(e.prestador == "HOSPITAL QUE NAO EXISTE" for e in carregado.linhas_csv)
+    assert all(not e.principal for e in carregado.por_prestador_matriz.values())
 
 
 def test_06_celula_hger_mat_psger_mantida():
@@ -293,6 +308,8 @@ def test_19_html_export_inalterado(tmp_path):
 
 def test_20_fases_a_b_intactas(base_rede, tabela_planos):
     planos = _planos_estudo_reais()
+    if not planos:
+        pytest.skip("censo de estudos reais ausente neste worktree")
     assert len(planos) == 55
     for op, pl in planos:
         r = resolver_casamento_rede(op, pl, base_rede.colunas, tabela=tabela_planos)
@@ -326,3 +343,40 @@ def _localizacoes_anistia_planilha() -> set[tuple[str, str]]:
 def test_xlsx_ausente_falha(tmp_path):
     with pytest.raises(BaseRedeHospitalInvalida):
         carregar_base_rede_hospital(tmp_path / "nao_existe.xlsx")
+
+
+def test_data_base_rede_vem_do_resumo():
+    limpar_cache_base_rede_hospital()
+    assert data_base_rede_formatada() == "17/11/2026"
+
+
+def test_data_base_rede_fallback_mtime(tmp_path):
+    from datetime import datetime, timezone
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Resumo"
+    ws["A1"] = "SiscorNet sem data de extracao"
+    path = tmp_path / "rede.xlsx"
+    wb.save(path)
+    limpar_cache_base_rede_hospital()
+    obtido = data_base_rede_formatada(path)
+    esperado = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime(
+        "%d/%m/%Y"
+    )
+    assert obtido == esperado
+
+
+def test_hapvida_ndi_casam_notredame(base_rede, tabela_planos):
+    for plano in (
+        "SMART 400 - Enf.",
+        "ADVANCE 600 - Apto.",
+        "ADVANCE 700 - Apto.",
+    ):
+        r = resolver_casamento_rede(
+            "HAPVIDA NDI", plano, base_rede.colunas, tabela=tabela_planos
+        )
+        assert r.estado in (EstadoCasamentoRede.ALIAS, EstadoCasamentoRede.REGRA), plano
+        assert r.col_idx is not None

@@ -28,7 +28,7 @@ CABECALHO_ESPERADO = (
 
 
 class BaseHospitaisPrincipaisInvalida(ValueError):
-    """CSV malformado ou prestador ausente na matriz."""
+    """CSV malformado."""
 
 
 @dataclass(frozen=True)
@@ -52,7 +52,7 @@ class EntradaHospitalPrincipal:
 
 @dataclass(frozen=True)
 class BaseHospitaisPrincipais:
-    """Uma entrada por linha do CSV (1071) e índice por prestador da matriz."""
+    """Uma entrada por linha do CSV e índice por prestador da matriz."""
 
     linhas_csv: tuple[EntradaHospitalPrincipal, ...]
     por_prestador_matriz: dict[tuple[str, str, str], EntradaHospitalPrincipal]
@@ -277,16 +277,6 @@ def _ler_hospitais_principais(
             chave_municipio=chave_mun,
             linha_csv=indice,
         )
-        if matriz_ref is not None:
-            tem = any(
-                p.prestador == prestador and p.chave_municipio == chave_mun
-                for p in matriz_ref
-            )
-            if not tem:
-                raise BaseHospitaisPrincipaisInvalida(
-                    f"{origem}: registro {indice}: prestador {prestador!r} em "
-                    f"{chave_mun} não existe na base de rede"
-                )
         linhas.append(entrada)
         ch_gr = entrada.chave_grupo
         if ch_gr in agrupado:
@@ -312,10 +302,20 @@ def _ler_hospitais_principais(
         ch_gr = (p.prestador, p.chave_municipio)
         fallback = agrupado.get(ch_gr)
         if fallback is None:
-            raise BaseHospitaisPrincipaisInvalida(
-                f"{origem}: prestador {p.prestador!r} em {p.chave_municipio} "
-                f"(bairro {p.bairro!r}) não consta no CSV de principais"
+            por_matriz[p.chave] = EntradaHospitalPrincipal(
+                uf=p.uf,
+                municipio=p.cidade,
+                zona="",
+                prestador=p.prestador,
+                principal=False,
+                confianca="",
+                rede_verticalizada="",
+                especialidades="",
+                observacao="",
+                chave_municipio=p.chave_municipio,
+                linha_csv=0,
             )
+            continue
         grupo = linhas_por_grupo.get(ch_gr, [])
         por_matriz[p.chave] = _meta_por_registro_matriz(
             p, grupo, fallback=fallback

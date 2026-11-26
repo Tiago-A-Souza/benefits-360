@@ -658,7 +658,7 @@ def test_23_hashes_de_snapshot_intactos_e_versao_nao_sobe(ctx):
 
 def test_24_simular_rede_continua_funcionando(ctx):
     r = ctx["client"].get("/api/simular-rede/opcoes")
-    assert r.status_code == 200 and r.json()["total_prestadores"] > 1000
+    assert r.status_code == 200 and r.json()["total_prestadores"] == 882
     r2 = ctx["client"].get("/api/simular-rede/por-hospital", params={"q": "samaritano"})
     assert r2.status_code == 200 and r2.json()["total_linhas"] > 0
 

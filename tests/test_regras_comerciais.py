@@ -197,6 +197,7 @@ def test_07_variacoes_de_nome_casam():
     assert reconhecer_operadora("SulAmérica", mapa) == "SulAmérica"
     assert reconhecer_operadora("Porto Saúde", mapa) == "Porto Seguro"
     assert reconhecer_operadora("GNDI", mapa) == "NotreDame"
+    assert reconhecer_operadora("NOTRE DAME", mapa) == "NotreDame"
     assert reconhecer_operadora("Sul\u00a0América", mapa) == "SulAmérica"
     assert reconhecer_operadora("porto saude", mapa) == "Porto Seguro"
 

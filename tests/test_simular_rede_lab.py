@@ -92,7 +92,8 @@ def _celulas(resp) -> list[str]:
 
 def test_01_opcoes_vem_da_base_de_laboratorio():
     op = opcoes_simulacao_laboratorio()
-    assert op.total_prestadores >= 2600
+    assert op.total_prestadores == 1455
+    assert op.data_base_rede == "17/11/2026"
     assert op.total_principais == 10
     assert op.operadoras
     ufs = {u.uf for u in op.ufs}
@@ -253,7 +254,8 @@ def test_api_01_opcoes_laboratorio(client: TestClient):
     r = client.get("/api/simular-rede/laboratorios/opcoes")
     assert r.status_code == 200
     corpo = r.json()
-    assert corpo["total_prestadores"] >= 2600
+    assert corpo["total_prestadores"] == 1455
+    assert corpo["data_base_rede"] == "17/11/2026"
     assert corpo["total_principais"] == 10
     sp = next(u for u in corpo["ufs"] if u["uf"] == "SP")
     assert "SP.FRANCISCO MORATO" in {m["chave"] for m in sp["municipios"]}

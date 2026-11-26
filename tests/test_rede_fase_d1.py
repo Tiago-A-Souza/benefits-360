@@ -366,7 +366,7 @@ def test_20_sete_correcoes_zona_sp(base_rede):
         p = next(x for x in prest if x.prestador == prestador and x.bairro == bairro)
         return sigla_zona_capital(p.zona)
 
-    assert sigla("HOSP E MATER SAO LUIZ - REDE DOR", "ITAIM BIBI") == "ZO"
+    # HOSP E MATER SAO LUIZ - REDE DOR / ITAIM BIBI saiu na extração 17/11.
     assert sigla("HOSPITAL SIRIO LIBANES", "ITAIM BIBI") == "ZO"
     assert sigla("HOSPITAL ALVORADA MOEMA", "MOEMA") == "ZS"
     assert sigla("HOSP ADVENTISTA DE SAO PAULO", "CAPAO REDONDO") == "ZS"
