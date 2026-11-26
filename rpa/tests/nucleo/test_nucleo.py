@@ -163,6 +163,41 @@ def test_tela_sensivel_nao_avalia_iframe_de_recaptcha(tmp_path):
     assert recaptcha.evals == 0
 
 
+def test_tela_sensivel_nao_avalia_iframe_sem_url(tmp_path):
+    """Porto 26/11: iframe com url vazia na 1ª tela; evaluate sem timeout travava o login."""
+    import logging
+
+    from nucleo.navegador import Mapeador, quadros_do_portal
+
+    class Quadro:
+        def __init__(self, url):
+            self.url = url
+            self.evals = 0
+
+        def evaluate(self, js, arg=None):
+            self.evals += 1
+            if not (self.url or "").strip():
+                raise AssertionError("evaluate no iframe sem URL")
+            if "one-time-code" in js or "otp" in js:
+                return ""
+            if "password" in js:
+                return False
+            return True
+
+    vazio = Quadro("")
+    vazio_espaco = Quadro("   ")
+    main = Quadro("https://corretor.portoseguro.com.br/corretoronline")
+    pagina = type("P", (), {
+        "url": "https://corretor.portoseguro.com.br/corretoronline",
+        "frames": [main, vazio, vazio_espaco],
+    })()
+    assert vazio not in quadros_do_portal(pagina)
+    assert vazio_espaco not in quadros_do_portal(pagina)
+    mapa = Mapeador(tmp_path, True, logging.getLogger("teste"), url_login="")
+    assert mapa.tela_sensivel(pagina) is None
+    assert vazio.evals == 0 and vazio_espaco.evals == 0 and main.evals > 0
+
+
 def test_avaliar_quadro_chama_evaluate_sem_timeout():
     """Playwright Frame.evaluate(expression, arg=None): timeout= vira TypeError e o mapa some."""
     from nucleo.navegador import _avaliar_quadro
