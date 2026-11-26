@@ -99,7 +99,7 @@ def texto_do_cotador(page, limite: int = 60000) -> str:
 
 
 def fechar_banners_entrada(page) -> None:
-    """Cookies e aviso HTML de localização. Só a página principal — iframe de reCAPTCHA trava o Playwright."""
+    """Cookies, localização e aviso de vigência. Só a página principal — iframe de reCAPTCHA trava o Playwright."""
     for montar in (sel.botao_bloquear_localizacao, sel.botao_recusar_cookies):
         try:
             loc = montar(page)
@@ -108,6 +108,13 @@ def fechar_banners_entrada(page) -> None:
                 time.sleep(0.2)
         except Exception:  # noqa: BLE001
             pass
+    try:
+        vig = page.locator("#modalVigenciaExpirada").locator("button, [role=button]")
+        if vig.count() and vig.first.is_visible():
+            vig.first.click(timeout=1500, force=True)
+            time.sleep(0.2)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def fechar_overlays(page) -> None:

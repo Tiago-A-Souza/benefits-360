@@ -84,6 +84,129 @@ def test_fecha_aviso_de_localizacao_e_cookies(sim):
         page.context.browser.close()
 
 
+_HTML_PORTAL_REAL = """
+<header>
+  <ul class="col-line-login-modal">
+    <li>
+      <button data-gtm-type="click" data-gtm-clicktype="button" data-gtm-name="login"
+              type="button" class="ps-btn ps-btn-secondary " name="entrar"
+              onclick="openLogin();" style="display:none">
+        <div class="text-btn">ACESSAR O CORRETOR ONLINE</div>
+      </button>
+    </li>
+  </ul>
+</header>
+<section id="modal-login" class="ps-modal-content" style="display:none">
+  <h2>Acesse o Corretor Online</h2>
+  <input id="logonPrincipal">
+  <input type="password">
+</section>
+<script>
+function openLogin() {
+  document.getElementById('modal-login').style.display = 'block';
+}
+</script>
+"""
+
+
+def test_portal_real_abre_mesmo_com_botao_display_none():
+    """O header da Porto aninha o texto num div e o botão pode não ter caixa visível."""
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(_HTML_PORTAL_REAL)
+        assert not _visivel(sel.login_campo_cpf(page))
+        assert _clicar_acessar_corretor(page)
+        page.wait_for_function("() => document.getElementById('modal-login').style.display === 'block'")
+        assert page.locator("#logonPrincipal").is_visible()
+        page.context.browser.close()
+
+
+def test_portal_real_openLogin_sem_innerText():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(
+            "<script>window.__n=0; function openLogin(){ window.__n++; "
+            "document.body.insertAdjacentHTML('beforeend',"
+            "'<input id=logonPrincipal><input type=password>'); }</script>"
+            "<p>sem botão visível</p>"
+        )
+        assert _clicar_acessar_corretor(page)
+        assert page.evaluate("() => window.__n") == 1
+        assert page.locator("#logonPrincipal").count() == 1
+        page.context.browser.close()
+
+
+def test_abre_com_overlay_em_cima_do_botao():
+    """Cartaz fullscreen zera innerText/caixa; o contrato é openLogin(), não o layout."""
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(
+            "<button data-gtm-name='login' onclick='openLogin()' style='position:absolute;left:0;top:0'>"
+            "<div class='text-btn'>ACESSAR O CORRETOR ONLINE</div></button>"
+            "<div id='cartaz' style='position:fixed;inset:0;background:#000;z-index:99999'></div>"
+            "<script>function openLogin(){ document.getElementById('cartaz').remove();"
+            "document.body.insertAdjacentHTML('beforeend',"
+            "'<input id=logonPrincipal><input type=password>'); }</script>"
+        )
+        assert _clicar_acessar_corretor(page)
+        assert page.locator("#logonPrincipal").count() == 1
+        page.context.browser.close()
+
+
+def test_abre_botao_dentro_de_shadow_dom():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content("""
+        <ps-header></ps-header>
+        <script>
+        class PsHeader extends HTMLElement {
+          constructor() {
+            super();
+            const r = this.attachShadow({mode: 'open'});
+            const b = document.createElement('button');
+            b.setAttribute('data-gtm-name', 'login');
+            b.innerHTML = '<div class="text-btn">ACESSAR O CORRETOR ONLINE</div>';
+            b.addEventListener('click', () => {
+              document.body.insertAdjacentHTML('beforeend',
+                '<input id=logonPrincipal><input type=password>');
+            });
+            r.appendChild(b);
+          }
+        }
+        customElements.define('ps-header', PsHeader);
+        </script>
+        """)
+        assert _clicar_acessar_corretor(page)
+        page.wait_for_selector("#logonPrincipal")
+        page.context.browser.close()
+
+
+def test_espera_openLogin_injetado_depois():
+    import time
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content("""
+        <p>hidratando</p>
+        <script>
+        setTimeout(() => {
+          window.openLogin = () => {
+            document.body.insertAdjacentHTML('beforeend',
+              '<input id=logonPrincipal><input type=password>');
+          };
+        }, 1200);
+        </script>
+        """)
+        ok = False
+        for _ in range(20):
+            if _clicar_acessar_corretor(page):
+                ok = True
+                break
+            time.sleep(0.2)
+        assert ok
+        assert page.locator("#logonPrincipal").count() == 1
+        page.context.browser.close()
+
+
 def test_botao_do_header_e_button_mesmo_com_senha_escondida(sim):
     with sync_playwright() as pw:
         page = pw.chromium.launch(headless=True).new_page()

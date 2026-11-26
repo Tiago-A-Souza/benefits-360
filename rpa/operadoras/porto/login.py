@@ -72,50 +72,142 @@ def _login_a_vista(page) -> bool:
             or _visivel(sel.login_campo_cpf(page)) or _visivel(sel.login_campo_senha(page)))
 
 
-_JS_CLICAR_ACESSAR = """() => {
-  const rx = /acess[ae]r?\\s+o\\s+corretor\\s+online/i;
-  const els = [...document.querySelectorAll('button, a, [role=button], [role=link]')];
-  const b = els.find(e => {
-    const t = (e.innerText || '').replace(/\\s+/g, ' ').trim();
-    if (!rx.test(t) || t.length > 80) return false;
-    const r = e.getBoundingClientRect();
-    return r.width > 8 && r.height > 8;
-  });
-  if (!b) return false;
-  b.click();
-  return true;
+# Portal real: o header chama window.openLogin() — o contrato estável. innerText +
+# getBoundingClientRect quebram com janela escondida, display:none, overlay ou shadow DOM.
+_JS_CLICAR_ACESSAR = r"""() => {
+  const rx = /acess[ae]r?\s+o\s+corretor\s+online/i;
+  const css = "button[data-gtm-name='login'], [onclick*='openLogin'], button#acessar, a#acessar";
+  const recaptcha = /recaptcha|google\.com\/recaptcha|hcaptcha/i;
+  const texto = (e) => {
+    if (!e) return '';
+    let t = (e.textContent || e.innerText || '');
+    try {
+      t += ' ' + (e.getAttribute('aria-label') || e.getAttribute('title') || e.getAttribute('name') || '');
+    } catch (err) {}
+    return t.replace(/\s+/g, ' ').trim();
+  };
+  const clicar = (e) => {
+    if (!e) return false;
+    const alvo = (e.closest && e.closest('button, a, [role=button], [role=link]')) || e;
+    try { alvo.click(); return true; } catch (err) { return false; }
+  };
+  const tentar = (doc, win) => {
+    if (!doc) return false;
+    try {
+      if (win && typeof win.openLogin === 'function') { win.openLogin(); return true; }
+    } catch (err) {}
+    try {
+      const porCss = doc.querySelector(css);
+      if (porCss && clicar(porCss)) return true;
+    } catch (err) {}
+    const acc = [];
+    const walk = (raiz) => {
+      if (!raiz) return;
+      let nos;
+      try { nos = raiz.querySelectorAll('button, a, [role=button], [role=link], .ps-btn, .text-btn'); }
+      catch (err) { return; }
+      for (const e of nos) acc.push(e);
+      let todos;
+      try { todos = raiz.querySelectorAll('*'); } catch (err) { return; }
+      for (const e of todos) { if (e.shadowRoot) walk(e.shadowRoot); }
+    };
+    walk(doc);
+    const b = acc.find(e => { const t = texto(e); return rx.test(t) && t.length <= 120; });
+    if (b && clicar(b)) return true;
+    return false;
+  };
+  if (tentar(document, window)) return true;
+  for (const f of document.querySelectorAll('iframe')) {
+    const src = ((f.src || '') + ' ' + (f.title || '')).toLowerCase();
+    if (recaptcha.test(src)) continue;
+    try {
+      if (tentar(f.contentDocument, f.contentWindow)) return true;
+    } catch (err) {}
+  }
+  return false;
 }"""
 
+_JS_DIAGNOSTICO = r"""() => ({
+  url: location.href,
+  openLogin: typeof openLogin,
+  logon: !!document.querySelector('#logonPrincipal'),
+  botoes: [...document.querySelectorAll('button, a')].slice(0, 8).map(
+    e => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 50)
+  ),
+})"""
 
-def _clicar_acessar_corretor(page) -> bool:
-    """Clique no DOM da página principal — sem varrer iframe de reCAPTCHA nem esperar popup."""
+
+def _tem_open_login(page) -> bool:
     try:
-        return bool(page.evaluate(_JS_CLICAR_ACESSAR))
+        return bool(page.evaluate("() => typeof openLogin === 'function'"))
     except Exception:  # noqa: BLE001
         return False
 
 
+def _entrada_pronta(page) -> bool:
+    try:
+        if _login_a_vista(page) or logado(page) or _tem_open_login(page):
+            return True
+        return sel.botao_acessar_corretor(page).count() > 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _clicar_acessar_corretor(page) -> bool:
+    """Abre o modal via openLogin() / DOM. Sem tamanho na tela, sem iframe de reCAPTCHA."""
+    try:
+        if page.evaluate(_JS_CLICAR_ACESSAR):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    for loc in (
+        page.locator("button[data-gtm-name='login']"),
+        page.locator("[onclick*='openLogin']"),
+        page.locator("button#acessar, a#acessar"),
+        page.get_by_role("button", name=sel._RX_BOTAO_CORRETOR),
+        page.get_by_role("link", name=sel._RX_BOTAO_CORRETOR),
+    ):
+        try:
+            if loc.count() == 0:
+                continue
+            loc.first.click(timeout=2000, force=True)
+            return True
+        except Exception:  # noqa: BLE001
+            continue
+    return False
+
+
 def _abrir_janela_corretor(s) -> None:
-    """Portal real: modal na mesma página. Simulador: pode ir para /login na mesma aba."""
+    """Portal real: modal na mesma página. Simulador: pode ir para /login na mesma aba.
+
+    Não trata o primeiro clique como sucesso: insiste até CPF/senha/SUSEP aparecerem
+    (o portal hidrata tarde; overlay e shadow DOM fazem o clique “passar em branco”).
+    """
     page = s.page
     timeout_ms = int(s.t("timeout_tela_ms"))
     fim = time.monotonic() + timeout_ms / 1000
-    clicou = False
+    tentou = False
     while time.monotonic() < fim:
-        if _login_a_vista(s.page):
+        fechar_banners_entrada(s.page)
+        if _login_a_vista(s.page) or logado(s.page):
             break
         if _clicar_acessar_corretor(s.page):
-            clicou = True
-            break
+            tentou = True
+            if esperar_ate(lambda: _login_a_vista(s.page) or logado(s.page), 2.0):
+                break
+            continue
         time.sleep(0.4)
-    if not clicou and not _login_a_vista(s.page):
-        raise _erro("sem_botao_entrada")
     if len(page.context.pages) > 1:
         s.page = page.context.pages[-1]
-    if esperar_ate(lambda: _login_a_vista(s.page), 20):
+    if esperar_ate(lambda: _login_a_vista(s.page) or logado(s.page), 8):
         _marcar(s, "janela do corretor online", "Janela do Corretor Online aberta.")
         return
-    raise _erro("sem_janela_login")
+    try:
+        diag = s.page.evaluate(_JS_DIAGNOSTICO)
+        s.log.warning("Porto 1ª tela sem login após o clique: %s", diag)
+    except Exception:  # noqa: BLE001
+        pass
+    raise _erro("sem_janela_login" if tentou else "sem_botao_entrada")
 
 
 def _abrir_login(s) -> None:
@@ -123,9 +215,13 @@ def _abrir_login(s) -> None:
     _marcar(s, "abrindo login", "Abrindo a página pública do Corretor Online.")
     s.page.goto(s.cfg["urls"]["login"], wait_until="domcontentloaded")
     fechar_banners_entrada(s.page)
+    esperar_ate(lambda: _entrada_pronta(s.page), min(20.0, int(s.t("timeout_tela_ms")) / 1000))
+    fechar_banners_entrada(s.page)
     _marcar(s, "abrindo login",
             f"Primeira página da Porto aberta ({sel.caminho(s.page) or '/'}).",
             captura="entrada_porto")
+    if logado(s.page) and not login_na_tela(s.page) and not tela_susep(s.page):
+        return
     ja_no_login = _visivel(sel.login_campo_cpf(s.page)) and _visivel(sel.login_campo_senha(s.page))
     if not ja_no_login:
         _marcar(s, "abrindo login", "Clicando em Acessar o Corretor Online.")

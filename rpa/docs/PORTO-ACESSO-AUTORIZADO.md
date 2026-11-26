@@ -7,6 +7,10 @@ Como o robô entra no portal da Porto **sem burlar reCAPTCHA**. Nenhum CPF, senh
 1. Abrir a página pública `corretor.portoseguro.com.br/corretoronline`.
 2. Recusar localização e cookies sozinho.
 3. Clicar em **Acessar o Corretor Online** (modal na mesma página, não popup).
+   O contrato estável do portal é `window.openLogin()`. O botão do header
+   (`data-gtm-name=login`, texto num `div.text-btn`) só dispara essa função. O robô chama
+   `openLogin()` primeiro; se não existir, clica por CSS / texto / shadow DOM, sem exigir
+   caixa visível na janela. Insiste até o modal de CPF/senha aparecer.
 4. Preencher CPF e senha do cofre Windows `NewportCotacoes/porto`.
 5. **Parar.** O corretor clica em **ENTRAR** na janela do Chromium do robô.
 6. Escolher o código SUSEP no dropdown **só por clique** (sem digitar). Aceita o sufixo ` (P)` no rótulo.
