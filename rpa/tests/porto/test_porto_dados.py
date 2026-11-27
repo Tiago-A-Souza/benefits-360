@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 
 from nucleo.texto import formatar_cnpj, so_digitos
 from operadoras.porto import seletores as sel
-from operadoras.porto.telas import fechar_overlays
+from operadoras.porto.telas import empresa_preenchida, fechar_overlays, saiu_de_dados_iniciais
 
 CNPJ_FICTICIO = "11.222.333/0001-81"
 
@@ -33,6 +33,7 @@ _HTML_PORTAL = """
 
 _HTML_SIMULADOR = """
 <label for="cnpj">CNPJ</label><input id="cnpj" name="cnpj">
+<p>Razão social: <span id="rs"></span></p>
 <button type="button">Próximo</button>
 """
 
@@ -55,6 +56,38 @@ def test_campo_cnpj_do_simulador_continua_pelo_label():
         loc = sel.campo_cnpj(page)
         assert loc.first.get_attribute("id") == "cnpj"
         loc.first.fill(CNPJ_FICTICIO)
+        page.context.browser.close()
+
+
+def test_rotulo_razao_social_vazio_nao_conta_como_empresa_preenchida():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(_HTML_PORTAL)
+        assert not empresa_preenchida(page)
+        page.locator("input[name='.companyName']").evaluate(
+            "e => { e.disabled = false; e.value = 'PADARIA MODELO DE TREINO LTDA'; e.disabled = true; }"
+        )
+        assert empresa_preenchida(page)
+        page.context.browser.close()
+
+
+def test_simulador_conta_razao_no_span_rs():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(_HTML_SIMULADOR)
+        assert not empresa_preenchida(page)
+        page.locator("#rs").evaluate("e => { e.textContent = 'PADARIA MODELO DE TREINO LTDA'; }")
+        assert empresa_preenchida(page)
+        page.context.browser.close()
+
+
+def test_saiu_de_dados_quando_aparece_passo_2():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(_HTML_PORTAL)
+        assert not saiu_de_dados_iniciais(page)
+        page.set_content("<p>2 de 4 - Produto e vidas</p><label>Quantidade total</label><input id=total-vidas>")
+        assert saiu_de_dados_iniciais(page)
         page.context.browser.close()
 
 
