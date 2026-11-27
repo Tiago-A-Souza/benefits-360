@@ -34,4 +34,12 @@ describe("marca das operadoras", () => {
     expect(css).toMatch(/--cor-op-cabeca/);
     expect(css).not.toMatch(/border-left-width:\s*3px/);
   });
+
+  it("a barra de ação de Cotações não flutua por cima da tabela", () => {
+    const css = readFileSync(join(dir, "nativa.css"), "utf8");
+    const bloco = css.match(/\.nativa-barra-acao\s*\{[^}]+\}/)[0];
+    expect(bloco).not.toMatch(/position:\s*(sticky|fixed)/);
+    expect(bloco).not.toMatch(/box-shadow:\s*var\(--shadow/);
+    expect(css).not.toMatch(/\.nativa-main\s*\{[^}]*padding-bottom:\s*7\.5rem/);
+  });
 });
