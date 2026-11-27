@@ -118,15 +118,12 @@ def fechar_banners_entrada(page) -> None:
 
 
 def fechar_overlays(page) -> None:
-    try:
-        banner = page.get_by_text(sel.TEXTO_BANNER_DUVIDAS)
-        if _visivel(banner):
-            page.get_by_role("button", name=re.compile(r"fechar|ok|x", re.I)).first.click(timeout=2000)
-    except Exception:  # noqa: BLE001
-        pass
-    try:
-        lugar = cotador(page)
-        if _visivel(lugar.get_by_text(sel.TEXTO_BANNER_DUVIDAS)):
-            lugar.get_by_role("button", name=re.compile(r"fechar|ok|x", re.I)).first.click(timeout=2000)
-    except Exception:  # noqa: BLE001
-        pass
+    for lugar in (page, cotador(page)):
+        try:
+            if not _visivel(lugar.get_by_text(sel.TEXTO_BANNER_DUVIDAS)):
+                continue
+            botao = sel.fechar_banner(lugar)
+            if botao.count():
+                botao.first.click(timeout=2000, force=True)
+        except Exception:  # noqa: BLE001
+            pass
