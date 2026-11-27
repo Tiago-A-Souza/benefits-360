@@ -16,12 +16,15 @@ from pathlib import Path
 from nucleo.modelo import ROTULOS, PlanoAlvo, ResultadoPlano
 from nucleo.navegador import ErroDados, ErroFluxo, Parado, esperar_visivel, ligar_parar
 from nucleo.saidas import copiar_para_destino, nome_pdf_arquivo, nome_pdf_destino
-from nucleo.texto import formatar_cnpj, norm, so_digitos
+from nucleo.texto import formatar_cnpj, norm
 
 from . import extracao as ex
 from . import seletores as sel
 from .pedido import Pedido
-from .telas import _visivel, cotador, esperar_ate, fechar_overlays, login_na_tela, texto_do_cotador
+from .telas import (
+    _visivel, cotador, empresa_preenchida, esperar_ate, fechar_overlays,
+    login_na_tela, saiu_de_dados_iniciais, texto_do_cotador,
+)
 
 
 @dataclass
@@ -179,6 +182,15 @@ def criar_nova_cotacao(s: Sessao, a: Andamento) -> None:
     _mapa(s, "dados")
 
 
+def _clicar_proximo(lugar) -> None:
+    botao = sel.botao_proximo(lugar)
+    try:
+        botao.first.scroll_into_view_if_needed(timeout=2000)
+    except Exception:  # noqa: BLE001
+        pass
+    botao.first.click(timeout=4000, force=True)
+
+
 def dados_iniciais(s: Sessao, a: Andamento) -> None:
     _aviso_etapa(s, a, "dados")
     fechar_overlays(s.page)
@@ -186,17 +198,24 @@ def dados_iniciais(s: Sessao, a: Andamento) -> None:
     campo = esperar_visivel(sel.campo_cnpj(lugar), s.t("timeout_tela_ms"), "CNPJ", "dados")
     campo.fill(formatar_cnpj(p.cnpj), force=True)
     _pausar(s)
-    if not esperar_ate(lambda: a.base.cnpj[-4:] in so_digitos(texto_do_cotador(s.page))
-                       or "razão" in texto_do_cotador(s.page).lower()
-                       or "razao" in norm(texto_do_cotador(s.page)), s.t("timeout_tela_ms") / 1000):
+    if not esperar_ate(lambda: empresa_preenchida(s.page), s.t("timeout_tela_ms") / 1000):
         raise ErroFluxo("o portal não preencheu os dados da empresa pelo CNPJ", "dados")
     texto = texto_do_cotador(s.page)
     if sel.TEXTO_CEP_INVALIDO.search(texto):
         raise ErroDados("o portal pediu um CEP válido e o cadastro da Receita veio incompleto", "dados")
-    m = re.search(r"Raz[aã]o social\s*:?\s*([^\n]+)", texto, re.I)
-    a.razao_social = " ".join((m.group(1) if m else "").split())
-    sel.botao_proximo(lugar).first.click()
-    _pausar(s)
+    try:
+        a.razao_social = (_lugar(s).locator("input[name='.companyName']").input_value() or "").strip()
+    except Exception:  # noqa: BLE001
+        a.razao_social = ""
+    if not a.razao_social:
+        m = re.search(r"Raz[aã]o social\s*:?\s*([^\n]+)", texto, re.I)
+        a.razao_social = " ".join((m.group(1) if m else "").split())
+    for _ in range(3):
+        fechar_overlays(s.page)
+        _clicar_proximo(_lugar(s))
+        if esperar_ate(lambda: saiu_de_dados_iniciais(s.page), 8):
+            return
+    raise ErroFluxo("o portal não saiu de Dados iniciais depois do CNPJ", "dados")
 
 
 def _preencher_faixa(lugar, rotulo: str, qtd: int, idades: list[int]) -> None:

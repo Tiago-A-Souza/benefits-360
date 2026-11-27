@@ -87,6 +87,37 @@ def cotador(page):
     return page
 
 
+def empresa_preenchida(page) -> bool:
+    """A Receita devolveu a razão social. O rótulo «Razão Social» já está na tela vazia — não conta."""
+    lugar = cotador(page)
+    for css in ("input[name='.companyName']", "input[name$='companyName']"):
+        try:
+            loc = lugar.locator(css)
+            if loc.count() and (loc.first.input_value() or "").strip():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        rs = lugar.locator("#rs")
+        if rs.count() and (rs.first.inner_text() or "").strip():
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def saiu_de_dados_iniciais(page) -> bool:
+    try:
+        t = (texto_do_cotador(page) or "").lower()
+        if "2 de 4" in t or "produto e vidas" in t:
+            return True
+        if _visivel(sel.campo_total_vidas(cotador(page))):
+            return True
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def texto_do_cotador(page, limite: int = 60000) -> str:
     lugar = cotador(page)
     try:
