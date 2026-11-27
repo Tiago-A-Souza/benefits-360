@@ -16,7 +16,7 @@ from pathlib import Path
 from nucleo.modelo import ROTULOS, PlanoAlvo, ResultadoPlano
 from nucleo.navegador import ErroDados, ErroFluxo, Parado, esperar_visivel, ligar_parar
 from nucleo.saidas import copiar_para_destino, nome_pdf_arquivo, nome_pdf_destino
-from nucleo.texto import formatar_cnpj, norm
+from nucleo.texto import formatar_cnpj, norm, so_digitos
 
 from . import extracao as ex
 from . import seletores as sel
@@ -162,8 +162,15 @@ def ir_ao_cotador(s: Sessao) -> None:
         return
     url = (s.cfg.get("urls") or {}).get("cotador")
     if url:
-        page.goto(url if url.startswith("http") else page.url.rsplit("/", 1)[0] + "/home")
-        page.wait_for_load_state("domcontentloaded")
+        destino = url if url.startswith("http") else page.url.rsplit("/", 1)[0] + "/home"
+        try:
+            page.goto(destino, wait_until="domcontentloaded")
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            page.wait_for_load_state("domcontentloaded")
+        except Exception:  # noqa: BLE001
+            pass
     esperar_ate(lambda: _visivel(page.locator("iframe#cotador")) or _visivel(sel.botao_criar_nova(_lugar(s))),
                 s.t("timeout_tela_ms") / 1000)
     fechar_overlays(page)
@@ -191,12 +198,20 @@ def _clicar_proximo(lugar) -> None:
     botao.first.click(timeout=4000, force=True)
 
 
+def _digitar_cnpj(campo, cnpj: str) -> None:
+    """O cotador Gatsby consulta a Receita no blur/digitação; fill() deixa o valor sem disparar a busca."""
+    campo.click(force=True)
+    campo.fill("")
+    campo.press_sequentially(so_digitos(cnpj), delay=40)
+    campo.press("Tab")
+
+
 def dados_iniciais(s: Sessao, a: Andamento) -> None:
     _aviso_etapa(s, a, "dados")
     fechar_overlays(s.page)
     lugar, p = _lugar(s), a.base
     campo = esperar_visivel(sel.campo_cnpj(lugar), s.t("timeout_tela_ms"), "CNPJ", "dados")
-    campo.fill(formatar_cnpj(p.cnpj), force=True)
+    _digitar_cnpj(campo, p.cnpj)
     _pausar(s)
     if not esperar_ate(lambda: empresa_preenchida(s.page), s.t("timeout_tela_ms") / 1000):
         raise ErroFluxo("o portal não preencheu os dados da empresa pelo CNPJ", "dados")
