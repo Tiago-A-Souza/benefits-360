@@ -324,7 +324,14 @@ def botao_criar_nova(lugar) -> Locator:
 
 
 def campo_cnpj(lugar) -> Locator:
-    return lugar.get_by_label(re.compile(r"cnpj", re.I)).or_(lugar.locator("input[name*=cnpj i]"))
+    """Portal real (Gatsby, 27/11/2026): <input name=".document">; o texto «CNPJ» é rótulo visual,
+    sem <label>. Simulador: label/name=cnpj."""
+    return lugar.get_by_label(re.compile(r"cnpj", re.I)).or_(
+        lugar.locator(
+            "input[name='.document'], input[name$='.document'], "
+            "input[name*=cnpj i], input[id*=cnpj i]"
+        )
+    ).or_(lugar.get_by_placeholder(re.compile(r"cnpj", re.I)))
 
 
 def botao_proximo(lugar) -> Locator:
@@ -407,5 +414,5 @@ def botao_sair(page: Page) -> Locator:
 
 
 def fechar_banner(lugar) -> Locator:
-    return lugar.get_by_role("button", name=re.compile(r"fechar|x", re.I)).filter(
-        has=lugar.get_by_text(TEXTO_BANNER_DUVIDAS))
+    """O X do cartaz «novo sistema de cotação» tem nome acessível `close`, não contém o texto."""
+    return lugar.get_by_role("button", name=re.compile(r"^(close|fechar|ok|x)$", re.I))

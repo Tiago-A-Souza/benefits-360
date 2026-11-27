@@ -181,9 +181,10 @@ def criar_nova_cotacao(s: Sessao, a: Andamento) -> None:
 
 def dados_iniciais(s: Sessao, a: Andamento) -> None:
     _aviso_etapa(s, a, "dados")
+    fechar_overlays(s.page)
     lugar, p = _lugar(s), a.base
     campo = esperar_visivel(sel.campo_cnpj(lugar), s.t("timeout_tela_ms"), "CNPJ", "dados")
-    campo.fill(formatar_cnpj(p.cnpj))
+    campo.fill(formatar_cnpj(p.cnpj), force=True)
     _pausar(s)
     if not esperar_ate(lambda: a.base.cnpj[-4:] in so_digitos(texto_do_cotador(s.page))
                        or "razão" in texto_do_cotador(s.page).lower()
