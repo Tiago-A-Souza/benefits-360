@@ -5,6 +5,7 @@ from playwright.sync_api import sync_playwright
 
 from nucleo.texto import formatar_cnpj, so_digitos
 from operadoras.porto import seletores as sel
+from operadoras.porto.etapas import _digitar_cnpj
 from operadoras.porto.telas import empresa_preenchida, fechar_overlays, saiu_de_dados_iniciais
 
 CNPJ_FICTICIO = "11.222.333/0001-81"
@@ -29,6 +30,16 @@ _HTML_PORTAL = """
   <button type="button">Voltar</button>
   <button type="button">Próximo</button>
 </section>
+<script>
+document.querySelector('input[name=".document"]').addEventListener('blur', function () {
+  const d = (this.value || '').replace(/\\D/g, '');
+  if (d.length !== 14) return;
+  const n = document.querySelector('input[name=".companyName"]');
+  n.disabled = false;
+  n.value = 'PADARIA MODELO DE TREINO LTDA';
+  n.disabled = true;
+});
+</script>
 """
 
 _HTML_SIMULADOR = """
@@ -46,6 +57,18 @@ def test_campo_cnpj_do_portal_e_name_document_sem_label():
         assert loc.first.is_visible()
         loc.first.fill(formatar_cnpj(CNPJ_FICTICIO))
         assert so_digitos(page.locator("input[name='.document']").input_value()) == so_digitos(CNPJ_FICTICIO)
+        page.context.browser.close()
+
+
+def test_consulta_receita_dispara_no_tab_nao_no_fill():
+    with sync_playwright() as pw:
+        page = pw.chromium.launch(headless=True).new_page()
+        page.set_content(_HTML_PORTAL)
+        cnpj = sel.campo_cnpj(page).first
+        cnpj.fill(formatar_cnpj(CNPJ_FICTICIO), force=True)
+        assert not empresa_preenchida(page)
+        _digitar_cnpj(cnpj, CNPJ_FICTICIO)
+        assert empresa_preenchida(page)
         page.context.browser.close()
 
 
